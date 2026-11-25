@@ -139,7 +139,7 @@ describe("Skills page changes", () => {
     });
     expect(formula.ok).toBe(false);
     expect(formula.ok ? [] : (formula.problems ?? []).map((p) => p.where)).toContain(
-      "Progression (kill): roll row 1",
+      "How it goes up, Killing a monster: Chance to go up, step 1",
     );
     expect(s.draft()).toEqual([]);
     const same = draftSkillChange(s, ADMIN, {

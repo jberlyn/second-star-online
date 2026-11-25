@@ -1161,19 +1161,19 @@ body {
 .items-list-row .balance-field {
   flex: 0 1 140px;
 }
-/* The Items page's own look (ui/items-page.ts, `.items-editor`): a calm form with room between
+/* The plain editor look (`.plain-editor`: Items, Monsters, Skills, Gathering, NPCs): a calm form with room between
    its parts, a help line under each tab's title, rarely used fields folded under "More options",
    and the Save bar split into saving (left) and resetting (right). */
-.items-editor .items-filters {
+.plain-editor .items-filters {
   display: flex;
   gap: 8px;
 }
-.items-editor .items-filters .balance-field {
+.plain-editor .items-filters .balance-field {
   flex: 1 1 0;
   min-width: 0;
   padding: 4px 0;
 }
-.items-editor .items-new > summary {
+.plain-editor .items-new > summary {
   display: inline-block;
   padding: 5px 12px;
   border: 1px solid #555;
@@ -1181,16 +1181,16 @@ body {
   background: #2f2f2f;
   list-style: none;
 }
-.items-editor .items-new > summary::-webkit-details-marker {
+.plain-editor .items-new > summary::-webkit-details-marker {
   display: none;
 }
-.items-editor .items-new[open] > summary {
+.plain-editor .items-new[open] > summary {
   margin-bottom: 4px;
 }
-.items-editor .items-list-item {
+.plain-editor .items-list-item {
   padding: 6px 10px;
 }
-.items-editor .items-list-meta {
+.plain-editor .items-list-meta {
   margin-left: 4px;
 }
 .items-empty-form {
@@ -1205,73 +1205,73 @@ body {
 .items-empty-form[hidden] {
   display: none;
 }
-.items-editor .items-form-head .content-section-title {
+.plain-editor .items-form-head .content-section-title {
   margin-bottom: 0;
 }
-.items-editor .items-form-id {
+.plain-editor .items-form-id {
   margin: 2px 0 6px;
 }
-.items-editor .items-form-id:empty {
+.plain-editor .items-form-id:empty {
   display: none;
 }
-.items-editor .items-tag-original {
+.plain-editor .items-tag-original {
   background: #1f2a1f;
   border-color: #3d6b3d;
   color: #a9dca9;
 }
-.items-editor .items-tag-changed {
+.plain-editor .items-tag-changed {
   background: #23324f;
   border-color: #3c5a93;
   color: #b9cdf5;
 }
-.items-editor .balance-row {
+.plain-editor .balance-row {
   padding: 14px 0;
 }
-.items-editor .balance-row-title {
+.plain-editor .balance-row-title {
   font-size: 15px;
 }
 .items-intro {
   margin: 0 0 10px;
   color: #b8c4dd;
 }
-.items-editor .items-group > .control-panel-field,
-.items-editor .items-group > .items-check,
-.items-editor .items-more > .control-panel-field,
-.items-editor .items-more > .items-check {
+.plain-editor .items-group > .control-panel-field,
+.plain-editor .items-group > .items-check,
+.plain-editor .items-more > .control-panel-field,
+.plain-editor .items-more > .items-check {
   max-width: 560px;
 }
-.items-editor .items-group > .items-check,
-.items-editor .items-more > .items-check {
+.plain-editor .items-group > .items-check,
+.plain-editor .items-more > .items-check {
   margin: 6px 0;
 }
-.items-editor .items-list-editor {
+.plain-editor .items-list-editor {
   margin: 14px 0;
   padding: 10px 12px;
   background: #222;
   border: 1px solid #2f2f2f;
   border-radius: 4px;
 }
-.items-editor .items-list-title {
+.plain-editor .items-list-title {
   font-size: 13px;
 }
-.items-editor .items-list-editor > .control-panel-field-help {
+.plain-editor .items-list-editor > .control-panel-field-help {
   margin: 2px 0 6px;
 }
-.items-editor .items-list-row {
+.plain-editor .items-list-row {
   align-items: flex-end;
   gap: 4px 14px;
   padding: 6px 0;
   border-top: 1px solid #2c2c2c;
 }
-.items-editor .items-list-row .balance-field {
+.plain-editor .items-list-row .balance-field {
   flex: 0 1 160px;
   padding: 0;
 }
-.items-editor .items-list-row .items-check {
+.plain-editor .items-list-row .items-check {
   align-self: center;
   max-width: 200px;
 }
-.items-editor .items-list-row .balance-field.items-range {
+.plain-editor .items-list-row .balance-field.items-range {
   flex: 0 1 220px;
 }
 .items-range-pair {
@@ -1284,7 +1284,7 @@ body {
   width: 6em;
   min-width: 0;
 }
-.items-editor .items-add {
+.plain-editor .items-add {
   margin-top: 6px;
 }
 .items-pick .items-checks {
@@ -1324,7 +1324,7 @@ body {
 .items-group-foot .control-panel-sources {
   margin: 0;
 }
-.items-editor .items-restore[hidden] {
+.plain-editor .items-restore[hidden] {
   display: none;
 }
 .items-remove {
@@ -1342,13 +1342,13 @@ body {
   gap: 8px;
 }
 .items-actions .content-buttons[hidden],
-.items-editor .control-panel-btn[hidden] {
+.plain-editor .control-panel-btn[hidden] {
   display: none;
 }
-.items-editor .control-panel-tab {
+.plain-editor .control-panel-tab {
   padding: 5px 8px;
 }
-.items-editor .items-checks {
+.plain-editor .items-checks {
   grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
 }
 .control-panel-tab-used::after {
@@ -1360,6 +1360,72 @@ body {
   vertical-align: middle;
   border-radius: 50%;
   background: #6e8fd6;
+}
+/* The NPCs page (ui/npcs-page.ts): the text view tucked under the form, each drop's odds beside
+   it, and the "saves go live" note on the Save bar's right. */
+.npcs-page .control-panel-field[hidden] {
+  display: none;
+}
+.npcs-page .items-form-head .control-panel-btn {
+  margin-top: 6px;
+}
+.npcs-page .npcs-mode {
+  max-width: 560px;
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px dashed #2c2c2c;
+}
+.npcs-page .npcs-text-view {
+  max-width: none;
+}
+.npcs-page .npcs-odds {
+  flex: 0 0 10em;
+  align-self: center;
+  margin: 0;
+}
+.npcs-page .npcs-live {
+  align-self: center;
+  margin: 0;
+}
+/* The Gathering page (ui/gathering-page.ts): headings over its two lists, and a tile's pictures
+   lined up with their names. */
+.plain-editor .gathering-list-title {
+  margin: 14px 0 4px;
+}
+.gathering-page .items-list-item .gathering-tile {
+  vertical-align: middle;
+}
+.gathering-picture {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0 8px;
+  color: #b8c4dd;
+}
+.gathering-requirement {
+  margin: 10px 0;
+}
+/* The Balance page's tabs (ui/balance-page.ts): one card at a time; while Search holds words the
+   tabs step back, since the matches come from every card. */
+.balance-page.plain-editor .balance-search {
+  margin: 12px 20px 8px;
+}
+.balance-page.plain-editor .balance-no-match {
+  margin: 12px 20px;
+}
+.balance-page.plain-editor .control-panel-tabs.balance-tabs {
+  margin: 0 20px;
+  padding: 6px 0 0;
+}
+.balance-tabs-searching .control-panel-tab {
+  opacity: 0.6;
+}
+.balance-page.plain-editor .balance-card {
+  margin-top: 12px;
+}
+.balance-page.plain-editor .balance-row .items-actions {
+  margin-top: 8px;
 }
 /* Editor forms (control-panel-kit.ts): one section at a time behind tabs, where the rules came
    from folded away, and the Save bar kept in view at the bottom. */
@@ -1528,7 +1594,14 @@ body {
   gap: 4px;
 }
 .monsters-ladder input {
-  width: 64px;
+  width: 72px;
+}
+.monsters-ladder-step {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+  color: #b8c4dd;
 }
 .items-list-row .balance-field:has(.monsters-ladder) {
   flex: 0 1 auto;
@@ -1537,8 +1610,22 @@ body {
   margin: 0 20px;
 }
 .monsters-spells > summary {
+  display: inline-block;
+  padding: 5px 12px;
+  border: 1px solid #555;
+  border-radius: 4px;
+  background: #2f2f2f;
   cursor: pointer;
   font-weight: bold;
+}
+.monsters-spells[open] > summary {
+  margin-bottom: 8px;
+}
+.monsters-spells .items-list-editor .items-check {
+  margin: 6px 0;
+}
+.monsters-spells .content-buttons {
+  margin-top: 8px;
 }
 /* The Content page (ui/content-page.ts): packs, pack updates, the draft, rows and the history. */
 .content-section {

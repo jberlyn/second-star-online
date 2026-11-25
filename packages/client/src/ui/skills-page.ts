@@ -104,28 +104,100 @@ export interface SkillsPage {
 }
 
 export const SOURCES: readonly { id: SkillSource; label: string; help: string }[] = [
-  { id: "kill", label: "Kill", help: "The weapon's skills, when its holder kills a monster." },
+  {
+    id: "kill",
+    label: "Killing a monster",
+    help: "When a player kills a monster with a weapon that uses this skill.",
+  },
   {
     id: "shot",
-    label: "Shot",
-    help: "The bound Archery (and Martial Arts with a crossbow), each arrow.",
+    label: "Shooting arrows",
+    help: "Each arrow fired. Only the archery skill trains this way (and martial arts, with a crossbow).",
   },
-  { id: "defend", label: "Defend", help: "The bound Parry and Block, when struck." },
-  { id: "cast", label: "Cast", help: "The bound Magery and the spell's school, each cast." },
+  {
+    id: "defend",
+    label: "Being attacked",
+    help: "Each time the player is struck. Only the parry and block skills train this way.",
+  },
+  {
+    id: "cast",
+    label: "Casting spells",
+    help: "Each spell cast. Trains the magery skill and the spell's own school.",
+  },
   {
     id: "gather",
-    label: "Gather",
-    help: "A harvest node's skill and the bound Fishing, each success.",
+    label: "Gathering",
+    help: "Each successful harvest at a gathering spot that uses this skill, and each catch for the fishing skill.",
   },
-  { id: "craft", label: "Craft", help: "The bound crafting skill, each craft." },
+  {
+    id: "craft",
+    label: "Crafting",
+    help: "Each item made with the crafting skill for that kind of recipe.",
+  },
   {
     id: "hit",
-    label: "Hit",
-    help: "The weapon's skills (or a spell's school), each hit that does damage.",
+    label: "Landing a hit",
+    help: "Each hit that does damage with a weapon (or spell school) that uses this skill.",
   },
 ];
 
 const OPS: FormulaRow["op"][] = ["set", "add", "subtract", "multiply"];
+/** What each formula step does, as the form says it. */
+const OP_TEXT: Record<FormulaRow["op"], string> = {
+  set: "Set to",
+  add: "Add",
+  subtract: "Subtract",
+  multiply: "Multiply by",
+};
+const OP_SIGN: Record<FormulaRow["op"], string> = {
+  set: "",
+  add: "+",
+  subtract: "−",
+  multiply: "×",
+};
+
+/** A formula in words: `skill + wisdomBonus`, `100`, `level × 50 (if level > 10)`. */
+export function formulaText(f: Formula | undefined): string {
+  if (f === undefined) {
+    return "0";
+  }
+  if (typeof f === "number") {
+    return String(f);
+  }
+  const parts = f.map((r, i) => {
+    const when = r.when?.length ? ` (if ${r.when.join(" and ")})` : "";
+    const head = r.op === "set" ? (i === 0 ? "" : "then ") : `${OP_SIGN[r.op]} `;
+    return `${head}${r.value}${when}`;
+  });
+  return parts.join(" ") || "0";
+}
+
+/** A cap in words: `100`, `the faction cap`. */
+function capText(cap: ChanceSettings["cap"], none: string): string {
+  return cap === undefined
+    ? none
+    : cap === "faction"
+      ? "the faction cap"
+      : cap === "mage"
+        ? "the mage cap"
+        : String(cap);
+}
+
+/** What a source's settings do, in a sentence (a world default, shown under "Normal rule"). */
+export function settingsText(
+  model: "chance" | "xp",
+  s: ChanceSettings | XpSettings | false | undefined,
+): string {
+  if (s === undefined || s === false) {
+    return "Normally it doesn't go up this way.";
+  }
+  const req = s.requires ? `; only once ${s.requires.skill} is above ${s.requires.above}` : "";
+  if (model === "xp") {
+    return `Normally it earns ${formulaText((s as XpSettings).xp)} XP each time${req}.`;
+  }
+  const c = s as ChanceSettings;
+  return `Normally a 1 in (${formulaText(c.roll)}) chance to go up each time; it stops at ${capText(c.cap, "100")}${c.monsterCap ? " and at the killed monster's skill cap" : ""}${c.min !== undefined ? `; it can rise from ${c.min}` : ""}${req}.`;
+}
 
 /** A formula as rows: a bare number is one `set` row. */
 export function formulaRows(f: Formula | undefined): FormulaRow[] {
@@ -215,8 +287,8 @@ function option(value: string, text = value): HTMLOptionElement {
 }
 
 /**
- * A formula editor: one line per row (its conditions, its op, its value), with add and remove.
- * `errors` collects rows that do not read; `changed` runs on every edit with the rows.
+ * A formula editor: one line per step (when it applies, what it does, its value), with add and
+ * remove. `errors` collects steps that do not read; `changed` runs on every edit with the rows.
  */
 export function formulaEditor(
   idPrefix: string,
@@ -224,17 +296,28 @@ export function formulaEditor(
   rows: FormulaRow[],
   errors: Map<HTMLElement, string>,
   changed: (rows: FormulaRow[]) => void,
+  help = "",
 ): HTMLElement {
   const box = document.createElement("div");
-  box.className = "items-list-editor";
+  box.className = "items-list-editor skills-formula";
   const title = document.createElement("p");
   title.className = "items-list-title";
   title.textContent = label;
   const list = document.createElement("div");
-  const help = document.createElement("p");
-  help.className = "control-panel-field-help";
-  help.textContent =
-    "Rows apply in order to a result that starts at 0. When: conditions like skill > 10 or strength < 5, comma-separated (empty: always). Value: a number, random(n), a + random(n), or a name: skill, a stat (strength, stamina, intelligence, wisdom, dexterity), level, tier, damage (hits only), a stat table or another skill.";
+  const sum = document.createElement("p");
+  sum.className = "control-panel-field-help skills-formula-sum";
+  const say = () => {
+    sum.textContent = `Works out as: ${formulaText(rowsFormula(rows))}`;
+  };
+  const guide = document.createElement("details");
+  guide.className = "items-more-picks";
+  const guideSummary = action(document.createElement("summary"), `${idPrefix}-guide`);
+  guideSummary.textContent = "What can I type?";
+  const guideText = document.createElement("p");
+  guideText.className = "control-panel-field-help";
+  guideText.textContent =
+    "The steps work top to bottom, starting from 0. A value is a whole number, a dice roll like random(6) or 2 + random(6), or a name: skill (this skill's value), level, strength, stamina, intelligence, wisdom, dexterity, tier (the tool's tier), damage (on a hit), a stat table such as wisdomBonus, or another skill's ID. Only when: leave it empty to always apply, or write conditions like skill > 10 or strength < 5, separated by commas.";
+  guide.append(guideSummary, guideText);
   const draw = () => {
     list.replaceChildren(
       ...rows.map((row, i) => {
@@ -246,7 +329,7 @@ export function formulaEditor(
         when.placeholder = "always";
         const op = action(document.createElement("select"), `${idPrefix}-op`);
         for (const o of OPS) {
-          op.append(option(o));
+          op.append(option(o, OP_TEXT[o]));
         }
         op.value = row.op;
         const value = noAutofill(action(document.createElement("input"), `${idPrefix}-value`));
@@ -255,32 +338,37 @@ export function formulaEditor(
           const w = parseWhen(when.value);
           const v = parseValue(value.value);
           if (w === null) {
-            errors.set(when, `${label} row ${i + 1}: a condition is name > n or name < n`);
+            errors.set(when, `${label}, step ${i + 1}: a condition looks like skill > 10`);
           } else {
             errors.delete(when);
             row.when = w.length > 0 ? w : undefined;
           }
           if (v === null) {
-            errors.set(value, `${label} row ${i + 1}: a value is a number, random(n) or a name`);
+            errors.set(
+              value,
+              `${label}, step ${i + 1}: a value is a whole number, random(n) or a name`,
+            );
           } else {
             errors.delete(value);
             row.value = v;
           }
           row.op = op.value as FormulaRow["op"];
+          say();
           changed(rows);
         };
         when.addEventListener("input", check);
         value.addEventListener("input", check);
         op.addEventListener("change", check);
         line.append(
-          labelled("When", when),
-          labelled("Op", op),
+          labelled(i === 0 ? "Step" : "Then", op),
           labelled("Value", value),
+          labelled("Only when", when),
           panelButton(`${idPrefix}-remove`, "Remove", () => {
             errors.delete(when);
             errors.delete(value);
             rows.splice(i, 1);
             draw();
+            say();
             changed(rows);
           }),
         );
@@ -289,15 +377,24 @@ export function formulaEditor(
     );
   };
   draw();
+  say();
+  box.append(title);
+  if (help) {
+    const h = document.createElement("p");
+    h.className = "control-panel-field-help";
+    h.textContent = help;
+    box.append(h);
+  }
   box.append(
-    title,
     list,
-    panelButton(`${idPrefix}-add`, "Add a row", () => {
+    sum,
+    panelButton(`${idPrefix}-add`, "+ Add a step", () => {
       rows.push({ op: rows.length === 0 ? "set" : "add", value: rows.length === 0 ? "skill" : 1 });
       draw();
+      say();
       changed(rows);
     }),
-    help,
+    guide,
   );
   return box;
 }
@@ -319,11 +416,11 @@ function formOf(
 
 export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
   const el = document.createElement("div");
-  el.className = "skills-page items-page balance-page";
+  el.className = "skills-page items-page balance-page plain-editor";
   el.append(
     pageHeading(
       "Skills",
-      "Every skill and how it rises: its name and place on the Skills page, the classes that start with it, its progression from each kind of action (1.6's chance to advance, or XP against a level curve), and what trains it. Changes go into the content draft, published from the Content page. New kinds of skill effect need code.",
+      "Pick a skill to change its name, who starts with it and how fast it goes up. Saving puts your changes in the draft: players get them once you publish on the Content page.",
     ),
   );
   const draftLine = document.createElement("div");
@@ -332,9 +429,7 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
   const draftText = document.createElement("span");
   draftLine.append(
     draftText,
-    panelButton("skills-open-content", "Review and publish on the Content page", () =>
-      actions.openContent(),
-    ),
+    panelButton("skills-open-content", "Review and publish…", () => actions.openContent()),
   );
   const statusLine = () => {
     const p = document.createElement("p");
@@ -348,31 +443,61 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
   };
   const problemText = (r: { text: string; problems?: ContentProblemView[] }) =>
     [r.text, ...(r.problems ?? []).map((p) => `${p.where}: ${p.message}`)].join(" ");
+  /** A help line under a tab's title: what the tab is for. */
+  const intro = (text: string) => {
+    const p = document.createElement("p");
+    p.className = "items-intro";
+    p.textContent = text;
+    return p;
+  };
+  const helpLine = (text: string) => {
+    const p = document.createElement("p");
+    p.className = "control-panel-field-help";
+    p.textContent = text;
+    return p;
+  };
+  /** Fields folded under a summary ("More options"), open when one of them is in use. */
+  const more = (open: boolean, text: string, ...controls: HTMLElement[]) => {
+    const box = document.createElement("details");
+    box.className = "items-more";
+    box.open = open;
+    const summary = action(document.createElement("summary"), "skills-more-toggle");
+    summary.textContent = text;
+    box.append(summary, ...controls);
+    return box;
+  };
 
   // ---- a new skill ----
   const newBox = document.createElement("details");
   newBox.className = "items-new";
   const newSummary = action(document.createElement("summary"), "skills-new-toggle");
-  newSummary.textContent = "New skill";
+  newSummary.textContent = "+ New skill";
   const newKey = noAutofill(action(document.createElement("input"), "skills-new-key"));
   newKey.maxLength = 40;
   const newDisplay = noAutofill(action(document.createElement("input"), "skills-new-display"));
   newDisplay.maxLength = 40;
   const newModel = action(document.createElement("select"), "skills-new-model");
-  newModel.append(option("chance", "Chance to advance (1.6's)"), option("xp", "XP and levels"));
+  newModel.append(
+    option("chance", "A chance to go up by one each time (like 1.6)"),
+    option("xp", "Earns XP and goes up in levels"),
+  );
   const newCurve = noAutofill(action(document.createElement("input"), "skills-new-curve"));
-  newCurve.placeholder = "a curve's name";
+  newCurve.placeholder = "a new curve, named after the skill";
   const curvesList = document.createElement("datalist");
   curvesList.id = "skills-curves";
   newCurve.setAttribute("list", curvesList.id);
   const newStatus = statusLine();
   const createBtn = panelButton(
     "skills-create",
-    "Make it in the draft",
+    "Create skill",
     () => {
       const key = newKey.value.trim();
       if (!/^[A-Za-z][A-Za-z0-9_]{0,39}$/.test(key)) {
-        say(newStatus, "A key is letters, digits and spaces, starting with a letter.", false);
+        say(
+          newStatus,
+          "The ID is one word: letters, digits and _, starting with a letter (no spaces).",
+          false,
+        );
         return;
       }
       const data: SkillForm = {};
@@ -395,20 +520,26 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
     },
     "primary",
   );
+  const newCurveField = labelled(
+    "Level curve",
+    newCurve,
+    "Skills on the same curve need the same XP for each level. Pick one, or leave it empty for a new curve of 100 XP a level.",
+  );
+  const showNewCurve = () => {
+    newCurveField.hidden = newModel.value !== "xp";
+  };
+  newModel.addEventListener("change", showNewCurve);
+  showNewCurve();
   newBox.append(
     newSummary,
     labelled(
-      "Key",
+      "ID",
       newKey,
-      "Its permanent key: characters keep their values under it, so it never changes. Rename it later by its display name.",
+      "One word, like Climbing. Players' values are stored under it, so it can't change later.",
     ),
-    labelled("Display name", newDisplay, "What players see. Empty shows the key."),
-    labelled("Progression", newModel),
-    labelled(
-      "Level curve",
-      newCurve,
-      "For XP: the curve it levels by (a new name makes one: 100 XP a level).",
-    ),
+    labelled("Name players see (optional)", newDisplay, "Leave it empty to show the ID."),
+    labelled("How it goes up", newModel),
+    newCurveField,
     curvesList,
     createBtn,
     newStatus,
@@ -425,16 +556,24 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
   listEl.setAttribute("aria-label", "Skills");
   const listCount = document.createElement("p");
   listCount.className = "control-panel-field-help";
-  listBox.append(newBox, labelled("Find", search), listCount, listEl);
+  const filters = document.createElement("div");
+  filters.className = "items-filters";
+  filters.append(labelled("Search", search));
+  listBox.append(newBox, filters, listCount, listEl);
 
   // ---- the form ----
   const form = document.createElement("section");
   form.className = "items-form";
   form.hidden = true;
+  const header = document.createElement("div");
+  header.className = "items-form-head";
   const title = document.createElement("h2");
   title.className = "content-section-title";
-  const tags = document.createElement("p");
-  tags.className = "control-panel-field-help";
+  const subtitle = document.createElement("p");
+  subtitle.className = "control-panel-field-help items-form-id";
+  const tags = document.createElement("div");
+  tags.className = "balance-tags";
+  header.append(title, subtitle, tags);
   const noticeLine = document.createElement("p");
   noticeLine.className = "balance-stale";
   noticeLine.hidden = true;
@@ -442,12 +581,12 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
   stale.className = "balance-stale skills-stale";
   stale.hidden = true;
   stale.textContent =
-    "Someone changed this skill since you started editing it: saving will be refused. Drop your edit to see theirs.";
+    "Someone changed this skill while you were editing it, so saving will be refused. Undo your changes to see theirs.";
   const groups = document.createElement("div");
   const status = statusLine();
   const saveBtn = panelButton(
     "skills-save",
-    "Save to the draft",
+    "Save changes",
     () => {
       if (!shown) {
         return;
@@ -460,19 +599,19 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
     },
     "primary",
   );
-  const undoBtn = panelButton("skills-undo-edit", "Drop my edit", () => {
+  const undoBtn = panelButton("skills-undo-edit", "Undo changes", () => {
     fill();
     status.textContent = "";
     update();
   });
-  const dropBtn = panelButton("skills-discard", "Drop the draft's change", () => {
+  const dropBtn = panelButton("skills-discard", "Cancel unpublished changes", () => {
     if (shown) {
       send({ key: shown.skill, op: "discard", expect: shown.fingerprint });
     }
   });
   const removeBtn = panelButton(
     "skills-remove",
-    "Remove… (where it is used)",
+    "Remove this skill…",
     () => {
       if (shown) {
         seq += 1;
@@ -486,9 +625,21 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
     },
     "danger",
   );
+  const removeBox = document.createElement("div");
+  removeBox.className = "items-remove";
+  removeBox.append(
+    removeBtn,
+    helpLine("Shows everything that uses it first, so you can clear or move each one."),
+  );
+  const mainButtons = document.createElement("div");
+  mainButtons.className = "content-buttons";
+  mainButtons.append(saveBtn, undoBtn);
+  const resetButtons = document.createElement("div");
+  resetButtons.className = "content-buttons items-reset-buttons";
+  resetButtons.append(dropBtn);
   const buttons = document.createElement("div");
-  buttons.className = "content-buttons";
-  buttons.append(saveBtn, undoBtn, dropBtn, removeBtn);
+  buttons.className = "items-actions";
+  buttons.append(mainButtons, resetButtons);
 
   // The removal panel.
   const removal = document.createElement("section");
@@ -504,14 +655,14 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
   const removalChoices = new Map<string, SkillRemovalChoice>();
   const removeGo = panelButton(
     "skills-remove-confirm",
-    "Remove it in the draft",
+    "Remove the skill",
     () => {
       if (!usage || !shown) {
         return;
       }
       const choices = [...removalChoices.values()];
       if (choices.some((c) => c.action === "replace" && !c.to)) {
-        say(removalStatus, "Pick the skill each pointed reference goes to.", false);
+        say(removalStatus, "Pick the skill each moved use goes to.", false);
         return;
       }
       seq += 1;
@@ -525,25 +676,30 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
     removal.hidden = true;
     usage = null;
   });
-  removal.append(removalTitle, removalBody, removeGo, removeCancel, removalStatus);
+  const removalButtons = document.createElement("div");
+  removalButtons.className = "content-buttons";
+  removalButtons.append(removeGo, removeCancel);
+  removal.append(
+    removalTitle,
+    intro(
+      "Everything that uses this skill is listed below: choose whether each one forgets it or uses another skill instead. The removal is an unpublished change until you publish.",
+    ),
+    removalBody,
+    removalButtons,
+    removalStatus,
+  );
 
   const tabs = sectionTabs(form, "skills");
-  form.append(
-    title,
-    tags,
-    noticeLine,
-    stale,
-    tabs.el,
-    groups,
-    removal,
-    formActions(buttons, status),
-  );
+  form.append(header, noticeLine, stale, tabs.el, groups, removal, formActions(buttons, status));
   const loading = document.createElement("p");
   loading.className = "balance-loading";
   loading.textContent = "Loading…";
   const layout = document.createElement("div");
   layout.className = "items-layout";
-  layout.append(listBox, form);
+  const empty = document.createElement("p");
+  empty.className = "items-empty-form";
+  empty.textContent = "Pick a skill on the left to see and change how it works.";
+  layout.append(listBox, empty, form);
   el.append(draftLine, loading, layout);
 
   // ---- state ----
@@ -608,8 +764,12 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
   const update = () => {
     const d = dirty();
     saveBtn.disabled = busy || !d;
-    undoBtn.disabled = busy || !d;
+    undoBtn.hidden = !d;
+    undoBtn.disabled = busy;
     dropBtn.hidden = !shown?.pending;
+    dropBtn.title = shown?.published
+      ? "Takes this skill's changes out of the draft: players keep what they have now."
+      : "Takes this new skill out of the draft.";
     dropBtn.disabled = busy;
     removeBtn.disabled = busy;
     stale.hidden = !(shown && d && shown.fingerprint !== filled.fingerprint);
@@ -634,24 +794,40 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
   };
 
   // ---- drawing the form ----
-  const section = (titleText: string, ...children: HTMLElement[]) => {
+  const section = (id: string, titleText: string, help: string, ...children: HTMLElement[]) => {
     const sec = document.createElement("section");
     sec.className = "balance-row items-group";
+    sec.dataset.group = id;
     const h = document.createElement("h3");
     h.className = "balance-row-title";
     h.textContent = titleText;
-    sec.append(h, ...children);
+    sec.append(h, intro(help), ...children);
     return sec;
+  };
+  /** Marks the tabs that hold settings of the skill's own (a dot on the tab). */
+  const markUsed = () => {
+    const used: Record<string, boolean> = {
+      basics: work.display !== "" || work.hidden,
+      starts: Object.values(work.starts ?? {}).some((x) => x !== null) || work.grants.length > 0,
+      rises: work.progression !== null,
+    };
+    for (const sec of groups.querySelectorAll<HTMLElement>(":scope > .items-group")) {
+      const u = String(used[sec.dataset.group ?? ""] === true);
+      if (sec.dataset.used !== u) {
+        sec.dataset.used = u;
+      }
+    }
   };
   const edited = () => {
     status.textContent = "";
-    // A redraw (a formula row removed, the model or a source switched) drops fields: what they
+    // A redraw (a formula step removed, the model or a source switched) drops fields: what they
     // held is no longer the form's.
     for (const k of [...invalid.keys()]) {
       if (!k.isConnected) {
         invalid.delete(k);
       }
     }
+    markUsed();
     update();
     drawPreview();
   };
@@ -663,6 +839,7 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
     nullable: boolean,
     label: string,
     write: (n: number | null) => void,
+    empty = "not set",
   ) => {
     const input = noAutofill(action(document.createElement("input"), idName));
     input.type = "number";
@@ -670,7 +847,7 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
     input.max = String(max);
     input.value = value === null ? "" : String(value);
     if (nullable) {
-      input.placeholder = "not set";
+      input.placeholder = empty;
     }
     input.addEventListener("input", () => {
       const t = input.value.trim();
@@ -687,38 +864,71 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
     });
     return input;
   };
-  /** A cap field: empty (none), a number, `faction` or `mage`. */
+  /**
+   * A cap: none, a number, or the faction or mage cap, picked from a list (a number shows its own
+   * box). Saves as before: undefined, a number, `faction` or `mage`.
+   */
   const capField = (
     idName: string,
     value: ChanceSettings["cap"],
     label: string,
+    none: string,
     write: (c: ChanceSettings["cap"]) => void,
   ) => {
-    const input = noAutofill(action(document.createElement("input"), idName));
-    input.value = value === undefined ? "" : String(value);
-    input.placeholder = "none (100)";
-    input.addEventListener("input", () => {
-      const t = input.value.trim().toLowerCase();
-      if (t === "") {
-        invalid.delete(input);
+    const box = document.createElement("div");
+    box.className = "items-range-pair skills-cap";
+    const kind = action(document.createElement("select"), `${idName}-kind`);
+    kind.append(
+      option("none", none),
+      option("number", "A number…"),
+      option("faction", `The faction cap (${view?.caps.faction ?? "?"} unless a perk changes it)`),
+      option("mage", `The mage cap (${view?.caps.mage ?? "?"} unless a perk changes it)`),
+    );
+    kind.value =
+      value === undefined ? "none" : value === "faction" || value === "mage" ? value : "number";
+    kind.setAttribute("aria-label", label);
+    const n = noAutofill(action(document.createElement("input"), idName));
+    n.type = "number";
+    n.min = "0";
+    n.max = "100";
+    n.value = typeof value === "number" ? String(value) : "";
+    n.setAttribute("aria-label", `${label}: the number`);
+    const show = () => {
+      n.hidden = kind.value !== "number";
+    };
+    const read = () => {
+      invalid.delete(n);
+      if (kind.value === "none") {
         write(undefined);
-      } else if (t === "faction" || t === "mage") {
-        invalid.delete(input);
-        write(t);
-      } else if (/^\d+$/.test(t) && Number(t) <= 100) {
-        invalid.delete(input);
-        write(Number(t));
+      } else if (kind.value === "faction" || kind.value === "mage") {
+        write(kind.value);
       } else {
-        invalid.set(input, `${label}: a number to 100, faction or mage`);
+        const t = n.value.trim();
+        if (/^\d+$/.test(t) && Number(t) <= 100) {
+          write(Number(t));
+        } else {
+          invalid.set(n, `${label}: a whole number from 0 to 100`);
+        }
       }
       edited();
+    };
+    kind.addEventListener("change", () => {
+      if (kind.value === "number" && n.value.trim() === "") {
+        n.value = "100";
+      }
+      show();
+      read();
     });
-    return input;
+    n.addEventListener("input", read);
+    show();
+    box.append(kind, n);
+    return box;
   };
   const skillSelect = (idName: string, value: string, write: (s: string) => void) => {
     const sel = action(document.createElement("select"), idName);
     for (const k of view?.keys ?? []) {
-      sel.append(option(k));
+      const s = view?.skills.find((x) => x.skill === k);
+      sel.append(option(k, s && s.display !== k ? `${s.display} (${k})` : k));
     }
     sel.value = value;
     sel.addEventListener("change", () => {
@@ -733,14 +943,15 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
     s: { requires?: { skill: string; above: number } | null | undefined },
   ) => {
     const box = document.createElement("div");
-    box.className = "items-list-row";
+    box.className = "skills-requires";
     const on = document.createElement("label");
     on.className = "items-check";
     const check = action(document.createElement("input"), `${idName}-on`);
     check.type = "checkbox";
     check.checked = !!s.requires;
-    on.append(check, " Needs another skill first");
+    on.append(check, " Only once another skill is high enough");
     const fields = document.createElement("span");
+    fields.className = "items-list-row";
     const drawFields = () => {
       fields.replaceChildren();
       if (!s.requires) {
@@ -749,14 +960,14 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
       const r = s.requires;
       fields.append(
         labelled(
-          "Skill",
+          "That skill",
           skillSelect(`${idName}-skill`, r.skill, (k) => {
             r.skill = k;
           }),
         ),
         labelled(
-          "Above",
-          intField(`${idName}-above`, r.above, -1, 100, false, "Needs above", (n) => {
+          "Is above",
+          intField(`${idName}-above`, r.above, -1, 100, false, "Is above", (n) => {
             r.above = n ?? 0;
           }),
         ),
@@ -774,6 +985,19 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
     drawFields();
     box.append(on, fields);
     return box;
+  };
+  const tick = (idName: string, on: boolean, text: string, write: (on: boolean) => void) => {
+    const l = document.createElement("label");
+    l.className = "items-check";
+    const b = action(document.createElement("input"), idName);
+    b.type = "checkbox";
+    b.checked = on;
+    b.addEventListener("change", () => {
+      write(b.checked);
+      edited();
+    });
+    l.append(b, ` ${text}`);
+    return l;
   };
 
   /** The settings a source's own entry holds (created on first use). */
@@ -794,22 +1018,18 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
     const own = work.progression?.on?.[src.id as keyof NonNullable<SkillProgression["on"]>];
     const mode = action(document.createElement("select"), "skills-source-mode");
     mode.append(
-      option("default", "The world's default"),
-      option("own", "Its own settings"),
-      option("off", "Off: never trains from this"),
+      option("default", "The normal rule (shared by every skill)"),
+      option("own", "Its own rule"),
+      option("off", "Never goes up this way"),
     );
     mode.value = own === false ? "off" : own === undefined ? "default" : "own";
     const p = view?.progression;
     const def = p ? (model === "chance" ? p.defaults.chance : p.defaults.xp)[src.id] : undefined;
-    const defText = document.createElement("p");
-    defText.className = "control-panel-field-help";
-    defText.textContent =
-      def === undefined || def === false
-        ? "The world's default: it does not train from this."
-        : `The world's default: ${JSON.stringify(def)}`;
+    const defText = helpLine(settingsText(model, def));
     const body = document.createElement("div");
     const drawBody = () => {
       body.replaceChildren();
+      defText.hidden = mode.value !== "default";
       // Read only: drawing never changes the form (`ownOn` makes `on` when a source is set).
       const s = (
         work.progression?.on as
@@ -822,10 +1042,51 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
       if (model === "chance") {
         const c = s as ChanceSettings;
         const rows = formulaRows(c.roll);
+        const extra: HTMLElement[] = [requiresField("skills-requires", c)];
+        if (src.id === "kill") {
+          extra.push(
+            tick(
+              "skills-monster-cap",
+              c.monsterCap === true,
+              "Also stops at the killed monster's skill cap",
+              (on) => {
+                if (on) {
+                  c.monsterCap = true;
+                } else {
+                  delete c.monsterCap;
+                }
+              },
+            ),
+          );
+        }
+        if (src.id === "gather" || src.id === "craft") {
+          extra.push(
+            labelled(
+              "Can go up from",
+              intField(
+                "skills-min",
+                c.min ?? null,
+                0,
+                100,
+                true,
+                `${src.label}: can go up from`,
+                (n) => {
+                  if (n === null) {
+                    delete c.min;
+                  } else {
+                    c.min = n;
+                  }
+                },
+                "0",
+              ),
+              "The lowest value that still goes up this way. Empty means 0: a player who has never used it can start learning.",
+            ),
+          );
+        }
         body.append(
           formulaEditor(
             "skills-roll",
-            `${src.label}: roll (random(n) = 1 advances)`,
+            "Chance to go up: 1 in…",
             rows,
             invalid,
             (r) => {
@@ -837,71 +1098,43 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
               }
               edited();
             },
+            "Each time, it goes up by one with a chance of 1 in this number, so a bigger number is slower. Starting from skill makes it harder as it rises.",
           ),
           labelled(
-            "Cap",
-            capField("skills-cap", c.cap, `${src.label} cap`, (v) => {
-              if (v === undefined) {
-                delete c.cap;
-              } else {
-                c.cap = v;
-              }
-            }),
-            "It rises only below this: a number, faction (the faction perk's skill cap) or mage (its mage cap). Empty: 100.",
-          ),
-          requiresField("skills-requires", c),
-        );
-        if (src.id === "kill") {
-          const l = document.createElement("label");
-          l.className = "items-check";
-          const b = action(document.createElement("input"), "skills-monster-cap");
-          b.type = "checkbox";
-          b.checked = c.monsterCap === true;
-          b.addEventListener("change", () => {
-            if (b.checked) {
-              c.monsterCap = true;
-            } else {
-              delete c.monsterCap;
-            }
-            edited();
-          });
-          l.append(b, " Also below the killed monster's skill cap");
-          body.append(l);
-        }
-        if (src.id === "gather" || src.id === "craft") {
-          body.append(
-            labelled(
-              "Minimum",
-              intField("skills-min", c.min ?? null, 0, 100, true, `${src.label} minimum`, (n) => {
-                if (n === null) {
-                  delete c.min;
+            "Stops going up at",
+            capField(
+              "skills-cap",
+              c.cap,
+              `${src.label}: stops going up at`,
+              "100 (no cap)",
+              (v) => {
+                if (v === undefined) {
+                  delete c.cap;
                 } else {
-                  c.min = n;
+                  c.cap = v;
                 }
-              }),
-              "The lowest value that rolls (empty: 0). Other sources need the skill above 0.",
+              },
             ),
-          );
-        }
+          ),
+          more(
+            !!c.requires || c.monsterCap === true || c.min !== undefined,
+            "More options",
+            ...extra,
+          ),
+        );
       } else {
         const x = s as XpSettings;
         body.append(
-          formulaEditor(
-            "skills-xp",
-            `${src.label}: XP per action`,
-            formulaRows(x.xp),
-            invalid,
-            (r) => {
-              const f = rowsFormula(r);
-              if (f === undefined) {
-                delete x.xp;
-              } else {
-                x.xp = f;
-              }
-              edited();
-            },
-          ),
-          requiresField("skills-requires", x),
+          formulaEditor("skills-xp", "XP earned each time", formulaRows(x.xp), invalid, (r) => {
+            const f = rowsFormula(r);
+            if (f === undefined) {
+              delete x.xp;
+            } else {
+              x.xp = f;
+            }
+            edited();
+          }),
+          more(!!x.requires, "More options", requiresField("skills-requires", x)),
         );
       }
     };
@@ -934,8 +1167,8 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
     drawBody();
     const h = document.createElement("p");
     h.className = "items-list-title";
-    h.textContent = `${src.label}: ${src.help}`;
-    box.append(h, labelled("Settings", mode), defText, body);
+    h.textContent = src.label;
+    box.append(h, helpLine(src.help), labelled("Rule", mode), defText, body);
     return box;
   };
 
@@ -945,6 +1178,7 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
     if (prog?.model !== "xp") {
       return box;
     }
+    box.className = "items-list-editor skills-levels";
     const p = view?.progression;
     if (!work.curve || work.curve.name !== prog.curve) {
       const have = p?.curves[prog.curve];
@@ -976,18 +1210,19 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
     });
     const counting = action(document.createElement("select"), "skills-curve-counting");
     counting.append(
-      option("perLevel", "Per level: the XP from each level to the next"),
-      option("total", "Total: the running XP that reaches the next level"),
+      option("perLevel", "From one level to the next"),
+      option("total", "In total, from level 0"),
     );
     counting.value = c.counting;
     counting.addEventListener("change", () => {
       curveEdit.edited = true;
       c.counting = counting.value as Curve["counting"];
+      drawForm();
       edited();
     });
     const table = noAutofill(action(document.createElement("input"), "skills-curve-table"));
     table.value = (c.table ?? []).join(", ");
-    table.placeholder = "none";
+    table.placeholder = "none: use the formula for every level";
     table.addEventListener("input", () => {
       const parts = table.value
         .split(",")
@@ -1003,19 +1238,28 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
           c.table = parts.map(Number);
         }
       } else {
-        invalid.set(table, "Level table: whole numbers, comma-separated");
+        invalid.set(table, "XP for the first levels: whole numbers, separated by commas");
       }
       edited();
     });
-    const cap = intField("skills-curve-cap", c.cap ?? null, 1, 100, true, "Curve cap", (n) => {
-      curveEdit.edited = true;
-      if (n === null) {
-        delete c.cap;
-      } else {
-        c.cap = n;
-      }
-    });
-    const levelCap = capField("skills-level-cap", prog.cap, "Level cap", (v) => {
+    const cap = intField(
+      "skills-curve-cap",
+      c.cap ?? null,
+      1,
+      100,
+      true,
+      "Highest level",
+      (n) => {
+        curveEdit.edited = true;
+        if (n === null) {
+          delete c.cap;
+        } else {
+          c.cap = n;
+        }
+      },
+      "100",
+    );
+    const levelCap = capField("skills-level-cap", prog.cap, "Stops levelling at", "No cap", (v) => {
       if (v === undefined) {
         delete prog.cap;
       } else {
@@ -1023,23 +1267,23 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
       }
     });
     const shared = shown?.curve?.sharedWith ?? [];
+    const head = document.createElement("p");
+    head.className = "items-list-title";
+    head.textContent = "Levels";
     box.append(
+      head,
       labelled(
         "Level curve",
         name,
         shared.length > 0 && shown?.curve?.name === prog.curve
-          ? `Shared with ${shared.join(", ")}: a change here changes theirs too.`
-          : "The curve it levels by. A new name makes a new curve.",
-      ),
-      labelled("Counting", counting),
-      labelled(
-        "Level table",
-        table,
-        "What leaving each level takes, from level 0, comma-separated. Past the table, the formula below.",
+          ? `Also used by ${shared.join(", ")}: changing the XP below changes theirs too.`
+          : "Skills on the same curve need the same XP for each level. Type a new name to make a curve of its own.",
       ),
       formulaEditor(
         "skills-curve-formula",
-        "Past the table: the formula (reads only level)",
+        c.counting === "total"
+          ? "Total XP needed to reach each level"
+          : "XP needed to go up from each level",
         formulaRows(c.formula),
         invalid,
         (r) => {
@@ -1053,9 +1297,20 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
           }
           edited();
         },
+        "Use level for the level being left, e.g. Set to 100 then Multiply by level.",
       ),
-      labelled("Curve's highest level", cap, "Empty: 100."),
-      labelled("Its level cap", levelCap, "A number, faction or mage; empty: none."),
+      labelled("Highest level", cap, "Empty means 100."),
+      labelled("Stops levelling at", levelCap),
+      more(
+        c.table !== undefined || c.counting === "total",
+        "More options",
+        labelled("XP is counted", counting),
+        labelled(
+          "XP for the first levels",
+          table,
+          "Exact XP for levels 0, 1, 2… separated by commas. Levels past the list use the formula above.",
+        ),
+      ),
     );
     return box;
   };
@@ -1118,22 +1373,22 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
       return c;
     };
     if (!s && prog?.model !== "xp") {
-      previewOut.textContent = "It does not train from this source.";
+      previewOut.textContent = "It doesn't go up this way.";
       return;
     }
     if (prog?.model === "xp") {
       const curve = work.curve?.curve ?? view.progression.curves[prog.curve];
       if (!curve) {
-        previewOut.textContent = "Its curve is missing.";
+        previewOut.textContent = "Its level curve is missing.";
         return;
       }
       table.setAttribute("aria-label", "XP to reach each level");
       head.append(
         cell("th", "Level"),
-        cell("th", "XP to reach it"),
-        cell("th", "XP to the next"),
-        cell("th", "XP an action"),
-        cell("th", "Actions"),
+        cell("th", "Total XP to reach it"),
+        cell("th", "XP to the next level"),
+        cell("th", "XP each time"),
+        cell("th", "Times to go up"),
       );
       // The level table shows whether or not this source gives XP (none: 0 an action).
       const rows = xpPreview(
@@ -1161,7 +1416,7 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
       }
     } else {
       table.setAttribute("aria-label", "Chance to advance at each value");
-      head.append(cell("th", "Value"), cell("th", "Chance an action raises it"));
+      head.append(cell("th", "Skill value"), cell("th", "Chance it goes up each time"));
       for (const r of chancePreview(shown.skill, preview.source, s as ChanceSettings, ctx)) {
         const tr = document.createElement("tr");
         tr.append(cell("td", String(r.value)), cell("td", r.why ?? chanceText(r.chance)));
@@ -1196,7 +1451,7 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
       }
       drawPreview();
     });
-    return labelled("Killed monster's cap", input);
+    return labelled("Killed monster's skill cap", input);
   };
   const previewInputs = () => {
     const src = action(document.createElement("select"), "skills-preview-source");
@@ -1227,28 +1482,30 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
       });
       return labelled(label, input);
     };
-    const row = document.createElement("div");
-    row.className = "items-list-row";
-    row.append(
-      labelled("Source", src),
+    const stats = document.createElement("div");
+    stats.className = "items-list-row";
+    stats.append(
       num("level", "Level", 1000),
       num("str", "Strength", 1000),
       num("sta", "Stamina", 1000),
       num("int", "Intelligence", 1000),
       num("wis", "Wisdom", 1000),
       num("dex", "Dexterity", 1000),
-      num("otherSkills", "Other skills at", 100),
+      num("otherSkills", "Its other skills at", 100),
       num("tier", "Tool tier", 1000),
       num("damage", "A hit's damage", 1_000_000),
       monsterCapInput(),
     );
     previewBox.replaceChildren(
-      row,
-      Object.assign(document.createElement("p"), {
-        className: "control-panel-field-help",
-        textContent:
-          "Worked out by the game's own rules from the form as it is now, unsaved edits included. A faction or mage cap reads an unaffiliated character's; the requirement reads the other skills' value.",
-      }),
+      labelled("Trained by", src),
+      more(
+        false,
+        "The sample character",
+        stats,
+        helpLine(
+          "A faction or mage cap is worked out for a character with no faction. A rule that needs another skill reads Its other skills at.",
+        ),
+      ),
       previewOut,
     );
   };
@@ -1259,36 +1516,27 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
       groups.replaceChildren();
       return;
     }
-    // Name and place.
+    // ---- Basics ----
     const display = noAutofill(action(document.createElement("input"), "skills-display"));
     display.maxLength = 40;
     display.value = work.display;
+    display.placeholder = v.skill;
     display.addEventListener("input", () => {
       work.display = display.value.trim();
       edited();
     });
-    const hiddenLabel = document.createElement("label");
-    hiddenLabel.className = "items-check";
-    const hidden = action(document.createElement("input"), "skills-hidden");
-    hidden.type = "checkbox";
-    hidden.checked = work.hidden;
-    hidden.addEventListener("change", () => {
-      work.hidden = hidden.checked;
-      edited();
-    });
-    hiddenLabel.append(hidden, " Hidden: kept off the Skills page (it still rises and works)");
     const order = intField(
       "skills-order",
       work.order,
       1,
       view.skills.length,
       false,
-      "Place",
+      "Position on the Skills page",
       (n) => {
         work.order = n ?? 1;
       },
     );
-    // Who starts with it.
+    // ---- Starting values ----
     const starts = document.createElement("div");
     starts.className = "items-list-row";
     for (const s of v.starts) {
@@ -1301,10 +1549,11 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
             0,
             100,
             true,
-            `${s.label}'s start`,
+            `${s.label} starts at`,
             (n) => {
               work.starts[String(s.code)] = n;
             },
+            "1",
           ),
         ),
       );
@@ -1312,25 +1561,22 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
     const grants = document.createElement("div");
     grants.className = "items-checks";
     for (const p of v.promotions) {
-      const l = document.createElement("label");
-      l.className = "items-check";
-      const b = action(document.createElement("input"), "skills-grant");
-      b.type = "checkbox";
-      b.checked = work.grants.includes(p.code);
-      b.addEventListener("change", () => {
-        work.grants = b.checked
-          ? [...work.grants, p.code].sort((a, c) => a - c)
-          : work.grants.filter((c) => c !== p.code);
-        edited();
-      });
-      l.append(b, ` ${p.name}`);
-      grants.append(l);
+      grants.append(
+        tick("skills-grant", work.grants.includes(p.code), p.name, (on) => {
+          work.grants = on
+            ? [...work.grants, p.code].sort((a, c) => a - c)
+            : work.grants.filter((c) => c !== p.code);
+        }),
+      );
     }
-    // Progression.
+    if (v.promotions.length === 0) {
+      grants.append(helpLine("There are no promotions."));
+    }
+    // ---- How it goes up ----
     const model = action(document.createElement("select"), "skills-model");
     model.append(
-      option("chance", "Chance to advance by one (1.6's)"),
-      option("xp", "XP against a level curve"),
+      option("chance", "A chance to go up by one each time (like 1.6)"),
+      option("xp", "Earns XP and goes up in levels"),
     );
     model.value = work.progression?.model ?? "chance";
     model.addEventListener("change", () => {
@@ -1347,76 +1593,124 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
       edited();
     });
     const sources = document.createElement("div");
+    const waysTitle = document.createElement("p");
+    waysTitle.className = "items-list-title skills-ways-title";
+    waysTitle.textContent = "What makes it go up";
+    sources.append(waysTitle);
     for (const src of SOURCES) {
       sources.append(drawSource(src));
     }
-    // What trains it.
+    // ---- Where it's used ----
     const trains = document.createElement("ul");
     trains.className = "items-sources";
     trains.append(...v.trains.map(trainerLink));
     if (v.trains.length === 0) {
       const li = document.createElement("li");
-      li.textContent = "Nothing trains or reads it yet.";
+      li.textContent = "Nothing trains or uses it yet.";
       trains.append(li);
     }
     previewInputs();
     groups.replaceChildren(
       section(
-        "Name and place",
-        labelled("Display name", display, `What players see; empty shows its key (${v.skill}).`),
-        hiddenLabel,
-        labelled("Place on the Skills page", order, `1 is first; there are ${view.skills.length}.`),
-      ),
-      section(
-        "Who starts with it",
+        "basics",
+        "Basics",
+        "What players see and where it sits on their Skills page.",
         labelled(
-          "Start values",
-          starts,
-          "Each start class's value (empty: 1, as for any skill a class does not set).",
+          "Name players see",
+          display,
+          `Leave it empty to show its ID, ${v.skill}, which never changes.`,
+        ),
+        tick(
+          "skills-hidden",
+          work.hidden,
+          "Hide it from players' Skills page (it still goes up and works)",
+          (on) => {
+            work.hidden = on;
+          },
         ),
         labelled(
-          "Promotions that grant it",
+          "Position on the Skills page",
+          order,
+          `1 is the top; there are ${view.skills.length} skills.`,
+        ),
+        removeBox,
+      ),
+      section(
+        "starts",
+        "Starting values",
+        "The value each class starts with, and promotions that raise it.",
+        labelled("Each class starts at", starts, "Leave a class empty for 1."),
+        labelled(
+          "Promotions that teach it",
           grants,
-          "A promotion raises it to a roll of 1-10 if it is below.",
+          "Taking one of these promotions raises it to a random 1 to 10, if it is lower.",
         ),
       ),
-      section("Progression", labelled("Model", model), curveEditor(), sources),
       section(
-        "What trains it",
-        Object.assign(document.createElement("p"), {
-          className: "control-panel-field-help",
-          textContent: "Set where each one lives: open it to change it.",
-        }),
+        "rises",
+        "How it goes up",
+        "Choose how the skill improves, then what makes it go up. Most skills use the normal rules every skill shares.",
+        labelled("It goes up by", model),
+        curveEditor(),
+        sources,
+      ),
+      section(
+        "used",
+        "Where it's used",
+        "Items, gathering spots, recipes and rules that train or need this skill. Open one to change it where it is set.",
         trains,
         ...(v.bindings.length > 0
           ? [
-              Object.assign(document.createElement("p"), {
-                className: "control-panel-field-help",
-                textContent: `The ${v.bindings.join(", ")} binding${v.bindings.length === 1 ? " names" : "s name"} it, so it cannot be removed.`,
-              }),
+              helpLine(
+                `The game's ${v.bindings.join(", ")} rule${v.bindings.length === 1 ? " uses" : "s use"} it, so it can't be removed. Point ${v.bindings.length === 1 ? "that rule" : "those rules"} at another skill on the Content page first.`,
+              ),
             ]
           : []),
       ),
-      section("Preview", previewBox),
+      section(
+        "preview",
+        "Try it out",
+        "How quickly it goes up for a sample character, worked out by the game's own rules from this form, unsaved changes included.",
+        previewBox,
+      ),
     );
+    markUsed();
     drawPreview();
   };
   const draw = () => {
     if (!shown) {
       return;
     }
-    title.textContent = shown.row.display ? `${shown.row.display} (${shown.skill})` : shown.skill;
-    tags.textContent = [
-      shown.row.progression?.model === "xp" ? "XP model" : "chance model",
-      shown.row.hidden ? "hidden" : "",
-      shown.inPack ? "" : "yours",
-      shown.pending ? "changed in the draft" : "",
-      shown.published ? "" : "only in the draft",
-    ]
-      .filter((x) => x !== "")
-      .join(" · ");
-    noticeLine.hidden = !shown.notice;
-    noticeLine.textContent = shown.notice?.note ?? "";
+    const v = shown;
+    const shownName = v.row.display || v.skill;
+    title.textContent = shownName;
+    subtitle.textContent = shownName === v.skill ? "" : `ID: ${v.skill}`;
+    const state = list.find((x) => x.skill === v.skill)?.state ?? (v.inPack ? "pack" : "yours");
+    const t: [string, string][] = [
+      state === "yours"
+        ? ["Added by you", "changed"]
+        : state === "edited" || v.pending
+          ? ["Changed by you", "changed"]
+          : ["Original", "original"],
+    ];
+    if (v.row.hidden) {
+      t.push(["Hidden from players", "retired"]);
+    }
+    if (!v.published) {
+      t.push(["Not published yet", "pending"]);
+    } else if (v.pending) {
+      t.push(["Unpublished changes", "pending"]);
+    }
+    tags.replaceChildren(
+      ...t.map(([x, kind]) => {
+        const s = document.createElement("span");
+        s.className = `balance-tag items-tag-${kind}`;
+        s.textContent = x;
+        return s;
+      }),
+    );
+    noticeLine.hidden = !v.notice;
+    noticeLine.textContent = v.notice?.note ?? "";
     drawForm();
     update();
   };
@@ -1429,7 +1723,10 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
     const rows = list.filter((s) =>
       words.every((w) => `${s.display} ${s.skill}`.toLowerCase().includes(w)),
     );
-    listCount.textContent = `${rows.length} of ${list.length} skills, in Skills-page order`;
+    listCount.textContent =
+      rows.length === list.length
+        ? `${list.length} skills, in the order players see them`
+        : `${rows.length} of ${list.length} skills`;
     listEl.replaceChildren(
       ...rows.map((s) => {
         const li = document.createElement("li");
@@ -1445,10 +1742,10 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
         const meta = document.createElement("span");
         meta.className = "items-list-meta";
         meta.textContent = [
-          s.model === "xp" ? "XP" : "chance",
+          s.model === "xp" ? "levels" : "",
           s.hidden ? "hidden" : "",
-          s.state === "yours" ? "yours" : s.state === "edited" ? "changed" : "",
-          s.pending ? "in the draft" : "",
+          s.state === "yours" ? "added by you" : s.state === "edited" || s.pending ? "changed" : "",
+          s.pending ? "unpublished" : "",
         ]
           .filter((x) => x !== "")
           .join(" · ");
@@ -1467,7 +1764,7 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
         status,
         busy
           ? "Wait for the save to finish."
-          : `${shown.row.display ?? shown.skill} has unsaved changes: save them or drop your edit first.`,
+          : `${shown.row.display || shown.skill} has unsaved changes: save or undo them first.`,
         false,
       );
       return;
@@ -1475,6 +1772,7 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
     openKey = key;
     shown = null;
     form.hidden = true;
+    empty.hidden = false;
     removal.hidden = true;
     usage = null;
     status.textContent = "";
@@ -1557,7 +1855,8 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
     draftText.textContent =
       total === 0
         ? ""
-        : `The draft holds ${v.skillDraft === 1 ? "1 change to classes and skills" : `${v.skillDraft} changes to classes and skills`}${v.otherDraft > 0 ? ` and ${v.otherDraft} other ${v.otherDraft === 1 ? "change" : "changes"}` : ""}, live once published. `;
+        : `${total === 1 ? "1 unpublished change" : `${total} unpublished changes`}${v.otherDraft > 0 && v.skillDraft > 0 ? ` (${v.skillDraft} to classes and skills)` : v.skillDraft === 0 ? " (none to skills)" : ""}. Players get them once you publish. `;
+    empty.hidden = openKey !== null && shown !== null;
     if (!openKey) {
       return;
     }
@@ -1566,6 +1865,7 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
       if (shown && !v.skills.some((x) => x.skill.toLowerCase() === openKey?.toLowerCase())) {
         shown = null;
         form.hidden = true;
+        empty.hidden = false;
         openKey = null;
       }
       return;
@@ -1573,6 +1873,7 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
     const first = shown === null || shown.skill !== s.skill;
     shown = s;
     form.hidden = false;
+    empty.hidden = true;
     if (first || (!busy && !dirty())) {
       fill();
     }
@@ -1616,6 +1917,7 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
             shown = null;
             openKey = null;
             form.hidden = true;
+            empty.hidden = false;
           }
         }
         if (newer) {
@@ -1697,6 +1999,7 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
       listEl.replaceChildren();
       groups.replaceChildren();
       form.hidden = true;
+      empty.hidden = false;
       removal.hidden = true;
       loading.hidden = false;
       draftLine.hidden = true;

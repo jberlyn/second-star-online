@@ -12,6 +12,8 @@ import {
   createGatheringPage,
   type GatheringChange,
   nodePayload,
+  regrowthName,
+  waitText,
 } from "../src/ui/gathering-page.ts";
 
 afterEach(() => document.body.replaceChildren());
@@ -128,7 +130,7 @@ describe("the Gathering page", () => {
   test("lists the nodes by tile; a node's form saves with its fingerprint", () => {
     const { p, sent } = page();
     const node = q<HTMLButtonElement>(p.el, "[data-action='gathering-open-node']");
-    expect(node.textContent).toContain("Chop T1 (Tree)");
+    expect(node.textContent).toContain("Chop Tree");
     expect(node.querySelector("canvas")).not.toBeNull();
     node.click();
     expect(q<HTMLInputElement>(p.el, "[data-action='gathering-tile']").value).toBe("T1");
@@ -248,10 +250,11 @@ describe("review fixes (issue #38)", () => {
     ];
     expect(opts.map((o) => o.value)).toEqual(["", "trees"]);
     // random(600) < 10 fires on 9 of 600 values, then one tile of 204.
-    expect(opts[1]?.textContent).toContain("1 in 13,600 frames");
+    // An average of 13,600 frames at 20 a second: about 11 minutes.
+    expect(opts[1]?.textContent).toBe("Trees: grows back in about 11 minutes on average");
   });
 
-  test("Drop my edit on a new node closes its form", () => {
+  test("Undo changes on a new node closes its form", () => {
     const { p } = page();
     q<HTMLButtonElement>(p.el, "[data-action='gathering-new-node']").click();
     expect(q<HTMLElement>(p.el, ".items-form").hidden).toBe(false);
@@ -270,5 +273,164 @@ describe("review fixes (issue #38)", () => {
       ),
     );
     expect([...tools]).toEqual(["Tier 2: Gold Axe"]);
+  });
+});
+
+describe("the plain-language form", () => {
+  const tabs = (p: { el: HTMLElement }) =>
+    [...p.el.querySelectorAll<HTMLElement>(".items-group")].map((s) => [
+      s.querySelector(".balance-row-title")?.textContent,
+      s.dataset.used,
+    ]);
+
+  test("asks for a pick until something is open, and lists the other activities", () => {
+    const { p } = page();
+    expect(q<HTMLElement>(p.el, ".items-empty-form").hidden).toBe(false);
+    expect(q<HTMLElement>(p.el, ".items-form").hidden).toBe(true);
+    expect(
+      [...p.el.querySelectorAll("[aria-label='Other activities'] button")].map(
+        (b) => b.firstChild?.textContent,
+      ),
+    ).toEqual(["Fishing", "Farming", "Swings per harvest"]);
+    q<HTMLButtonElement>(p.el, "[data-action='gathering-open-counter']").click();
+    expect(q<HTMLElement>(p.el, ".items-empty-form").hidden).toBe(true);
+    expect(
+      q<HTMLElement>(p.el, "[data-action='gathering-open-counter']").getAttribute("aria-current"),
+    ).toBe("true");
+  });
+
+  test("a tile's form: plain tabs with help lines, a dot only where it holds more than the basics", () => {
+    const { p } = page();
+    q<HTMLButtonElement>(p.el, "[data-action='gathering-open-node']").click();
+    expect(q<HTMLElement>(p.el, ".items-form h2").textContent).toBe("Chop Tree");
+    expect(q<HTMLElement>(p.el, ".items-form-id").textContent).toBe("Node 1 · tile T1");
+    expect(tabs(p)).toEqual([
+      ["Tile", "true"],
+      ["Tool", "false"],
+      ["Skill", "false"],
+      ["Drops", "true"],
+      ["Sounds", "true"],
+      ["Odds", "false"],
+    ]);
+    expect(p.el.querySelectorAll(".items-group > .items-intro")).toHaveLength(6);
+    // The rare tool fields are folded away while empty.
+    const toolMore = q<HTMLElement>(p.el, "[data-group='tool']").querySelector(
+      ".items-more",
+    ) as HTMLDetailsElement;
+    expect(toolMore.open).toBe(false);
+    expect(toolMore.contains(q(p.el, "[data-action='gathering-tools']"))).toBe(true);
+    // The tool action reads in words, and says which tools can do it now.
+    const can = q<HTMLSelectElement>(p.el, "[data-action='gathering-can']");
+    expect(can.selectedOptions[0]?.textContent).toBe("Chop (axes)");
+    expect(can.parentElement?.textContent).toContain(
+      "Tools that can chop now: anything named like “Axe” (tier 1), Gold Axe (tier 2).",
+    );
+    // The buttons say what they do.
+    expect(q<HTMLButtonElement>(p.el, "[data-action='gathering-save']").textContent).toBe(
+      "Save changes",
+    );
+    expect(q<HTMLButtonElement>(p.el, "[data-action='gathering-undo-edit']").textContent).toBe(
+      "Undo changes",
+    );
+    expect(q<HTMLButtonElement>(p.el, "[data-action='gathering-remove-node']").hidden).toBe(false);
+  });
+
+  test("a tile with special tools opens its More options; a new tile cannot be removed", () => {
+    const { p, seq } = page();
+    q<HTMLButtonElement>(p.el, "[data-action='gathering-open-node']").click();
+    typeIn(q<HTMLInputElement>(p.el, "[data-action='gathering-tools']"), "Gold Axe");
+    q<HTMLButtonElement>(p.el, "[data-action='gathering-save']").click();
+    p.receive({
+      t: "contentGathering",
+      seq: seq(),
+      view: (() => {
+        const v = VIEW("bbbbbbbbbbbbbbbb");
+        (v.nodes[0] as { node: { tools?: string[] } }).node.tools = ["Gold Axe"];
+        return v;
+      })(),
+      result: { ok: true, text: "Node 1 is in the draft." },
+    });
+    const toolMore = q<HTMLElement>(p.el, "[data-group='tool'] .items-more") as HTMLDetailsElement;
+    expect(toolMore.open).toBe(true);
+    expect(q<HTMLElement>(p.el, "[data-group='tool']").dataset.used).toBe("true");
+    q<HTMLButtonElement>(p.el, "[data-action='gathering-new-node']").click();
+    expect(q<HTMLElement>(p.el, ".items-form h2").textContent).toBe("New harvestable tile");
+    expect(q<HTMLButtonElement>(p.el, "[data-action='gathering-remove-node']").hidden).toBe(true);
+  });
+
+  test("skill rows read “from skill N” and save as the stored “above N - 1”", () => {
+    const { p, sent } = page();
+    q<HTMLButtonElement>(p.el, "[data-action='gathering-open-node']").click();
+    typeIn(q<HTMLInputElement>(p.el, "[data-action='gathering-yield']"), "Stones");
+    const from = q<HTMLInputElement>(p.el, "[data-action='gathering-yield-by-gt']");
+    // Stones' row is "above 50": from skill 51.
+    expect(from.value).toBe("51");
+    typeIn(from, "41");
+    q<HTMLButtonElement>(p.el, "[data-action='gathering-save']").click();
+    const data = sent.at(-1)?.data as { yieldTable: unknown };
+    expect(data.yieldTable).toEqual({
+      kind: "chance",
+      item: "Fish",
+      chance: 9,
+      bySkill: [{ gt: 40, value: 2 }],
+    });
+    // The hit counter's first row, "above -1", reads from skill 0.
+    const { p: p2 } = page();
+    q<HTMLButtonElement>(p2.el, "[data-action='gathering-open-counter']").click();
+    expect(
+      [...p2.el.querySelectorAll<HTMLInputElement>("[data-action='gathering-counter-gt']")].map(
+        (i) => i.value,
+      ),
+    ).toEqual(["0", "11"]);
+  });
+
+  test("an out-of-range number is refused by name, and nothing is sent", () => {
+    const { p, sent } = page();
+    q<HTMLButtonElement>(p.el, "[data-action='gathering-open-node']").click();
+    typeIn(q<HTMLInputElement>(p.el, "[data-action='gathering-tier']"), "0");
+    const before = sent.length;
+    q<HTMLButtonElement>(p.el, "[data-action='gathering-save']").click();
+    expect(sent.length).toBe(before);
+    expect(q<HTMLElement>(p.el, ".balance-status").textContent).toBe(
+      "Lowest tool tier: a whole number from 1 to 1000",
+    );
+  });
+
+  test("farming's tilled soil is typed as tile codes and saved as the game reads it", () => {
+    const { p, sent } = page();
+    p.receive({
+      t: "contentGathering",
+      seq: 50,
+      view: {
+        ...VIEW(),
+        farming: {
+          data: {
+            seedTest: "*SL*",
+            seeds: [{ item: "Seeds", plants: "UL" }],
+            seedPause: 10,
+            wateringSkill: "Lumberjacking",
+            watering: [{ from: "UL", to: "XL" }],
+            produce: [{ tile: "XL", item: "Corn" }],
+          },
+          fingerprint: "eeeeeeeeeeeeeeee",
+        },
+      },
+    });
+    q<HTMLButtonElement>(p.el, "[data-action='gathering-open-farming']").click();
+    expect(tabs(p).map((t) => t[0])).toEqual(["Seeds", "Watering", "Crops"]);
+    const soil = q<HTMLInputElement>(p.el, "[data-action='gathering-seed-test']");
+    expect(soil.value).toBe("SL");
+    typeIn(soil, "SL, TL");
+    q<HTMLButtonElement>(p.el, "[data-action='gathering-save']").click();
+    expect(sent.at(-1)).toMatchObject({ op: "farming", data: { seedTest: "*SL*TL*" } });
+  });
+
+  test("waits and regrowth checks read in plain words", () => {
+    expect(waitText(20)).toBe("1 second");
+    expect(waitText(24_480)).toBe("20 minutes");
+    expect(waitText(20 * 60 * 150)).toBe("2.5 hours");
+    expect(regrowthName("CheckTrees")).toBe("Trees");
+    expect(regrowthName("DoVeg")).toBe("Veg");
+    expect(regrowthName("trees")).toBe("Trees");
   });
 });

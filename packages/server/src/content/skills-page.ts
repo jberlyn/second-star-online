@@ -657,6 +657,34 @@ type SkillForm = z.infer<typeof skillFormSchema>;
  */
 const NEW_KEY = /^[A-Za-z][A-Za-z0-9_]{0,39}$/;
 
+/** Each way a skill goes up, as the Skills page names it. */
+const SOURCE_LABELS: Record<string, string> = {
+  kill: "Killing a monster",
+  shot: "Shooting arrows",
+  defend: "Being attacked",
+  cast: "Casting spells",
+  gather: "Gathering",
+  craft: "Crafting",
+  hit: "Landing a hit",
+};
+
+/** A source's settings, as the Skills page labels them. */
+const SETTING_LABELS: Record<string, string> = {
+  roll: "Chance to go up",
+  xp: "XP earned each time",
+  cap: "Stops going up at",
+  min: "Can go up from",
+  monsterCap: "Also stops at the killed monster's skill cap",
+  requires: "Only once another skill is high enough",
+};
+
+/** The skill's own fields, as the Skills page labels them. */
+const SKILL_LABELS: Record<string, string> = {
+  display: "Name players see",
+  hidden: "Hide it from players' Skills page",
+  skill: "ID",
+};
+
 /** A refused change's problems as the page says them: by the form's labels where it can. */
 export function skillFieldProblems(
   key: string,
@@ -672,20 +700,26 @@ export function skillFieldProblems(
       const rest = p.where.slice(own.length).split("/").filter(Boolean);
       if (rest[0] === "progression" && rest[1] === "on" && rest[2]) {
         const row =
-          rest[4] !== undefined && /^\d+$/.test(rest[4]) ? ` row ${Number(rest[4]) + 1}` : "";
-        const field = rest[3] ? `: ${rest[3]}${row}` : "";
-        return { where: `Progression (${rest[2]})${field}`, message: p.message };
+          rest[4] !== undefined && /^\d+$/.test(rest[4]) ? `, step ${Number(rest[4]) + 1}` : "";
+        const field = rest[3] ? `: ${SETTING_LABELS[rest[3]] ?? rest[3]}${row}` : "";
+        return {
+          where: `How it goes up, ${SOURCE_LABELS[rest[2]] ?? rest[2]}${field}`,
+          message: p.message,
+        };
       }
       if (rest[0] === "progression") {
-        return { where: "Progression", message: p.message };
+        return {
+          where: rest[1] === "cap" ? "Stops levelling at" : "How it goes up",
+          message: p.message,
+        };
       }
-      return { where: rest[0] ? rest[0] : key, message: p.message };
+      return { where: rest[0] ? (SKILL_LABELS[rest[0]] ?? rest[0]) : key, message: p.message };
     }
     if (w.startsWith("classes/progression/curves")) {
       return { where: "Level curve", message: p.message };
     }
     if (w.startsWith("classes/startclasses")) {
-      return { where: "Start values", message: p.message };
+      return { where: "Starting values", message: p.message };
     }
     return p;
   });

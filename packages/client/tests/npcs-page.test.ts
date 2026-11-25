@@ -1,13 +1,15 @@
 /**
  * The Control Panel's NPCs page (issue #32): the list, the open file as sections or text kept in
  * step, validation as you type with the server's own check, a save sending the whole text with the
- * revision the edit started from, and a file read two ways opening as text.
+ * revision the edit started from, and a file read two ways opening as text; and the plain form:
+ * tabs in plain words with a dot on those with settings, the flags as ticks, the till as one
+ * number, spells ticked or folded away, and each drop's odds.
  */
 import { afterEach, describe, expect, test } from "bun:test";
 
 import type { ContentNpcsView, ContentNpcView, NpcListEntry } from "@secondstaronline/shared";
 
-import { createNpcsPage, npcCheck, npcText } from "../src/ui/npcs-page.ts";
+import { createNpcsPage, lootOdds, npcCheck, npcText } from "../src/ui/npcs-page.ts";
 
 afterEach(() => document.body.replaceChildren());
 
@@ -139,7 +141,7 @@ describe("the NPCs page", () => {
     expect(price.isConnected && price.value).toBe("-2");
   });
 
-  test("Drop my edit after a switch puts back the file as shown; a stale file says so", () => {
+  test("Undo changes after a switch puts back the file as shown; a stale file says so", () => {
     const t = page();
     t.open(amber());
     const mode = t.q<HTMLSelectElement>("#npcs-mode");
@@ -160,7 +162,7 @@ describe("the NPCs page", () => {
     expect(
       t
         .qa(".items-form .balance-stale")
-        .some((e) => !e.hidden && e.textContent?.includes("Someone changed")),
+        .some((e) => !e.hidden && e.textContent?.includes("Someone saved")),
     ).toBe(true);
     t.q<HTMLButtonElement>('[data-action="npcs-undo"]').click();
     expect(t.p.changes()).toBe(0);
@@ -171,7 +173,7 @@ describe("the NPCs page", () => {
     const t = page();
     t.open(amber({ name: "Cow", exists: false, revision: null, text: "", species: true }));
     const save = t.q<HTMLButtonElement>('[data-action="npcs-save"]');
-    expect(save.textContent).toBe("Make its NPC file now");
+    expect(save.textContent).toBe("Create its NPC file");
     save.click();
     expect(t.saves.at(-1)).toMatchObject({ name: "Cow", text: "", expect: null });
     expect(t.q<HTMLElement>('[data-action="npcs-open-monster"]').hidden).toBe(false);
@@ -195,6 +197,99 @@ describe("the NPCs page", () => {
   test("the shared helpers: the text a save sends, and the server's check", () => {
     expect(npcText("BIO|x", { ...emptyish(), bio: ["y"] })).toBe("BIO|y");
     expect(npcCheck("SEL|Apple:1:1").error).toBeNull();
+  });
+});
+
+const tick = () => new Promise((r) => setTimeout(r, 0));
+
+describe("the plain-language form", () => {
+  const MONSTER =
+    "BIO|Name: Orc\rINV|Apple:4\rINV|5 Gold:2\rSPL|Splash\rFLG|Passive\rFLG|Grumpy\rOWN|x";
+  const orc = () => amber({ name: "Orc", text: MONSTER, species: true });
+  const tabs = (t: ReturnType<typeof page>) =>
+    t.qa('[data-action="npcs-tab"]').map((b) => b.dataset.tab);
+  const used = (t: ReturnType<typeof page>) =>
+    t.qa(".control-panel-tab-used").map((b) => b.dataset.tab);
+
+  test("an empty form says to pick an NPC, and the tabs are named in plain words", async () => {
+    const t = page();
+    t.p.onShow();
+    t.p.receive({ t: "contentNpcs", seq: t.asked.at(-1)?.seq ?? 0, view: view(null) });
+    expect(t.q<HTMLElement>(".items-empty-form").hidden).toBe(false);
+    t.open(orc());
+    await tick();
+    expect(t.q<HTMLElement>(".items-empty-form").hidden).toBe(true);
+    expect(tabs(t)).toEqual(["Talk", "Shop", "Bank and training", "As a monster", "All"]);
+    // The form never shows the file's tags; only the text view does.
+    expect(t.q(".items-rules").textContent).not.toMatch(/\b(INV|SPL|FLG|SEL|BUY|GLD)\|/);
+    expect(t.q(".balance-tags").textContent).toContain("Also a monster");
+  });
+
+  test("a dot marks the tabs the file fills, and follows the edit", async () => {
+    const t = page();
+    t.open(amber());
+    await tick();
+    expect(used(t)).toEqual(["Talk", "Shop"]);
+    t.q<HTMLInputElement>('[data-action="npcs-banker"]').click();
+    await tick();
+    expect(used(t)).toEqual(["Talk", "Shop", "Bank and training"]);
+  });
+
+  test("the two flags that do something are ticks; any other flag line is kept under More options", () => {
+    const t = page();
+    t.open(orc());
+    const still = t.q<HTMLInputElement>('[data-action="npcs-flag-still"]');
+    const passive = t.q<HTMLInputElement>('[data-action="npcs-flag-passive"]');
+    expect([still.checked, passive.checked]).toEqual([false, true]);
+    const other = t.q<HTMLTextAreaElement>('[data-action="npcs-flags"]');
+    expect(other.value).toBe("Grumpy");
+    expect(other.closest("details")?.open).toBe(true);
+    still.click();
+    passive.click();
+    t.q<HTMLButtonElement>('[data-action="npcs-save"]').click();
+    expect(t.saves.at(-1)?.text).toBe(
+      "BIO|Name: Orc\rINV|Apple:4\rINV|5 Gold:2\rSPL|Splash\rFLG|Grumpy\rFLG|Still\rOWN|x",
+    );
+  });
+
+  test("the till is one number: emptied, its line goes", () => {
+    const t = page();
+    t.open(amber());
+    const gold = t.q<HTMLInputElement>('[data-action="npcs-gold"]');
+    expect(gold.value).toBe("100");
+    gold.value = "-5";
+    gold.dispatchEvent(new Event("input"));
+    expect(t.q<HTMLButtonElement>('[data-action="npcs-save"]').disabled).toBe(true);
+    gold.value = "";
+    gold.dispatchEvent(new Event("input"));
+    t.q<HTMLButtonElement>('[data-action="npcs-save"]').click();
+    expect(t.saves.at(-1)?.text).toBe("OWN|king\rBIO|Name: Amber\rSEL|Apple:10:5\rBUY|Apple:5");
+  });
+
+  test("ticked spells show; the rest wait under Add a spell", () => {
+    const t = page();
+    t.open(orc());
+    const box = t.q<HTMLElement>('[data-list="spells"]');
+    const shownTicks = [...box.querySelectorAll(":scope > .items-checks input")];
+    expect(shownTicks).toHaveLength(1);
+    expect(box.querySelector(".items-more-picks summary")?.textContent).toBe("Add a spell…");
+  });
+
+  test("each drop line says its odds a kill, following the chance and the number of lines", () => {
+    const t = page();
+    t.open(orc());
+    const odds = () => t.qa(".npcs-odds").map((s) => s.textContent);
+    // Two lines: one picked at random, then 1 in 4 or 1 in 2.
+    expect(odds()).toEqual(["About 1 in 8 kills", "About 1 in 4 kills"]);
+    const n = t
+      .qa('[data-list="loot"] .items-list-row')[1]
+      ?.querySelectorAll("input")[1] as HTMLInputElement;
+    n.value = "1";
+    n.dispatchEvent(new Event("input"));
+    expect(odds()).toEqual(["About 1 in 8 kills", "About 1 in 2 kills"]);
+    t.q<HTMLButtonElement>('[data-action="npcs-loot-remove"]').click();
+    expect(odds()).toEqual(["Every kill"]);
+    expect(lootOdds(3, 10)).toBe("About 1 in 30 kills");
   });
 });
 

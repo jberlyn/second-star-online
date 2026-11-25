@@ -808,7 +808,10 @@ describe("the Balance page's spell, buff and vitals rows", () => {
         ok: false,
         error: "Hunger was not saved.",
         problems: [
-          { where: "Starves below", message: `"Starves below" must be below "Regenerates above"` },
+          {
+            where: "Starves below hunger",
+            message: `"Starves below hunger" must be below "Regenerates only above hunger"`,
+          },
         ],
       });
       expect(view(server, "hunger").pending).toBeNull();

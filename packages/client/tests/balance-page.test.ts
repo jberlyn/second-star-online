@@ -24,6 +24,7 @@ import {
   type BalanceChange,
   createBalancePage,
   fieldError,
+  readRange,
   shownValue,
 } from "../src/ui/balance-page.ts";
 import { SNAPSHOT } from "./helpers/menu-helpers.ts";
@@ -53,7 +54,13 @@ const cannon = (fp: string, extra: Partial<BalanceRowView> = {}): BalanceRowView
   label: "Battleship cannon",
   fields: [
     { path: ["damage", "flat"], label: "Damage", unit: "count", min: 0, max: 10_000 },
-    { path: ["damage", "randomN"], label: "plus random(n)", unit: "random", min: 0, max: 1000 },
+    {
+      path: ["damage", "randomN"],
+      label: "Damage: extra roll up to",
+      unit: "random",
+      min: 0,
+      max: 1000,
+    },
     { path: ["reloadFrames"], label: "Reload", unit: "frames", min: 1, max: 72_000 },
   ],
   engine: { damage: { flat: 13, randomN: 3 }, reloadFrames: 100 },
@@ -72,8 +79,20 @@ const amount = (path: string, name: string, optional = false) =>
   (
     [
       { path: [path, "flat"], label: name, unit: "count", min: 0, max: 10_000 },
-      { path: [path, "power"], label: `${name}: × power`, unit: "power", min: 0, max: 100 },
-      { path: [path, "randomN"], label: `${name}: + random(n)`, unit: "random", min: 0, max: 1000 },
+      {
+        path: [path, "power"],
+        label: `${name}: plus the caster's power ×`,
+        unit: "power",
+        min: 0,
+        max: 100,
+      },
+      {
+        path: [path, "randomN"],
+        label: `${name}: extra roll up to`,
+        unit: "random",
+        min: 0,
+        max: 1000,
+      },
     ] as const
   ).map((f) => ({ ...f, path: [...f.path], ...(optional ? { optional: true } : {}) }));
 
@@ -89,7 +108,7 @@ const firebolt = (fp: string): BalanceRowView => {
     label: "Firebolt",
     fields: [
       ...amount("monster", "On a monster"),
-      ...amount("monsterHealed", "Heals a species it heals", true),
+      ...amount("monsterHealed", "On a monster it heals", true),
       ...amount("player", "On a player"),
     ],
     engine: v,
@@ -132,7 +151,34 @@ function page() {
     i.value = value;
     i.dispatchEvent(new Event("input"));
   };
-  return { p, asked, sent, row, input, button, type, opened: () => opened, openedRows };
+  /** An amount's from/to inputs. */
+  const ends = (id: string, key: string) =>
+    [".from", ".to"].map(
+      (w) =>
+        row(id).querySelector<HTMLInputElement>(
+          `input[data-range="${key}${w}"]`,
+        ) as HTMLInputElement,
+    ) as [HTMLInputElement, HTMLInputElement];
+  /** Types an amount as from … to …. */
+  const range = (id: string, key: string, from: string, to: string) => {
+    const [f, t] = ends(id, key);
+    f.value = from;
+    t.value = to;
+    f.dispatchEvent(new Event("input"));
+  };
+  return {
+    p,
+    asked,
+    sent,
+    row,
+    input,
+    button,
+    type,
+    ends,
+    range,
+    opened: () => opened,
+    openedRows,
+  };
 }
 
 describe("the Balance page", () => {
@@ -167,7 +213,7 @@ describe("the Balance page", () => {
     expect(t.openedRows).toEqual([row]);
   });
 
-  test("shows each value with what plays now, the pack's and the engine's, and its limits", () => {
+  test("shows each value with its original, and what players have when that differs", () => {
     const t = page();
     t.p.onShow();
     t.p.receive({
@@ -176,21 +222,30 @@ describe("the Balance page", () => {
       view: view([hull("Boat", 60, "a".repeat(16)), cannon("b".repeat(16))]),
     });
     expect(t.input("hulls/Boat", "hull").value).toBe("60");
-    expect(t.row("hulls/Boat").textContent).toContain(
-      "Now 60 · pack 60 · engine default 60 · limits 1 to 100000",
-    );
-    // Frames in seconds, a roll as random(n), and no pack value (Minimal).
-    expect(t.row("cannon/").textContent).toContain("Now 100 (5 s) · no pack value");
-    expect(t.row("cannon/").textContent).toContain("Now random(3)");
-    expect(t.button("cannon/", "balance-reset").textContent).toBe("Reset to the engine default");
+    expect(t.row("hulls/Boat").textContent).toContain("Original: 60");
+    expect(t.row("hulls/Boat").textContent).not.toContain("players have");
+    // Frames in seconds; a fixed part and its roll as one range; no pack value (Minimal) is the
+    // engine's default.
+    expect(t.row("cannon/").textContent).toContain("Original: 100 (5 s)");
+    expect(t.row("cannon/").textContent).toContain("Reload (in 1/20ths of a second)");
+    expect(t.ends("cannon/", "damage").map((i) => i.value)).toEqual(["14", "16"]);
+    expect(t.row("cannon/").textContent).toContain("Original: 14 to 16");
+    expect(t.button("cannon/", "balance-reset").textContent).toBe("Restore the original");
+    expect(t.button("cannon/", "balance-reset").title).toContain("game's default");
+    t.p.receive({
+      t: "contentBalance",
+      seq: t.asked[0] ?? 0,
+      view: view([hull("Boat", 70, "a".repeat(16), { edited: true }), cannon("b".repeat(16))]),
+    });
+    expect(t.row("hulls/Boat").textContent).toContain("Original: 60 · players have 70");
     t.p.receive({
       t: "contentBalance",
       seq: t.asked[0] ?? 0,
       view: view([hull("Boat", 60, "a".repeat(16)), cannon("c".repeat(16), { edited: true })]),
     });
-    expect(t.row("cannon/").textContent).toContain("Changed from the engine default");
+    expect(t.row("cannon/").textContent).toContain("Changed by you");
     expect(t.button("hulls/Boat", "balance-save").disabled).toBe(true);
-    // "Drop my edit" shows only while the row is edited.
+    // "Undo changes" shows only while the row is edited.
     expect(t.button("hulls/Boat", "balance-undo-edit").hidden).toBe(true);
     t.type("hulls/Boat", "hull", "61");
     expect(t.button("hulls/Boat", "balance-undo-edit").hidden).toBe(false);
@@ -200,7 +255,8 @@ describe("the Balance page", () => {
     const t = page();
     t.p.onShow();
     t.p.receive({ t: "contentBalance", seq: 1, view: view([cannon("b".repeat(16))]) });
-    t.type("cannon/", "damage.randomN", "5");
+    // 14 to 18 is 13 plus a roll of 1 to 5.
+    t.range("cannon/", "damage", "14", "18");
     expect(t.p.changes()).toBe(1);
     t.button("cannon/", "balance-save").click();
     expect(t.sent).toEqual([
@@ -230,9 +286,9 @@ describe("the Balance page", () => {
     });
     expect(t.p.changes()).toBe(0);
     expect(t.row("cannon/").textContent).toContain("Battleship cannon is in the draft.");
-    expect(t.row("cannon/").textContent).toContain("Changed in the draft");
+    expect(t.row("cannon/").textContent).toContain("Unpublished changes");
     expect(t.button("cannon/", "balance-discard").hidden).toBe(false);
-    expect(t.p.el.querySelector(".balance-draft")?.textContent).toContain("1 balance change");
+    expect(t.p.el.querySelector(".balance-draft")?.textContent).toContain("1 unpublished change");
   });
 
   test("a row being saved takes no typing, and its save is not an unsaved change (issue #19 review)", () => {
@@ -425,7 +481,7 @@ describe("the Balance page", () => {
     // The edit still saves with what it was filled from, so the server can refuse it.
     t.button("hulls/Boat", "balance-save").click();
     expect(t.sent[0]?.change.expect).toBe("a".repeat(16));
-    // Drop my edit shows theirs.
+    // Undo changes shows theirs.
     t.p.receive({
       t: "contentBalance",
       seq: t.sent[0]?.seq ?? 0,
@@ -438,7 +494,9 @@ describe("the Balance page", () => {
         text: "Boat hull changed since you opened it: look at it again before saving.",
       },
     });
-    expect(t.row("hulls/Boat").textContent).toContain("changed since you opened it");
+    expect(t.row("hulls/Boat").textContent).toContain(
+      "Someone changed this while you were editing it",
+    );
     t.button("hulls/Boat", "balance-undo-edit").click();
     expect(t.input("hulls/Boat", "hull").value).toBe("90");
     expect(t.p.changes()).toBe(0);
@@ -518,17 +576,22 @@ describe("the Balance page", () => {
       "None of its own",
       "power 1: 10 to 12 · power 10: 19 to 21 · power 50: 59 to 61",
     ]);
-    t.type("spellEffects/Firebolt", "monster.flat", "100");
+    // 6 plus a roll of 1 to 3 shows as 7 to 9; typed as 101 to 103 it is 100 plus 1 to 3.
+    expect(t.ends("spellEffects/Firebolt", "monster").map((i) => i.value)).toEqual(["7", "9"]);
+    t.range("spellEffects/Firebolt", "monster", "101", "103");
     expect(previews[0]?.textContent).toBe(
       "power 1: 102 to 104 · power 10: 111 to 113 · power 50: 151 to 153",
     );
-    expect(t.row("spellEffects/Firebolt").textContent).toContain("Now 1 × power");
-    // A required amount emptied is an error, not "none": its preview hides.
-    for (const part of ["flat", "power", "randomN"]) {
-      t.type("spellEffects/Firebolt", `monster.${part}`, "");
-    }
-    expect(previews[0]?.textContent).toBe("");
-    expect((previews[0] as HTMLElement).hidden).toBe(true);
+    expect(t.row("spellEffects/Firebolt").textContent).toContain("Original: power × 1");
+    expect(t.row("spellEffects/Firebolt").textContent).toContain(
+      "On a monster: plus the caster's power ×",
+    );
+    // A required amount left empty is refused, not "none".
+    t.range("spellEffects/Firebolt", "monster", "", "");
+    expect(t.button("spellEffects/Firebolt", "balance-save").disabled).toBe(true);
+    expect(t.row("spellEffects/Firebolt").textContent).toContain(
+      `On a monster: whole numbers, "to" no lower than "from"`,
+    );
   });
 
   test("an optional amount: empty is none, part-filled is refused, filled is sent, emptied is taken out", () => {
@@ -543,13 +606,12 @@ describe("the Balance page", () => {
     expect(t.input(id, "monsterHealed.flat").value).toBe("");
     // An absent amount shown empty is not an edit.
     expect(t.p.changes()).toBe(0);
-    t.type(id, "monsterHealed.flat", "4");
+    t.range(id, "monsterHealed", "5", "6");
     expect(t.button(id, "balance-save").disabled).toBe(true);
     expect(t.row(id).textContent).toContain(
-      "Heals a species it heals: fill every part, or leave them all empty",
+      "On a monster it heals: fill every part, or leave them all empty",
     );
     t.type(id, "monsterHealed.power", "1");
-    t.type(id, "monsterHealed.randomN", "2");
     expect(t.button(id, "balance-save").disabled).toBe(false);
     t.button(id, "balance-save").click();
     expect(t.sent[0]?.change.data).toEqual({
@@ -570,9 +632,9 @@ describe("the Balance page", () => {
       view: view([healed]),
       result: { ok: true, text: "Firebolt is in the draft." },
     });
-    for (const part of ["flat", "power", "randomN"]) {
-      t.type(id, `monsterHealed.${part}`, "");
-    }
+    expect(t.ends(id, "monsterHealed").map((i) => i.value)).toEqual(["5", "6"]);
+    t.range(id, "monsterHealed", "", "");
+    t.type(id, "monsterHealed.power", "");
     t.button(id, "balance-save").click();
     expect(t.sent[1]?.change.data).toEqual({
       effect: "Firebolt",
@@ -588,14 +650,15 @@ describe("the Balance page", () => {
     expect(shownValue(40, { ...f, unit: "passFrames" })).toBe("40 (1 s)");
     expect(shownValue(20, { ...f, unit: "passFrames" })).toBe("20 (0.5 s)");
     expect(shownValue(0, { ...f, unit: "random" })).toBe("no roll");
+    expect(shownValue(6, { ...f, unit: "random" })).toBe("1 to 6");
     expect(shownValue(7, { ...f, unit: "count" })).toBe("7");
-    expect(shownValue(2, { ...f, unit: "power" })).toBe("2 × power");
-    expect(shownValue(0, { ...f, unit: "power" })).toBe("no power");
+    expect(shownValue(2, { ...f, unit: "power" })).toBe("power × 2");
+    expect(shownValue(0, { ...f, unit: "power" })).toBe("none");
     expect(shownValue(3, { ...f, unit: "oneIn" })).toBe("1 in 3");
     // A counter that starts at 1: the regen period's 149 acts every 148 frames (Sol's #19 review).
-    expect(shownValue(149, { ...f, unit: "counter" })).toBe("149: acts every 148 frames (7.4 s)");
-    expect(shownValue(21, { ...f, unit: "counter" })).toBe("21: acts every 20 frames (1 s)");
-    expect(shownValue(1, { ...f, unit: "counter" })).toBe("1: acts every 1 frame (0.05 s)");
+    expect(shownValue(149, { ...f, unit: "counter" })).toBe("149 (every 148 frames, 7.4 s)");
+    expect(shownValue(21, { ...f, unit: "counter" })).toBe("21 (every 20 frames, 1 s)");
+    expect(shownValue(1, { ...f, unit: "counter" })).toBe("1 (every 1 frame, 0.05 s)");
     expect(shownValue(undefined, { ...f, unit: "count" })).toBe("none");
     expect(fieldError("", { ...f, unit: "count", optional: true })).toBeNull();
     expect(fieldError("", { ...f, unit: "count" })).toBe("x: a whole number");
@@ -723,7 +786,7 @@ describe("the Balance page's picks, seconds and Find (#19 stages 4-6)", () => {
       .querySelector<HTMLSelectElement>('select[data-path="who"]') as HTMLSelectElement;
     expect([...sel.options].map((o) => o.textContent)).toEqual(["Off", "Wanted only", "Everyone"]);
     expect(sel.value).toBe("wanted");
-    expect(t.row("drops/").textContent).toContain("Now Wanted only");
+    expect(t.row("drops/").textContent).toContain("Original: Wanted only");
     expect(t.row("drops/").textContent).toContain("1800 s (30 min)");
     sel.value = "everyone";
     sel.dispatchEvent(new Event("change"));
@@ -803,5 +866,119 @@ describe("the Balance page's picks, seconds and Find (#19 stages 4-6)", () => {
     expect(
       [...t.p.el.querySelectorAll<HTMLElement>(".balance-row")].filter((r) => !r.hidden),
     ).toHaveLength(1);
+  });
+});
+
+describe("the plain-language Balance page", () => {
+  const twoCards = (rows: { vitals?: BalanceRowView[]; vehicles?: BalanceRowView[] } = {}) =>
+    ({
+      groups: [
+        {
+          id: "drops",
+          title: "Death drops and loot",
+          help: "Whose deaths drop.",
+          rows: rows.vitals ?? [drops("d")],
+        },
+        { id: "vehicles", title: "Vehicles", help: "Hulls.", rows: rows.vehicles ?? [cannon("c")] },
+      ],
+      otherDraft: 0,
+    }) satisfies ContentBalanceView;
+  const visibleCards = (t: ReturnType<typeof page>) =>
+    [...t.p.el.querySelectorAll<HTMLElement>(".balance-card")]
+      .filter((c) => !c.hidden)
+      .map((c) => c.dataset.group);
+  const tab = (t: ReturnType<typeof page>, id: string) =>
+    t.p.el.querySelector<HTMLButtonElement>(
+      `[data-action="balance-tab"][data-tab="${id}"]`,
+    ) as HTMLButtonElement;
+
+  test("one card at a time behind tabs, with All", () => {
+    const t = page();
+    t.p.onShow();
+    t.p.receive({ t: "contentBalance", seq: 1, view: twoCards() });
+    expect(
+      [...t.p.el.querySelectorAll('[data-action="balance-tab"]')].map((b) => b.textContent),
+    ).toEqual(["Death drops and loot", "Vehicles", "All"]);
+    expect(visibleCards(t)).toEqual(["drops"]);
+    expect(tab(t, "drops").getAttribute("aria-selected")).toBe("true");
+    tab(t, "vehicles").click();
+    expect(visibleCards(t)).toEqual(["vehicles"]);
+    tab(t, "all").click();
+    expect(visibleCards(t)).toEqual(["drops", "vehicles"]);
+    // A card's single row named as the card doesn't repeat its name.
+    expect(t.row("drops/").querySelector<HTMLElement>(".balance-row-title")?.hidden).toBe(true);
+  });
+
+  test("Search looks across every card, and the chosen tab comes back once cleared", () => {
+    const t = page();
+    t.p.onShow();
+    t.p.receive({ t: "contentBalance", seq: 1, view: twoCards() });
+    const find = t.p.el.querySelector<HTMLInputElement>("#balance-search") as HTMLInputElement;
+    find.value = "reload";
+    find.dispatchEvent(new Event("input"));
+    expect(visibleCards(t)).toEqual(["vehicles"]);
+    expect(tab(t, "drops").getAttribute("aria-selected")).toBe("false");
+    find.value = "";
+    find.dispatchEvent(new Event("input"));
+    expect(visibleCards(t)).toEqual(["drops"]);
+  });
+
+  test("a tab whose card holds a value changed by you carries a dot", () => {
+    const t = page();
+    t.p.onShow();
+    t.p.receive({ t: "contentBalance", seq: 1, view: twoCards() });
+    expect(tab(t, "vehicles").classList.contains("control-panel-tab-used")).toBe(false);
+    t.p.receive({
+      t: "contentBalance",
+      seq: 2,
+      view: twoCards({ vehicles: [cannon("c2", { edited: true })] }),
+    });
+    expect(tab(t, "vehicles").classList.contains("control-panel-tab-used")).toBe(true);
+    expect(tab(t, "drops").classList.contains("control-panel-tab-used")).toBe(false);
+  });
+
+  test("the row's buttons read as on the other editors", () => {
+    const t = page();
+    t.p.onShow();
+    t.p.receive({ t: "contentBalance", seq: 1, view: twoCards() });
+    expect(t.button("cannon/", "balance-save").textContent).toBe("Save changes");
+    expect(t.button("cannon/", "balance-undo-edit").textContent).toBe("Undo changes");
+    expect(t.button("cannon/", "balance-reset").textContent).toBe("Restore the original");
+    expect(t.button("cannon/", "balance-discard").textContent).toBe("Cancel unpublished changes");
+    t.p.receive({
+      t: "contentBalance",
+      seq: 2,
+      view: twoCards({ vehicles: [cannon("c2", { edited: true, pending: "revert" })] }),
+    });
+    expect(t.row("cannon/").textContent).toContain("Back to the original once published");
+  });
+
+  test("a range reads into a fixed part and a roll, and says why it can't", () => {
+    const flat = { min: 0, max: 10_000 };
+    const roll = { min: 0, max: 1000 };
+    expect(readRange("7", "12", "Damage", flat, roll)).toEqual({ flat: 6, randomN: 6 });
+    expect(readRange("5", "5", "Damage", flat, roll)).toEqual({ flat: 5, randomN: 0 });
+    expect(readRange("0", "0", "Damage", flat, roll)).toEqual({ flat: 0, randomN: 0 });
+    expect(readRange("0", "5", "Damage", flat, roll)).toBe(
+      "Damage: a range can't start at 0; start it at 1, or make it a fixed 0",
+    );
+    expect(readRange("9", "3", "Damage", flat, roll)).toBe(
+      `Damage: whole numbers, "to" no lower than "from"`,
+    );
+    expect(readRange("1", "2000", "Damage", flat, roll)).toBe(
+      `Damage: "from" and "to" at most 999 apart`,
+    );
+    const t = page();
+    t.p.onShow();
+    t.p.receive({ t: "contentBalance", seq: 1, view: twoCards() });
+    t.range("cannon/", "damage", "0", "5");
+    expect(t.button("cannon/", "balance-save").disabled).toBe(true);
+    expect(t.button("cannon/", "balance-undo-edit").hidden).toBe(false);
+    t.range("cannon/", "damage", "20", "20");
+    t.button("cannon/", "balance-save").click();
+    expect(t.sent.at(-1)?.change.data).toEqual({
+      damage: { flat: 20, randomN: 0 },
+      reloadFrames: 100,
+    });
   });
 });

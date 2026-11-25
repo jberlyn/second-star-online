@@ -1,8 +1,9 @@
 /**
  * The Control Panel's NPCs page (issue #32): every NPC file in a searchable list, and the open one
- * as forms, one per section (Bio, profile, chatter, shop, till, banker, trainer, loot, spells and
- * flags), or as its text, kept in step: switching views carries the edit across. An SSO page: 1.6
- * edited NPC files as text in the NPC Editor window.
+ * as a plain form behind four tabs (Talk; Shop; Bank and training; As a monster), or as its text,
+ * kept in step: switching views carries the edit across. The form names things in plain words
+ * (the file's tags only appear in the text view). An SSO page: 1.6 edited NPC files as text in
+ * the NPC Editor window.
  *
  * - The file is what the server's readers read, so the forms only write the lines a section holds;
  *   every other line (`OWN|`, blank lines, an unknown tag) stays where it is, and an unchanged entry
@@ -16,6 +17,7 @@ import {
   type ContentNpcView,
   checkNpcFile,
   editorLines,
+  NPC_FLAGS,
   type NpcListEntry,
   type NpcModel,
   npcFieldOk,
@@ -68,8 +70,8 @@ export function npcCheck(text: string): { error: string | null; warnings: string
 
 const LIST_FILTERS: readonly (readonly [string, string])[] = [
   ["all", "Every NPC"],
-  ["files", "With a file"],
-  ["npc", "On an NPC list"],
+  ["files", "Has a file"],
+  ["npc", "Placed as an NPC"],
   ["shop", "Shopkeepers"],
   ["banker", "Bankers"],
   ["trainer", "Trainers"],
@@ -77,24 +79,49 @@ const LIST_FILTERS: readonly (readonly [string, string])[] = [
   ["species", "Monsters"],
 ];
 
+/** The flags that do something in play, with what each does. */
+const FLAG_TEXT: readonly (readonly [(typeof NPC_FLAGS)[number], string])[] = [
+  ["Still", "Stays in one place (never walks)"],
+  ["Passive", "Only fights once someone attacks it"],
+];
+
+const isKnownFlag = (line: string) => NPC_FLAGS.some((f) => f.toLowerCase() === line.toLowerCase());
+
+/** One loot line's chance a kill drops it: a line picked at random, then 1 in N. */
+export function lootOdds(lines: number, oneIn: number): string {
+  if (lines < 1 || oneIn < 1) {
+    return "";
+  }
+  const n = lines * oneIn;
+  return n === 1 ? "Every kill" : `About 1 in ${n.toLocaleString("en")} kills`;
+}
+
 export function createNpcsPage(actions: NpcsPageActions): NpcsPage {
   const el = document.createElement("div");
-  el.className = "npcs-page items-page balance-page";
+  el.className = "npcs-page items-page balance-page plain-editor";
   el.append(
     pageHeading(
       "NPCs",
-      "Every NPC file: its Bio, what it says, what it sells and buys, its till, whether it banks or trains, and what it drops, casts and does. Edit the sections, or the file as text. Saving applies at once, for everyone, and starts its shop again from the saved stock; it does not wait for the content draft.",
+      "What each NPC says, sells and buys, whether it runs a bank or trains players, and what a monster drops and casts. Saving changes it straight away for everyone: there is nothing to publish.",
     ),
   );
   let ids = 0;
   const labelled = (label: string, control: HTMLElement, help = "") => {
     const wrap = document.createElement("div");
     wrap.className = "control-panel-field balance-field";
-    const l = document.createElement("label");
+    const isGroup = control.tagName === "DIV";
+    // A group of tick boxes is named by a heading, not a label (a label names one control).
+    const l = document.createElement(isGroup ? "span" : "label");
     l.className = "control-panel-field-label";
     ids += 1;
     control.id ||= `npcs-field-${ids}`;
-    l.htmlFor = control.id;
+    if (l instanceof HTMLLabelElement) {
+      l.htmlFor = control.id;
+    } else {
+      l.id = `${control.id}-label`;
+      control.setAttribute("role", "group");
+      control.setAttribute("aria-labelledby", l.id);
+    }
     l.textContent = label;
     wrap.append(l, control);
     if (help) {
@@ -109,13 +136,19 @@ export function createNpcsPage(actions: NpcsPageActions): NpcsPage {
     p.textContent = text;
     p.className = ok ? "balance-status" : "balance-status balance-status-error";
   };
+  const intro = (text: string) => {
+    const p = document.createElement("p");
+    p.className = "items-intro";
+    p.textContent = text;
+    return p;
+  };
 
   // ---- the list ----
   const listBox = document.createElement("section");
   listBox.className = "items-list-box";
   const search = noAutofill(action(document.createElement("input"), "npcs-search"));
   search.type = "search";
-  search.placeholder = "Find an NPC";
+  search.placeholder = "Name";
   search.id = "npcs-search";
   const filter = action(document.createElement("select"), "npcs-filter");
   filter.id = "npcs-filter";
@@ -130,18 +163,21 @@ export function createNpcsPage(actions: NpcsPageActions): NpcsPage {
   listEl.setAttribute("aria-label", "NPCs");
   const listCount = document.createElement("p");
   listCount.className = "control-panel-field-help";
-  listBox.append(labelled("Find", search), labelled("Show", filter), listCount, listEl);
+  const filters = document.createElement("div");
+  filters.className = "items-filters";
+  filters.append(labelled("Search", search), labelled("Show", filter));
+  listBox.append(filters, listCount, listEl);
 
   // ---- the form ----
   const form = document.createElement("section");
   form.className = "items-form";
   form.hidden = true;
+  const header = document.createElement("div");
+  header.className = "items-form-head";
   const title = document.createElement("h2");
   title.className = "content-section-title";
-  const live = document.createElement("p");
-  live.className = "balance-stale";
-  live.textContent =
-    "Saving applies at once, for everyone: it does not wait for the draft. Its shop starts again from the stock saved here.";
+  const tags = document.createElement("div");
+  tags.className = "balance-tags";
   const monsterLink = panelButton(
     "npcs-open-monster",
     "Open its stats on the Monsters page",
@@ -151,22 +187,29 @@ export function createNpcsPage(actions: NpcsPageActions): NpcsPage {
       }
     },
   );
+  header.append(title, tags, monsterLink);
   const stale = document.createElement("p");
   stale.className = "balance-stale";
   stale.hidden = true;
   stale.textContent =
-    "Someone changed this NPC file since you started editing it: saving will be refused. Drop your edit to see theirs.";
+    "Someone saved this NPC while you were editing it, so saving will be refused. Undo your changes to see theirs.";
   const modeSel = action(document.createElement("select"), "npcs-mode");
   modeSel.id = "npcs-mode";
   for (const [v, t] of [
-    ["forms", "Sections"],
-    ["text", "Text"],
+    ["forms", "Simple form"],
+    ["text", "The file as text (advanced)"],
   ]) {
     const o = document.createElement("option");
     o.value = v as string;
     o.textContent = t as string;
     modeSel.append(o);
   }
+  const modeBox = labelled(
+    "View",
+    modeSel,
+    "The text view shows the NPC file itself, line by line. Your changes carry across when you switch.",
+  );
+  modeBox.classList.add("npcs-mode");
   const sectionsEl = document.createElement("fieldset");
   sectionsEl.className = "items-rules";
   const textArea = noAutofill(action(document.createElement("textarea"), "npcs-text"));
@@ -175,10 +218,12 @@ export function createNpcsPage(actions: NpcsPageActions): NpcsPage {
   textArea.rows = 20;
   textArea.spellcheck = false;
   const textBox = labelled(
-    "The file",
+    "The NPC file",
     textArea,
-    "One line per entry: BIO|, PRO|, RND|, SEL|item:price:stock, BUY|item:price, GLD|gold, TRN|class:price, BNK|, INV|item:1 in N, SPL|spell, FLG|flag.",
+    "One line each, starting with a tag: BIO| and PRO| (its Bio window), RND| (things it says), SEL|item:price:stock (sells), BUY|item:price (buys), GLD|gold (its till), BNK| (runs a bank), TRN|class:price (promotions), INV|item:N (drops 1 in N), SPL|spell (casts), FLG|Still or FLG|Passive.",
   );
+  textBox.classList.add("npcs-text-view");
+  textBox.hidden = true;
   const checkBox = document.createElement("div");
   checkBox.className = "npcs-check";
   checkBox.setAttribute("role", "status");
@@ -187,7 +232,7 @@ export function createNpcsPage(actions: NpcsPageActions): NpcsPage {
   status.setAttribute("role", "status");
   const saveBtn = panelButton(
     "npcs-save",
-    "Save now",
+    "Save changes",
     () => {
       if (!shown || busy) {
         return;
@@ -205,24 +250,28 @@ export function createNpcsPage(actions: NpcsPageActions): NpcsPage {
     },
     "primary",
   );
-  const undoBtn = panelButton("npcs-undo", "Drop my edit", () => {
+  const undoBtn = panelButton("npcs-undo", "Undo changes", () => {
     fill();
     status.textContent = "";
     update();
   });
+  const mainButtons = document.createElement("div");
+  mainButtons.className = "content-buttons";
+  mainButtons.append(saveBtn, undoBtn);
+  const liveNote = document.createElement("p");
+  liveNote.className = "control-panel-field-help npcs-live";
+  liveNote.textContent = "Saves go live at once, for everyone.";
   const buttons = document.createElement("div");
-  buttons.className = "content-buttons";
-  buttons.append(saveBtn, undoBtn);
+  buttons.className = "items-actions";
+  buttons.append(mainButtons, liveNote);
   form.append(
-    title,
-    live,
-    monsterLink,
+    header,
     stale,
-    labelled("Edit as", modeSel),
     sectionTabs(form, "npcs").el,
     sectionsEl,
     textBox,
     checkBox,
+    modeBox,
     formActions(buttons, status),
   );
   const itemsList = document.createElement("datalist");
@@ -230,9 +279,12 @@ export function createNpcsPage(actions: NpcsPageActions): NpcsPage {
   const loading = document.createElement("p");
   loading.className = "balance-loading";
   loading.textContent = "Loading…";
+  const empty = document.createElement("p");
+  empty.className = "items-empty-form";
+  empty.textContent = "Pick an NPC on the left to see and change what it says, sells and does.";
   const layout = document.createElement("div");
   layout.className = "items-layout";
-  layout.append(listBox, form);
+  layout.append(listBox, empty, form);
   el.append(itemsList, loading, layout);
 
   // ---- state ----
@@ -254,6 +306,10 @@ export function createNpcsPage(actions: NpcsPageActions): NpcsPage {
   let busy = false;
   /** Fields whose text does not read. */
   const invalid = new Map<HTMLElement, string>();
+  /** The tabs drawn, each with whether the file has anything in it (its tab's dot). */
+  let tabsUsed: { sec: HTMLElement; used: () => boolean }[] = [];
+  /** Redraws the loot lines' odds (they follow every line's chance and the number of lines). */
+  let refreshOdds = () => {};
 
   function emptySections(): Sections {
     const { mixed: _m, lines: _l, ...s } = npcModel("");
@@ -293,34 +349,39 @@ export function createNpcsPage(actions: NpcsPageActions): NpcsPage {
   // ---- controls ----
   const edited = () => {
     status.textContent = "";
+    refreshOdds();
     update();
   };
-  const linesArea = (
-    key: "bio" | "profile" | "chatter" | "spells" | "flags",
-    label: string,
-    help: string,
-  ) => {
+  const linesArea = (key: "bio" | "profile" | "chatter", label: string, help: string) => {
     const area = noAutofill(action(document.createElement("textarea"), `npcs-${key}`));
-    area.rows = Math.max(2, Math.min(8, (work[key] as string[]).length + 1));
-    area.value = (work[key] as string[]).join("\n");
+    area.rows = Math.max(2, Math.min(8, work[key].length + 1));
+    area.value = work[key].join("\n");
     area.addEventListener("input", () => {
-      // A blank Bio, profile or chatter line is a line of its own (`PRO|`); a blank flag is nothing.
-      const lines =
-        key === "flags" || key === "spells"
-          ? area.value.split("\n").filter((l) => l !== "")
-          : area.value === ""
-            ? []
-            : area.value.split("\n");
+      // A blank Bio, profile or chatter line is a line of its own (`PRO|`).
+      const lines = area.value === "" ? [] : area.value.split("\n");
       const bad = lines.find((l) => !npcFieldOk(l.replace(/:/g, "")));
       if (bad !== undefined) {
         invalid.set(area, `${label}: "${bad}" cannot hold | \` * ^`);
       } else {
         invalid.delete(area);
-        (work[key] as string[]) = lines;
+        work[key] = lines;
       }
       edited();
     });
     return labelled(label, area, help);
+  };
+  const check = (on: boolean, label: string, id: string, write: (on: boolean) => void) => {
+    const wrap = document.createElement("label");
+    wrap.className = "items-check";
+    const box = action(document.createElement("input"), id);
+    box.type = "checkbox";
+    box.checked = on;
+    box.addEventListener("change", () => {
+      write(box.checked);
+      edited();
+    });
+    wrap.append(box, ` ${label}`);
+    return wrap;
   };
   const num = (
     value: number,
@@ -362,10 +423,11 @@ export function createNpcsPage(actions: NpcsPageActions): NpcsPage {
     });
     return input;
   };
-  /** A table of entries: one row each, removable, and an Add button. */
+  /** A table of entries: one row each, removable, and an "+ Add …" button. */
   const rows = <T>(
     id: string,
     label: string,
+    one: string,
     help: string,
     get: () => T[],
     fresh: () => T,
@@ -388,7 +450,7 @@ export function createNpcsPage(actions: NpcsPageActions): NpcsPage {
         ([k]) => body.contains(k) && !(except?.contains(k) ?? false),
       );
       if (bad) {
-        say(status, `${bad[1]}: fix it before adding or removing a row.`, false);
+        say(status, `${bad[1]}: fix it before adding or removing a line.`, false);
       }
       return bad !== undefined;
     };
@@ -418,93 +480,220 @@ export function createNpcsPage(actions: NpcsPageActions): NpcsPage {
       );
     };
     draw();
-    box.append(
-      head,
-      h,
-      body,
-      panelButton(`npcs-${id}-add`, `Add`, () => {
-        if (blocked()) {
-          return;
-        }
-        get().push(fresh());
-        draw();
-        edited();
-      }),
-    );
+    const add = panelButton(`npcs-${id}-add`, `+ Add ${one}`, () => {
+      if (blocked()) {
+        return;
+      }
+      get().push(fresh());
+      draw();
+      edited();
+    });
+    add.classList.add("items-add");
+    box.append(head, h, body, add);
     return box;
   };
 
   const drawSections = (mixed: number[], kept: { line: number; text: string }[]) => {
+    tabsUsed = [];
+    refreshOdds = () => {};
     if (mixed.length > 0) {
       const p = document.createElement("p");
       p.className = "balance-stale";
-      p.textContent = `Line ${mixed.join(", ")} is read two ways at once (a drop line inside another line): edit the file as text.`;
+      p.textContent = `Line ${mixed.join(", ")} is read two ways at once (a drop line inside another line): change it in the file as text.`;
       sectionsEl.replaceChildren(p);
       return;
     }
     const c = choices;
-    const sec = (titleText: string, ...kids: HTMLElement[]) => {
+    const sec = (titleText: string, help: string, used: () => boolean, ...kids: HTMLElement[]) => {
       const s = document.createElement("section");
       s.className = "balance-row items-group";
       const h = document.createElement("h3");
       h.className = "balance-row-title";
       h.textContent = titleText;
-      s.append(h, ...kids);
+      s.append(h, intro(help), ...kids);
+      tabsUsed.push({ sec: s, used });
       return s;
     };
-    const keptNote = document.createElement("p");
-    keptNote.className = "control-panel-field-help";
-    keptNote.textContent =
-      kept.length === 0
-        ? ""
-        : `Kept as they are (edit them as text): ${kept.map((k) => `line ${k.line} "${k.text}"`).join(", ")}.`;
-    const banker = document.createElement("label");
-    banker.className = "items-check";
-    const bankBox = action(document.createElement("input"), "npcs-banker");
-    bankBox.type = "checkbox";
-    bankBox.checked = work.banker.length > 0;
-    bankBox.addEventListener("change", () => {
-      work.banker = bankBox.checked ? (work.banker.length > 0 ? work.banker : [""]) : [];
+    const more = (open: boolean, ...controls: HTMLElement[]) => {
+      const box = document.createElement("details");
+      box.className = "items-more";
+      box.open = open;
+      const summary = action(document.createElement("summary"), "npcs-more-toggle");
+      summary.textContent = "More options";
+      box.append(summary, ...controls);
+      return box;
+    };
+
+    // The till: one number, or none (a till from 0).
+    const gold = noAutofill(action(document.createElement("input"), "npcs-gold"));
+    gold.type = "number";
+    gold.min = "0";
+    gold.step = "1";
+    gold.placeholder = "0";
+    gold.value = work.gold.length > 0 ? String(work.gold[0]) : "";
+    gold.addEventListener("input", () => {
+      const t = gold.value.trim();
+      if (t === "") {
+        invalid.delete(gold);
+        work.gold = work.gold.slice(1);
+      } else if (!/^\d+$/.test(t) || !Number.isSafeInteger(Number(t))) {
+        invalid.set(gold, "Gold in its till: a whole number from 0");
+      } else {
+        invalid.delete(gold);
+        work.gold = [Number(t), ...work.gold.slice(1)];
+      }
       edited();
     });
-    banker.append(bankBox, " A banker (opens the bank)");
-    const spellBox = document.createElement("div");
-    spellBox.className = "items-checks";
-    spellBox.dataset.list = "spells";
-    const has = new Set(work.spells.map((x) => x.toLowerCase()));
-    for (const tag of [
+    const goldBox = labelled(
+      "Gold in its till",
+      gold,
+      work.gold.length > 1
+        ? `This file has ${work.gold.length} till lines and only one is allowed: remove the others in the file as text.`
+        : "The gold it has right now to pay players who sell to it. Saving sets it to this; empty means none.",
+    );
+
+    // Spells: the ticked ones in view, the rest folded under "Add a spell…".
+    const spellTags = [
       ...(c?.spellTags ?? []),
       ...work.spells.filter(
         (x) => !(c?.spellTags ?? []).some((t) => t.toLowerCase() === x.toLowerCase()),
       ),
-    ]) {
-      const l = document.createElement("label");
-      l.className = "items-check";
-      const b = action(document.createElement("input"), "npcs-spell");
-      b.type = "checkbox";
-      b.checked = has.has(tag.toLowerCase());
-      b.addEventListener("change", () => {
-        work.spells = b.checked
+    ];
+    const has = new Set(work.spells.map((x) => x.toLowerCase()));
+    const spellBox = document.createElement("div");
+    spellBox.className = "items-pick";
+    spellBox.dataset.list = "spells";
+    const spellsOn = document.createElement("div");
+    spellsOn.className = "items-checks";
+    const spellsRest = document.createElement("details");
+    spellsRest.className = "items-more-picks";
+    const spellsSummary = action(document.createElement("summary"), "npcs-spells-more");
+    spellsSummary.textContent = "Add a spell…";
+    const spellsOff = document.createElement("div");
+    spellsOff.className = "items-checks";
+    spellsRest.append(spellsSummary, spellsOff);
+    for (const tag of spellTags) {
+      const tick = check(has.has(tag.toLowerCase()), tag, "npcs-spell", (on) => {
+        work.spells = on
           ? [...work.spells, tag]
           : work.spells.filter((x) => x.toLowerCase() !== tag.toLowerCase());
-        edited();
       });
-      l.append(b, ` ${tag}`);
-      spellBox.append(l);
+      (has.has(tag.toLowerCase()) ? spellsOn : spellsOff).append(tick);
     }
+    if (spellsOn.children.length === 0) {
+      const none = document.createElement("p");
+      none.className = "control-panel-field-help";
+      none.textContent = "None.";
+      spellsOn.append(none);
+    }
+    spellBox.append(spellsOn, spellsRest);
+
+    // Flags: the two that do something as ticks; any other line kept under More options.
+    const otherFlags = noAutofill(action(document.createElement("textarea"), "npcs-flags"));
+    const others = work.flags.filter((f) => !isKnownFlag(f));
+    otherFlags.rows = Math.max(2, Math.min(6, others.length + 1));
+    otherFlags.value = others.join("\n");
+    otherFlags.addEventListener("input", () => {
+      const lines = otherFlags.value.split("\n").filter((l) => l !== "");
+      const bad = lines.find((l) => !npcFieldOk(l));
+      if (bad !== undefined) {
+        invalid.set(otherFlags, `Other flag lines: "${bad}" cannot hold | : \` * ^`);
+      } else {
+        invalid.delete(otherFlags);
+        work.flags = [...work.flags.filter(isKnownFlag), ...lines];
+      }
+      edited();
+    });
+    const flagTicks = FLAG_TEXT.map(([flag, label]) =>
+      check(
+        work.flags.some((f) => f.toLowerCase() === flag.toLowerCase()),
+        label,
+        `npcs-flag-${flag.toLowerCase()}`,
+        (on) => {
+          const rest = work.flags.filter((f) => f.toLowerCase() !== flag.toLowerCase());
+          work.flags = on ? [...rest, flag] : rest;
+        },
+      ),
+    );
+
+    const loot = rows(
+      "loot",
+      "Drops",
+      "drop",
+      "When it dies, one of these lines is picked at random, then that item drops 1 in N times. Put a number before the item to drop a pile, as in 15 Gold.",
+      () => work.loot,
+      () => ({ item: "", oneIn: 1 }),
+      (r, i) => {
+        const odds = document.createElement("span");
+        odds.className = "control-panel-field-help npcs-odds";
+        odds.dataset.row = String(i);
+        return [
+          labelled(
+            "Item",
+            text(
+              r.item,
+              `Drop ${i + 1}: item`,
+              (t) => {
+                r.item = t;
+              },
+              itemsList.id,
+            ),
+          ),
+          labelled(
+            "Drops 1 in",
+            num(r.oneIn, 1, `Drop ${i + 1}: 1 in`, (n) => {
+              r.oneIn = n;
+            }),
+          ),
+          odds,
+        ];
+      },
+    );
+    refreshOdds = () => {
+      for (const s of loot.querySelectorAll<HTMLElement>(".npcs-odds")) {
+        const r = work.loot[Number(s.dataset.row)];
+        s.textContent = r ? lootOdds(work.loot.length, r.oneIn) : "";
+      }
+    };
+    refreshOdds();
+
+    const keptNote = intro(
+      kept.length === 0
+        ? ""
+        : `This file also has lines the form doesn't show. They are kept as they are; to change them, switch View to the file as text: ${kept.map((k) => `line ${k.line} "${k.text}"`).join(", ")}.`,
+    );
+    keptNote.hidden = kept.length === 0;
+
     sectionsEl.replaceChildren(
       sec(
-        "Bio and talk",
-        linesArea("bio", "Bio", "The Bio window's lines, one per line."),
-        linesArea("profile", "Profile", "The profile lines, one per line."),
-        linesArea("chatter", "Chatter", "Lines it says to the map now and then, one per line."),
+        "Talk",
+        "What players read when they click it, and what it says out loud.",
+        () => work.bio.length + work.profile.length + work.chatter.length > 0,
+        linesArea(
+          "bio",
+          "Bio window: top lines",
+          "The short lines at the top of its Bio window, one per line, as in Name: Amber.",
+        ),
+        linesArea(
+          "profile",
+          "Bio window: description",
+          "The text in the larger box under them, one line per line.",
+        ),
+        linesArea(
+          "chatter",
+          "Things it says",
+          "Now and then it says one of these out loud, picked at random. One per line.",
+        ),
       ),
       sec(
         "Shop",
+        "What it sells to players and buys from them. Prices are in gold.",
+        () => work.sells.length + work.buys.length + work.gold.length > 0,
         rows(
           "sells",
           "Sells",
-          "What it sells: the item, its price and the stock it starts with (the live stock shows here).",
+          "item to sell",
+          "Each item it sells, its price, and how many it has right now. Saving sets its stock to these numbers.",
           () => work.sells,
           () => ({ item: "", price: 1, stock: 1 }),
           (r, i) => [
@@ -520,13 +709,13 @@ export function createNpcsPage(actions: NpcsPageActions): NpcsPage {
               ),
             ),
             labelled(
-              "Price",
+              "Price (gold)",
               num(r.price, 0, `Sells ${i + 1}: price`, (n) => {
                 r.price = n;
               }),
             ),
             labelled(
-              "Stock",
+              "In stock",
               num(r.stock, 0, `Sells ${i + 1}: stock`, (n) => {
                 r.stock = n;
               }),
@@ -536,7 +725,8 @@ export function createNpcsPage(actions: NpcsPageActions): NpcsPage {
         rows(
           "buys",
           "Buys",
-          "What it buys from players, and the price it pays.",
+          "item to buy",
+          "Each item players can sell to it, and what it pays.",
           () => work.buys,
           () => ({ item: "", price: 1 }),
           (r, i) => [
@@ -552,36 +742,32 @@ export function createNpcsPage(actions: NpcsPageActions): NpcsPage {
               ),
             ),
             labelled(
-              "Price",
+              "Pays (gold)",
               num(r.price, 0, `Buys ${i + 1}: price`, (n) => {
                 r.price = n;
               }),
             ),
           ],
         ),
-        rows(
-          "gold",
-          "Till",
-          "The gold it holds to pay for what it buys (one line; the live till shows here). None: a till from 0.",
-          () => work.gold as unknown as { v: number }[],
-          () => 0 as unknown as { v: number },
-          (_r, i) => [
-            labelled(
-              "Gold",
-              num(work.gold[i] ?? 0, 0, "Till", (n) => {
-                work.gold[i] = n;
-              }),
-            ),
-          ],
-        ),
-        banker,
+        goldBox,
       ),
       sec(
-        "Trainer",
+        "Bank and training",
+        "Whether players can use their bank here, and the classes it can promote them to.",
+        () => work.banker.length + work.trains.length > 0,
+        check(
+          work.banker.length > 0,
+          "Runs a bank (talking to it opens the player's bank)",
+          "npcs-banker",
+          (on) => {
+            work.banker = on ? (work.banker.length > 0 ? work.banker : [""]) : [];
+          },
+        ),
         rows(
           "trains",
-          "Promotes to",
-          "A class it promotes a player to, and the price.",
+          "Promotes players to",
+          "class",
+          "A class it can promote a player to, and what the promotion costs in gold.",
           () => work.trains,
           () => ({ cls: c?.classes[0] ?? "", price: 1000 }),
           (r, i) => [
@@ -589,7 +775,7 @@ export function createNpcsPage(actions: NpcsPageActions): NpcsPage {
               "Class",
               text(
                 r.cls,
-                `Trainer ${i + 1}: class`,
+                `Promotion ${i + 1}: class`,
                 (t) => {
                   r.cls = t;
                 },
@@ -597,8 +783,8 @@ export function createNpcsPage(actions: NpcsPageActions): NpcsPage {
               ),
             ),
             labelled(
-              "Price",
-              num(r.price, 0, `Trainer ${i + 1}: price`, (n) => {
+              "Price (gold)",
+              num(r.price, 0, `Promotion ${i + 1}: price`, (n) => {
                 r.price = n;
               }),
             ),
@@ -606,42 +792,23 @@ export function createNpcsPage(actions: NpcsPageActions): NpcsPage {
         ),
       ),
       sec(
-        "Loot, spells and flags",
-        rows(
-          "loot",
-          "Loot",
-          "A kill picks one line at random, then drops it 1 in N times. A count before the item drops a pile: 15 Gold.",
-          () => work.loot,
-          () => ({ item: "", oneIn: 1 }),
-          (r, i) => [
-            labelled(
-              "Item",
-              text(
-                r.item,
-                `Loot ${i + 1}: item`,
-                (t) => {
-                  r.item = t;
-                },
-                itemsList.id,
-              ),
-            ),
-            labelled(
-              "1 in",
-              num(r.oneIn, 1, `Loot ${i + 1}: 1 in`, (n) => {
-                r.oneIn = n;
-              }),
-            ),
-          ],
-        ),
+        "As a monster",
+        "For an NPC that is also a monster: what it drops when killed, the spells it casts, and how it moves and fights.",
+        () => work.loot.length + work.spells.length + work.flags.length > 0,
+        loot,
         labelled("Spells it casts", spellBox),
-        linesArea(
-          "flags",
-          "Flags",
-          "One per line. Passive: it fights only once attacked. Still: it never walks.",
+        labelled("How it behaves", flagTicksBox(flagTicks)),
+        more(
+          others.length > 0,
+          labelled(
+            "Other flag lines",
+            otherFlags,
+            "One per line. Only the two above do anything in play; anything else here is kept but ignored.",
+          ),
         ),
       ),
-      keptNote,
     );
+    sectionsEl.append(keptNote);
     const classes = document.createElement("datalist");
     classes.id = "npcs-classes";
     for (const k of c?.classes ?? []) {
@@ -651,6 +818,18 @@ export function createNpcsPage(actions: NpcsPageActions): NpcsPage {
     }
     sectionsEl.append(classes);
   };
+  const flagTicksBox = (ticks: HTMLElement[]) => {
+    const box = document.createElement("div");
+    box.className = "items-checks";
+    box.append(...ticks);
+    return box;
+  };
+  /** Each tab's dot: whether the file has anything in it. */
+  const markUsed = () => {
+    for (const t of tabsUsed) {
+      t.sec.dataset.used = String(t.used());
+    }
+  };
 
   /** Shows the open file in the mode chosen, from `base` and `work`. */
   const drawForm = () => {
@@ -659,6 +838,9 @@ export function createNpcsPage(actions: NpcsPageActions): NpcsPage {
     }
     sectionsEl.hidden = mode !== "forms";
     textBox.hidden = mode !== "text";
+    if (mode === "text") {
+      tabsUsed = [];
+    }
     if (mode === "forms") {
       const m = modelOf(npcText(base, work));
       drawSections(
@@ -699,7 +881,7 @@ export function createNpcsPage(actions: NpcsPageActions): NpcsPage {
       const t = currentText();
       if (t === null) {
         modeSel.value = "forms";
-        say(status, "Fix the fields marked first.", false);
+        say(status, "Fix the fields marked in red first.", false);
         return;
       }
       textArea.value = t.replace(/\r\n|\r/g, "\n");
@@ -710,7 +892,7 @@ export function createNpcsPage(actions: NpcsPageActions): NpcsPage {
         modeSel.value = "text";
         say(
           status,
-          `Line ${m.mixed.join(", ")} is read two ways at once: fix it as text first.`,
+          `Line ${m.mixed.join(", ")} is read two ways at once: fix it here in the text first.`,
           false,
         );
         return;
@@ -730,7 +912,19 @@ export function createNpcsPage(actions: NpcsPageActions): NpcsPage {
     if (!v) {
       return;
     }
-    title.textContent = v.exists ? v.name : `${v.name} (no file yet)`;
+    title.textContent = v.name;
+    tags.replaceChildren(
+      ...[
+        ...(v.exists ? [] : ([["No file yet", "pending"]] as const)),
+        ...(v.species ? ([["Also a monster", "original"]] as const) : []),
+      ].map(([x, kind]) => {
+        const s = document.createElement("span");
+        s.className = `balance-tag items-tag-${kind}`;
+        s.textContent = x;
+        return s;
+      }),
+    );
+    markUsed();
     monsterLink.hidden = !v.species || actions.canOpenMonster?.() === false;
     const isDirty = dirty();
     stale.hidden = !(isDirty && v.revision !== filledRevision);
@@ -742,7 +936,7 @@ export function createNpcsPage(actions: NpcsPageActions): NpcsPage {
     } else if (t !== null) {
       const r = npcCheck(t);
       checkBox.textContent = r.error
-        ? `A save would be refused: ${r.error}`
+        ? `This can't be saved yet: ${r.error}`
         : r.warnings.length > 0
           ? r.warnings.join(" ")
           : "";
@@ -750,7 +944,7 @@ export function createNpcsPage(actions: NpcsPageActions): NpcsPage {
     }
     const refused = t === null || npcCheck(t).error !== null;
     saveBtn.disabled = busy || refused || !(isDirty || !v.exists);
-    saveBtn.textContent = v.exists ? "Save now" : "Make its NPC file now";
+    saveBtn.textContent = v.exists ? "Save changes" : "Create its NPC file";
     undoBtn.hidden = !isDirty;
     undoBtn.disabled = busy;
     sectionsEl.disabled = busy;
@@ -785,9 +979,9 @@ export function createNpcsPage(actions: NpcsPageActions): NpcsPage {
         const meta = document.createElement("span");
         meta.className = "items-list-meta";
         meta.textContent = [
-          n.file ? "" : "no file",
+          n.file ? "" : "no file yet",
           n.shop ? "shop" : "",
-          n.banker ? "banker" : "",
+          n.banker ? "bank" : "",
           n.trainer ? "trainer" : "",
           n.loot ? "loot" : "",
           n.species ? "monster" : "",
@@ -810,7 +1004,7 @@ export function createNpcsPage(actions: NpcsPageActions): NpcsPage {
         status,
         busy
           ? "Wait for the save to finish."
-          : `${shown.name} has unsaved changes: save them or drop your edit first.`,
+          : `${shown.name} has unsaved changes: save or undo them first.`,
         false,
       );
       return;
@@ -818,6 +1012,7 @@ export function createNpcsPage(actions: NpcsPageActions): NpcsPage {
     openName = name;
     shown = null;
     form.hidden = true;
+    empty.hidden = false;
     status.textContent = "";
     drawList();
     ask();
@@ -847,6 +1042,7 @@ export function createNpcsPage(actions: NpcsPageActions): NpcsPage {
     const first = shown === null || shown.name !== n.name;
     shown = n;
     form.hidden = false;
+    empty.hidden = true;
     if (first || (!dirty() && !busy)) {
       fill();
     }
@@ -918,6 +1114,8 @@ export function createNpcsPage(actions: NpcsPageActions): NpcsPage {
       sectionsEl.replaceChildren();
       textArea.value = "";
       form.hidden = true;
+      empty.hidden = false;
+      tabsUsed = [];
       loading.hidden = false;
     },
     open(name) {

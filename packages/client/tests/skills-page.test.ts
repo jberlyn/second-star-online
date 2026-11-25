@@ -16,11 +16,13 @@ import type {
 import {
   chanceText,
   createSkillsPage,
+  formulaText,
   parseValue,
   parseWhen,
   rowsFormula,
   type SkillChange,
   type SkillRemovalChoice,
+  settingsText,
 } from "../src/ui/skills-page.ts";
 
 afterEach(() => document.body.replaceChildren());
@@ -388,5 +390,169 @@ describe("review fixes (issue #38)", () => {
     typeIn(q<HTMLInputElement>(p.el, "[data-action='skills-new-key']"), "Rock Climbing");
     q<HTMLButtonElement>(p.el, "[data-action='skills-create']").click();
     expect(calls.set).toEqual([]);
+  });
+});
+
+describe("the plain-language form", () => {
+  const open = (extra: Partial<ContentSkillView> = {}, list?: Partial<SkillListEntry>) => {
+    const t = page();
+    t.p.open("Slash");
+    const v = view(slash("aaaaaaaaaaaaaaaa", extra));
+    if (list) {
+      v.skills[0] = entry("Slash", list);
+    }
+    t.p.receive({ t: "contentSkills", seq: t.seq(), view: v });
+    return t;
+  };
+  const tags = (root: ParentNode) =>
+    [...root.querySelectorAll(".items-form-head .balance-tag")].map((x) => x.textContent);
+
+  test("formulas and the normal rules read as words, not as JSON", () => {
+    expect(
+      formulaText([
+        { op: "set", value: "skill" },
+        { op: "add", value: "wisdomBonus" },
+      ]),
+    ).toBe("skill + wisdomBonus");
+    expect(formulaText([{ op: "multiply", value: 2, when: ["skill > 10"] }])).toBe(
+      "× 2 (if skill > 10)",
+    );
+    expect(formulaText(100)).toBe("100");
+    expect(settingsText("chance", { roll: [{ op: "set", value: "skill" }], cap: "faction" })).toBe(
+      "Normally a 1 in (skill) chance to go up each time; it stops at the faction cap.",
+    );
+    expect(settingsText("xp", undefined)).toBe("Normally it doesn't go up this way.");
+    const { p } = open();
+    const kill = q<HTMLElement>(p.el, "[data-source='kill']");
+    expect(kill.textContent).toContain("Killing a monster");
+    expect(kill.textContent).toContain("Normally a 1 in (skill) chance");
+    expect(kill.textContent).not.toContain("{");
+  });
+
+  test("a formula's steps are named in words and summed up as they are typed", () => {
+    const { p } = open();
+    const kill = q<HTMLElement>(p.el, "[data-source='kill']");
+    const mode = q<HTMLSelectElement>(kill, "[data-action='skills-source-mode']");
+    mode.value = "own";
+    mode.dispatchEvent(new Event("change"));
+    const op = q<HTMLSelectElement>(kill, "[data-action='skills-roll-op']");
+    expect([...op.options].map((o) => o.textContent)).toEqual([
+      "Set to",
+      "Add",
+      "Subtract",
+      "Multiply by",
+    ]);
+    q<HTMLButtonElement>(kill, "[data-action='skills-roll-add']").click();
+    typeIn(
+      [
+        ...kill.querySelectorAll<HTMLInputElement>("[data-action='skills-roll-value']"),
+      ][1] as HTMLInputElement,
+      "5",
+    );
+    expect(q<HTMLElement>(kill, ".skills-formula-sum").textContent).toBe("Works out as: skill + 5");
+  });
+
+  test("a cap is picked from a list: a number shows its own box; the save keeps the stored value", () => {
+    const { p, calls } = open();
+    const kill = q<HTMLElement>(p.el, "[data-source='kill']");
+    const mode = q<HTMLSelectElement>(kill, "[data-action='skills-source-mode']");
+    mode.value = "own";
+    mode.dispatchEvent(new Event("change"));
+    const kind = q<HTMLSelectElement>(kill, "[data-action='skills-cap-kind']");
+    const n = q<HTMLInputElement>(kill, "input[data-action='skills-cap']");
+    // The normal rule's cap of 100 is copied: a number.
+    expect(kind.value).toBe("number");
+    expect(n.hidden).toBe(false);
+    kind.value = "faction";
+    kind.dispatchEvent(new Event("change"));
+    expect(n.hidden).toBe(true);
+    expect(kind.selectedOptions[0]?.textContent).toContain("50");
+    q<HTMLButtonElement>(p.el, "[data-action='skills-save']").click();
+    expect(calls.set.at(-1)?.data?.progression?.on?.kill).toEqual({
+      roll: [{ op: "set", value: "skill" }],
+      cap: "faction",
+    });
+    kind.value = "number";
+    kind.dispatchEvent(new Event("change"));
+    typeIn(n, "500");
+    expect(q<HTMLButtonElement>(p.el, "[data-action='skills-save']").disabled).toBe(true);
+  });
+
+  test("rare settings fold under More options, open when one is in use", () => {
+    const { p } = open({
+      row: {
+        skill: "Slash",
+        progression: {
+          model: "chance",
+          on: { kill: { roll: 10, requires: { skill: "Mining", above: 5 } } },
+        },
+      },
+    });
+    const kill = q<HTMLElement>(p.el, "[data-source='kill']");
+    expect(q<HTMLDetailsElement>(kill, ".items-more").open).toBe(true);
+    const shot = q<HTMLElement>(p.el, "[data-source='shot']");
+    // The normal rule: no fields of its own, and only its sentence.
+    expect(shot.querySelector(".items-more")).toBeNull();
+  });
+
+  test("tabs with settings of the skill's own carry a dot; the tags say where it stands", () => {
+    const { p } = open({ pending: true }, { state: "edited" });
+    const used = () =>
+      Object.fromEntries(
+        [...p.el.querySelectorAll<HTMLElement>(".items-group")].map((x) => [
+          x.dataset.group,
+          x.dataset.used,
+        ]),
+      );
+    // Fighter starts at 20.
+    expect(used()).toMatchObject({ basics: "false", starts: "true", rises: "false" });
+    expect(tags(p.el)).toEqual(["Changed by you", "Unpublished changes"]);
+    typeIn(q<HTMLInputElement>(p.el, "[data-action='skills-display']"), "Slashing");
+    expect(used()).toMatchObject({ basics: "true" });
+    const model = q<HTMLSelectElement>(p.el, "[data-action='skills-model']");
+    model.value = "xp";
+    model.dispatchEvent(new Event("change"));
+    expect(used()).toMatchObject({ rises: "true" });
+  });
+
+  test("the Save bar: Undo shows once edited, Cancel unpublished changes only with a change", () => {
+    const { p, calls } = open();
+    expect(tags(p.el)).toEqual(["Original"]);
+    expect(q<HTMLElement>(p.el, ".items-empty-form").hidden).toBe(true);
+    const undo = q<HTMLButtonElement>(p.el, "[data-action='skills-undo-edit']");
+    const drop = q<HTMLButtonElement>(p.el, "[data-action='skills-discard']");
+    expect(undo.hidden).toBe(true);
+    expect(drop.hidden).toBe(true);
+    typeIn(q<HTMLInputElement>(p.el, "[data-action='skills-display']"), "Slashing");
+    expect(undo.hidden).toBe(false);
+    undo.click();
+    expect(q<HTMLInputElement>(p.el, "[data-action='skills-display']").value).toBe("");
+    expect(p.changes()).toBe(0);
+    const t = open({ pending: true, published: false }, { state: "yours", pending: true });
+    expect(tags(t.p.el)).toEqual(["Added by you", "Not published yet"]);
+    const d = q<HTMLButtonElement>(t.p.el, "[data-action='skills-discard']");
+    expect(d.hidden).toBe(false);
+    d.click();
+    expect(t.calls.set.at(-1)).toEqual({
+      key: "Slash",
+      op: "discard",
+      expect: "aaaaaaaaaaaaaaaa",
+    });
+    expect(calls.set).toEqual([]);
+  });
+
+  test("a pack skill with unpublished changes is changed by you", () => {
+    const { p } = open({ pending: true });
+    expect(tags(p.el)).toEqual(["Changed by you", "Unpublished changes"]);
+  });
+
+  test("a new skill asks for a level curve only when it earns XP", () => {
+    const { p } = page();
+    const model = q<HTMLSelectElement>(p.el, "[data-action='skills-new-model']");
+    const curve = q<HTMLInputElement>(p.el, "[data-action='skills-new-curve']");
+    expect(curve.closest<HTMLElement>(".control-panel-field")?.hidden).toBe(true);
+    model.value = "xp";
+    model.dispatchEvent(new Event("change"));
+    expect(curve.closest<HTMLElement>(".control-panel-field")?.hidden).toBe(false);
   });
 });

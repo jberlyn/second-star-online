@@ -83,10 +83,10 @@ const choiceField = <T extends string>(
   ...(help ? { help } : {}),
 });
 
-/** A damage floor's two fields: below `below`, damage becomes `random(randomN)`. */
+/** A damage floor's two fields: under `below`, damage becomes a roll of 1 to `randomN`. */
 const floorFields = (path: string[], name: string, help: string): BalanceFieldView[] => [
-  field([...path, "below"], `${name}: below`, "count", BALANCE_LIMITS.floorBelow, help),
-  field([...path, "randomN"], `${name}: becomes random(n)`, "random", {
+  field([...path, "below"], `${name}: damage under`, "count", BALANCE_LIMITS.floorBelow, help),
+  field([...path, "randomN"], `${name}: becomes a roll of 1 to`, "random", {
     min: 1,
     max: BALANCE_LIMITS.randomN.max,
   }),
@@ -94,7 +94,8 @@ const floorFields = (path: string[], name: string, help: string): BalanceFieldVi
 
 /**
  * The three fields of an amount (`flat + power × P + random(randomN)`) at `path`, named `name`.
- * The page previews the amount's range beside them.
+ * The page shows the fixed part and the roll as one "from … to …" range, and previews the whole
+ * amount at a few powers.
  */
 const amountFields = (
   path: string[],
@@ -104,8 +105,8 @@ const amountFields = (
 ): BalanceFieldView[] =>
   [
     field([...path, "flat"], name, "count", BALANCE_LIMITS.flat, help),
-    field([...path, "power"], `${name}: × power`, "power", BALANCE_LIMITS.power),
-    field([...path, "randomN"], `${name}: + random(n)`, "random", BALANCE_LIMITS.randomN),
+    field([...path, "power"], `${name}: plus the caster's power ×`, "power", BALANCE_LIMITS.power),
+    field([...path, "randomN"], `${name}: extra roll up to`, "random", BALANCE_LIMITS.randomN),
   ].map((f) => (optional ? { ...f, optional: true } : f));
 
 /** What an effect's amounts mean on its row. */
@@ -122,7 +123,7 @@ function effectFields(effect: BalanceSpellEffect): BalanceFieldView[] {
       ...amountFields(
         ["monster"],
         "On a monster",
-        "The monster's Defense comes off this; less than 1 rolls the arrow floor (Spell hits).",
+        "The monster's Defense comes off this; under 1, the arrow deals the small roll set under Spell hits.",
       ),
       ...amountFields(["player"], "On a player", "Then the player's spell defense."),
     ];
@@ -132,16 +133,16 @@ function effectFields(effect: BalanceSpellEffect): BalanceFieldView[] {
     ...amountFields(["monster"], "On a monster"),
     ...amountFields(
       ["monsterHealed"],
-      "Heals a species it heals",
-      "A species whose healedBy names the effect is healed by this instead. Leave the three empty to heal it by the amount on a monster.",
+      "On a monster it heals",
+      "A monster set to be healed by this spell is healed by this much instead. Leave it empty to heal it by the amount on a monster.",
       true,
     ),
     ...amountFields(
       ["player"],
       "On a player",
       throughDefense
-        ? "Then the player's spell defense (worn armour, Magic Shield, + random(3))."
-        : "Spell defense does not touch it.",
+        ? "Then the player's spell defense comes off it (worn armour, Magic Shield and a roll of 1 to 3)."
+        : "Spell defense doesn't reduce it.",
     ),
   ];
 }
@@ -151,7 +152,7 @@ export const BALANCE_GROUPS: readonly BalanceGroupDef[] = [
   {
     id: "spells",
     title: "Spell amounts",
-    help: "What each spell effect deals or heals: a fixed amount, plus the caster's spell power times a multiple, plus a roll of 1 to n (0 rolls nothing). A spell row on the Content page may set its own amounts (its amount field), which replace these when that spell is cast from a spellbook (a free fireball, a monster's cast or a map hazard running the same effect keeps these).",
+    help: "How much each spell deals or heals: a range (from … to …), plus the caster's spell power times a number. A spell on the Content page can set its own amounts, which replace these when it is cast from a spellbook; free fireballs, monster spells and map hazards keep these.",
     rows: [
       ...BALANCE_SPELL_EFFECT_ORDER.map((effect) => ({
         part: "spellEffects",
@@ -166,18 +167,18 @@ export const BALANCE_GROUPS: readonly BalanceGroupDef[] = [
         fields: [
           field(
             ["dispel"],
-            "Dispel Illusions on a dispellable monster",
+            "Dispel Illusions' damage to a monster it destroys",
             "count",
             BALANCE_LIMITS.flat,
           ),
           field(
             ["resistedRandomN"],
-            "A resisted effect deals random(n)",
+            "A resisted spell deals 1 to",
             "random",
             { min: 1, max: BALANCE_LIMITS.randomN.max },
-            "A species whose resists names the effect takes this roll instead of the amount.",
+            "A monster that resists a spell takes a roll of 1 to this instead of the amount.",
           ),
-          field(["arrowsFloorRandomN"], "An arrow under 1 deals random(n)", "random", {
+          field(["arrowsFloorRandomN"], "An arrow that would deal under 1 deals 1 to", "random", {
             min: 1,
             max: BALANCE_LIMITS.randomN.max,
           }),
@@ -188,7 +189,7 @@ export const BALANCE_GROUPS: readonly BalanceGroupDef[] = [
   {
     id: "buffs",
     title: "Buffs and cast power",
-    help: "How long the buff spells last for each point of the caster's power, their bonuses, Morph's roll and the free fireballs' power.",
+    help: "How long buff spells last for each point of the caster's power, their bonuses, Morph's roll and the power of free fireballs.",
     rows: [
       {
         part: "buffs",
@@ -197,27 +198,32 @@ export const BALANCE_GROUPS: readonly BalanceGroupDef[] = [
         fields: [
           field(
             ["magicShieldPerPower"],
-            "Magic Shield: frames per power",
+            "Magic Shield: time per point of power",
             "frames",
             BALANCE_LIMITS.perPower,
           ),
           field(
             ["stoneSkinPerPower"],
-            "Stone Skin: frames per power",
+            "Stone Skin: time per point of power",
             "frames",
             BALANCE_LIMITS.perPower,
           ),
           field(["stoneSkinBonus"], "Stone Skin: defense bonus", "count", BALANCE_LIMITS.bonus),
           field(
             ["fireSwordPerPower"],
-            "Firesword: frames per power",
+            "Firesword: time per point of power",
             "frames",
             BALANCE_LIMITS.perPower,
           ),
-          field(["holdPerPower"], "Hold: frames per power", "frames", BALANCE_LIMITS.perPower),
+          field(
+            ["holdPerPower"],
+            "Hold: time per point of power",
+            "frames",
+            BALANCE_LIMITS.perPower,
+          ),
           field(
             ["argonFrames"],
-            "Argon's Fist",
+            "Argon's Fist lasts",
             "frames",
             BALANCE_LIMITS.frames,
             "A Purple Potion gives the same.",
@@ -230,14 +236,14 @@ export const BALANCE_GROUPS: readonly BalanceGroupDef[] = [
           ),
           field(
             ["diminishHunger", "below"],
-            "Diminish Hunger: only below hunger",
+            "Diminish Hunger: works only below hunger",
             "count",
             BALANCE_LIMITS.hunger,
           ),
           ...amountFields(
             ["morph"],
             "Morph roll",
-            "The last morph body (bindings.json bodies.morph) whose above the roll passes is taken.",
+            'Picks the body: the last morph body (bindings.json bodies.morph) whose "above" the roll beats.',
           ),
         ],
       },
@@ -251,11 +257,11 @@ export const BALANCE_GROUPS: readonly BalanceGroupDef[] = [
             "Fire Staff fireball power",
             "count",
             BALANCE_LIMITS.flat,
-            "Before the Fire Staff skill's steps (over 20, 40, 80 and 99).",
+            "Before the Fire Staff skill's bonuses (over 20, 40, 80 and 99).",
           ),
           field(
             ["staffFireball", "randomN"],
-            "Fire Staff: + random(n)",
+            "Fire Staff fireball power: extra roll up to",
             "random",
             BALANCE_LIMITS.randomN,
           ),
@@ -267,7 +273,7 @@ export const BALANCE_GROUPS: readonly BalanceGroupDef[] = [
           ),
           field(
             ["swordFireball", "randomN"],
-            "Firesword: + random(n)",
+            "Firesword fireball power: extra roll up to",
             "random",
             BALANCE_LIMITS.randomN,
           ),
@@ -278,7 +284,7 @@ export const BALANCE_GROUPS: readonly BalanceGroupDef[] = [
   {
     id: "vitals",
     title: "Regeneration, hunger and death",
-    help: "How HP and SP regenerate and starve, how hunger falls, and what a death leaves. Hunger counts down while you play: food raises it.",
+    help: "How HP and SP come back or drain away, how hunger falls, and what a death leaves. Hunger counts down while you play; food raises it.",
     // House rest is the houses dataset's own row (`houses.restRegen`), edited on the Content page.
     elsewhere: [
       {
@@ -300,15 +306,15 @@ export const BALANCE_GROUPS: readonly BalanceGroupDef[] = [
         fields: [
           field(
             ["periodFrames"],
-            "Regeneration counts up to",
+            "Regeneration timer",
             "counter",
             { min: 1, max: BALANCE_LIMITS.frames.max },
-            "A counter starts at 1, rises each frame and acts on reaching this, then starts again at 1: so regeneration acts every this − 1 frames (Classic's 149 is every 148, 1.6's cadence). A faction's regeneration perk takes its value off this first.",
+            "Regeneration happens every this many frames minus 1 (Classic's 149 is every 148 frames, 7.4 seconds, as in 1.6). A faction's regeneration perk takes its value off this first.",
           ),
-          field(["regenerate"], "HP and SP regenerated a period", "count", BALANCE_LIMITS.vitals),
+          field(["regenerate"], "HP and SP regained each time", "count", BALANCE_LIMITS.vitals),
           field(
             ["starve"],
-            "HP and SP starved a period",
+            "HP and SP lost each time while starving",
             "count",
             BALANCE_LIMITS.vitals,
             "Never below 1.",
@@ -322,26 +328,26 @@ export const BALANCE_GROUPS: readonly BalanceGroupDef[] = [
         fields: [
           field(
             ["loseOneIn"],
-            "Loses 1 each frame with a chance of",
+            "Chance hunger drops by 1 each frame: 1 in",
             "oneIn",
             BALANCE_LIMITS.oneIn,
           ),
-          field(["regenAbove"], "Regenerates above", "count", BALANCE_LIMITS.hunger),
+          field(["regenAbove"], "Regenerates only above hunger", "count", BALANCE_LIMITS.hunger),
           field(
             ["starveBelow"],
-            "Starves below",
+            "Starves below hunger",
             "count",
             BALANCE_LIMITS.hunger,
-            "Below Regenerates above, which is at most Stuffed at.",
+            'Must be below "Regenerates only above hunger", which is at most "Full at".',
           ),
           field(
             ["stuffed"],
-            "Stuffed at",
+            "Full at",
             "count",
             BALANCE_LIMITS.hunger,
             "From here on, food and potions are refused and kept.",
           ),
-          field(["afterDeath"], "After a death", "count", BALANCE_LIMITS.hunger),
+          field(["afterDeath"], "Hunger after a death", "count", BALANCE_LIMITS.hunger),
         ],
       },
       {
@@ -365,7 +371,7 @@ export const BALANCE_GROUPS: readonly BalanceGroupDef[] = [
           ),
           field(
             ["pauseFrames"],
-            "Pause",
+            "Safe time after a death",
             "frames",
             BALANCE_LIMITS.frames,
             "No monster rolls against a player for this long after a death.",
@@ -429,7 +435,7 @@ export const BALANCE_GROUPS: readonly BalanceGroupDef[] = [
   {
     id: "timings",
     title: "Timings",
-    help: "Waits that pace fights and a few actions. The game runs 20 frames a second.",
+    help: "Waits that pace fights and a few actions. Times are in frames: 20 frames make 1 second.",
     rows: [
       {
         part: "timings",
@@ -445,14 +451,14 @@ export const BALANCE_GROUPS: readonly BalanceGroupDef[] = [
           ),
           field(
             ["castDelayFrames"],
-            "After a cast",
+            "Wait after casting",
             "passFrames",
             { min: 1, max: BALANCE_LIMITS.frames.max },
             "Before the caster may act again.",
           ),
           field(
             ["swingBaseFrames"],
-            "Swing cooldown",
+            "Wait between swings",
             "frames",
             { min: 1, max: BALANCE_LIMITS.frames.max },
             "With no gear that sets one (Ring of Quickness, item rules). A ladder's own steps (an Axe's, a Fishing Pole's) are the item rules'.",
@@ -464,11 +470,16 @@ export const BALANCE_GROUPS: readonly BalanceGroupDef[] = [
             { min: 1, max: BALANCE_LIMITS.frames.max },
             "A death after this, with no new hit, credits no killer.",
           ),
-          field(["pigGrabFrames"], "Between pig grabs", "frames", BALANCE_LIMITS.frames),
-          field(["giveGrabFrames"], "A give is picked up after", "frames", BALANCE_LIMITS.frames),
+          field(["pigGrabFrames"], "Wait between pig grabs", "frames", BALANCE_LIMITS.frames),
+          field(
+            ["giveGrabFrames"],
+            "A given item can be picked up after",
+            "frames",
+            BALANCE_LIMITS.frames,
+          ),
           field(
             ["npcSpellBlockFrames"],
-            "Between monster spells on a map",
+            "Wait between monster spells on a map",
             "frames",
             BALANCE_LIMITS.frames,
             "After a monster's spell, before another monster spell may hit the same players.",
@@ -480,7 +491,7 @@ export const BALANCE_GROUPS: readonly BalanceGroupDef[] = [
   {
     id: "combat",
     title: "Combat rolls",
-    help: "The rolls inside the fight formulas. A chance of 1 in N means a roll of 1 to N hits on a 1.",
+    help: "The dice inside fights. A chance of 1 in N happens on average once every N tries.",
     rows: [
       {
         part: "combat",
@@ -490,29 +501,29 @@ export const BALANCE_GROUPS: readonly BalanceGroupDef[] = [
           ...floorFields(
             ["meleeFloor"],
             "Melee on a monster",
-            "Damage under this after the monster's Defense rolls instead.",
+            "Damage under this, after the monster's Defense, becomes a small roll instead.",
           ),
           ...floorFields(
             ["playerHitFloor"],
             "A hit on a player",
-            "A monster's or a player's hit under this after defense rolls instead.",
+            "A monster's or a player's hit under this, after defense, becomes a small roll instead.",
           ),
           field(
             ["dodgeBaseRandomN"],
-            "Parry and block: base roll random(n)",
+            "Parry and block with little skill: a roll of 1 to",
             "random",
             { min: 1, max: BALANCE_LIMITS.randomN.max },
-            "A parry or block succeeds on a 1. Past a little skill (over 10 against monsters, over 0 against players) the skill's own ladder rolls instead.",
+            "It succeeds on a 1. Past a little skill (over 10 against monsters, over 0 against players) the skill's own chances take over.",
           ),
           field(
             ["monsterMeleeOneIn"],
-            "A monster next to you attacks each frame with a chance of",
+            "Chance a monster next to you attacks, each frame: 1 in",
             "oneIn",
             BALANCE_LIMITS.oneIn,
           ),
           field(
             ["pushOneIn"],
-            "Walking into a player pushes them with a chance of",
+            "Chance walking into a player pushes them: 1 in",
             "oneIn",
             BALANCE_LIMITS.oneIn,
           ),
@@ -523,7 +534,7 @@ export const BALANCE_GROUPS: readonly BalanceGroupDef[] = [
   {
     id: "monsters",
     title: "Monsters",
-    help: "How often a map's monsters move and spawn, by the players on the map, and the rolls inside a move and a spawn. What each species does is its own row on the Content page.",
+    help: "How often a map's monsters move and appear, by how many players are on the map. What each monster does is set on the Monsters page.",
     // The generic stand-in is the monsters dataset's own row (`monsters.generic`).
     elsewhere: [
       {
@@ -546,52 +557,52 @@ export const BALANCE_GROUPS: readonly BalanceGroupDef[] = [
           ...[1, 2, 3, 4, 5, 6, 7, 8].map((n, i) =>
             field(
               ["moveLadder", String(i)],
-              `Move pick with ${n === 8 ? "8 or more players" : n === 1 ? "1 player" : `${n} players`}: random(n)`,
+              `Move roll with ${n === 8 ? "8 or more players" : n === 1 ? "1 player" : `${n} players`}: 1 to`,
               "random",
               { min: ROSTER_SLOTS, max: BALANCE_LIMITS.oneIn.max },
               i === 0
-                ? "Twice each frame, for each player on the map (at most 15), one slot is picked by this roll, and the monster in it moves when the roll is 1 to 4: a larger n moves monsters less often. At least 4, so every slot can be picked."
+                ? "Twice each frame, for each player on the map (at most 15), this is rolled, and the monster in slots 1 to 4 that the roll picks moves: a bigger number moves monsters less often. At least 4, so every slot can be picked."
                 : undefined,
             ),
           ),
-          field(["walkStepsRandomN"], "A walk's steps: random(n)", "random", {
+          field(["walkStepsRandomN"], "Steps in one walk: 1 to", "random", {
             min: 1,
             max: BALANCE_LIMITS.randomN.max,
           }),
           ...[1, 2, 3, 4, 5, 6, 7].map((n, i) =>
             field(
               ["spawnLadder", String(i)],
-              `Spawn pass with ${n === 7 ? "7 or more players" : n === 1 ? "1 player" : `${n} players`}: a chance of`,
+              `Spawn chance with ${n === 7 ? "7 or more players" : n === 1 ? "1 player" : `${n} players`}: 1 in`,
               "oneIn",
               BALANCE_LIMITS.oneIn,
               i === 0
-                ? "Twice each frame, for each player on the map (at most 15), a spawn pass goes ahead with this chance."
+                ? "Twice each frame, for each player on the map (at most 15), the map tries to spawn monsters with this chance."
                 : undefined,
             ),
           ),
           field(
             ["slotOneIn"],
-            "In a pass, each empty slot spawns with a chance of",
+            "Chance each empty slot spawns in a try: 1 in",
             "oneIn",
             BALANCE_LIMITS.oneIn,
           ),
           field(
             ["factionSlotRandomN"],
-            "A faction's member takes slot random(n)",
+            "Slot a faction member takes: a roll of 1 to",
             "random",
             { min: ROSTER_SLOTS, max: BALANCE_LIMITS.randomN.max },
-            "On a faction's map; a roll above 4 swaps no slot. At least 4, so the member can take any slot and every slot's own species still spawns.",
+            "On a faction's map; a roll above 4 takes no slot. At least 4, so the member can take any slot and every slot's own monster still appears.",
           ),
-          field(["npcSpawn", "randomN"], "An NPC spawns when random(n)", "random", {
+          field(["npcSpawn", "randomN"], "NPC spawn roll: 1 to", "random", {
             min: 1,
             max: BALANCE_LIMITS.randomN.max,
           }),
           field(
             ["npcSpawn", "passAtMost"],
-            "… is at most",
+            "An NPC spawns when that roll is at most",
             "count",
             BALANCE_LIMITS.randomN,
-            "So an NPC spawns at this many in n of a monster's rate.",
+            "So NPCs appear at this many in (the roll's top) of a monster's rate.",
           ),
         ],
       },
@@ -600,7 +611,7 @@ export const BALANCE_GROUPS: readonly BalanceGroupDef[] = [
   {
     id: "vehicles",
     title: "Vehicles",
-    help: "Hull wear and repair, and the cannon (SSO additions: 1.6 had no hulls and never fired its cannon). Each vehicle's full hull is its own row, edited on the Content page.",
+    help: "Hull wear and repair, and the cannon (new in SSO: 1.6 had no hulls and never fired its cannon). Each vehicle's full hull is set on the Content page.",
     // Each vehicle's full hull is its `houses.vehicles` row's (issue #44).
     elsewhereOf: (published) =>
       (published.houses?.vehicles ?? []).map((v) => ({
@@ -638,15 +649,23 @@ export const BALANCE_GROUPS: readonly BalanceGroupDef[] = [
         key: null,
         label: "Cannon",
         fields: [
-          field(["damage", "flat"], "Damage", "count", BALANCE_LIMITS.flat),
+          field(
+            ["damage", "flat"],
+            "Damage",
+            "count",
+            BALANCE_LIMITS.flat,
+            "A cannonball takes this off a player's HP, a hull or a monster.",
+          ),
           field(
             ["damage", "randomN"],
-            "plus random(n)",
+            "Damage: extra roll up to",
             "random",
             BALANCE_LIMITS.randomN,
-            "A cannonball takes the damage plus a roll of 1 to n (0 rolls nothing) off a player's HP, a hull or a monster.",
           ),
-          field(["reloadFrames"], "Reload", "frames", { min: 1, max: BALANCE_LIMITS.frames.max }),
+          field(["reloadFrames"], "Reload time", "frames", {
+            min: 1,
+            max: BALANCE_LIMITS.frames.max,
+          }),
         ],
       },
     ],

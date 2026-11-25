@@ -1,22 +1,25 @@
 /**
  * The Control Panel's Monsters page (issue #31): every species in a searchable list, and a form for
- * the one open, showing what it plays now and where each rule comes from. Saving writes the
- * monster's species record (`monsters/monsters/<name>`: its stats and flags) and its definition
- * (`monsters/definitions/<name>`: what the name-matched tables decide for it) into the content
- * store's shared draft, published from the Content page. An SSO page: 1.6 kept a monster's rules in
- * its scripts and its NPC file.
+ * the one open, in plain words, one tab at a time: Basics, Picture, Behaviour, Fighting, Rewards,
+ * Loot & spells and Editor lists. Saving writes the monster's species record
+ * (`monsters/monsters/<name>`: its stats and flags) and its definition (`monsters/definitions/<name>`:
+ * what the name-matched tables decide for it) into the content store's shared draft, published from
+ * the Content page. An SSO page: 1.6 kept a monster's rules in its scripts and its NPC file.
  *
+ * - One Save changes sends the rules and stats, then the name players see once the first is saved.
  * - A change carries the monster as the page showed it (`fingerprint`); the server refuses it if
  *   someone changed the monster since (here or in the Content page's JSON editor).
- * - The body uses #29's body panel; removing a monster goes through the Content page's where-used
- *   report and removal form (#28).
- * - Its NPC file's loot, spells and flags save at once, outside the draft, as the NPC Editor's
- *   saves do (stage 3), and only for a published monster.
+ * - Rarely used fields fold under "More options", which opens by itself when one of them is set; a
+ *   tab that holds settings shows a dot (`data-used`).
+ * - The Picture tab uses #29's body panel; removing a monster goes through the Content page's
+ *   where-used report and removal form (#28).
+ * - Its NPC file's loot, spells and flags (the Loot & spells tab) save at once, outside the draft,
+ *   as the NPC Editor's saves do (stage 3), and only for a published monster.
  * - The Monster spells card edits the global monster spells (`casting.spells`) in the draft.
  *
  * Refreshes never touch a form being edited: its fields and fingerprint stay as they were filled.
  */
-import type { MonsterDefinition, MonsterSpellRule } from "@secondstaronline/data";
+import type { MonsterSpellRule } from "@secondstaronline/data";
 import type {
   ContentMonstersView,
   ContentMonsterView,
@@ -35,7 +38,7 @@ import {
   sectionTabs,
   sourcesNote,
 } from "./control-panel-kit.ts";
-import { canonical, clean, rollRange } from "./items-page.ts";
+import { canonical, clean, rollBounds, rollFrom } from "./items-page.ts";
 
 /** A Monsters page change as the page sends it. */
 export interface MonsterChange {
@@ -112,55 +115,66 @@ export interface MonstersPage {
 
 type Obj = Record<string, unknown>;
 
-/** The definition's yes/no fields, with what each means. */
-const DEF_FLAGS: readonly (readonly [keyof MonsterDefinition, string])[] = [
-  ["hostile", "Hostile though off the World Editor's monster list"],
-  ["officer", "Attacks wanted players"],
-  ["sparesInnocent", "Never attacks an innocent player"],
-  ["sea", "A sea creature (spawns and moves on water)"],
-  ["footprint", "3×2 wide"],
-  ["clearsBlock", "Clears its block when it moves"],
-  ["namesSelf", "A click on it says its name"],
-  ["noQuests", "Never gives quests"],
-  ["neverCasts", "Never casts monster spells"],
+/** A yes/no setting: in the definition (`form`) or the species record's flags (`record`). */
+type Flag = readonly ["form" | "record", string, string];
+
+/** The Behaviour tab's everyday settings. */
+const BEHAVIOUR_MAIN: readonly Flag[] = [
+  ["form", "hostile", "Always attacks players (even when not on the World Editor's monster list)"],
+  ["form", "officer", "Attacks wanted players, like a guard"],
+  ["form", "sparesInnocent", "Leaves innocent players alone"],
+  ["record", "immobile", "Never moves"],
+  ["form", "sea", "Lives in water (appears and moves only on water)"],
+  ["form", "neverCasts", "Never casts spells"],
 ];
 
-/** The species record's yes/no flags. */
-const RECORD_FLAGS: readonly (readonly [string, string])[] = [
-  ["immobile", "Immobile (never walks)"],
-  ["unclickable", "A click on it does nothing"],
-  ["trap", "A trap: holds a player standing on it, never attacks (must be immobile)"],
-  ["dispellable", "Dispel Illusions destroys it"],
-  ["shieldsInnocent", "An innocent player standing on it cannot be hit"],
-  ["hurtByHealing", "Minor and Major Heal hurt it"],
+/** The Behaviour tab's rarely used settings, under "More options". */
+const BEHAVIOUR_MORE: readonly Flag[] = [
+  ["form", "footprint", "Big: takes up 3×2 tiles"],
+  ["form", "clearsBlock", "Others can walk through it"],
+  ["form", "namesSelf", "Says its name when clicked"],
+  ["record", "unclickable", "Clicking it does nothing"],
+  ["form", "noQuests", "Never gives quests"],
+  ["record", "trap", "A trap: holds a player standing on it and never attacks (needs Never moves)"],
+  ["record", "dispellable", "Dispel Illusions destroys it"],
+  ["record", "shieldsInnocent", "An innocent player standing on it can't be hit"],
+  ["record", "hurtByHealing", "Healing spells hurt it"],
 ];
 
 /** The editor lists a definition toggles. */
 const LISTS: readonly (readonly [string, string])[] = [
-  ["worldEditorMonsters", "World Editor: monsters (placed as a monster; hostile)"],
-  ["worldEditorNpcs", "World Editor: NPCs"],
-  ["npcEditorMonsters", "NPC Editor: monsters"],
-  ["npcEditorNpcs", "NPC Editor: NPCs (a rarer spawn)"],
+  ["worldEditorMonsters", "World Editor: monster list (placed as a monster that attacks players)"],
+  ["worldEditorNpcs", "World Editor: NPC list"],
+  ["npcEditorMonsters", "NPC Editor: monster list"],
+  ["npcEditorNpcs", "NPC Editor: NPC list (appears less often)"],
 ];
 
-/** The record and definition keys each group of the form holds ("use the pack's rules here"). */
+/** Where a monster spell lands, in words. */
+const AIM_TEXT: Record<string, string> = {
+  aimFirst: "Lands near the player",
+  aimNoExit: "Lands near the player (even from a monster set to never cast)",
+  dirAfterExits: "Flies out from the monster in a random direction",
+  dirBeforeExits: "Flies out from the monster in a random direction (1.6's other roll order)",
+  onPlayer: "Lands on the player",
+  buff: "On the monster itself",
+};
+
+/** The NPC file flags the game reads, with what each does. */
+const NPC_FLAGS: readonly (readonly [string, string])[] = [
+  ["Passive", "Only fights once someone attacks it"],
+  ["Still", "Stays in one place (never walks)"],
+];
+
+/** The record and definition keys each tab of the form holds ("Restore this tab"). */
 const GROUP_KEYS: Record<string, { record: string[]; form: string[] }> = {
-  stats: { record: ["hp", "attack", "defense", "spawnMinute"], form: [] },
+  basics: { record: ["hp", "attack", "defense", "spawnMinute"], form: [] },
   behaviour: {
     record: ["flags"],
-    form: DEF_FLAGS.map(([k]) => k as string),
+    form: [...BEHAVIOUR_MAIN, ...BEHAVIOUR_MORE].filter(([w]) => w === "form").map(([, k]) => k),
   },
   combat: { record: [], form: ["affinities", "skillCap"] },
   xp: { record: ["xpMelee", "xpSpell", "skillXp"], form: ["killXp", "killBroadcast"] },
   lists: { record: [], form: ["lists"] },
-};
-
-const GROUP_TITLES: Record<string, string> = {
-  stats: "Stats",
-  behaviour: "Behaviour",
-  combat: "Combat",
-  xp: "XP",
-  lists: "Lists",
 };
 
 /** The odds of one drop line: a uniform pick of a line, then 1 in N. */
@@ -169,16 +183,17 @@ export function dropOdds(lines: number, oneIn: number): string {
     return "";
   }
   const n = lines * oneIn;
-  return `1 in ${n.toLocaleString("en")} a kill`;
+  // Worded as the NPCs page words it.
+  return n === 1 ? "Every kill" : `About 1 in ${n.toLocaleString("en")} kills`;
 }
 
 export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
   const el = document.createElement("div");
-  el.className = "monsters-page items-page balance-page";
+  el.className = "monsters-page items-page balance-page plain-editor";
   el.append(
     pageHeading(
       "Monsters",
-      "Every monster's stats and rules in one form: hit points, attack, behaviour, weapon affinities, XP and the editor lists. Saving gives the monster a definition of its own, which plays instead of the pack's rows that match it. Stats and rules go into the content draft, published from the Content page; a monster's loot, spells and NPC flags live in its NPC file and save at once.",
+      "Pick a monster to change how tough it is, how it behaves and what it gives. Saving puts your changes in the draft: players get them once you publish on the Content page. Loot and spells save straight away.",
     ),
   );
   const draftLine = document.createElement("div");
@@ -187,20 +202,26 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
   const draftText = document.createElement("span");
   draftLine.append(
     draftText,
-    panelButton("monsters-open-content", "Review and publish on the Content page", () =>
-      actions.openContent(),
-    ),
+    panelButton("monsters-open-content", "Review and publish…", () => actions.openContent()),
   );
 
   let fieldIds = 0;
   const labelled = (label: string, control: HTMLElement, help = "") => {
     const wrap = document.createElement("div");
     wrap.className = "control-panel-field balance-field";
-    const l = document.createElement("label");
+    const isGroup = control.tagName === "DIV";
+    // A group of controls is named by a heading, not a label (a label names one control).
+    const l = document.createElement(isGroup ? "span" : "label");
     l.className = "control-panel-field-label";
     fieldIds += 1;
     control.id ||= `monsters-field-${fieldIds}`;
-    l.htmlFor = control.id;
+    if (l instanceof HTMLLabelElement) {
+      l.htmlFor = control.id;
+    } else {
+      l.id = `${control.id}-label`;
+      control.setAttribute("role", "group");
+      control.setAttribute("aria-labelledby", l.id);
+    }
     l.textContent = label;
     wrap.append(l, control);
     if (help) {
@@ -210,6 +231,13 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
       wrap.append(h);
     }
     return wrap;
+  };
+  /** A help line under a tab's title: what the tab is for. */
+  const intro = (text: string) => {
+    const p = document.createElement("p");
+    p.className = "items-intro";
+    p.textContent = text;
+    return p;
   };
   const statusLine = () => {
     const p = document.createElement("p");
@@ -221,17 +249,34 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
     p.textContent = text;
     p.className = ok ? "balance-status" : "balance-status balance-status-error";
   };
+  /** A titled card holding a list of rows and its Add button. */
+  const card = (id: string, label: string, help: string, rows: HTMLElement, add: HTMLElement) => {
+    const box = document.createElement("div");
+    box.className = "items-list-editor";
+    box.dataset.card = id;
+    const head = document.createElement("h4");
+    head.className = "items-list-title";
+    head.textContent = label;
+    const h = document.createElement("p");
+    h.className = "control-panel-field-help";
+    h.textContent = help;
+    add.classList.add("items-add");
+    box.append(head, h, rows, add);
+    return box;
+  };
 
   // ---- a new monster ----
   const newBox = document.createElement("details");
   newBox.className = "items-new";
   const newSummary = action(document.createElement("summary"), "monsters-new-toggle");
-  newSummary.textContent = "New monster";
+  newSummary.textContent = "+ New monster";
   const newName = noAutofill(action(document.createElement("input"), "monsters-new-name"));
   newName.maxLength = 40;
   const newDisplay = noAutofill(action(document.createElement("input"), "monsters-new-display"));
   newDisplay.maxLength = 40;
+  newDisplay.placeholder = "Same as the ID";
   const newFrom = noAutofill(action(document.createElement("input"), "monsters-new-copy"));
+  newFrom.placeholder = "Start from scratch";
   const namesList = document.createElement("datalist");
   namesList.id = "monsters-names";
   newFrom.setAttribute("list", namesList.id);
@@ -240,17 +285,17 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
   const newStatus = statusLine();
   const createBtn = panelButton(
     "monsters-create",
-    "Make it in the draft",
+    "Create monster",
     () => {
       const name = newName.value.trim();
       if (name === "") {
-        say(newStatus, "Give it a name.", false);
+        say(newStatus, "Give it an ID.", false);
         return;
       }
       seq += 1;
       saving.set(seq, { name, create: true });
       createBtn.disabled = true;
-      say(newStatus, "Saving…");
+      say(newStatus, "Creating…");
       const from = newFrom.value.trim();
       actions.set(seq, {
         name,
@@ -272,16 +317,16 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
   newBox.append(
     newSummary,
     labelled(
-      "Name",
-      newName,
-      "Its permanent key: maps' rosters and NPC files name it by this, so it never changes. Rename it later by its display name.",
-    ),
-    labelled("Display name", newDisplay, "What players see. Leave it empty to show the name."),
-    labelled(
-      "Copy",
+      "Copy an existing monster (optional)",
       newFrom,
-      "Optional: a monster it starts as, with its stats, rules, body and NPC file (loot, spells, flags). Change what you like after.",
+      "The easiest way to make a monster: start from a similar one (its stats, rules, picture, loot and spells), then change what you need.",
     ),
+    labelled(
+      "ID",
+      newName,
+      "Its permanent name inside the game: maps and NPC files use it, so it can't change later.",
+    ),
+    labelled("Name players see (optional)", newDisplay),
     namesList,
     itemsList,
     createBtn,
@@ -293,18 +338,18 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
   listBox.className = "items-list-box";
   const search = noAutofill(action(document.createElement("input"), "monsters-search"));
   search.type = "search";
-  search.placeholder = "Find a monster";
+  search.placeholder = "Search monsters";
   search.id = "monsters-search";
   const kindSel = action(document.createElement("select"), "monsters-filter");
   kindSel.id = "monsters-filter";
   for (const [v, t] of [
-    ["all", "Every monster"],
-    ["hostile", "Hostile"],
-    ["sea", "Sea creatures"],
-    ["casts", "Casts spells"],
-    ["loot", "Has loot"],
+    ["all", "All monsters"],
+    ["hostile", "Attack players"],
+    ["sea", "Live in water"],
+    ["casts", "Cast spells"],
+    ["loot", "Drop loot"],
     ["npc", "NPCs"],
-    ["changed", "Changed or yours"],
+    ["changed", "Changed or added by you"],
   ]) {
     const o = document.createElement("option");
     o.value = v as string;
@@ -316,16 +361,24 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
   listEl.setAttribute("aria-label", "Monsters");
   const listCount = document.createElement("p");
   listCount.className = "control-panel-field-help";
-  listBox.append(newBox, labelled("Find", search), labelled("Show", kindSel), listCount, listEl);
+  const filters = document.createElement("div");
+  filters.className = "items-filters";
+  filters.append(labelled("Search", search), labelled("Show", kindSel));
+  listBox.append(newBox, filters, listCount, listEl);
 
   // ---- the form ----
   const form = document.createElement("section");
   form.className = "items-form";
   form.hidden = true;
+  const header = document.createElement("div");
+  header.className = "items-form-head";
   const title = document.createElement("h2");
   title.className = "content-section-title";
+  const subtitle = document.createElement("p");
+  subtitle.className = "control-panel-field-help items-form-id";
   const tags = document.createElement("div");
   tags.className = "balance-tags";
+  header.append(title, subtitle, tags);
   const noticeLine = document.createElement("p");
   noticeLine.className = "balance-stale";
   noticeLine.hidden = true;
@@ -333,7 +386,7 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
   noticeLine.append(
     noticeText,
     " ",
-    panelButton("monsters-notice", "Answer it on the Content page", () => {
+    panelButton("monsters-notice", "Review it on the Content page", () => {
       if (shown) {
         actions.openContentRow({ dataset: "monsters", part: "definitions", key: shown.name });
       }
@@ -343,30 +396,18 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
   stale.className = "balance-stale";
   stale.hidden = true;
   stale.textContent =
-    "Someone changed this monster since you started editing it: saving will be refused. Drop your edit to see theirs.";
-  // Identity: the display name and the body.
-  const identity = document.createElement("section");
-  identity.className = "balance-row";
-  const identityTitle = document.createElement("h3");
-  identityTitle.className = "balance-row-title";
-  identityTitle.textContent = "Name";
+    "Someone changed this monster while you were editing it, so saving will be refused. Undo your changes to see theirs.";
+  // The name players see: in the Basics tab, saved with the rest.
   const display = noAutofill(action(document.createElement("input"), "monsters-display"));
   display.maxLength = 40;
   display.id = "monsters-display";
-  const renameBtn = panelButton("monsters-rename", "Rename in the draft", () => {
-    if (shown) {
-      send({
-        name: shown.name,
-        op: "rename",
-        display: display.value.trim(),
-        // The monster as the name was filled from: a rename someone made since is not overwritten.
-        expect: filled.nameFingerprint,
-      });
-    }
-  });
+  const displayField = labelled("Name players see", display);
+  const displayHelp = document.createElement("p");
+  displayHelp.className = "control-panel-field-help";
+  displayField.append(displayHelp);
   const removeBtn = panelButton(
     "monsters-remove",
-    "Remove… (where it is used)",
+    "Remove this monster…",
     () => {
       if (shown) {
         actions.openContentRow({ dataset: "monsters", part: "monsters", key: shown.name });
@@ -374,83 +415,78 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
     },
     "danger",
   );
-  const identityButtons = document.createElement("div");
-  identityButtons.className = "content-buttons";
-  identityButtons.append(renameBtn, removeBtn);
-  identity.append(
-    identityTitle,
-    labelled("Display name", display, "What players see; empty shows its name."),
-    identityButtons,
-  );
-  // The body: a tab of its own, since it is tall.
+  const removeBox = document.createElement("div");
+  removeBox.className = "items-remove";
+  const removeHelp = document.createElement("p");
+  removeHelp.className = "control-panel-field-help";
+  removeHelp.textContent =
+    "Opens the Content page, which shows where the monster is used (maps, NPC files) first.";
+  removeBox.append(removeBtn, removeHelp);
+  // The picture: a tab of its own, saved by the body panel's own buttons.
   const bodyBox = document.createElement("section");
   bodyBox.className = "balance-row";
+  bodyBox.dataset.group = "picture";
+  bodyBox.dataset.ownSave = "";
   bodyBox.hidden = true;
   const bodyTitle = document.createElement("h3");
   bodyTitle.className = "balance-row-title";
-  bodyTitle.textContent = "Body";
+  bodyTitle.textContent = "Picture";
   const bodyHost = document.createElement("div");
   bodyHost.className = "items-pictures-host";
-  bodyBox.append(bodyTitle, bodyHost);
+  bodyBox.append(
+    bodyTitle,
+    intro("How it looks walking and attacking. Picture changes have their own Save button."),
+    bodyHost,
+  );
   const rules = document.createElement("fieldset");
   rules.className = "items-rules";
   const groupsEl = document.createElement("div");
   rules.append(groupsEl);
   const status = statusLine();
-  const saveBtn = panelButton(
-    "monsters-save",
-    "Save to the draft",
-    () => {
-      if (shown) {
-        send({
-          name: shown.name,
-          op: "set",
-          record: clean(work.record),
-          data: clean(work.form),
-          expect: filled.fingerprint,
-        });
-      }
-    },
-    "primary",
-  );
-  const undoEditBtn = panelButton("monsters-undo-edit", "Drop my edit", () => {
+  const saveBtn = panelButton("monsters-save", "Save changes", () => save(), "primary");
+  const undoEditBtn = panelButton("monsters-undo-edit", "Undo changes", () => {
     fill();
     status.textContent = "";
     update();
   });
-  const revertBtn = panelButton("monsters-revert", "Play the pack's rules again", () => {
+  const revertBtn = panelButton("monsters-revert", "Restore the original rules", () => {
     if (shown) {
       send({ name: shown.name, op: "revert", expect: shown.fingerprint });
     }
   });
-  const dropBtn = panelButton("monsters-discard", "Drop the draft's changes", () => {
+  const dropBtn = panelButton("monsters-discard", "Cancel unpublished changes", () => {
     if (shown) {
       send({ name: shown.name, op: "discard", expect: shown.fingerprint });
     }
   });
+  const mainButtons = document.createElement("div");
+  mainButtons.className = "content-buttons";
+  mainButtons.append(saveBtn, undoEditBtn);
+  const resetButtons = document.createElement("div");
+  resetButtons.className = "content-buttons items-reset-buttons";
+  resetButtons.append(revertBtn, dropBtn);
   const buttons = document.createElement("div");
-  buttons.className = "content-buttons";
-  buttons.append(saveBtn, undoEditBtn, revertBtn, dropBtn);
+  buttons.className = "items-actions";
+  buttons.append(mainButtons, resetButtons);
 
   // The NPC file: loot, spells and flags, saved live.
   const npcBox = document.createElement("section");
   npcBox.className = "balance-row monsters-npc";
-  npcBox.dataset.tab = "Loot and NPC file";
+  npcBox.dataset.group = "loot";
   // It saves on its own: the draft's Save bar steps aside while its tab shows.
   npcBox.dataset.ownSave = "";
   const npcTitle = document.createElement("h3");
   npcTitle.className = "balance-row-title";
-  npcTitle.textContent = "Loot, spells and NPC flags (its NPC file)";
-  const npcHelp = document.createElement("p");
-  npcHelp.className = "balance-stale";
-  npcHelp.textContent =
-    "These live in the monster's NPC file and save at once, for everyone, like an NPCs page save: they do not wait for the draft.";
+  npcTitle.textContent = "Loot & spells";
+  const npcHelp = intro(
+    "What it drops and the spells it casts. These save straight away for everyone, without waiting for the draft to be published.",
+  );
   const npcBody = document.createElement("fieldset");
   npcBody.className = "items-rules";
   const npcStatus = statusLine();
   const npcSaveBtn = panelButton(
     "monsters-npc-save",
-    "Save the NPC file now",
+    "Save loot & spells",
     () => {
       if (!npcShown || npcBusy) {
         return;
@@ -470,49 +506,40 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
     },
     "primary",
   );
-  const npcUndoBtn = panelButton("monsters-npc-undo", "Drop my edit", () => {
+  const npcUndoBtn = panelButton("monsters-npc-undo", "Undo changes", () => {
     fillNpc();
     npcStatus.textContent = "";
     updateNpc();
   });
   const npcButtons = document.createElement("div");
   npcButtons.className = "content-buttons";
-  const npcWholeBtn = panelButton("monsters-npc-whole", "Open the whole NPC file", () => {
+  const npcWholeBtn = panelButton("monsters-npc-whole", "Open its whole NPC file", () => {
     if (shown) {
       actions.openNpc?.(shown.name);
     }
   });
   npcButtons.append(npcSaveBtn, npcUndoBtn);
+  const npcFoot = document.createElement("div");
+  npcFoot.className = "items-group-foot";
+  npcFoot.append(npcButtons, npcWholeBtn);
   // The link has its own rule: it shows whenever the NPCs page may be opened, a file read two ways
   // included (that is where it is fixed).
-  npcBox.append(npcTitle, npcHelp, npcBody, npcButtons, npcWholeBtn, npcStatus);
+  npcBox.append(npcTitle, npcHelp, npcBody, npcFoot, npcStatus);
 
   const tabs = sectionTabs(form, "monsters");
-  form.append(
-    title,
-    tags,
-    noticeLine,
-    stale,
-    tabs.el,
-    identity,
-    bodyBox,
-    rules,
-    npcBox,
-    formActions(buttons, status),
-  );
+  form.append(header, noticeLine, stale, tabs.el, rules, formActions(buttons, status));
 
-  // The monster spells card.
+  // The monster spells card: every monster spell, shared by all monsters.
   const spellsBox = document.createElement("details");
   spellsBox.className = "balance-row monsters-spells";
   const spellsSummary = action(document.createElement("summary"), "monsters-spells-toggle");
-  spellsSummary.textContent = "Monster spells";
-  const spellsHelp = document.createElement("p");
-  spellsHelp.className = "control-panel-field-help";
-  spellsHelp.textContent =
-    "The spells monsters cast. A monster casts the ones its NPC file names by tag (Spells, in its form). Each cast rolls 1 in the ladder's step for the number of players on the map (1 to 7 or more). Changes go into the draft.";
+  spellsSummary.textContent = "Monster spells (shared by every monster)";
+  const spellsHelp = intro(
+    "The spells monsters can cast. Give a monster a spell in its Loot & spells tab. Saved changes go in the draft.",
+  );
   const spellsRows = document.createElement("div");
   const spellsStatus = statusLine();
-  const spellsAdd = panelButton("monsters-spells-add", "Add a monster spell", () => {
+  const spellsAdd = panelButton("monsters-spells-add", "+ Add a monster spell", () => {
     spellsWork.push({
       tag: "",
       name: choices?.fx[0] ?? "",
@@ -524,9 +551,10 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
     drawSpells();
     updateSpells();
   });
+  spellsAdd.classList.add("items-add");
   const spellsSave = panelButton(
     "monsters-spells-save",
-    "Save the monster spells to the draft",
+    "Save monster spells",
     () => {
       if (!spellsView || spellsBusy) {
         return;
@@ -544,22 +572,25 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
     },
     "primary",
   );
-  const spellsUndo = panelButton("monsters-spells-undo", "Drop my edit", () => {
+  const spellsUndo = panelButton("monsters-spells-undo", "Undo changes", () => {
     fillSpells();
     spellsStatus.textContent = "";
     updateSpells();
   });
   const spellsButtons = document.createElement("div");
   spellsButtons.className = "content-buttons";
-  spellsButtons.append(spellsAdd, spellsSave, spellsUndo);
-  spellsBox.append(spellsSummary, spellsHelp, spellsRows, spellsButtons, spellsStatus);
+  spellsButtons.append(spellsSave, spellsUndo);
+  spellsBox.append(spellsSummary, spellsHelp, spellsRows, spellsAdd, spellsButtons, spellsStatus);
 
   const loading = document.createElement("p");
   loading.className = "balance-loading";
   loading.textContent = "Loading…";
   const layout = document.createElement("div");
   layout.className = "items-layout";
-  layout.append(listBox, form);
+  const empty = document.createElement("p");
+  empty.className = "items-empty-form";
+  empty.textContent = "Pick a monster on the left to see and change how it plays.";
+  layout.append(listBox, empty, form);
   el.append(draftLine, spellsBox, loading, layout);
 
   // ---- state ----
@@ -574,6 +605,8 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
   let work: { record: Obj; form: Obj } = { record: {}, form: {} };
   let filled = { value: "", fingerprint: "", display: "", nameFingerprint: "" };
   let busy = false;
+  /** A name to save once the rules' save is answered (one Save sends both). */
+  let renameNext: string | null = null;
   const invalid = new Map<HTMLElement, string>();
   let body: MonsterBodyPanel | null | undefined;
   // The NPC file.
@@ -615,11 +648,11 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
 
   const send = (change: MonsterChange) => {
     if (busy) {
-      return;
+      return false;
     }
     if ((change.display ?? "").length > 40) {
-      say(status, "A display name is at most 40 characters.", false);
-      return;
+      say(status, "The name players see is at most 40 characters.", false);
+      return false;
     }
     busy = true;
     say(status, "Saving…");
@@ -627,6 +660,39 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
     seq += 1;
     saving.set(seq, { name: change.name, op: change.op });
     actions.set(seq, change);
+    return true;
+  };
+  const renameChange = (expect: string): MonsterChange | null =>
+    shown ? { name: shown.name, op: "rename", display: display.value.trim(), expect } : null;
+  /** Saves the rules and stats, then the name (each only when changed). */
+  const save = () => {
+    if (!shown) {
+      return;
+    }
+    if (rulesDirty()) {
+      const name = nameDirty() ? display.value.trim() : null;
+      if (name !== null && name.length > 40) {
+        say(status, "The name players see is at most 40 characters.", false);
+        return;
+      }
+      if (
+        send({
+          name: shown.name,
+          op: "set",
+          record: clean(work.record),
+          data: clean(work.form),
+          expect: filled.fingerprint,
+        })
+      ) {
+        renameNext = name;
+      }
+    } else if (nameDirty()) {
+      // The monster as the name was filled from: a rename someone made since is not overwritten.
+      const change = renameChange(filled.nameFingerprint);
+      if (change) {
+        send(change);
+      }
+    }
   };
   const ask = () => {
     seq += 1;
@@ -651,6 +717,7 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
     write: (n: number | null) => void,
     edited: () => void,
     errors: Map<HTMLElement, string>,
+    placeholder = "None",
   ) => {
     const input = noAutofill(action(document.createElement("input"), "monsters-number"));
     input.type = "number";
@@ -659,7 +726,7 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
     input.step = "1";
     input.value = typeof value === "number" ? String(value) : "";
     if (nullable) {
-      input.placeholder = "none";
+      input.placeholder = placeholder;
     }
     input.addEventListener("input", () => {
       const t = input.value.trim();
@@ -676,10 +743,16 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
     });
     return input;
   };
-  const check = (on: boolean, label: string, write: (on: boolean) => void, edited: () => void) => {
+  const check = (
+    on: boolean,
+    label: string,
+    write: (on: boolean) => void,
+    edited: () => void,
+    id = "monsters-check",
+  ) => {
     const wrap = document.createElement("label");
     wrap.className = "items-check";
-    const box = action(document.createElement("input"), "monsters-check");
+    const box = action(document.createElement("input"), id);
     box.type = "checkbox";
     box.checked = on;
     box.addEventListener("change", () => {
@@ -689,17 +762,78 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
     wrap.append(box, ` ${label}`);
     return wrap;
   };
-  const textInput = (value: string, write: (t: string) => void, edited: () => void, list = "") => {
+  const textInput = (
+    value: string,
+    write: (t: string) => void,
+    edited: () => void,
+    list = "",
+    placeholder = "",
+  ) => {
     const t = noAutofill(action(document.createElement("input"), "monsters-text"));
     t.value = value;
     if (list) {
       t.setAttribute("list", list);
+    }
+    if (placeholder) {
+      t.placeholder = placeholder;
     }
     t.addEventListener("input", () => {
       write(t.value);
       edited();
     });
     return t;
+  };
+  /**
+   * Tick boxes for a list of values: the ticked ones in view, the rest folded under `more` (a wall
+   * of thirty spells at once is hard to read).
+   */
+  const pickMany = (
+    listId: string,
+    values: readonly string[],
+    has: Set<string>,
+    more: string,
+    write: (picked: string[]) => void,
+    edited: () => void,
+  ) => {
+    const box = document.createElement("div");
+    box.className = "items-pick";
+    box.dataset.list = listId;
+    const on = document.createElement("div");
+    on.className = "items-checks";
+    const rest = document.createElement("details");
+    rest.className = "items-more-picks";
+    const restSummary = action(document.createElement("summary"), `monsters-${listId}-more`);
+    restSummary.textContent = more;
+    const off = document.createElement("div");
+    off.className = "items-checks";
+    rest.append(restSummary, off);
+    for (const v of [...values].sort((a, b) => a.localeCompare(b))) {
+      const tick = check(
+        has.has(v),
+        v,
+        (ticked) => {
+          if (ticked) {
+            has.add(v);
+          } else {
+            has.delete(v);
+          }
+          write(values.filter((x) => has.has(x)));
+        },
+        edited,
+      );
+      (has.has(v) ? on : off).append(tick);
+    }
+    if (on.children.length === 0) {
+      const none = document.createElement("p");
+      none.className = "control-panel-field-help";
+      none.textContent = "None.";
+      on.append(none);
+    }
+    box.append(on);
+    if (off.children.length > 0) {
+      box.append(rest);
+    }
+    return box;
   };
   const setKey = (o: Obj, k: string, v: unknown) => {
     if (v === undefined || v === null || v === false || v === "") {
@@ -724,32 +858,48 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
     const c = choices;
     const edited = () => {
       status.textContent = "";
+      markUsed();
       update();
     };
-    const group = (id: string, ...controls: HTMLElement[]) => {
+    /** Fields folded under "More options", open when one of them has a value. */
+    const more = (open: boolean, ...controls: HTMLElement[]) => {
+      const box = document.createElement("details");
+      box.className = "items-more";
+      box.open = open;
+      const summary = action(document.createElement("summary"), "monsters-more-toggle");
+      summary.textContent = "More options";
+      box.append(summary, ...controls);
+      return box;
+    };
+    const group = (id: string, label: string, help: string, ...controls: HTMLElement[]) => {
       const sec = document.createElement("section");
       sec.className = "balance-row items-group";
       sec.dataset.group = id;
       const h = document.createElement("h3");
       h.className = "balance-row-title";
-      h.textContent = GROUP_TITLES[id] ?? id;
-      sec.append(h);
+      h.textContent = label;
+      sec.append(h, intro(help), ...controls);
+      const foot = document.createElement("div");
+      foot.className = "items-group-foot";
       const from = v.sources.filter((x) => x.group === id);
       if (from.length > 0) {
-        sec.append(
+        foot.append(
           sourcesNote(
             v.defined
-              ? "In the draft it plays its own definition:"
-              : "What it plays now comes from:",
+              ? "Where these settings come from: this monster's own rules"
+              : "Where these settings come from",
             from.map((s) => `${s.label}: ${s.from}`),
           ),
         );
+      } else {
+        foot.append(document.createElement("span"));
       }
-      sec.append(...controls);
       if (v.pack) {
         const pack = v.pack;
-        sec.append(
-          panelButton(`monsters-pack-${id}`, "Use the pack's rules here", () => {
+        const restore = panelButton(
+          `monsters-pack-${id}`,
+          "Restore this tab to the original",
+          () => {
             const keys = GROUP_KEYS[id] ?? { record: [], form: [] };
             for (const k of keys.form) {
               setKey(work.form, k, structuredClone((pack.form as Obj)[k]));
@@ -767,12 +917,16 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
             drawGroups(id);
             forgetGone(invalid);
             edited();
-          }),
+          },
         );
+        restore.classList.add("items-restore");
+        foot.append(restore);
       }
+      sec.append(foot);
       return sec;
     };
-    // Stats.
+
+    // ---- Basics ----
     // The two spawn minutes go together: both filled, or both empty (any time).
     const minute = (work.record.spawnMinute as { gt: number; lt: number } | null) ?? null;
     const pair: { gt: number | null; lt: number | null } = {
@@ -785,8 +939,8 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
       for (const b of spawnBoxes) {
         invalid.delete(b);
       }
-      for (const [k, v] of spawnErrors) {
-        invalid.set(k, v);
+      for (const [k, e] of spawnErrors) {
+        invalid.set(k, e);
       }
       if (spawnErrors.size > 0) {
         return;
@@ -796,7 +950,7 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
       } else if (pair.gt === null || pair.lt === null) {
         invalid.set(
           spawnBoxes[0] as HTMLInputElement,
-          "Spawn minutes: fill both, or neither for any time",
+          "Only appears between minutes: fill both, or neither for any time",
         );
       } else {
         work.record.spawnMinute = { gt: pair.gt, lt: pair.lt };
@@ -807,7 +961,7 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
       -1,
       60,
       true,
-      "Spawns after minute",
+      "Only appears after minute",
       (n) => {
         pair.gt = n;
       },
@@ -816,13 +970,14 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
         edited();
       },
       spawnErrors,
+      "Any",
     );
     const spawnLt = intInput(
       minute?.lt,
       0,
       61,
       true,
-      "Spawns before minute",
+      "Only appears before minute",
       (n) => {
         pair.lt = n;
       },
@@ -831,10 +986,19 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
         edited();
       },
       spawnErrors,
+      "Any",
     );
+    spawnGt.setAttribute("aria-label", "Only appears after minute");
+    spawnLt.setAttribute("aria-label", "Only appears before minute");
     spawnBoxes = [spawnGt, spawnLt];
-    const stats = group(
-      "stats",
+    const spawnPair = document.createElement("div");
+    spawnPair.className = "items-range-pair";
+    spawnPair.append("after", spawnGt, "and before", spawnLt);
+    const basics = group(
+      "basics",
+      "Basics",
+      "Its name and how tough it is.",
+      displayField,
       labelled(
         "Hit points",
         intInput(
@@ -849,6 +1013,7 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
           edited,
           invalid,
         ),
+        "How much damage it takes to kill. A monster already out keeps its hit points until it appears again.",
       ),
       labelled(
         "Attack",
@@ -863,8 +1028,9 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
           },
           edited,
           invalid,
+          "Never attacks",
         ),
-        "Its melee hit. Empty: it never melees.",
+        "How hard its melee hits are. Leave it empty for a monster that never attacks in melee.",
       ),
       labelled(
         "Defense",
@@ -880,64 +1046,72 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
           edited,
           invalid,
         ),
-        "Taken off a melee attack's power.",
+        "Taken off every melee hit it takes.",
       ),
-      labelled(
-        "Spawns only after minute",
-        spawnGt,
-        "With the next field: it spawns only while the server minute is between the two (Classic's Zombie and Skeleton). Empty: any time.",
+      more(
+        minute !== null,
+        labelled(
+          "Only appears between minutes",
+          spawnPair,
+          "Minutes of each hour on the server clock: it appears only after the first and before the second (Classic's Zombies and Skeletons). Leave both empty for any time.",
+        ),
       ),
-      labelled("…and before minute", spawnLt),
+      removeBox,
     );
-    // Behaviour.
+
+    // ---- Behaviour ----
     const flags = flagsOf();
-    const effectChecks = (key: "healedBy" | "resists") => {
-      const box = document.createElement("div");
-      box.className = "items-checks";
-      box.dataset.list = key;
-      const has = new Set((flags[key] as string[] | undefined) ?? []);
-      for (const e of c.effects) {
-        box.append(
-          check(
-            has.has(e),
-            e,
-            (on) => {
-              if (on) {
-                has.add(e);
-              } else {
-                has.delete(e);
-              }
-              const l = c.effects.filter((x) => has.has(x));
-              setKey(flags, key, l.length > 0 ? l : undefined);
-            },
-            edited,
-          ),
-        );
-      }
-      return box;
-    };
+    const flagCheck = ([where, k, label]: Flag) =>
+      where === "form"
+        ? check(work.form[k] === true, label, (on) => setKey(work.form, k, on || undefined), edited)
+        : check(flags[k] === true, label, (on) => setKey(flags, k, on || undefined), edited);
+    const effectPicks = (key: "healedBy" | "resists", more: string) =>
+      pickMany(
+        key,
+        c.effects,
+        new Set((flags[key] as string[] | undefined) ?? []),
+        more,
+        (picked) => setKey(flags, key, picked.length > 0 ? picked : undefined),
+        edited,
+      );
+    const moreBehaviour =
+      BEHAVIOUR_MORE.some(([w, k]) => (w === "form" ? work.form[k] : flags[k]) === true) ||
+      flags.grabbable !== undefined ||
+      flags.healedBy !== undefined ||
+      flags.resists !== undefined;
     const behaviour = group(
       "behaviour",
-      ...DEF_FLAGS.map(([k, label]) =>
-        check(work.form[k] === true, label, (on) => setKey(work.form, k, on || undefined), edited),
-      ),
-      ...RECORD_FLAGS.map(([k, label]) =>
-        check(flags[k] === true, label, (on) => setKey(flags, k, on || undefined), edited),
-      ),
-      labelled(
-        "Picked up as",
-        textInput(
-          String(flags.grabbable ?? ""),
-          (t) => setKey(flags, "grabbable", t.trim() || undefined),
-          edited,
-          itemsList.id,
+      "Behaviour",
+      "How it acts around players. A monster on the World Editor's monster list (Editor lists tab) attacks players already.",
+      ...BEHAVIOUR_MAIN.map(flagCheck),
+      more(
+        moreBehaviour,
+        ...BEHAVIOUR_MORE.map(flagCheck),
+        labelled(
+          "Can be picked up as",
+          textInput(
+            String(flags.grabbable ?? ""),
+            (t) => setKey(flags, "grabbable", t.trim() || undefined),
+            edited,
+            itemsList.id,
+            "Can't be picked up",
+          ),
+          "Ctrl on it, or a click from the tile it faces, picks it up as this item (Classic's Pig).",
         ),
-        "Ctrl, or a click from the tile it faces, picks it up as this item (Classic: a Pig). Empty: it cannot be picked up.",
+        labelled(
+          "Healed by these spells",
+          effectPicks("healedBy", "Add a spell…"),
+          "These spells heal it instead of hurting it.",
+        ),
+        labelled(
+          "Resists these spells",
+          effectPicks("resists", "Add a spell…"),
+          "These spells hit it for only 1 to 3 damage.",
+        ),
       ),
-      labelled("Healed by", effectChecks("healedBy"), "Spell hits that heal it instead."),
-      labelled("Resists", effectChecks("resists"), "Spell hits that deal it only random(3)."),
     );
-    // Combat.
+
+    // ---- Fighting ----
     const affRows = document.createElement("div");
     const affinities = (): Obj[] => {
       if (!Array.isArray(work.form.affinities)) {
@@ -946,60 +1120,65 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
       return work.form.affinities as Obj[];
     };
     const drawAff = () => {
-      const arr = affinities();
+      const arr = (work.form.affinities as Obj[] | undefined) ?? [];
       affRows.replaceChildren(
         ...arr.map((row, i) => {
           const line = document.createElement("div");
           line.className = "items-list-row";
           line.dataset.list = "affinities";
-          const preview = document.createElement("span");
-          preview.className = "control-panel-field-help balance-preview";
-          const show = () => {
-            preview.textContent = `${Number(row.delta ?? 0) >= 0 ? "+" : ""}${rollRange(Number(row.delta ?? 0), Number(row.randomN ?? 0)).replace(/^Always /, "")} damage`;
+          const name = `Weapon bonus ${arr.length > 1 ? `${i + 1}` : ""}`.trim();
+          // The bonus typed as "from … to …" (`delta + random(n)`).
+          const b = rollBounds(Number(row.delta ?? 0), Number(row.randomN ?? 0));
+          const fromIn = noAutofill(
+            action(document.createElement("input"), "monsters-affinity-from"),
+          );
+          const toIn = noAutofill(action(document.createElement("input"), "monsters-affinity-to"));
+          for (const [input, n, word] of [
+            [fromIn, b.from, "from"],
+            [toIn, b.to, "to"],
+          ] as const) {
+            input.type = "number";
+            input.step = "1";
+            input.value = String(n);
+            input.setAttribute("aria-label", `${name}: extra damage ${word}`);
+          }
+          const range = document.createElement("div");
+          range.className = "items-range-pair";
+          range.append(fromIn, " to ", toIn);
+          const read = () => {
+            const f = fromIn.value.trim();
+            const t = toIn.value.trim();
+            const err = `${name}: whole numbers, "to" no lower than "from"`;
+            if (!/^-?\d+$/.test(f) || !/^-?\d+$/.test(t) || Number(t) < Number(f)) {
+              invalid.set(range, err);
+            } else {
+              const r = rollFrom(Number(f), Number(t));
+              if (Math.abs(r.flat) > 1_000_000 || r.randomN > 1_000_000) {
+                invalid.set(range, `${name}: at most a million either way`);
+              } else {
+                invalid.delete(range);
+                row.delta = r.flat;
+                row.randomN = r.randomN;
+              }
+            }
+            edited();
           };
+          fromIn.addEventListener("input", read);
+          toIn.addEventListener("input", read);
           line.append(
             labelled(
-              "Weapon family",
+              "Weapon name contains",
               textInput(
                 String(row.weapon ?? ""),
                 (t) => {
                   row.weapon = t;
                 },
                 edited,
+                "",
+                "Silver",
               ),
             ),
-            labelled(
-              "Adds",
-              intInput(
-                row.delta,
-                -1_000_000,
-                1_000_000,
-                false,
-                `Weapon affinity ${i + 1}: adds`,
-                (n) => {
-                  row.delta = n;
-                  show();
-                },
-                edited,
-                invalid,
-              ),
-            ),
-            labelled(
-              "+ random(n)",
-              intInput(
-                row.randomN,
-                0,
-                1_000_000,
-                false,
-                `Weapon affinity ${i + 1}: random(n)`,
-                (n) => {
-                  row.randomN = n;
-                  show();
-                },
-                edited,
-                invalid,
-              ),
-            ),
+            labelled("Extra damage", range),
             panelButton("monsters-affinity-remove", "Remove", () => {
               arr.splice(i, 1);
               if (arr.length === 0) {
@@ -1009,9 +1188,7 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
               forgetGone(invalid);
               edited();
             }),
-            preview,
           );
-          show();
           return line;
         }),
       );
@@ -1019,42 +1196,49 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
     drawAff();
     const combat = group(
       "combat",
-      labelled(
-        "Weapon affinities",
+      "Fighting",
+      "Weapons that hurt it more (or less), and how far killing it trains a player's skills.",
+      card(
+        "affinities",
+        "Weapon bonuses",
+        "A melee weapon whose name contains these words (Silver, Sword of Hope) adds this much to each hit on it. Use negative numbers for less damage. Every matching row counts.",
         affRows,
-        "Melee damage a weapon family adds against it: a weapon whose name contains the family (Silver, Sword of Hope). Each row that matches adds, in order.",
+        panelButton("monsters-affinity-add", "+ Add weapon bonus", () => {
+          affinities().push({ weapon: "", delta: 1, randomN: 0 });
+          drawAff();
+          edited();
+        }),
       ),
-      panelButton("monsters-affinity-add", "Add a weapon affinity", () => {
-        affinities().push({ weapon: "", delta: 1, randomN: 0 });
-        drawAff();
-        edited();
-      }),
       labelled(
-        "Kill skill cap",
+        "Skill training limit",
         intInput(
           work.form.skillCap,
           0,
           1_000_000,
           true,
-          "Kill skill cap",
+          "Skill training limit",
           (n) => setKey(work.form, "skillCap", n ?? undefined),
           edited,
           invalid,
+          "World default",
         ),
-        "A kill trains the weapon's skills up to this. Empty: the world's default.",
+        "Killing it trains the weapon's skills only up to this level. Leave it empty for the world's default.",
       ),
     );
-    // XP.
+
+    // ---- Rewards ----
     const xp = group(
       "xp",
+      "Rewards",
+      "The XP a player gets for killing it, and an optional announcement.",
       labelled(
-        "Melee kill XP",
+        "XP for a melee kill",
         intInput(
           work.record.xpMelee,
           0,
           1_000_000_000,
           false,
-          "Melee kill XP",
+          "XP for a melee kill",
           (n) => {
             work.record.xpMelee = n;
           },
@@ -1063,13 +1247,13 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
         ),
       ),
       labelled(
-        "Spell kill XP",
+        "XP for a spell kill",
         intInput(
           work.record.xpSpell,
           0,
           1_000_000_000,
           false,
-          "Spell kill XP",
+          "XP for a spell kill",
           (n) => {
             work.record.xpSpell = n;
           },
@@ -1078,44 +1262,52 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
         ),
       ),
       labelled(
-        "Skill XP",
-        intInput(
-          work.record.skillXp,
-          0,
-          1_000_000_000,
-          true,
-          "Skill XP",
-          (n) => setKey(work.record, "skillXp", n ?? undefined),
-          edited,
-          invalid,
-        ),
-        "The XP a kill gives each XP-model skill the weapon trains. Empty: the skills' own amount.",
-      ),
-      labelled(
-        "Kill XP after the ring",
-        intInput(
-          work.form.killXp,
-          0,
-          1_000_000_000,
-          true,
-          "Kill XP",
-          (n) => setKey(work.form, "killXp", n ?? undefined),
-          edited,
-          invalid,
-        ),
-        "In place of the melee kill XP, once the ring's bonus is counted. Empty: none.",
-      ),
-      labelled(
-        "Kill broadcast",
+        "Announcement when killed",
         textInput(
           String(work.form.killBroadcast ?? ""),
           (t) => setKey(work.form, "killBroadcast", t.trim() || undefined),
           edited,
+          "",
+          "No announcement",
         ),
-        "Said to everyone on a kill; {} is the killer's name. Empty: none.",
+        "Shown to everyone online. {} becomes the killer's name: {} has slain the Dragon!",
+      ),
+      more(
+        work.record.skillXp !== undefined || work.form.killXp !== undefined,
+        labelled(
+          "Skill XP per kill",
+          intInput(
+            work.record.skillXp,
+            0,
+            1_000_000_000,
+            true,
+            "Skill XP per kill",
+            (n) => setKey(work.record, "skillXp", n ?? undefined),
+            edited,
+            invalid,
+            "Each skill's own amount",
+          ),
+          "For skills that rise by XP: the XP a kill gives each skill the weapon trains.",
+        ),
+        labelled(
+          "Fixed kill XP",
+          intInput(
+            work.form.killXp,
+            0,
+            1_000_000_000,
+            true,
+            "Fixed kill XP",
+            (n) => setKey(work.form, "killXp", n ?? undefined),
+            edited,
+            invalid,
+            "Not used",
+          ),
+          "Replaces the melee kill XP, after any XP ring bonus is counted.",
+        ),
       ),
     );
-    // Lists.
+
+    // ---- Editor lists ----
     const listsOf = (): Obj => {
       if (!work.form.lists || typeof work.form.lists !== "object") {
         work.form.lists = {};
@@ -1124,6 +1316,8 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
     };
     const lists = group(
       "lists",
+      "Editor lists",
+      "Which pick lists offer it when you place monsters on maps (World Editor) or in NPC files (NPC Editor).",
       ...LISTS.map(([k, label]) =>
         check(
           (work.form.lists as Obj | undefined)?.[k] === true,
@@ -1133,7 +1327,7 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
         ),
       ),
     );
-    const sections = [stats, behaviour, combat, xp, lists];
+    const sections = [basics, bodyBox, behaviour, combat, xp, npcBox, lists];
     const old = only
       ? [...groupsEl.children].find((e) => (e as HTMLElement).dataset.group === only)
       : undefined;
@@ -1143,6 +1337,40 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
     } else {
       groupsEl.replaceChildren(...sections);
     }
+    markUsed();
+  };
+
+  /** Whether the part of a tab's keys is set (its tab shows a dot). */
+  const markUsed = () => {
+    const pack = shown?.pack ?? null;
+    for (const sec of groupsEl.querySelectorAll<HTMLElement>(":scope > .items-group")) {
+      const keys = GROUP_KEYS[sec.dataset.group ?? ""] ?? { record: [], form: [] };
+      const recordKeys = sec.dataset.group === "basics" ? [] : keys.record;
+      // An empty list or object (`flags: {}`) is no setting.
+      const set = (x: unknown) => !["null", "{}", "[]"].includes(canonical(x));
+      const used =
+        keys.form.some((k) => set(work.form[k])) || recordKeys.some((k) => set(work.record[k]));
+      if (sec.dataset.used !== String(used)) {
+        sec.dataset.used = String(used);
+      }
+      const restore = sec.querySelector<HTMLButtonElement>(
+        ":scope > .items-group-foot > .items-restore",
+      );
+      if (restore) {
+        const same =
+          keys.form.every(
+            (k) => canonical(work.form[k]) === canonical(pack ? (pack.form as Obj)[k] : undefined),
+          ) &&
+          (!pack?.record ||
+            keys.record.every(
+              (k) => canonical(work.record[k]) === canonical((pack.record as Obj)[k]),
+            ));
+        restore.hidden = same;
+      }
+    }
+    npcBox.dataset.used = String(
+      npcWork.loot.length > 0 || npcWork.spells.length > 0 || npcWork.flags.length > 0,
+    );
   };
 
   const fillRules = () => {
@@ -1175,30 +1403,34 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
     if (!v) {
       return;
     }
-    title.textContent = v.display && v.display !== v.name ? `${v.display} (${v.name})` : v.name;
-    const t: string[] = [];
+    const shownName = v.display || v.name;
+    title.textContent = shownName;
+    subtitle.textContent = shownName === v.name ? "" : `ID: ${v.name}`;
+    display.placeholder = v.name;
+    displayHelp.textContent = `What players see. Leave it empty to show its ID, ${v.name}, which never changes.`;
+    const t: [string, string][] = [];
     t.push(
       v.inPack
-        ? v.defined || v.edited
-          ? "Has its own definition"
-          : "Plays the pack's rules"
-        : "Your monster",
+        ? v.defined || v.edited || v.pending.record !== null
+          ? ["Changed by you", "changed"]
+          : ["Original", "original"]
+        : ["Added by you", "changed"],
     );
     if (!v.published) {
-      t.push("Only in the draft");
+      t.push(["Not published yet", "pending"]);
     }
-    if (v.pending.definition === "set") {
-      t.push("Rules changed in the draft");
+    if (v.pending.definition === "set" || v.pending.record !== null) {
+      t.push(["Unpublished changes", "pending"]);
     } else if (v.pending.definition !== null) {
-      t.push("Definition dropped in the draft");
-    }
-    if (v.pending.record !== null) {
-      t.push("Stats, name or body changed in the draft");
+      t.push([
+        v.inPack ? "Back to the original rules once published" : "Rules cleared once published",
+        "pending",
+      ]);
     }
     tags.replaceChildren(
-      ...t.map((x) => {
+      ...t.map(([x, kind]) => {
         const s = document.createElement("span");
-        s.className = "balance-tag";
+        s.className = `balance-tag items-tag-${kind}`;
         s.textContent = x;
         return s;
       }),
@@ -1208,15 +1440,19 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
     const isDirty = dirty();
     stale.hidden = !(isDirty && filled.fingerprint !== v.fingerprint);
     const errs = [...invalid.values()];
-    saveBtn.disabled = busy || !rulesDirty() || errs.length > 0;
+    saveBtn.disabled = busy || !isDirty || errs.length > 0;
     undoEditBtn.hidden = !isDirty;
     undoEditBtn.disabled = busy;
-    revertBtn.textContent = v.inPack ? "Play the pack's rules again" : "Drop its definition";
-    revertBtn.hidden = !(v.defined || v.edited);
+    revertBtn.textContent = v.inPack ? "Restore the original rules" : "Clear all its rules";
+    revertBtn.title = v.inPack
+      ? "Its Behaviour, Fighting, Rewards and Editor lists settings go back to the pack's once published. Its stats stay as they are."
+      : "Leaves it with no rules of its own once published.";
+    revertBtn.hidden = !(v.defined || v.edited) || v.pending.definition === "revert";
     revertBtn.disabled = busy;
+    dropBtn.title =
+      "Takes this monster's changes out of the draft: players keep what they have now.";
     dropBtn.hidden = v.pending.definition === null && v.pending.record === null;
     dropBtn.disabled = busy;
-    renameBtn.disabled = busy || !nameDirty();
     removeBtn.disabled = busy;
     rules.disabled = busy;
     display.readOnly = busy;
@@ -1233,14 +1469,14 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
     }
     for (const [i, l] of npcWork.loot.entries()) {
       if (l.item.trim() === "") {
-        return `Loot ${i + 1}: pick an item.`;
+        return `Drop ${i + 1}: pick an item.`;
       }
       if (!Number.isSafeInteger(l.oneIn) || l.oneIn < 1) {
-        return `Loot ${i + 1}: the chance is a whole number from 1.`;
+        return `Drop ${i + 1}: the chance is a whole number from 1.`;
       }
     }
     if (npcWork.flags.some((f) => f.trim() === "")) {
-      return "Flags: a flag needs a name.";
+      return "Other flag lines: a flag needs a name.";
     }
     return null;
   };
@@ -1268,7 +1504,7 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
       const p = document.createElement("p");
       p.className = "control-panel-field-help";
       p.textContent =
-        "This monster is only in the draft: publish it first, then give it loot, spells and flags here.";
+        "This monster is new and not published yet: publish it first, then give it loot and spells here.";
       npcBody.replaceChildren(p);
       return;
     }
@@ -1279,12 +1515,13 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
     if (v.mixed.length > 0) {
       const p = document.createElement("p");
       p.className = "balance-stale";
-      p.textContent = `Line ${v.mixed.join(", ")} of its NPC file is read two ways at once (a drop line inside another line): fix it on the NPCs page (Open the whole NPC file, then edit it as text) before editing these here.`;
+      p.textContent = `Line ${v.mixed.join(", ")} of its NPC file can be read two ways (a drop line inside another line). Fix it on the NPCs page (Open its whole NPC file, then edit it as text) before changing loot and spells here.`;
       npcBody.replaceChildren(p);
       return;
     }
     const edited = () => {
       npcStatus.textContent = "";
+      markUsed();
       updateNpc();
     };
     const info = document.createElement("p");
@@ -1314,17 +1551,17 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
                 },
                 edited,
                 itemsList.id,
+                "15 Gold",
               ),
-              "A count before it drops a pile: 15 Gold.",
             ),
             labelled(
-              "1 in",
+              "Drops 1 in",
               intInput(
                 l.oneIn,
                 1,
                 Number.MAX_SAFE_INTEGER,
                 false,
-                `Loot ${i + 1}: 1 in`,
+                `Drop ${i + 1}: chance`,
                 (x) => {
                   l.oneIn = x ?? 1;
                   odds.textContent = dropOdds(npcWork.loot.length, l.oneIn);
@@ -1345,83 +1582,109 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
       );
     };
     drawLoot();
-    const lootHelp = document.createElement("p");
-    lootHelp.className = "control-panel-field-help";
-    lootHelp.textContent =
-      "A kill picks one line at random, then drops it 1 in N times: each line's odds are 1 in (lines × N).";
-    // Spells.
-    const spellBox = document.createElement("div");
-    spellBox.className = "items-checks";
-    spellBox.dataset.list = "spells";
-    const has = new Set(npcWork.spells.map((s) => s.toLowerCase()));
-    for (const tag of v.spellTags) {
-      spellBox.append(
-        check(
-          has.has(tag.toLowerCase()),
-          tag,
-          (on) => {
-            if (on) {
-              npcWork.spells.push(tag);
-            } else {
-              npcWork.spells = npcWork.spells.filter((s) => s.toLowerCase() !== tag.toLowerCase());
-            }
-          },
-          edited,
-        ),
-      );
+    // Spells: the monster spells, ticked; one the file names that no monster spell has stays,
+    // shown so it can be taken off.
+    const tags = new Map<string, string>();
+    for (const t of v.spellTags) {
+      tags.set(t.toLowerCase(), t);
     }
-    // Spells the file names that no monster spell has: kept, shown so they can be taken off.
-    for (const s of npcWork.spells.filter(
-      (x) => !v.spellTags.some((t) => t.toLowerCase() === x.toLowerCase()),
-    )) {
-      spellBox.append(
+    const missing = npcWork.spells.filter((x) => !tags.has(x.toLowerCase()));
+    const spellPicks = pickMany(
+      "spells",
+      v.spellTags,
+      new Set(npcWork.spells.map((s) => tags.get(s.toLowerCase())).filter((s) => s !== undefined)),
+      "Add a spell…",
+      (picked) => {
+        // Kept in the file's order; newly ticked ones go at the end.
+        const was = npcWork.spells.filter((s) => {
+          const tag = tags.get(s.toLowerCase());
+          return tag === undefined ? missing.includes(s) : picked.includes(tag);
+        });
+        const fresh = picked.filter((p) => !was.some((s) => s.toLowerCase() === p.toLowerCase()));
+        npcWork.spells = [...was, ...fresh];
+      },
+      edited,
+    );
+    for (const s of missing) {
+      (spellPicks.querySelector(".items-checks") as HTMLElement).append(
         check(
           true,
           `${s} (no such monster spell)`,
           (on) => {
             if (!on) {
               npcWork.spells = npcWork.spells.filter((x) => x !== s);
+              missing.splice(missing.indexOf(s), 1);
             }
           },
           edited,
         ),
       );
     }
-    // Flags.
+    // Flags: the two the game reads as tick boxes, any others as text.
+    const known = (f: string) =>
+      NPC_FLAGS.some(([k]) => k.toLowerCase() === f.trim().toLowerCase());
+    const others = () => npcWork.flags.filter((f) => !known(f));
+    const flagChecks = NPC_FLAGS.map(([k, label]) =>
+      check(
+        npcWork.flags.some((f) => f.trim().toLowerCase() === k.toLowerCase()),
+        label,
+        (on) => {
+          if (on) {
+            npcWork.flags.push(k);
+          } else {
+            npcWork.flags = npcWork.flags.filter((f) => f.trim().toLowerCase() !== k.toLowerCase());
+          }
+        },
+        edited,
+        "monsters-npc-flag",
+      ),
+    );
     const flagsArea = noAutofill(action(document.createElement("textarea"), "monsters-npc-flags"));
-    flagsArea.rows = 3;
-    flagsArea.value = npcWork.flags.join("\n");
+    flagsArea.rows = 2;
+    flagsArea.value = others().join("\n");
     flagsArea.addEventListener("input", () => {
-      npcWork.flags = flagsArea.value
-        .split("\n")
-        .map((f) => f)
-        .filter((f) => f.trim() !== "");
+      const typed = flagsArea.value.split("\n").filter((f) => f.trim() !== "");
+      npcWork.flags = [...npcWork.flags.filter((f) => known(f)), ...typed];
       edited();
     });
+    const flagsMore = document.createElement("details");
+    flagsMore.className = "items-more";
+    flagsMore.open = others().length > 0;
+    const flagsSummary = action(document.createElement("summary"), "monsters-more-toggle");
+    flagsSummary.textContent = "More options";
+    flagsMore.append(
+      flagsSummary,
+      labelled(
+        "Other flag lines",
+        flagsArea,
+        "One per line, kept in its NPC file for scripts and other tools. The game itself reads only the two above.",
+      ),
+    );
     npcBody.replaceChildren(
       info,
-      labelled("Loot", lootRows),
-      lootHelp,
-      panelButton("monsters-loot-add", "Add a drop", () => {
-        npcWork.loot.push({ item: "", oneIn: 1 });
-        drawLoot();
-        edited();
-      }),
+      card(
+        "loot",
+        "Drops",
+        "When it dies, one of these lines is picked at random, then that item drops 1 in N times. Put a number before the item to drop a pile, as in 15 Gold.",
+        lootRows,
+        panelButton("monsters-loot-add", "+ Add drop", () => {
+          npcWork.loot.push({ item: "", oneIn: 1 });
+          drawLoot();
+          edited();
+        }),
+      ),
       labelled(
         "Spells it casts",
-        spellBox,
-        "The monster spells (from the Monster spells card) it casts.",
+        spellPicks,
+        "From the Monster spells list at the top of the page.",
       ),
-      labelled(
-        "NPC flags",
-        flagsArea,
-        "One per line. Passive: it fights only once attacked. Still: it never walks.",
-      ),
+      ...flagChecks,
+      flagsMore,
     );
   };
   const updateNpc = () => {
     npcSaveBtn.textContent =
-      npcShown?.exists === false ? "Attach an NPC file now" : "Save the NPC file now";
+      npcShown?.exists === false ? "Create its NPC file" : "Save loot & spells";
     npcWholeBtn.hidden =
       actions.openNpc === undefined ||
       actions.canOpenNpc?.() === false ||
@@ -1435,7 +1698,7 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
     if (npcDirty() && npcShown && npcShown.revision !== npcRevision && !npcBusy) {
       say(
         npcStatus,
-        "Someone changed this NPC file since you started editing it: saving will be refused. Drop your edit to see theirs.",
+        "Someone changed this monster's loot or spells while you were editing them, so saving will be refused. Undo your changes to see theirs.",
         false,
       );
     }
@@ -1465,13 +1728,16 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
     spellsRows.replaceChildren(
       ...spellsWork.map((s, i) => {
         const line = document.createElement("div");
-        line.className = "items-list-row";
+        line.className = "items-list-editor";
         line.dataset.list = "monster-spells";
+        const head = document.createElement("h4");
+        head.className = "items-list-title";
+        head.textContent = s.tag || `New spell ${i + 1}`;
         const kind = action(document.createElement("select"), "monsters-spell-kind");
         for (const k of c.kinds) {
           const o = document.createElement("option");
           o.value = k;
-          o.textContent = k;
+          o.textContent = AIM_TEXT[k] ?? k;
           kind.append(o);
         }
         kind.value = s.kind;
@@ -1494,12 +1760,13 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
         const ladder = document.createElement("div");
         ladder.className = "monsters-ladder";
         s.ladder.forEach((n, j) => {
+          const players = j < 6 ? `${j + 1}` : "7+";
           const step = intInput(
             n,
             1,
             1_000_000,
             false,
-            `${s.tag || `Spell ${i + 1}`}: ladder step ${j + 1}`,
+            `${s.tag || `Spell ${i + 1}`}: how often with ${players} ${j === 0 ? "player" : "players"}`,
             (x) => {
               s.ladder[j] = x ?? 1;
             },
@@ -1508,23 +1775,31 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
           );
           step.setAttribute(
             "aria-label",
-            `Ladder, ${j < 6 ? j + 1 : "7 or more"} ${j === 0 ? "player" : "players"}`,
+            `1 in, with ${players} ${j === 0 ? "player" : "players"}`,
           );
-          ladder.append(step);
+          const cell = document.createElement("label");
+          cell.className = "monsters-ladder-step";
+          const word = document.createElement("span");
+          word.textContent = `${players} ${j === 0 ? "player" : "players"}`;
+          cell.append(word, step);
+          ladder.append(cell);
         });
         const tag = textInput(
           s.tag,
           (t) => {
             s.tag = t.trim();
+            head.textContent = s.tag || `New spell ${i + 1}`;
           },
           edited,
         );
         // A saved spell's tag is what NPC files name: it stays as it is.
         tag.readOnly = (spellsView?.rows ?? []).some((r) => r.tag !== "" && r.tag === s.tag);
-        line.append(
-          labelled("Tag", tag, "What an NPC file's SPL| line names."),
-          labelled("Effect", fx),
-          labelled("Aim", kind),
+        const row = document.createElement("div");
+        row.className = "items-list-row";
+        row.append(
+          labelled("ID", tag, tag.readOnly ? "Can't change once saved." : "Can't change later."),
+          labelled("Spell", fx),
+          labelled("Where it lands", kind),
           labelled(
             "Power",
             intInput(
@@ -1540,16 +1815,24 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
               spellsInvalid,
             ),
           ),
-          labelled("Ladder (1 to 7+ players)", ladder),
+        );
+        line.append(
+          head,
+          row,
+          labelled(
+            "How often it casts: 1 in …",
+            ladder,
+            "Each turn a monster may cast it, by how many players are on the map. Bigger numbers mean less often.",
+          ),
           check(
             s.aName,
-            'Cast as "a" monster (the original\'s a-prefixed caster)',
+            'Messages call the caster "a" monster ("a Orc")',
             (on) => {
               s.aName = on;
             },
             edited,
           ),
-          panelButton("monsters-spell-remove", "Remove", () => {
+          panelButton("monsters-spell-remove", "Remove this spell", () => {
             spellsWork.splice(i, 1);
             drawSpells();
             forgetGone(spellsInvalid);
@@ -1572,7 +1855,7 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
     ) {
       say(
         spellsStatus,
-        "Someone changed the monster spells since you started editing them: saving will be refused. Drop your edit to see theirs.",
+        "Someone changed the monster spells while you were editing them, so saving will be refused. Undo your changes to see theirs.",
         false,
       );
     }
@@ -1606,7 +1889,10 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
           return true;
       }
     });
-    listCount.textContent = `${rows.length} of ${list.length} monsters`;
+    listCount.textContent =
+      rows.length === list.length
+        ? `${list.length} monsters`
+        : `${rows.length} of ${list.length} monsters`;
     listEl.replaceChildren(
       ...rows.map((m) => {
         const li = document.createElement("li");
@@ -1618,19 +1904,23 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
           b.setAttribute("aria-current", "true");
         }
         const name = document.createElement("span");
-        name.textContent = m.display === m.name ? m.name : `${m.display} (${m.name})`;
+        name.className = "items-list-name";
+        name.textContent = m.display || m.name;
         const meta = document.createElement("span");
         meta.className = "items-list-meta";
         meta.textContent = [
-          m.hostile ? "hostile" : "",
+          m.hostile ? "attacks" : "",
           m.npc ? "NPC" : "",
-          m.sea ? "sea" : "",
-          m.state === "yours" ? "yours" : m.state === "edited" ? "changed" : "",
-          m.pending ? "in the draft" : "",
+          m.sea ? "water" : "",
+          m.state === "yours" ? "added by you" : m.state === "edited" ? "changed" : "",
+          m.pending ? "unpublished" : "",
         ]
           .filter((x) => x !== "")
           .join(" · ");
         b.append(name, " ", meta);
+        if (m.display && m.display !== m.name) {
+          b.title = `ID: ${m.name}`;
+        }
         b.addEventListener("click", () => openMonster(m.name));
         li.append(b);
         return li;
@@ -1661,7 +1951,7 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
         status,
         busy || npcBusy
           ? "Wait for the save to finish."
-          : `${shown.display || shown.name} has unsaved changes: save them or drop your edit first.`,
+          : `${shown.display || shown.name} has unsaved changes: save them or undo them first.`,
         false,
       );
       return;
@@ -1702,7 +1992,7 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
     draftText.textContent =
       total === 0
         ? ""
-        : `The draft holds ${view.monsterDraft === 1 ? "1 monster change" : `${view.monsterDraft} monster changes`}${view.otherDraft > 0 ? ` and ${view.otherDraft} other ${view.otherDraft === 1 ? "change" : "changes"}` : ""}, live once published. `;
+        : `${total === 1 ? "1 unpublished change" : `${total} unpublished changes`}${view.otherDraft > 0 && view.monsterDraft > 0 ? ` (${view.monsterDraft} to monsters)` : view.monsterDraft === 0 ? " (none to monsters)" : ""}. Players get them once you publish. `;
     // The spells card refreshes unless it holds an edit.
     const firstSpells = spellsView === null;
     spellsView = view.spells;
@@ -1711,6 +2001,7 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
     }
     updateSpells();
     const m = view.monster;
+    empty.hidden = openName !== null && shown !== null;
     if (!openName) {
       return;
     }
@@ -1720,6 +2011,7 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
         shown = null;
         npcShown = null;
         form.hidden = true;
+        empty.hidden = false;
         openName = null;
         body?.clear();
       }
@@ -1729,6 +2021,7 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
     const wasPublished = shown?.published;
     shown = m;
     form.hidden = false;
+    empty.hidden = true;
     if (first) {
       fill();
       showBody(m.name);
@@ -1816,10 +2109,12 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
           if (!keep) {
             fillNpc();
           }
+          markUsed();
           updateNpc();
           return;
         }
         drawNpc();
+        markUsed();
         updateNpc();
         return;
       }
@@ -1868,6 +2163,7 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
             newName.value = "";
             newDisplay.value = "";
             newFrom.value = "";
+            newBox.open = false;
             // The answer's view carries the new monster's form: it opens from it.
             openName = save.name;
             shown = null;
@@ -1875,8 +2171,12 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
           }
         } else if (openName && save.name.toLowerCase() === openName.toLowerCase()) {
           busy = false;
+          const next = renameNext;
+          renameNext = null;
           if (msg.result) {
             if (msg.result.ok && newer && msg.view.monster) {
+              // Saved: the part saved shows what the draft now holds; an unsaved edit in the
+              // other part stays (a rename keeps rule edits, a rules save keeps a typed name).
               shown = msg.view.monster;
               if (save.op === "rename") {
                 fillName();
@@ -1897,6 +2197,20 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
               msg.result.ok,
             );
           }
+          if (newer) {
+            appliedSeq = msg.seq;
+            show(msg.view);
+          } else {
+            update();
+          }
+          // The rules are saved: the name the same Save carried goes next.
+          if (msg.result?.ok && save.op === "set" && next !== null && nameDirty() && shown) {
+            const change = renameChange(shown.fingerprint);
+            if (change) {
+              send(change);
+            }
+          }
+          return;
         }
         if (newer) {
           appliedSeq = msg.seq;
@@ -1931,6 +2245,7 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
       work = { record: {}, form: {} };
       filled = { value: "", fingerprint: "", display: "", nameFingerprint: "" };
       busy = false;
+      renameNext = null;
       invalid.clear();
       npcShown = null;
       npcWork = { loot: [], spells: [], flags: [] };
@@ -1957,6 +2272,7 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
       npcBody.replaceChildren();
       spellsRows.replaceChildren();
       form.hidden = true;
+      empty.hidden = false;
       loading.hidden = false;
       draftLine.hidden = true;
     },

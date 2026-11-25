@@ -302,8 +302,10 @@ describe("the Balance page's Monsters card", () => {
         error: expect.any(String),
         problems: [
           {
-            where: "… is at most",
-            message: expect.stringContaining('"… is at most" must be at most'),
+            where: "An NPC spawns when that roll is at most",
+            message: expect.stringContaining(
+              '"An NPC spawns when that roll is at most" must be at most',
+            ),
           },
         ],
       });
@@ -315,7 +317,7 @@ describe("the Balance page's Monsters card", () => {
         expect: r.fingerprint,
       });
       expect(low.ok).toBe(false);
-      expect(!low.ok && low.problems?.[0]?.where).toBe("Move pick with 1 player: random(n)");
+      expect(!low.ok && low.problems?.[0]?.where).toBe("Move roll with 1 player: 1 to");
       expect(r.fields.find((f) => f.path.join(".") === "moveLadder.0")?.min).toBe(4);
       expect(r.fields.find((f) => f.path.join(".") === "factionSlotRandomN")?.min).toBe(4);
       // One error for a value of 0, not two contradicting ones.

@@ -186,7 +186,7 @@ describe("the Monsters page", () => {
     openOrc(t);
     const save = t.q<HTMLButtonElement>('[data-action="monsters-save"]');
     expect(save.disabled).toBe(true);
-    const hp = t.qa('section[data-group="stats"] input[type="number"]')[0] as HTMLInputElement;
+    const hp = t.qa('section[data-group="basics"] input[type="number"]')[0] as HTMLInputElement;
     hp.value = "45";
     hp.dispatchEvent(new Event("input"));
     expect(save.disabled).toBe(false);
@@ -237,7 +237,8 @@ describe("the Monsters page", () => {
         ],
       },
     });
-    expect(dropOdds(2, 5)).toBe("1 in 10 a kill");
+    expect(dropOdds(2, 5)).toBe("About 1 in 10 kills");
+    expect(dropOdds(1, 1)).toBe("Every kill");
   });
 
   test("an NPC file save names the revision the edit started from; a bad chance blocks it", () => {
@@ -269,7 +270,7 @@ describe("the Monsters page", () => {
   test("the two spawn minutes go together: one alone cannot be saved", () => {
     const t = page();
     openOrc(t);
-    const nums = t.qa('section[data-group="stats"] input[type="number"]') as HTMLInputElement[];
+    const nums = t.qa('section[data-group="basics"] input[type="number"]') as HTMLInputElement[];
     const after = nums[3] as HTMLInputElement;
     const before = nums[4] as HTMLInputElement;
     after.value = "10";
@@ -303,7 +304,7 @@ describe("the Monsters page", () => {
       view: file({ exists: false, revision: null, loot: [], lines: 0 }),
     });
     const save = t.q<HTMLButtonElement>('[data-action="monsters-npc-save"]');
-    expect(save.textContent).toBe("Attach an NPC file now");
+    expect(save.textContent).toBe("Create its NPC file");
     expect(save.disabled).toBe(false);
     save.click();
     expect(t.npcSets.at(-1)).toMatchObject({
@@ -345,5 +346,163 @@ describe("the Monsters page", () => {
     t.p.receive({ t: "contentMonsters", seq: old, view: view(orc("z".repeat(16))) });
     expect(t.qa("button[data-monster]")).toHaveLength(0);
     expect(t.p.changes()).toBe(0);
+  });
+});
+
+describe("the plain-language form", () => {
+  const save = (t: ReturnType<typeof page>) =>
+    t.q<HTMLButtonElement>('[data-action="monsters-save"]');
+
+  test("one Save sends the rules, then the name players see once the rules are saved", () => {
+    const t = page();
+    openOrc(t);
+    const hp = t.qa('section[data-group="basics"] input[type="number"]')[0] as HTMLInputElement;
+    hp.value = "50";
+    hp.dispatchEvent(new Event("input"));
+    const display = t.q<HTMLInputElement>("#monsters-display");
+    display.value = "Big Orc";
+    display.dispatchEvent(new Event("input"));
+    save(t).click();
+    expect(t.sets.map((s) => s.change.op)).toEqual(["set"]);
+    t.p.receive({
+      t: "contentMonsters",
+      seq: t.sets.at(-1)?.seq ?? 0,
+      view: view(orc("d".repeat(16), { record: { ...orc("").record, hp: 50 } })),
+      result: { ok: true, text: "Saved." },
+    });
+    expect(t.sets.at(-1)?.change).toEqual({
+      name: "Orc",
+      op: "rename",
+      display: "Big Orc",
+      expect: "d".repeat(16),
+    });
+  });
+
+  test("a name alone is saved by the same button", () => {
+    const t = page();
+    openOrc(t);
+    const display = t.q<HTMLInputElement>("#monsters-display");
+    display.value = "Big Orc";
+    display.dispatchEvent(new Event("input"));
+    expect(save(t).disabled).toBe(false);
+    save(t).click();
+    expect(t.sets.at(-1)?.change).toMatchObject({ op: "rename", display: "Big Orc" });
+  });
+
+  test("a weapon bonus is typed from … to … and saved as a roll", () => {
+    const t = page();
+    openOrc(t);
+    t.q<HTMLButtonElement>('[data-action="monsters-affinity-add"]').click();
+    const row = t.q('[data-list="affinities"]');
+    const name = row.querySelector('[data-action="monsters-text"]') as HTMLInputElement;
+    name.value = "Silver";
+    name.dispatchEvent(new Event("input"));
+    const from = row.querySelector('[data-action="monsters-affinity-from"]') as HTMLInputElement;
+    const to = row.querySelector('[data-action="monsters-affinity-to"]') as HTMLInputElement;
+    expect([from.value, to.value]).toEqual(["1", "1"]);
+    from.value = "3";
+    to.value = "8";
+    from.dispatchEvent(new Event("input"));
+    save(t).click();
+    expect(
+      (t.sets.at(-1)?.change.data as { affinities?: unknown } | undefined)?.affinities,
+    ).toEqual([{ weapon: "Silver", delta: 2, randomN: 6 }]);
+  });
+
+  test("a weapon bonus whose 'to' is below its 'from' can't be saved", () => {
+    const t = page();
+    openOrc(t);
+    t.q<HTMLButtonElement>('[data-action="monsters-affinity-add"]').click();
+    const row = t.q('[data-list="affinities"]');
+    const to = row.querySelector('[data-action="monsters-affinity-to"]') as HTMLInputElement;
+    to.value = "-5";
+    to.dispatchEvent(new Event("input"));
+    expect(save(t).disabled).toBe(true);
+    expect(t.q(".control-panel-form-actions .balance-status").textContent).toContain(
+      "Weapon bonus",
+    );
+  });
+
+  test("tabs with settings carry a mark; More options opens when one of its fields is set", () => {
+    const t = page();
+    openOrc(t);
+    const group = (id: string) => t.q<HTMLElement>(`section[data-group="${id}"]`);
+    expect(group("lists").dataset.used).toBe("true");
+    expect(group("behaviour").dataset.used).toBe("false");
+    expect(group("behaviour").querySelector<HTMLDetailsElement>(".items-more")?.open).toBe(false);
+    const box = group("behaviour").querySelector<HTMLInputElement>('input[type="checkbox"]');
+    box?.click();
+    expect(group("behaviour").dataset.used).toBe("true");
+    // A monster that is already big opens the fold.
+    const big = page();
+    big.p.onShow();
+    big.p.open("Orc");
+    big.p.receive({
+      t: "contentMonsters",
+      seq: big.asked.at(-1)?.seq ?? 0,
+      view: view(orc("a".repeat(16), { form: { name: "Orc", footprint: true } })),
+    });
+    expect(
+      big.q('section[data-group="behaviour"]').querySelector<HTMLDetailsElement>(".items-more")
+        ?.open,
+    ).toBe(true);
+  });
+
+  test("Restore this tab shows only where the monster differs from the pack", () => {
+    const t = page();
+    openOrc(t);
+    const restore = t.q<HTMLButtonElement>('[data-action="monsters-pack-basics"]');
+    expect(restore.hidden).toBe(true);
+    const hp = t.qa('section[data-group="basics"] input[type="number"]')[0] as HTMLInputElement;
+    hp.value = "99";
+    hp.dispatchEvent(new Event("input"));
+    expect(restore.hidden).toBe(false);
+    restore.click();
+    expect(save(t).disabled).toBe(true);
+  });
+
+  test("the NPC flags the game reads are tick boxes; others stay as text", () => {
+    const t = page();
+    t.p.onShow();
+    t.p.open("Orc");
+    t.p.receive({
+      t: "contentMonsters",
+      seq: t.asked.at(-1)?.seq ?? 0,
+      view: view(orc("a".repeat(16))),
+    });
+    t.p.receive({
+      t: "contentNpcFile",
+      seq: t.npcAsks.at(-1)?.seq ?? 0,
+      view: file({ flags: ["Custom"] }),
+    });
+    const flags = t.qa('[data-action="monsters-npc-flag"]') as HTMLInputElement[];
+    expect(flags.map((f) => f.checked)).toEqual([false, false]);
+    (flags[0] as HTMLInputElement).click();
+    const other = t.q<HTMLTextAreaElement>('[data-action="monsters-npc-flags"]');
+    expect(other.value).toBe("Custom");
+    expect(other.closest("details")?.open).toBe(true);
+    t.q<HTMLButtonElement>('[data-action="monsters-npc-save"]').click();
+    expect(t.npcSets.at(-1)?.s.flags).toEqual(["Custom", "Passive"]);
+  });
+
+  test("ticking a spell adds it to the file's spells", () => {
+    const t = page();
+    openOrc(t);
+    const pick = t.q('[data-list="spells"]');
+    const box = pick.querySelector<HTMLInputElement>('input[type="checkbox"]');
+    expect(box?.checked).toBe(false);
+    box?.click();
+    t.q<HTMLButtonElement>('[data-action="monsters-npc-save"]').click();
+    expect(t.npcSets.at(-1)?.s.spells).toEqual(["Splash"]);
+  });
+
+  test("a monster spell's aim is shown in words", () => {
+    const t = page();
+    openOrc(t);
+    const aim = t.q<HTMLSelectElement>('[data-action="monsters-spell-kind"]');
+    expect([...aim.options].map((o) => o.textContent)).toEqual([
+      "Lands near the player",
+      "On the monster itself",
+    ]);
   });
 });

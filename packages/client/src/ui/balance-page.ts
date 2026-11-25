@@ -1,15 +1,17 @@
 /**
- * The Control Panel's Balance page (issue #19): the world's global balance numbers, grouped in
- * cards. Each value shows what plays now, the installed packs' value and the engine's default,
- * with its limits; an edited row is marked, and Reset puts the pack's value back (the engine's
- * default when no pack sets one). An SSO page: 1.6 kept these numbers in its code.
+ * The Control Panel's Balance page (issue #19): the world's global balance numbers, in plain words,
+ * one card at a time behind tabs (Search looks across every card). Each value says what it was
+ * originally (the installed packs' value, or the engine's default when no pack sets one) and what
+ * players have now when that differs; a fixed amount and its roll are typed as one "from … to …"
+ * range. A value you changed is marked, and its tab carries a dot. An SSO page: 1.6 kept these
+ * numbers in its code.
  *
  * Changes go into the content store's shared draft as rows of the `balance` dataset, so the
  * Content page publishes, undoes and notices them like any other row. A save carries the row as
  * the page showed it (`fingerprint`), and the server refuses it if someone changed the row since.
  *
  * Refreshes never touch a row being edited: its inputs and fingerprint stay as they were filled,
- * while its "now / pack / default" line follows the server.
+ * while its "original / live" lines follow the server.
  */
 import type {
   BalanceFieldView,
@@ -21,6 +23,7 @@ import type {
 
 import { action, noAutofill } from "./action.ts";
 import { pageHeading, panelButton } from "./control-panel-kit.ts";
+import { rollBounds, rollFrom } from "./items-page.ts";
 
 /** A row change as the page sends it. */
 export interface BalanceChange {
@@ -128,10 +131,10 @@ export function shownValue(v: unknown, f: BalanceFieldView): string {
     return `${v} (${seconds(v / 2)} s)`;
   }
   if (f.unit === "random") {
-    return v === 0 ? "no roll" : `random(${v})`;
+    return v === 0 ? "no roll" : `1 to ${v}`;
   }
   if (f.unit === "power") {
-    return v === 0 ? "no power" : `${v} × power`;
+    return v === 0 ? "none" : `power × ${v}`;
   }
   if (f.unit === "oneIn") {
     return `1 in ${v}`;
@@ -142,7 +145,7 @@ export function shownValue(v: unknown, f: BalanceFieldView): string {
   if (f.unit === "counter") {
     // The counter starts at 1, so it acts every target − 1 frames (every frame at 1 or 2).
     const every = Math.max(1, v - 1);
-    return `${v}: acts every ${every} frame${every === 1 ? "" : "s"} (${seconds(every)} s)`;
+    return `${v} (every ${every} frame${every === 1 ? "" : "s"}, ${seconds(every)} s)`;
   }
   return String(v);
 }
@@ -232,6 +235,61 @@ export function fieldError(text: string, f: BalanceFieldView): string | null {
   return null;
 }
 
+/** An amount's fixed part and roll typed as one range. */
+interface RangeUi {
+  key: string;
+  label: string;
+  optional: boolean;
+  from: HTMLInputElement;
+  to: HTMLInputElement;
+  flat: { field: BalanceFieldView; input: HTMLInputElement };
+  randomN: { field: BalanceFieldView; input: HTMLInputElement };
+  info: HTMLElement;
+}
+
+/** A fixed part and a roll as words: "7 to 12", "5", or "none". */
+export function rangeText(flat: unknown, randomN: unknown): string {
+  if (typeof flat !== "number") {
+    return "none";
+  }
+  const b = rollBounds(flat, typeof randomN === "number" ? randomN : 0);
+  return b.from === b.to ? String(b.from) : `${b.from} to ${b.to}`;
+}
+
+/**
+ * Why a typed range is refused, or the fixed part and roll it stands for. `random(n)` rolls 1 to
+ * n, so a range that rolls starts one above its fixed part: one starting at the fixed part's
+ * lowest value can only be fixed.
+ */
+export function readRange(
+  fromText: string,
+  toText: string,
+  label: string,
+  flat: { min: number; max: number },
+  randomN: { min: number; max: number },
+): { flat: number; randomN: number } | string {
+  const f = fromText.trim();
+  const t = toText.trim();
+  if (!/^-?\d+$/.test(f) || !/^-?\d+$/.test(t) || Number(t) < Number(f)) {
+    return `${label}: whole numbers, "to" no lower than "from"`;
+  }
+  const from = Number(f);
+  const to = Number(t);
+  const r = rollFrom(from, to);
+  if (r.flat < flat.min) {
+    return from === to || from < flat.min
+      ? `${label}: from ${flat.min} at the lowest`
+      : `${label}: a range can't start at ${from}; start it at ${from + 1}, or make it a fixed ${from}`;
+  }
+  if (r.flat > flat.max) {
+    return `${label}: "from" is at most ${flat.max + (r.randomN > 0 ? 1 : 0)}`;
+  }
+  if (r.randomN > randomN.max) {
+    return `${label}: "from" and "to" at most ${randomN.max - 1} apart`;
+  }
+  return r;
+}
+
 /** One row's card section. */
 interface RowUi {
   el: HTMLElement;
@@ -253,26 +311,28 @@ interface RowUi {
   drop: HTMLButtonElement;
   /** Puts the fields back as they were filled: shown only while the row is edited. */
   undoEdit: HTMLButtonElement;
+  /** Its amounts typed as "from … to …" (a fixed part and a roll, kept in the hidden inputs). */
+  ranges: RangeUi[];
+  /** A range's error, by the amount's path, while its from/to do not read. */
+  rangeErrors: Map<string, string>;
   busy: boolean;
 }
 
 export function createBalancePage(actions: BalancePageActions): BalancePage {
   const el = document.createElement("div");
-  el.className = "balance-page";
+  el.className = "balance-page plain-editor";
   el.append(
     pageHeading(
       "Balance",
-      "The game's global numbers: spell amounts, buffs, regeneration, hunger, death, death drops and loot, timings, combat rolls, how monsters move and spawn, hulls and the cannon. Each value shows what plays now, the pack's value and the engine's default. Changes go into the content draft, published from the Content page.",
+      "The game's global numbers: spells, buffs, hunger and death, timings, combat, monsters and vehicles. Pick a tab, or search. Saving puts your changes in the draft: players get them once you publish on the Content page.",
     ),
   );
   const draftLine = document.createElement("div");
   draftLine.className = "balance-draft";
   draftLine.hidden = true;
   const draftText = document.createElement("span");
-  const toContent = panelButton(
-    "balance-open-content",
-    "Review and publish on the Content page",
-    () => actions.openContent(),
+  const toContent = panelButton("balance-open-content", "Review and publish…", () =>
+    actions.openContent(),
   );
   draftLine.append(draftText, toContent);
   const loading = document.createElement("p");
@@ -286,20 +346,25 @@ export function createBalancePage(actions: BalancePageActions): BalancePage {
   const search = noAutofill(action(document.createElement("input"), "balance-search"));
   search.type = "search";
   search.id = "balance-search";
-  search.placeholder = "Find a value (hunger, cannon, parry…)";
+  search.placeholder = "Search every tab (hunger, cannon, parry…)";
   const searchLabel = document.createElement("label");
   searchLabel.className = "control-panel-field-label";
   searchLabel.htmlFor = search.id;
-  searchLabel.textContent = "Find";
+  searchLabel.textContent = "Search";
   const noMatch = document.createElement("p");
   noMatch.className = "balance-no-match";
   noMatch.hidden = true;
   noMatch.textContent = "Nothing matches.";
   searchWrap.append(searchLabel, search);
-  el.append(draftLine, searchWrap, loading, noMatch, cards);
+  // One card at a time: a tab for each, and All.
+  const strip = document.createElement("div");
+  strip.className = "control-panel-tabs balance-tabs";
+  strip.setAttribute("role", "tablist");
+  strip.setAttribute("aria-label", "Balance groups");
+  strip.hidden = true;
+  el.append(draftLine, searchWrap, strip, loading, noMatch, cards);
 
   let seq = 0;
-  /** The newest view request's seq: an older answer never replaces a newer view. */
   /** Answers to requests sent before the last `reset` (a new session) are dropped. */
   let resetSeq = -1;
   /** The newest view applied: an older one never replaces it, whichever arrives first. */
@@ -310,8 +375,11 @@ export function createBalancePage(actions: BalancePageActions): BalancePage {
   let groupsShown = "";
   /** Each "elsewhere" line's value, by `<group>:<index>`. */
   const elsewhereNow = new Map<string, HTMLElement>();
+  /** The tab chosen: a card's id, or "all". */
+  let chosen = "";
 
   const dirty = (r: RowUi) =>
+    r.rangeErrors.size > 0 ||
     r.inputs.some(
       ({ field, input }) => input.value.trim() !== String(at(r.filled.value, field.path) ?? ""),
     );
@@ -319,6 +387,7 @@ export function createBalancePage(actions: BalancePageActions): BalancePage {
   const errors = (r: RowUi) => [
     ...r.inputs.map(({ field, input }) => fieldError(input.value, field)).filter((e) => e !== null),
     ...partialErrors(r.inputs),
+    ...r.rangeErrors.values(),
   ];
 
   /** The typed value of the field at `path` in a row, or null when the row has none there. */
@@ -342,44 +411,69 @@ export function createBalancePage(actions: BalancePageActions): BalancePage {
     }
   };
 
+  /** Shows each range's hidden fixed part and roll as its from/to. */
+  const fillRanges = (r: RowUi) => {
+    r.rangeErrors.clear();
+    for (const g of r.ranges) {
+      const flat = g.flat.input.value.trim();
+      if (flat === "") {
+        g.from.value = "";
+        g.to.value = "";
+      } else {
+        const b = rollBounds(Number(flat), Number(g.randomN.input.value.trim() || "0"));
+        g.from.value = String(b.from);
+        g.to.value = String(b.to);
+      }
+    }
+  };
+
   const fill = (r: RowUi) => {
     r.filled = { value: structuredClone(r.view.draft), fingerprint: r.view.fingerprint };
     for (const { field, input } of r.inputs) {
       input.value = String(at(r.view.draft, field.path) ?? "");
     }
+    fillRanges(r);
   };
+
+  /** "Original: 5", and what players have now when that differs. */
+  const infoText = (original: string, live: string) =>
+    live === original ? `Original: ${original}` : `Original: ${original} · players have ${live}`;
 
   const update = (r: RowUi) => {
     const v = r.view;
     updatePreviews(r);
+    const original = v.pack ?? v.engine;
     for (const { field, info } of r.inputs) {
-      const pack = v.pack === null ? null : at(v.pack, field.path);
-      const parts = [`Now ${shownValue(at(v.published, field.path), field)}`];
-      parts.push(pack === null ? "no pack value" : `pack ${shownValue(pack, field)}`);
-      parts.push(`engine default ${shownValue(at(v.engine, field.path), field)}`);
-      if (field.unit !== "choice") {
-        parts.push(`limits ${field.min} to ${field.max}`);
-      }
-      info.textContent = parts.join(" · ");
-    }
-    const tags: string[] = [];
-    if (v.edited) {
-      tags.push(v.pack === null ? "Changed from the engine default" : "Changed from the pack");
-    }
-    if (v.pending === "set") {
-      tags.push("Changed in the draft");
-    } else if (v.pending === "revert" || v.pending === "remove") {
-      tags.push("Reset in the draft");
-    }
-    if (v.notice) {
-      tags.push(
-        `${v.notice.packName} v${v.notice.packVersion} changed this: answer it on the Content page`,
+      info.textContent = infoText(
+        shownValue(at(original, field.path), field),
+        shownValue(at(v.published, field.path), field),
       );
     }
+    for (const g of r.ranges) {
+      const path = g.key.split(".").filter((x) => x !== "");
+      const of = (value: unknown) =>
+        rangeText(at(value, [...path, "flat"]), at(value, [...path, "randomN"]));
+      g.info.textContent = infoText(of(original), of(v.published));
+    }
+    const tags: [string, string][] = [];
+    if (v.edited || v.pending === "set") {
+      tags.push(["Changed by you", "changed"]);
+    }
+    if (v.pending === "set") {
+      tags.push(["Unpublished changes", "pending"]);
+    } else if (v.pending === "revert" || v.pending === "remove") {
+      tags.push(["Back to the original once published", "pending"]);
+    }
+    if (v.notice) {
+      tags.push([
+        `${v.notice.packName} ${v.notice.packVersion} changed this: review it on the Content page`,
+        "pending",
+      ]);
+    }
     r.badges.replaceChildren(
-      ...tags.map((t) => {
+      ...tags.map(([t, kind]) => {
         const s = document.createElement("span");
-        s.className = "balance-tag";
+        s.className = `balance-tag items-tag-${kind}`;
         s.textContent = t;
         return s;
       }),
@@ -389,9 +483,13 @@ export function createBalancePage(actions: BalancePageActions): BalancePage {
     r.stale.hidden = !(isDirty && r.filled.fingerprint !== v.fingerprint);
     const errs = errors(r);
     r.save.disabled = r.busy || !isDirty || errs.length > 0;
-    r.reset.textContent = v.pack === null ? "Reset to the engine default" : "Reset to the pack";
+    r.reset.title =
+      v.pack === null
+        ? "Puts back the game's default value once published."
+        : "Puts back the pack's value once published.";
     r.reset.hidden = !(v.edited && v.pending === null) && v.pending !== "set";
     r.reset.disabled = r.busy;
+    r.drop.title = "Takes this change out of the draft: players keep what they have now.";
     r.drop.hidden = v.pending === null;
     r.drop.disabled = r.busy;
     r.undoEdit.hidden = !isDirty;
@@ -404,6 +502,10 @@ export function createBalancePage(actions: BalancePageActions): BalancePage {
       } else {
         input.readOnly = r.busy;
       }
+    }
+    for (const g of r.ranges) {
+      g.from.readOnly = r.busy;
+      g.to.readOnly = r.busy;
     }
     if (errs.length > 0) {
       r.status.textContent = errs.join(". ");
@@ -447,6 +549,16 @@ export function createBalancePage(actions: BalancePageActions): BalancePage {
     actions.set(seq, change);
   };
 
+  /** A field's label with its unit in words. */
+  const labelText = (f: BalanceFieldView) =>
+    f.unit === "frames"
+      ? `${f.label} (in 1/20ths of a second)`
+      : f.unit === "passFrames"
+        ? `${f.label} (in 1/40ths of a second)`
+        : f.unit === "seconds"
+          ? `${f.label} (seconds)`
+          : f.label;
+
   const makeRow = (v: BalanceRowView): RowUi => {
     const sec = document.createElement("section");
     sec.className = "balance-row";
@@ -468,19 +580,134 @@ export function createBalancePage(actions: BalancePageActions): BalancePage {
       badges,
       status: document.createElement("p"),
       stale: document.createElement("p"),
-      save: panelButton("balance-save", "Save to the draft", () => send(r, "set"), "primary"),
-      reset: panelButton("balance-reset", "Reset to the pack", () => send(r, "revert")),
-      drop: panelButton("balance-discard", "Drop the draft's change", () => send(r, "discard")),
-      undoEdit: panelButton("balance-undo-edit", "Drop my edit", () => {
+      save: panelButton("balance-save", "Save changes", () => send(r, "set"), "primary"),
+      reset: panelButton("balance-reset", "Restore the original", () => send(r, "revert")),
+      drop: panelButton("balance-discard", "Cancel unpublished changes", () => send(r, "discard")),
+      undoEdit: panelButton("balance-undo-edit", "Undo changes", () => {
         fill(r);
         r.status.textContent = "";
         update(r);
       }),
       busy: false,
+      ranges: [],
+      rangeErrors: new Map(),
     };
+    const edited = () => {
+      r.status.textContent = "";
+      update(r);
+    };
+    const pathOf = (f: BalanceFieldView) => f.path.join(".");
+    const sibling = (f: BalanceFieldView, last: string) =>
+      v.fields.find((g) => pathOf(g) === [...f.path.slice(0, -1), last].join("."));
+    /** An amount's fixed part with its roll beside it: typed together as from … to …. */
+    const pairOf = (f: BalanceFieldView) => {
+      if (f.path.at(-1) !== "flat" || f.unit !== "count") {
+        return undefined;
+      }
+      const roll = sibling(f, "randomN");
+      return roll?.unit === "random" ? roll : undefined;
+    };
+    const inRange = new Set(
+      v.fields.filter((f) => pairOf(f)).flatMap((f) => [pathOf(f), pathOf(pairOf(f) as never)]),
+    );
+    const idBase = `balance-${rowId(v).replace(/[^A-Za-z0-9]/g, "-")}`;
     for (const f of v.fields) {
+      const roll = pairOf(f);
+      if (inRange.has(pathOf(f)) && !roll) {
+        // The roll of a range: its hidden input came with the fixed part.
+        continue;
+      }
       const wrap = document.createElement("div");
       wrap.className = "control-panel-field balance-field";
+      const label = document.createElement("label");
+      label.className = "control-panel-field-label";
+      const info = document.createElement("p");
+      info.className = "control-panel-field-help balance-info";
+      if (roll) {
+        // The fixed part and the roll, held in hidden inputs the row reads and sends as before.
+        const hidden = (g: BalanceFieldView) => {
+          const i = document.createElement("input");
+          i.type = "hidden";
+          i.dataset.path = pathOf(g);
+          return i;
+        };
+        const flatIn = hidden(f);
+        const rollIn = hidden(roll);
+        const key = parentKey(f);
+        const from = noAutofill(action(document.createElement("input"), "balance-range-from"));
+        const to = noAutofill(action(document.createElement("input"), "balance-range-to"));
+        for (const [i, word] of [
+          [from, "from"],
+          [to, "to"],
+        ] as const) {
+          i.type = "number";
+          i.step = "1";
+          i.dataset.range = `${key}.${word}`;
+          i.setAttribute("aria-label", `${f.label} ${word}`);
+          if (f.optional) {
+            i.placeholder = "None";
+          }
+        }
+        from.id = `${idBase}-${f.path.slice(0, -1).join("-")}-from`;
+        label.htmlFor = from.id;
+        label.textContent = f.label;
+        info.id = `${from.id}-info`;
+        from.setAttribute("aria-describedby", info.id);
+        to.setAttribute("aria-describedby", info.id);
+        const pair = document.createElement("div");
+        pair.className = "items-range-pair";
+        pair.append(from, " to ", to);
+        const g: RangeUi = {
+          key,
+          label: f.label,
+          optional: f.optional === true,
+          from,
+          to,
+          flat: { field: f, input: flatIn },
+          randomN: { field: roll, input: rollIn },
+          info,
+        };
+        const read = () => {
+          r.rangeErrors.delete(key);
+          if (from.value.trim() === "" && to.value.trim() === "" && g.optional) {
+            flatIn.value = "";
+            rollIn.value = "";
+          } else {
+            const got = readRange(from.value, to.value, f.label, f, roll);
+            if (typeof got === "string") {
+              r.rangeErrors.set(key, got);
+            } else {
+              flatIn.value = String(got.flat);
+              rollIn.value = String(got.randomN);
+            }
+          }
+          edited();
+        };
+        from.addEventListener("input", read);
+        to.addEventListener("input", read);
+        wrap.append(label, pair, info, flatIn, rollIn);
+        for (const help of [f.help, roll.help]) {
+          if (help) {
+            const p = document.createElement("p");
+            p.className = "control-panel-field-help";
+            p.textContent = help;
+            wrap.append(p);
+          }
+        }
+        r.inputs.push({ field: f, input: flatIn, info: document.createElement("p") });
+        r.inputs.push({ field: roll, input: rollIn, info: document.createElement("p") });
+        r.ranges.push(g);
+        fields.append(wrap);
+        // An amount with a power multiple previews its whole range at a few powers.
+        if (sibling(f, "power")) {
+          const preview = document.createElement("p");
+          preview.className = "control-panel-field-help balance-preview";
+          preview.setAttribute("aria-live", "polite");
+          wrap.append(preview);
+          r.previews.set(key, preview);
+        }
+        continue;
+      }
       let input: HTMLInputElement | HTMLSelectElement;
       if (f.unit === "choice") {
         const sel = action(document.createElement("select"), "balance-value");
@@ -497,24 +724,16 @@ export function createBalancePage(actions: BalancePageActions): BalancePage {
         num.min = String(f.min);
         num.max = String(f.max);
         num.step = "1";
+        num.title = `From ${f.min} to ${f.max}`;
         input = num;
       }
-      input.dataset.path = f.path.join(".");
-      input.id = `balance-${rowId(v).replace(/[^A-Za-z0-9]/g, "-")}-${f.path.join("-")}`;
-      const label = document.createElement("label");
-      label.className = "control-panel-field-label";
+      input.dataset.path = pathOf(f);
+      input.id = `${idBase}-${f.path.join("-")}`;
       label.htmlFor = input.id;
-      label.textContent =
-        f.unit === "frames"
-          ? `${f.label} (frames, 20 a second)`
-          : f.unit === "seconds"
-            ? `${f.label} (seconds)`
-            : f.label;
+      label.textContent = labelText(f);
       if (f.optional && input instanceof HTMLInputElement) {
-        input.placeholder = "none";
+        input.placeholder = "None";
       }
-      const info = document.createElement("p");
-      info.className = "control-panel-field-help balance-info";
       info.id = `${input.id}-info`;
       input.setAttribute("aria-describedby", info.id);
       wrap.append(label, input, info);
@@ -524,22 +743,8 @@ export function createBalancePage(actions: BalancePageActions): BalancePage {
         help.textContent = f.help;
         wrap.append(help);
       }
-      input.addEventListener(f.unit === "choice" ? "change" : "input", () => {
-        r.status.textContent = "";
-        update(r);
-      });
+      input.addEventListener(f.unit === "choice" ? "change" : "input", edited);
       fields.append(wrap);
-      // The last part of an amount carries the amount's range preview.
-      if (
-        f.path.at(-1) === "randomN" &&
-        v.fields.some((g) => g.path.join(".") === `${parentKey(f)}.flat`)
-      ) {
-        const preview = document.createElement("p");
-        preview.className = "control-panel-field-help balance-preview";
-        preview.setAttribute("aria-live", "polite");
-        wrap.append(preview);
-        r.previews.set(parentKey(f), preview);
-      }
       r.inputs.push({ field: f, input, info });
     }
     r.status.className = "balance-status";
@@ -547,14 +752,84 @@ export function createBalancePage(actions: BalancePageActions): BalancePage {
     r.stale.className = "balance-stale";
     r.stale.hidden = true;
     r.stale.textContent =
-      "Someone changed this row since you started editing it: saving will be refused. Drop your edit to see theirs.";
+      "Someone changed this while you were editing it, so saving will be refused. Undo your changes to see theirs.";
+    const saveButtons = document.createElement("div");
+    saveButtons.className = "content-buttons";
+    saveButtons.append(r.save, r.undoEdit);
+    const resetButtons = document.createElement("div");
+    resetButtons.className = "content-buttons items-reset-buttons";
+    resetButtons.append(r.reset, r.drop);
     const buttons = document.createElement("div");
-    buttons.className = "content-buttons";
-    buttons.append(r.save, r.undoEdit, r.reset, r.drop);
+    buttons.className = "items-actions";
+    buttons.append(saveButtons, resetButtons);
     sec.append(h, badges, fields, r.stale, buttons, r.status);
     fill(r);
     return r;
   };
+
+  /** A row the operator changed (published or in the draft): its card's tab carries a dot. */
+  const changedByYou = (v: BalanceRowView) => v.edited || v.pending === "set";
+
+  const drawTabs = (view: ContentBalanceView) => {
+    if (!view.groups.some((g) => g.id === chosen) && chosen !== "all") {
+      chosen = view.groups[0]?.id ?? "all";
+    }
+    strip.replaceChildren(
+      ...[...view.groups.map((g) => [g.id, g.title] as const), ["all", "All"] as const].map(
+        ([id, title]) => {
+          const b = action(document.createElement("button"), "balance-tab");
+          b.type = "button";
+          b.className = "control-panel-tab";
+          b.setAttribute("role", "tab");
+          b.dataset.tab = id;
+          b.textContent = title;
+          b.addEventListener("click", () => {
+            chosen = id;
+            applySearch();
+          });
+          return b;
+        },
+      ),
+    );
+    strip.hidden = view.groups.length < 2;
+  };
+
+  /** Marks each tab whose card holds a value changed by you. */
+  const markTabs = (view: ContentBalanceView) => {
+    for (const g of view.groups) {
+      const b = strip.querySelector<HTMLButtonElement>(`[data-tab="${g.id}"]`);
+      const used = g.rows.some(changedByYou);
+      b?.classList.toggle("control-panel-tab-used", used);
+      if (b && used) {
+        b.title = "Has values changed by you";
+      } else {
+        b?.removeAttribute("title");
+      }
+    }
+  };
+
+  // Arrow keys, Home and End move between tabs, choosing as they go.
+  strip.addEventListener("keydown", (e) => {
+    const tabs = [...strip.querySelectorAll<HTMLButtonElement>("button")];
+    const i = tabs.findIndex((b) => b.dataset.tab === chosen);
+    const next =
+      e.key === "ArrowRight"
+        ? (i + 1) % tabs.length
+        : e.key === "ArrowLeft"
+          ? (i - 1 + tabs.length) % tabs.length
+          : e.key === "Home"
+            ? 0
+            : e.key === "End"
+              ? tabs.length - 1
+              : -1;
+    if (next < 0) {
+      return;
+    }
+    e.preventDefault();
+    chosen = tabs[next]?.dataset.tab ?? chosen;
+    applySearch();
+    tabs[next]?.focus();
+  });
 
   const show = (view: ContentBalanceView) => {
     loading.hidden = true;
@@ -579,12 +854,17 @@ export function createBalancePage(actions: BalancePageActions): BalancePage {
           t.className = "content-section-title";
           t.textContent = g.title;
           const p = document.createElement("p");
-          p.className = "content-section-intro";
+          p.className = "content-section-intro items-intro";
           p.textContent = g.help;
           card.append(t, p);
           for (const v of g.rows) {
             const r = kept.get(rowId(v)) ?? makeRow(v);
             r.view = v;
+            // A card of one row named as the card says its name once.
+            const title = r.el.querySelector<HTMLElement>(".balance-row-title");
+            if (title) {
+              title.hidden = g.rows.length === 1 && v.label === g.title;
+            }
             rows.set(rowId(v), r);
             card.append(r.el);
           }
@@ -596,7 +876,7 @@ export function createBalancePage(actions: BalancePageActions): BalancePage {
             label.textContent = `${e.label}: `;
             const now = document.createElement("span");
             elsewhereNow.set(`${g.id}:${i}`, now);
-            const open = panelButton("balance-open-row", "Edit on the Content page", () =>
+            const open = panelButton("balance-open-row", "Change it on the Content page", () =>
               actions.openContentRow(e.row),
             );
             open.dataset.row = `${e.row.dataset}/${e.row.part}`;
@@ -607,6 +887,7 @@ export function createBalancePage(actions: BalancePageActions): BalancePage {
         }),
       );
       groupsShown = shape;
+      drawTabs(view);
       applySearch();
     }
     for (const g of view.groups) {
@@ -629,21 +910,32 @@ export function createBalancePage(actions: BalancePageActions): BalancePage {
         update(r);
       }
     }
+    markTabs(view);
     const mine = view.groups.flatMap((g) => g.rows).filter((r) => r.pending !== null).length;
     const total = mine + view.otherDraft;
     draftLine.hidden = total === 0;
     draftText.textContent =
       total === 0
         ? ""
-        : `The draft holds ${mine === 1 ? "1 balance change" : `${mine} balance changes`}${view.otherDraft > 0 ? ` and ${view.otherDraft} other ${view.otherDraft === 1 ? "change" : "changes"}` : ""}, live once published. `;
+        : `${total === 1 ? "1 unpublished change" : `${total} unpublished changes`}${view.otherDraft > 0 && mine > 0 ? ` (${mine} to balance)` : mine === 0 ? " (none to balance)" : ""}. Players get them once you publish. `;
   };
 
-  /** Shows only the rows (and cards) whose words hold every word typed in Find. */
+  /**
+   * Shows the chosen tab's card; while Search holds words, every card's rows whose words hold
+   * them all, whichever tab is chosen.
+   */
   const applySearch = () => {
     const words = search.value
       .toLowerCase()
       .split(/\s+/)
       .filter((w) => w !== "");
+    const searching = words.length > 0;
+    strip.classList.toggle("balance-tabs-searching", searching);
+    for (const b of strip.querySelectorAll<HTMLButtonElement>("button")) {
+      const on = !searching && b.dataset.tab === chosen;
+      b.setAttribute("aria-selected", String(on));
+      b.tabIndex = b.dataset.tab === chosen ? 0 : -1;
+    }
     let shown = 0;
     for (const card of cards.querySelectorAll<HTMLElement>(".balance-card")) {
       const title = (card.dataset.words ?? "").toLowerCase();
@@ -654,8 +946,9 @@ export function createBalancePage(actions: BalancePageActions): BalancePage {
         rowEl.hidden = !hit;
         any ||= hit;
       }
-      card.hidden = !any;
-      shown += any ? 1 : 0;
+      const inTab = searching || chosen === "all" || card.dataset.group === chosen;
+      card.hidden = !(any && inTab);
+      shown += any && inTab ? 1 : 0;
     }
     noMatch.hidden = shown > 0 || cards.childElementCount === 0;
   };
@@ -745,7 +1038,10 @@ export function createBalancePage(actions: BalancePageActions): BalancePage {
       saving.clear();
       rows.clear();
       groupsShown = "";
+      chosen = "";
       cards.replaceChildren();
+      strip.replaceChildren();
+      strip.hidden = true;
       elsewhereNow.clear();
       search.value = "";
       noMatch.hidden = true;

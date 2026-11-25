@@ -174,25 +174,109 @@ const nodeFormSchema = z.strictObject({
   regrows: z.string().min(1).max(80).nullable().optional(),
 });
 
-/** A refused change's problems as the page says them: a node's by its number and field. */
+/** A harvestable tile's fields, as the Gathering page names them. */
+const NODE_FIELDS: Record<string, string> = {
+  tile: "Tile",
+  becomes: "Turns into",
+  can: "Tool action",
+  tools: "Only these tools",
+  tier: "Lowest tool tier",
+  under: "Only on this ground",
+  requires: "Requirement",
+  skill: "Skill",
+  gains: "Each harvest trains the skill",
+  xp: "XP per harvest",
+  yield: "Drop table",
+  treasure: "Can dig up the buried treasure",
+  hitSound: "Swing sound",
+  successSound: "Harvest sound",
+};
+
+/** The gathering section's parts, as the page names them. */
+const GATHERING_FIELDS: Record<string, string> = {
+  counterTable: "Swings per harvest",
+  fishing: "Fishing",
+  farming: "Farming",
+  regrowth: "Grows back",
+  mining: "Mining",
+};
+
+/** Fishing's and farming's fields, as their tabs name them. */
+const PART_FIELDS: Record<string, Record<string, string>> = {
+  fishing: {
+    waterTiles: "Water tiles",
+    antiMacroStart: "Catches before a spot runs out",
+    stoppedText: "Message when a spot runs out",
+    bands: "Fish by skill",
+    fishCheck: "Bite chance by skill",
+  },
+  farming: {
+    seedTest: "Seeds plant on",
+    seeds: "Seeds",
+    wateringSkill: "Watering skill",
+    watering: "What watering grows",
+    produce: "Crops",
+  },
+};
+
+/** A yield table's fields. */
+const YIELD_FIELDS: Record<string, string> = {
+  item: "Item it drops",
+  chance: "Chance per harvest",
+  bySkill: "Better odds with more skill",
+};
+
+/** `label`, with the row number after it when the next part is an index ("Only these tools 2"). */
+function labelled(label: string, rest: readonly string[]): string {
+  const n = rest[0];
+  return n !== undefined && /^\d+$/.test(n) ? `${label} ${Number(n) + 1}` : label;
+}
+
+/**
+ * A refused change's problems as the page says them: a node's by its number and the form's label
+ * ("Node 2: Only these tools 1"), a yield table's by its name and field.
+ */
 export function gatheringFieldProblems(
   problems: readonly { where: string; message: string }[],
 ): { where: string; message: string }[] {
   return problems.map((p) => {
     const node = /^gather\/harvest\/(\d+)(?:\/(.+))?$/.exec(p.where);
     if (node) {
+      const [field = "", ...rest] = node[2]?.split("/") ?? [];
+      const label = NODE_FIELDS[field];
+      const what = label ? labelled(label, rest) : node[2]?.replaceAll("/", " ");
       return {
-        where: `Node ${Number(node[1]) + 1}${node[2] ? `: ${node[2].replaceAll("/", " ")}` : ""}`,
+        where: `Node ${Number(node[1]) + 1}${what ? `: ${what}` : ""}`,
         message: p.message,
       };
     }
-    const y = /^gather\/yields\/?(.*)$/.exec(p.where);
+    const y = /^gather\/yields\/?([^/]*)\/?(.*)$/.exec(p.where);
     if (y) {
-      return { where: `Yield table ${y[1] ?? ""}`.trim(), message: p.message };
+      const [field = "", ...rest] = y[2]?.split("/").filter((x) => x !== "") ?? [];
+      const label = YIELD_FIELDS[field];
+      return {
+        where: `Drop table ${y[1] ?? ""}${label ? `: ${labelled(label, rest)}` : ""}`.trim(),
+        message: p.message,
+      };
     }
     const g = /^gather\/gathering\/?(.*)$/.exec(p.where);
     if (g) {
-      return { where: g[1] ? g[1].replaceAll("/", " ") : "Gathering", message: p.message };
+      const [field = "", sub = "", ...rest] = g[1]?.split("/").filter((x) => x !== "") ?? [];
+      const label = GATHERING_FIELDS[field];
+      const subLabel = PART_FIELDS[field]?.[sub];
+      return {
+        where: !label
+          ? g[1]
+            ? g[1].replaceAll("/", " ")
+            : "Gathering"
+          : subLabel
+            ? `${label}: ${labelled(subLabel, rest)}`
+            : labelled(
+                label,
+                [sub, ...rest].filter((x) => x !== ""),
+              ),
+        message: p.message,
+      };
     }
     return p;
   });
@@ -349,10 +433,27 @@ export function draftGatheringChange(
       if (!parsed.success) {
         return fail(
           "The node was not saved.",
-          parsed.error.issues.map((x) => ({
-            where: x.path.length > 0 ? x.path.join(" ") : "Node",
-            message: x.message,
-          })),
+          parsed.error.issues.map((x) => {
+            const [top, field, ...rest] = x.path.map(String);
+            const label =
+              top === "node" && field !== undefined
+                ? NODE_FIELDS[field]
+                : top === "yieldTable"
+                  ? YIELD_FIELDS[field ?? ""]
+                  : undefined;
+            return {
+              where: label
+                ? labelled(label, rest)
+                : top === "yieldTable"
+                  ? "Drop table"
+                  : top === "regrows"
+                    ? "Grows back"
+                    : x.path.length > 0
+                      ? x.path.join(" ")
+                      : "Node",
+              message: x.message,
+            };
+          }),
         );
       }
       const form = parsed.data;

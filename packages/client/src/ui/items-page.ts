@@ -359,7 +359,7 @@ const signed = (v: number, negate: boolean) => (negate && v !== 0 ? -v : v);
 
 export function createItemsPage(actions: ItemsPageActions): ItemsPage {
   const el = document.createElement("div");
-  el.className = "items-page balance-page items-editor";
+  el.className = "items-page balance-page plain-editor";
   el.append(
     pageHeading(
       "Items",

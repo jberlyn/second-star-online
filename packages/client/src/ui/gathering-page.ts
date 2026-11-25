@@ -1,11 +1,20 @@
 /**
- * The Control Panel's Gathering page (issue #38): the harvest nodes by tile (each with its tile's
- * picture from the client's tile atlas), fishing, farming and the hit counter, edited into the
- * content store's shared draft. A node edits its tile and the tile it becomes, how it regrows, the
- * tool behaviour and tools it takes, the lowest tool tier, the ground it must be on, the skill it
- * trains with its requirement and XP, its yield table, and its sounds. A preview, worked out by the
- * game's own rules (shared `gatherPreview`, `xpPreview` and `fishingPreview`), shows each skill
- * value and tool tier's chance of success and expected yield. New activity kinds need code.
+ * The Control Panel's Gathering page (issue #38): the tiles players harvest with a tool (each with
+ * its picture from the client's tile atlas), fishing, farming and the swings a harvest takes,
+ * edited into the content store's shared draft.
+ *
+ * Laid out as the Items page is: a list on the left, and the open part's form behind plain tabs
+ * (a harvestable tile: Tile, Tool, Skill, Drops, Sounds and Odds), each with a help line, rare
+ * fields folded under "More options" (open when one has a value), and a dot on each tab that holds
+ * settings beyond the basics. Skill tables are shown "from skill N" (the stored rows say "above
+ * N - 1"), and how often a spent tile grows back in minutes; what is saved is unchanged.
+ *
+ * Underneath, a harvestable tile is a harvest node: its tile and the tile it becomes, the regrowth
+ * check that turns it back, the tool behaviour and tools it takes, the lowest tool tier, the
+ * ground it must be on, the skill it trains with its requirement and XP, its yield table and its
+ * sounds. The odds, worked out by the game's own rules (shared `gatherPreview`, `xpPreview` and
+ * `fishingPreview`), show each skill value and tool tier's chance of success and expected drops.
+ * New kinds of activity need code.
  *
  * A change carries the part as the page showed it (`fingerprint`): the server refuses it if someone
  * changed it since, and refuses a change that brings a new problem.
@@ -19,6 +28,7 @@ import {
   gatherPreview,
   nodeToolTiers,
   previewCap,
+  TICK_HZ,
   TILE_SIZE,
   xpPreview,
 } from "@secondstaronline/shared";
@@ -108,10 +118,59 @@ export function foldRows<T>(
   return out;
 }
 
+/** A wait of `frames` server frames, in plain words ("about 11 minutes"). */
+export function waitText(frames: number): string {
+  const seconds = frames / TICK_HZ;
+  if (seconds < 90) {
+    const s = Math.max(1, Math.round(seconds));
+    return `${s} ${s === 1 ? "second" : "seconds"}`;
+  }
+  const minutes = seconds / 60;
+  if (minutes < 90) {
+    return `${Math.round(minutes)} minutes`;
+  }
+  return `${(minutes / 60).toFixed(1).replace(/\.0$/, "")} hours`;
+}
+
+/** A regrowth check's name as the page says it: `CheckTrees` is "Trees". */
+export function regrowthName(handler: string): string {
+  const bare = handler.replace(/^(Check|Do)(?=[A-Z])/, "");
+  const spaced = bare.replace(/([a-z])([A-Z])/g, "$1 $2");
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}
+
+/**
+ * How a regrowth check reads in the "Grows back" pick: its name and the average wait for one spent
+ * tile. The check runs on a frame whose roll (`random(roll)`) is below `below` (`below - 1` of the
+ * roll's values), then turns back one tile of `tiles`.
+ */
+export function regrowthText(
+  check: { handler: string; below: number },
+  roll: number,
+  tiles: number,
+): string {
+  const per = Math.max(0, check.below - 1) / roll / tiles;
+  return per > 0
+    ? `${regrowthName(check.handler)}: grows back in about ${waitText(1 / per)} on average`
+    : `${regrowthName(check.handler)}: never grows back`;
+}
+
+/** The tool behaviours as the page says them. */
+const CAN_TEXT: Record<string, string> = {
+  Chop: "Chop (axes)",
+  Mine: "Mine (picks)",
+  Dig: "Dig (shovels)",
+  Farm: "Farm (hoes and the like)",
+};
+
 const ALL_SKILLS = Array.from({ length: 101 }, (_, i) => i);
 
 let ids = 0;
-function labelled(label: string, control: HTMLElement, help = ""): HTMLElement {
+function labelled(
+  label: string,
+  control: HTMLElement,
+  help: string | HTMLElement = "",
+): HTMLElement {
   const wrap = document.createElement("div");
   wrap.className = "control-panel-field balance-field";
   const l = document.createElement("label");
@@ -122,9 +181,11 @@ function labelled(label: string, control: HTMLElement, help = ""): HTMLElement {
   l.textContent = label;
   wrap.append(l, control);
   if (help) {
-    const h = document.createElement("p");
-    h.className = "control-panel-field-help";
-    h.textContent = help;
+    const h = typeof help === "string" ? document.createElement("p") : help;
+    h.classList.add("control-panel-field-help");
+    if (typeof help === "string") {
+      h.textContent = help;
+    }
     wrap.append(h);
   }
   return wrap;
@@ -135,32 +196,77 @@ function option(value: string, text = value): HTMLOptionElement {
   o.textContent = text;
   return o;
 }
-
-/** The skill values a preview shows. */
+function helpLine(text: string): HTMLParagraphElement {
+  const p = document.createElement("p");
+  p.className = "control-panel-field-help";
+  p.textContent = text;
+  return p;
+}
+/** A help line under a tab's title: what the tab is for. */
+function intro(text: string): HTMLParagraphElement {
+  const p = document.createElement("p");
+  p.className = "items-intro";
+  p.textContent = text;
+  return p;
+}
+/** Fields folded under "More options", open when one of them has a value. */
+function more(open: boolean, ...controls: HTMLElement[]): HTMLDetailsElement {
+  const box = document.createElement("details");
+  box.className = "items-more";
+  box.open = open;
+  const summary = action(document.createElement("summary"), "gathering-more-toggle");
+  summary.textContent = "More options";
+  box.append(summary, ...controls);
+  return box;
+}
+/** One tab of the form: its title, its help line, and whether it holds settings (its tab's dot). */
+function section(
+  id: string,
+  title: string,
+  help: string,
+  used: boolean,
+  ...children: HTMLElement[]
+): HTMLElement {
+  const sec = document.createElement("section");
+  sec.className = "balance-row items-group";
+  sec.dataset.group = id;
+  sec.dataset.used = String(used);
+  const h = document.createElement("h3");
+  h.className = "balance-row-title";
+  h.textContent = title;
+  sec.append(h);
+  if (help) {
+    sec.append(intro(help));
+  }
+  sec.append(...children);
+  return sec;
+}
 
 export function createGatheringPage(actions: GatheringPageActions, assets?: Assets): GatheringPage {
   const el = document.createElement("div");
-  el.className = "gathering-page items-page balance-page";
+  el.className = "gathering-page items-page balance-page plain-editor";
   el.append(
     pageHeading(
       "Gathering",
-      "Harvest nodes (what a tool does to a tile), fishing, farming and the hit counter. A node turns its tile into another, drops from a yield table that can scale with skill, and trains a skill. Changes go into the content draft, published from the Content page. New kinds of activity need code.",
+      "Choose what players can harvest with tools, and how fishing and farming work. Saving puts your changes in the draft: players get them once you publish on the Content page.",
     ),
   );
   const draftLine = document.createElement("div");
   draftLine.className = "balance-draft";
   draftLine.hidden = true;
   const draftText = document.createElement("span");
-  const discardAll = panelButton("gathering-discard", "Drop the draft's gathering changes", () => {
-    if (view) {
-      send({ op: "discard", expect: view.fingerprint }, "discard");
-    }
-  });
+  const discardAll = panelButton(
+    "gathering-discard",
+    "Cancel unpublished gathering changes",
+    () => {
+      if (view) {
+        send({ op: "discard", expect: view.fingerprint }, "discard");
+      }
+    },
+  );
   draftLine.append(
     draftText,
-    panelButton("gathering-open-content", "Review and publish on the Content page", () =>
-      actions.openContent(),
-    ),
+    panelButton("gathering-open-content", "Review and publish…", () => actions.openContent()),
     discardAll,
   );
   const statusLine = () => {
@@ -179,10 +285,16 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
   // ---- the list ----
   const listBox = document.createElement("section");
   listBox.className = "items-list-box";
+  const listHead = (text: string) => {
+    const p = document.createElement("p");
+    p.className = "items-list-title gathering-list-title";
+    p.textContent = text;
+    return p;
+  };
   const listEl = document.createElement("ul");
   listEl.className = "items-list";
-  listEl.setAttribute("aria-label", "Harvest nodes");
-  const newBtn = panelButton("gathering-new-node", "New harvest node", () => {
+  listEl.setAttribute("aria-label", "Harvestable tiles");
+  const newBtn = panelButton("gathering-new-node", "+ New harvestable tile", () => {
     if (guard()) {
       return;
     }
@@ -202,34 +314,63 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
     };
     yieldEdit = { edited: false, expect: null };
     filled = { value: "", fingerprint: "" };
+    status.textContent = "";
     drawList();
     drawNode();
   });
-  const fixedLinks = document.createElement("div");
-  fixedLinks.className = "content-buttons";
-  fixedLinks.append(
-    panelButton("gathering-open-fishing", "Fishing", () => openFixed("fishing")),
-    panelButton("gathering-open-farming", "Farming", () => openFixed("farming")),
-    panelButton("gathering-open-counter", "Hit counter", () => openFixed("counter")),
+  const fixedEl = document.createElement("ul");
+  fixedEl.className = "items-list";
+  fixedEl.setAttribute("aria-label", "Other activities");
+  const fixedItem = (p: "fishing" | "farming" | "counter", name: string, meta: string) => {
+    const li = document.createElement("li");
+    const b = action(document.createElement("button"), `gathering-open-${p}`);
+    b.type = "button";
+    b.className = "items-list-item";
+    b.dataset.part = p;
+    const n = document.createElement("span");
+    n.textContent = name;
+    const m = document.createElement("span");
+    m.className = "items-list-meta";
+    m.textContent = meta;
+    b.append(n, " ", m);
+    b.addEventListener("click", () => openFixed(p));
+    li.append(b);
+    return li;
+  };
+  fixedEl.append(
+    fixedItem("fishing", "Fishing", "water, catches and bites"),
+    fixedItem("farming", "Farming", "seeds, watering and crops"),
+    fixedItem("counter", "Swings per harvest", "by skill, for every tile"),
   );
-  listBox.append(newBtn, fixedLinks, listEl);
+  listBox.append(
+    newBtn,
+    listHead("Harvestable tiles"),
+    listEl,
+    listHead("Other activities"),
+    fixedEl,
+  );
 
   // ---- the form ----
   const form = document.createElement("section");
   form.className = "items-form";
   form.hidden = true;
+  const header = document.createElement("div");
+  header.className = "items-form-head";
   const title = document.createElement("h2");
   title.className = "content-section-title";
+  const subtitle = document.createElement("p");
+  subtitle.className = "control-panel-field-help items-form-id";
+  header.append(title, subtitle);
   const stale = document.createElement("p");
   stale.className = "balance-stale";
   stale.hidden = true;
   stale.textContent =
-    "Someone changed this since you started editing it: saving will be refused. Drop your edit to see theirs.";
+    "Someone changed this while you were editing it, so saving will be refused. Undo your changes to see theirs.";
   const body = document.createElement("div");
   const status = statusLine();
   const saveBtn = panelButton(
     "gathering-save",
-    "Save to the draft",
+    "Save changes",
     () => {
       if (invalid.size > 0) {
         say(status, [...invalid.values()].join(". "), false);
@@ -255,7 +396,7 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
     },
     "primary",
   );
-  const undoBtn = panelButton("gathering-undo-edit", "Drop my edit", () => {
+  const undoBtn = panelButton("gathering-undo-edit", "Undo changes", () => {
     if (part === "node" && openIndex === -1) {
       // A new node not yet saved: the form closes.
       part = null;
@@ -270,7 +411,7 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
   });
   const removeBtn = panelButton(
     "gathering-remove-node",
-    "Remove this node",
+    "Remove this harvestable tile",
     () => {
       if (part === "node" && openIndex >= 0) {
         send({ op: "removeNode", index: openIndex, expect: filled.fingerprint }, "node");
@@ -278,16 +419,26 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
     },
     "danger",
   );
+  const mainButtons = document.createElement("div");
+  mainButtons.className = "content-buttons";
+  mainButtons.append(saveBtn, undoBtn);
+  const otherButtons = document.createElement("div");
+  otherButtons.className = "content-buttons items-reset-buttons";
+  otherButtons.append(removeBtn);
   const buttons = document.createElement("div");
-  buttons.className = "content-buttons";
-  buttons.append(saveBtn, undoBtn, removeBtn);
-  form.append(title, stale, sectionTabs(form, "gathering").el, body, formActions(buttons, status));
+  buttons.className = "items-actions";
+  buttons.append(mainButtons, otherButtons);
+  form.append(header, stale, sectionTabs(form, "gathering").el, body, formActions(buttons, status));
   const loading = document.createElement("p");
   loading.className = "balance-loading";
   loading.textContent = "Loading…";
+  const empty = document.createElement("p");
+  empty.className = "items-empty-form";
+  empty.textContent =
+    "Pick a harvestable tile or an activity on the left to see and change how it works.";
   const layout = document.createElement("div");
   layout.className = "items-layout";
-  layout.append(listBox, form);
+  layout.append(listBox, empty, form);
   el.append(draftLine, loading, layout);
 
   // ---- state ----
@@ -319,7 +470,7 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
       return true;
     }
     if (dirty()) {
-      say(status, "Save your edit or drop it first.", false);
+      say(status, "Save or undo your changes first.", false);
       return true;
     }
     return false;
@@ -342,10 +493,14 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
   const update = () => {
     const d = dirty();
     saveBtn.disabled = busy || !(d || (part === "node" && openIndex === -1));
-    undoBtn.disabled = busy || !d;
+    // As on the other editor pages, Undo shows only once there is something to undo.
+    undoBtn.hidden = !(d || (part === "node" && openIndex === -1));
+    undoBtn.disabled = busy;
     removeBtn.hidden = !(part === "node" && openIndex >= 0);
     removeBtn.disabled = busy;
+    otherButtons.hidden = removeBtn.hidden;
     discardAll.hidden = !view?.pending;
+    empty.hidden = !form.hidden || !view;
     const shownFp =
       part === "node"
         ? (view?.nodes[openIndex]?.fingerprint ?? filled.fingerprint)
@@ -377,6 +532,7 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
     });
     return t;
   };
+  /** A whole-number input; `offset` is added for show (a "from skill" of an "above" row). */
   const int = (
     idName: string,
     value: number | null | undefined,
@@ -385,25 +541,23 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
     nullable: boolean,
     label: string,
     write: (n: number | null) => void,
+    offset = 0,
   ) => {
     const input = noAutofill(action(document.createElement("input"), idName));
     input.type = "number";
-    input.min = String(min);
-    input.max = String(max);
-    input.value = value === null || value === undefined ? "" : String(value);
-    if (nullable) {
-      input.placeholder = "none";
-    }
+    input.min = String(min + offset);
+    input.max = String(max + offset);
+    input.value = value === null || value === undefined ? "" : String(value + offset);
     input.addEventListener("input", () => {
       const t = input.value.trim();
       if (t === "" && nullable) {
         invalid.delete(input);
         write(null);
-      } else if (!/^-?\d+$/.test(t) || Number(t) < min || Number(t) > max) {
-        invalid.set(input, `${label}: a whole number from ${min} to ${max}`);
+      } else if (!/^-?\d+$/.test(t) || Number(t) - offset < min || Number(t) - offset > max) {
+        invalid.set(input, `${label}: a whole number from ${min + offset} to ${max + offset}`);
       } else {
         invalid.delete(input);
-        write(Number(t));
+        write(Number(t) - offset);
       }
       edited();
     });
@@ -422,6 +576,7 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
     l.append(b, ` ${label}`);
     return l;
   };
+  /** Two-letter tile codes typed comma-separated; null (and an error) when one does not read. */
   const codes = (value: readonly string[] | undefined, label: string, input: HTMLInputElement) => {
     input.value = (value ?? []).join(", ");
     return (t: string): string[] | null => {
@@ -437,16 +592,23 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
       return parts;
     };
   };
-  /** Rows of objects with whole-number and text fields, with add and remove. */
+  /**
+   * A list of rows, each a line of whole-number and text fields with a Remove button, and an Add
+   * button. A field with `offset` shows its number moved by it ("from skill 11" for "above 10").
+   */
   const rowsEditor = <T extends Record<string, unknown>>(
     idPrefix: string,
     label: string,
+    help: string,
+    addText: string,
     rows: T[],
     fields: readonly {
       key: keyof T & string;
       label: string;
       kind: "int" | "text";
       list?: string;
+      offset?: number;
+      min?: number;
     }[],
     blank: () => T,
     /** Runs on every change, before the page's own (a row added, removed or typed in). */
@@ -454,6 +616,7 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
   ): HTMLElement => {
     const box = document.createElement("div");
     box.className = "items-list-editor";
+    box.dataset.list = idPrefix;
     const h = document.createElement("p");
     h.className = "items-list-title";
     h.textContent = label;
@@ -469,14 +632,15 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
                 ? int(
                     `${idPrefix}-${f.key}`,
                     row[f.key] as number,
-                    -1_000_000,
+                    f.min ?? -1_000_000,
                     1_000_000_000,
                     false,
-                    `${label} ${i + 1} ${f.label}`,
+                    `${label}, row ${i + 1}: ${f.label}`,
                     (n) => {
                       (row as Record<string, unknown>)[f.key] = n ?? 0;
                       changed();
                     },
+                    f.offset ?? 0,
                   )
                 : text(
                     `${idPrefix}-${f.key}`,
@@ -505,18 +669,23 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
           return line;
         }),
       );
+      if (rows.length === 0) {
+        listBox2.append(helpLine("None yet."));
+      }
     };
     draw();
-    box.append(
-      h,
-      listBox2,
-      panelButton(`${idPrefix}-add`, "Add a row", () => {
-        rows.push(blank());
-        changed();
-        draw();
-        edited();
-      }),
-    );
+    box.append(h);
+    if (help) {
+      box.append(helpLine(help));
+    }
+    const add = panelButton(`${idPrefix}-add`, addText, () => {
+      rows.push(blank());
+      changed();
+      draw();
+      edited();
+    });
+    add.classList.add("items-add");
+    box.append(listBox2, add);
     return box;
   };
 
@@ -549,8 +718,15 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
   };
   const tileName = (code: string) =>
     view?.choices.tiles.find((t) => t.code.toLowerCase() === code.toLowerCase())?.name ?? "";
+  /** A tile as the page names it: "Tree (S3)", or its code alone when it has no name. */
+  const tileText = (code: string) => {
+    const n = tileName(code);
+    return code === "" ? "" : n ? `${n} (${code})` : code;
+  };
+  const skillName = (key: string) =>
+    view?.skills.find((s) => s.skill.toLowerCase() === key.toLowerCase())?.display ?? key;
 
-  // ---- the preview ----
+  // ---- the odds ----
   const preview = document.createElement("div");
   preview.className = "gathering-preview";
   const drawPreview = () => {
@@ -573,7 +749,11 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
         fishCheck: { gt: number; value: number }[];
       };
       table.setAttribute("aria-label", "Fishing by skill");
-      head.append(cell("th", "Fishing"), cell("th", "Bites"), cell("th", "Catches"));
+      head.append(
+        cell("th", "Fishing skill"),
+        cell("th", "Bite chance per cast"),
+        cell("th", "Catches"),
+      );
       const fish = fishingPreview(f, ALL_SKILLS);
       for (const { from, to, cells: r } of foldRows(
         ALL_SKILLS,
@@ -600,21 +780,21 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
         yields[node.yield] = work.yieldTable;
       }
       const skill = view.skills.find((s) => s.skill.toLowerCase() === node.skill.toLowerCase());
-      table.setAttribute("aria-label", "Success and yield by skill and tool tier");
+      table.setAttribute("aria-label", "Odds by skill and tool tier");
       head.append(
         cell("th", "Tools"),
-        cell("th", node.skill || "Skill"),
-        cell("th", "Swings a success"),
-        cell("th", "Success a swing"),
-        cell("th", "Drops a success"),
-        cell("th", "Drops a swing"),
-        cell("th", skill?.model === "xp" ? "XP a success" : "Trains"),
+        cell("th", node.skill ? `${skillName(node.skill)} skill` : "Skill"),
+        cell("th", "Swings per harvest"),
+        cell("th", "Harvest chance per swing"),
+        cell("th", "Drop chance per harvest"),
+        cell("th", "Drops per swing"),
+        cell("th", skill?.model === "xp" ? "XP per harvest" : "Trains the skill"),
       );
       if (shownTiers.length === 0) {
         const tr = document.createElement("tr");
         const td = cell(
           "td",
-          "No tool can work it: no tool row gives its behaviour to the tools it names.",
+          "No tool can work it: no tool with this tool action matches the tools it names.",
         );
         td.colSpan = 7;
         tr.append(td);
@@ -664,10 +844,10 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
           const xpRow = xpRows?.find((r) => r.level === v);
           const trains = xpRows
             ? xpRow
-              ? `${Number(xpRow.perAction.toFixed(2))}${xpRow.estimate ? " (mean)" : ""}`
+              ? `${Number(xpRow.perAction.toFixed(2))}${xpRow.estimate ? " (average)" : ""}`
               : "0"
             : node.gains && skill?.gather
-              ? "its chance roll"
+              ? "yes, by chance"
               : "no";
           return c.why
             ? [c.why, "—", "—", "—", "—", "—"]
@@ -702,7 +882,7 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
     preview.append(wrap);
   };
 
-  // ---- the node form ----
+  // ---- a harvestable tile's form ----
   const drawNode = () => {
     if (!view) {
       return;
@@ -710,78 +890,127 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
     part = "node";
     form.hidden = false;
     const n = work.node;
-    title.textContent =
-      openIndex === -1 ? "A new harvest node" : `Node ${openIndex + 1}: ${n.can} ${n.tile}`;
-    const sound = (key: "hitSound" | "successSound", label: string) => {
-      const s = n[key];
-      const box = document.createElement("div");
-      box.className = "items-list-row";
-      box.append(
-        labelled(
-          label,
-          text(
-            `gathering-${key}`,
-            s?.name ?? "",
-            (t) => {
-              n[key] =
-                t === "" ? null : { name: t, ch: n[key]?.ch ?? (key === "hitSound" ? 3 : 2) };
-            },
-            soundsList.id,
-          ),
-        ),
-        labelled(
-          "Channel",
-          int(`gathering-${key}-ch`, s?.ch ?? null, 1, 8, true, `${label} channel`, (c) => {
-            const cur = n[key];
-            if (cur) {
-              cur.ch = c ?? 1;
-            }
-          }),
-        ),
+    const named = tileName(n.tile);
+    title.textContent = openIndex === -1 ? "New harvestable tile" : `${n.can} ${named || n.tile}`;
+    subtitle.textContent = openIndex === -1 ? "" : `Node ${openIndex + 1} · tile ${n.tile}`;
+
+    // Tile.
+    const pictureRow = document.createElement("div");
+    pictureRow.className = "gathering-picture";
+    const fromName = document.createElement("span");
+    const toName = document.createElement("span");
+    const drawPictures = () => {
+      fromName.textContent = tileText(n.tile) || "(no tile yet)";
+      toName.textContent = tileText(n.becomes) || "(no tile yet)";
+      pictureRow.replaceChildren(
+        tilePicture(n.tile),
+        fromName,
+        " turns into ",
+        tilePicture(n.becomes),
+        toName,
       );
-      return box;
     };
-    const can = action(document.createElement("select"), "gathering-can");
-    for (const c of view.choices.cans) {
-      can.append(option(c));
-    }
-    can.value = n.can;
-    can.addEventListener("change", () => {
-      n.can = can.value as HarvestNode["can"];
-      edited();
-    });
-    const skill = action(document.createElement("select"), "gathering-skill");
-    for (const s of view.skills) {
-      skill.append(option(s.skill, s.display === s.skill ? s.skill : `${s.display} (${s.skill})`));
-    }
-    skill.value = n.skill;
-    skill.addEventListener("change", () => {
-      n.skill = skill.value;
-      edited();
-    });
+    drawPictures();
     const regrows = action(document.createElement("select"), "gathering-regrows");
-    regrows.append(option("", "It does not regrow"));
+    regrows.append(option("", "Never: it stays as it is"));
     // A produce check drops farming produce: a node's tile never regrows there.
     for (const c of view.regrowth.checks.filter((x) => !x.produce)) {
-      // random(roll) < below fires on below - 1 of the roll's values.
-      const per = Math.max(0, c.below - 1) / view.regrowth.roll / view.regrowth.tiles;
-      regrows.append(
-        option(
-          c.handler,
-          per > 0
-            ? `${c.handler}: about 1 in ${Math.round(1 / per).toLocaleString("en-US")} frames for the tile`
-            : `${c.handler}: never runs`,
-        ),
-      );
+      regrows.append(option(c.handler, regrowthText(c, view.regrowth.roll, view.regrowth.tiles)));
     }
     regrows.value = work.regrows ?? "";
     regrows.addEventListener("change", () => {
       work.regrows = regrows.value || null;
       edited();
     });
+    const underInput = noAutofill(action(document.createElement("input"), "gathering-under"));
+    const readUnder = codes(n.under, "Only on this ground", underInput);
+    underInput.placeholder = "Any ground";
+    underInput.addEventListener("input", () => {
+      const parts = readUnder(underInput.value);
+      if (parts !== null) {
+        if (parts.length === 0) {
+          delete n.under;
+        } else {
+          n.under = parts;
+        }
+      }
+      edited();
+    });
+    const tileTab = section(
+      "tile",
+      "Tile",
+      "The tile players work with a tool, and what it turns into once harvested.",
+      n.under !== undefined || work.regrows !== null,
+      pictureRow,
+      labelled(
+        "Tile",
+        text(
+          "gathering-tile",
+          n.tile,
+          (t) => {
+            n.tile = t;
+            drawPictures();
+          },
+          tilesList.id,
+        ),
+        "Its two-letter code on the map's object layer, such as S3.",
+      ),
+      labelled(
+        "Turns into",
+        text(
+          "gathering-becomes",
+          n.becomes,
+          (t) => {
+            n.becomes = t;
+            drawPictures();
+          },
+          tilesList.id,
+        ),
+        "The tile it becomes after a harvest, such as a stump.",
+      ),
+      labelled(
+        "Grows back",
+        regrows,
+        "Whether the harvested tile turns back into this one by itself, and about how long that takes.",
+      ),
+      more(
+        n.under !== undefined,
+        labelled(
+          "Only on this ground",
+          underInput,
+          "Ground tile codes it must stand on, comma-separated, such as G1, G2. Empty: any ground.",
+        ),
+      ),
+    );
+
+    // Tool.
+    const can = action(document.createElement("select"), "gathering-can");
+    for (const c of view.choices.cans) {
+      can.append(option(c, CAN_TEXT[c] ?? c));
+    }
+    can.value = n.can;
+    const toolsHelp = document.createElement("p");
+    const drawToolsHelp = () => {
+      const tools = view?.tools.filter((t) => t.can === n.can) ?? [];
+      toolsHelp.textContent = `Tools that can ${n.can.toLowerCase()} now: ${
+        tools
+          .map(
+            (t) =>
+              `${t.match === "exact" ? t.pattern : `anything named like “${t.pattern}”`} (tier ${t.tier})`,
+          )
+          .join(", ") || "none"
+      }.`;
+    };
+    drawToolsHelp();
+    can.addEventListener("change", () => {
+      n.can = can.value as HarvestNode["can"];
+      drawToolsHelp();
+      toolsInput.placeholder = `Any tool that can ${n.can.toLowerCase()}`;
+      edited();
+    });
     const toolsInput = noAutofill(action(document.createElement("input"), "gathering-tools"));
     toolsInput.value = (n.tools ?? []).join(", ");
-    toolsInput.placeholder = "any tool that can";
+    toolsInput.placeholder = `Any tool that can ${n.can.toLowerCase()}`;
     toolsInput.addEventListener("input", () => {
       const parts = toolsInput.value
         .split(",")
@@ -794,47 +1023,86 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
       }
       edited();
     });
-    const underInput = noAutofill(action(document.createElement("input"), "gathering-under"));
-    const readUnder = codes(n.under, "Ground", underInput);
-    underInput.placeholder = "any ground";
-    underInput.addEventListener("input", () => {
-      const parts = readUnder(underInput.value);
-      if (parts !== null) {
-        if (parts.length === 0) {
-          delete n.under;
+    const tierInput = int(
+      "gathering-tier",
+      n.tier ?? null,
+      1,
+      1000,
+      true,
+      "Lowest tool tier",
+      (v) => {
+        if (v === null) {
+          delete n.tier;
         } else {
-          n.under = parts;
+          n.tier = v;
         }
-      }
+      },
+    );
+    tierInput.placeholder = "1";
+    const toolTab = section(
+      "tool",
+      "Tool",
+      "Which tools can harvest it.",
+      n.tools !== undefined || n.tier !== undefined,
+      labelled("Tool action", can, toolsHelp),
+      more(
+        n.tools !== undefined || n.tier !== undefined,
+        labelled(
+          "Only these tools",
+          toolsInput,
+          "Item names, comma-separated, for a tile only special tools can work. Empty: any tool with the tool action.",
+        ),
+        labelled(
+          "Lowest tool tier",
+          tierInput,
+          "Players with a lower-tier tool are told they need a better one. Empty: any tier.",
+        ),
+      ),
+    );
+
+    // Skill.
+    const skill = action(document.createElement("select"), "gathering-skill");
+    for (const s of view.skills) {
+      skill.append(option(s.skill, s.display));
+    }
+    skill.value = n.skill;
+    skill.addEventListener("change", () => {
+      n.skill = skill.value;
       edited();
     });
-    // The requirement.
     const reqBox = document.createElement("div");
-    reqBox.className = "items-list-row";
+    reqBox.className = "gathering-requirement";
     const drawReq = () => {
       reqBox.replaceChildren(
-        check("gathering-requires-on", !!n.requires, "Needs a skill or level first", (on) => {
-          if (on) {
-            n.requires = { needs: n.skill || "level", atLeast: 1 };
-          } else {
-            delete n.requires;
-          }
-          drawReq();
-        }),
+        check(
+          "gathering-requires-on",
+          !!n.requires,
+          "Players need a skill or level before they can harvest it",
+          (on) => {
+            if (on) {
+              n.requires = { needs: n.skill || "level", atLeast: 1 };
+            } else {
+              delete n.requires;
+            }
+            drawReq();
+          },
+        ),
       );
       if (n.requires) {
         const r = n.requires;
         const needs = action(document.createElement("select"), "gathering-requires-needs");
-        needs.append(option("level", "Level"));
+        needs.append(option("level", "Character level"));
         for (const s of view?.skills ?? []) {
-          needs.append(option(s.skill));
+          needs.append(option(s.skill, s.display));
         }
         needs.value = r.needs;
         needs.addEventListener("change", () => {
           r.needs = needs.value;
           edited();
         });
-        reqBox.append(
+        const row = document.createElement("div");
+        row.className = "items-list-row";
+        row.append(
           labelled("Needs", needs),
           labelled(
             "At least",
@@ -842,8 +1110,11 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
               r.atLeast = v ?? 0;
             }),
           ),
+        );
+        reqBox.append(
+          row,
           labelled(
-            "Says",
+            "Message when they can't",
             text("gathering-requires-text", r.text ?? "", (t) => {
               if (t === "") {
                 delete r.text;
@@ -851,13 +1122,52 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
                 r.text = t;
               }
             }),
-            'Empty: "You need <skill> <n> to <can> this."',
+            "Empty: “You need <skill> <number> to <action> this.”",
           ),
         );
       }
     };
     drawReq();
-    // The yield table.
+    const xpInput = int(
+      "gathering-xp",
+      n.xp ?? null,
+      0,
+      1_000_000_000,
+      true,
+      "XP per harvest",
+      (v) => {
+        if (v === null) {
+          delete n.xp;
+        } else {
+          n.xp = v;
+        }
+      },
+    );
+    xpInput.placeholder = "The skill's own amount";
+    const skillTab = section(
+      "skill",
+      "Skill",
+      "The skill that decides how many swings a harvest takes, and that harvesting trains.",
+      n.requires !== undefined || n.xp !== undefined || !n.gains,
+      labelled("Skill", skill),
+      panelButton("gathering-open-skill", "Open this skill on the Skills page", () =>
+        actions.openSkill(n.skill),
+      ),
+      check("gathering-gains", n.gains, "Each harvest trains the skill", (on) => {
+        n.gains = on;
+      }),
+      reqBox,
+      more(
+        n.xp !== undefined,
+        labelled(
+          "XP per harvest",
+          xpInput,
+          "Only for skills that level up by XP. Empty: the skill's own amount for gathering.",
+        ),
+      ),
+    );
+
+    // Drops.
     const yieldBox = document.createElement("div");
     const drawYield = () => {
       yieldBox.replaceChildren();
@@ -882,6 +1192,7 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
         },
         yieldsList.id,
       );
+      name.placeholder = "Nothing";
       const fields = document.createElement("div");
       const drawYieldFields = () => {
         fields.replaceChildren();
@@ -891,19 +1202,21 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
         }
         const shared = openIndex >= 0 ? (view?.nodes[openIndex]?.yieldSharedWith ?? []) : [];
         if (shared.length > 0) {
+          const others = shared
+            .map((i) => {
+              const o = view?.nodes[i]?.node;
+              return o ? `${o.can} ${tileName(o.tile) || o.tile}` : `node ${i + 1}`;
+            })
+            .join(", ");
           fields.append(
-            Object.assign(document.createElement("p"), {
-              className: "control-panel-field-help",
-              textContent: `Nodes ${shared.map((i) => i + 1).join(", ")} roll this table too: a change here changes theirs.`,
-            }),
+            helpLine(
+              `${others} ${shared.length === 1 ? "uses" : "use"} this drop table too: a change here changes theirs.`,
+            ),
           );
         }
         if (t.kind === "ore") {
           fields.append(
-            Object.assign(document.createElement("p"), {
-              className: "control-panel-field-help",
-              textContent: "An ore strike: crystals and ores from the world's mining tables.",
-            }),
+            helpLine("A mining strike: crystals and ores, from the world's mining tables."),
           );
           return;
         }
@@ -919,7 +1232,7 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
         };
         fields.append(
           labelled(
-            "Drops",
+            "Item it drops",
             text(
               "gathering-yield-item",
               t.item,
@@ -931,28 +1244,30 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
             ),
           ),
           labelled(
-            "1 in",
+            "Chance per harvest: 1 in",
             int(
               "gathering-yield-chance",
               t.chance,
               1,
               1_000_000_000,
               false,
-              "Yield chance",
+              "Chance per harvest",
               (v) => {
                 t.chance = v ?? 1;
                 yieldEdit.edited = true;
               },
             ),
-            "Each success drops it on random(n) = 1.",
+            "1 means every harvest drops it; 3 means one harvest in three, on average.",
           ),
           rowsEditor(
             "gathering-yield-by",
-            "By skill: from the last row the skill is above, 1 in this",
+            "Better odds with more skill",
+            "From each skill value on, the chance is 1 in this instead. The last row the skill reaches wins.",
+            "+ Add a skill row",
             by,
             [
-              { key: "gt", label: "Skill above", kind: "int" },
-              { key: "value", label: "1 in", kind: "int" },
+              { key: "gt", label: "From skill", kind: "int", offset: 1 },
+              { key: "value", label: "1 in", kind: "int", min: 1 },
             ],
             () => ({ gt: 0, value: 1 }),
             yieldChanged,
@@ -962,14 +1277,104 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
       drawYieldFields();
       yieldBox.append(
         labelled(
-          "Yield table",
+          "Drop table",
           name,
-          "The table each success rolls, by name (empty: it drops nothing).",
+          "The name of the table a harvest rolls. Several tiles can share one. Empty: it drops nothing.",
         ),
         fields,
       );
     };
     drawYield();
+    const dropsTab = section(
+      "drops",
+      "Drops",
+      "What a harvest gives the player.",
+      n.yield !== undefined || n.treasure === true,
+      yieldBox,
+      check(
+        "gathering-treasure",
+        n.treasure === true,
+        "A harvest can dig up the buried treasure",
+        (on) => {
+          if (on) {
+            n.treasure = true;
+          } else {
+            delete n.treasure;
+          }
+        },
+      ),
+    );
+
+    // Sounds.
+    const sound = (key: "hitSound" | "successSound", label: string, help: string) =>
+      labelled(
+        label,
+        Object.assign(
+          text(
+            `gathering-${key}`,
+            n[key]?.name ?? "",
+            (t) => {
+              n[key] =
+                t === "" ? null : { name: t, ch: n[key]?.ch ?? (key === "hitSound" ? 3 : 2) };
+              drawChannels();
+            },
+            soundsList.id,
+          ),
+          { placeholder: "None" },
+        ),
+        help,
+      );
+    const channels = document.createElement("div");
+    const drawChannels = () => {
+      channels.replaceChildren(
+        ...(["hitSound", "successSound"] as const)
+          .filter((key) => n[key] !== null)
+          .map((key) =>
+            labelled(
+              key === "hitSound" ? "Swing sound channel" : "Harvest sound channel",
+              int(
+                `gathering-${key}-ch`,
+                n[key]?.ch ?? null,
+                1,
+                8,
+                false,
+                key === "hitSound" ? "Swing sound channel" : "Harvest sound channel",
+                (c) => {
+                  const cur = n[key];
+                  if (cur) {
+                    cur.ch = c ?? 1;
+                  }
+                },
+              ),
+            ),
+          ),
+      );
+      if (channels.childElementCount === 0) {
+        channels.append(helpLine("Pick a sound first."));
+      } else {
+        channels.append(
+          helpLine(
+            "Sound channels 1 to 8. Leave them as they are unless sounds cut each other off.",
+          ),
+        );
+      }
+    };
+    drawChannels();
+    const soundsTab = section(
+      "sounds",
+      "Sounds",
+      "What players hear while harvesting it.",
+      n.hitSound !== null || n.successSound !== null,
+      sound(
+        "hitSound",
+        "Swing sound",
+        "Plays on every swing at this tile, instead of the tool's usual sound.",
+      ),
+      sound("successSound", "Harvest sound", "Plays to the player when a harvest succeeds."),
+      more(false, channels),
+    );
+
+    // Odds.
     const tierSel = action(document.createElement("select"), "gathering-preview-tier");
     tierSel.append(option("0", "Every tool tier"));
     for (const t of [...new Set(view.tools.map((x) => x.tier))].sort((a, b) => a - b)) {
@@ -980,186 +1385,55 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
       previewTier.value = Number(tierSel.value);
       drawPreview();
     });
-    const tools = view.tools.filter((t) => t.can === n.can);
-    const section = (t: string, ...children: HTMLElement[]) => {
-      const sec = document.createElement("section");
-      sec.className = "balance-row items-group";
-      const h = document.createElement("h3");
-      h.className = "balance-row-title";
-      h.textContent = t;
-      sec.append(h, ...children);
-      return sec;
-    };
-    const picture = document.createElement("div");
-    picture.className = "items-list-row";
-    picture.append(tilePicture(n.tile), " becomes ", tilePicture(n.becomes));
-    body.replaceChildren(
-      section(
-        "Tile",
-        picture,
-        labelled(
-          "Tile",
-          text(
-            "gathering-tile",
-            n.tile,
-            (t) => {
-              n.tile = t;
-            },
-            tilesList.id,
-          ),
-          "The layer-2 tile it is on (two letters).",
-        ),
-        labelled(
-          "Becomes",
-          text(
-            "gathering-becomes",
-            n.becomes,
-            (t) => {
-              n.becomes = t;
-            },
-            tilesList.id,
-          ),
-          "What the tile turns into on a success.",
-        ),
-        labelled(
-          "Regrows",
-          regrows,
-          "The world's regrowth check that turns the spent tile back, a frame at a time.",
-        ),
-      ),
-      section(
-        "Tools",
-        labelled("Tool behaviour", can),
-        labelled(
-          "Only these tools",
-          toolsInput,
-          "Item names, comma-separated (empty: any tool that can). Tools that can now: " +
-            (tools
-              .map((t) => `${t.match === "exact" ? "" : "any "}${t.pattern} (tier ${t.tier})`)
-              .join(", ") || "none"),
-        ),
-        labelled(
-          "Lowest tool tier",
-          int("gathering-tier", n.tier ?? null, 1, 1000, true, "Lowest tier", (v) => {
-            if (v === null) {
-              delete n.tier;
-            } else {
-              n.tier = v;
-            }
-          }),
-          "A lower tier is told it needs a better tool. Empty: 1.",
-        ),
-        labelled(
-          "Ground",
-          underInput,
-          "The layer-1 tiles it must be on, comma-separated (empty: any).",
-        ),
-      ),
-      section(
-        "Skill",
-        labelled("Skill", skill, "Its value reads the hit counter and the yield table's rows."),
-        panelButton("gathering-open-skill", "Open the skill", () => actions.openSkill(n.skill)),
-        check(
-          "gathering-gains",
-          n.gains,
-          "Each success trains it (its gather progression)",
-          (on) => {
-            n.gains = on;
-          },
-        ),
-        labelled(
-          "XP a success",
-          int("gathering-xp", n.xp ?? null, 0, 1_000_000_000, true, "XP", (v) => {
-            if (v === null) {
-              delete n.xp;
-            } else {
-              n.xp = v;
-            }
-          }),
-          "For an XP-model skill: replaces the skill's own gather XP. Empty: the skill's.",
-        ),
-        reqBox,
-      ),
-      section("Yield", yieldBox),
-      section(
-        "Sounds and effects",
-        sound("hitSound", "Swing sound"),
-        sound("successSound", "Success sound"),
-        check(
-          "gathering-treasure",
-          n.treasure === true,
-          "A success may dig up the buried treasure",
-          (on) => {
-            if (on) {
-              n.treasure = true;
-            } else {
-              delete n.treasure;
-            }
-          },
-        ),
-      ),
-      section(
-        "Preview",
-        labelled("Tool tier", tierSel),
-        Object.assign(document.createElement("p"), {
-          className: "control-panel-field-help",
-          textContent:
-            "Worked out by the game's own rules from the form as it is now: the swings each success takes (the hit counter), the chance a success drops, and the XP it gives. A tool's tier gates the node and feeds formulas that read tier.",
-        }),
-        preview,
-      ),
+    const oddsTab = section(
+      "odds",
+      "Odds",
+      "How harvesting this tile plays at each skill value, worked out by the game's own rules from the form as it is now (before you save).",
+      false,
+      labelled("Show tools of", tierSel),
+      preview,
     );
+
+    body.replaceChildren(tileTab, toolTab, skillTab, dropsTab, soundsTab, oddsTab);
     drawPreview();
     update();
   };
 
-  // ---- the fixed parts ----
+  // ---- fishing, farming and the swings a harvest takes ----
   const drawFixed = () => {
     if (!view || part === null || part === "node") {
       return;
     }
     form.hidden = false;
-    const section = (t: string, ...children: HTMLElement[]) => {
-      const sec = document.createElement("section");
-      sec.className = "balance-row items-group";
-      const h = document.createElement("h3");
-      h.className = "balance-row-title";
-      h.textContent = t;
-      sec.append(h, ...children);
-      return sec;
-    };
+    subtitle.textContent = "";
     if (part === "counter") {
-      title.textContent = "Hit counter";
+      title.textContent = "Swings per harvest";
       body.replaceChildren(
         section(
-          "Swings a success takes, by the skill",
+          "counter",
+          "Swings per harvest",
+          "How many swings a harvest takes at each skill value. Every harvestable tile uses it, and so does watering crops.",
+          true,
           rowsEditor(
             "gathering-counter",
-            "From the last row the skill is above",
+            "Swings by skill",
+            "From each skill value on, a harvest takes this many swings. The last row the skill reaches wins.",
+            "+ Add a skill row",
             fixedWork as { gt: number; value: number }[],
             [
-              { key: "gt", label: "Skill above", kind: "int" },
+              { key: "gt", label: "From skill", kind: "int", offset: 1 },
               { key: "value", label: "Swings", kind: "int" },
             ],
             () => ({ gt: 0, value: 1 }),
           ),
-          Object.assign(document.createElement("p"), {
-            className: "control-panel-field-help",
-            textContent:
-              "Every harvest node and a Water tool read it: an empty counter loads this many hits, each swing takes one, and the swing that empties it succeeds.",
-          }),
         ),
       );
     } else if (part === "fishing") {
       title.textContent = "Fishing";
       const f = fixedWork as Record<string, unknown> | null;
       if (!f) {
-        body.replaceChildren(
-          Object.assign(document.createElement("p"), {
-            className: "control-panel-field-help",
-            textContent: "This world has no fishing.",
-          }),
-        );
+        body.replaceChildren(helpLine("This world has no fishing."));
+        update();
         return;
       }
       const water = noAutofill(action(document.createElement("input"), "gathering-water"));
@@ -1171,117 +1445,182 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
         }
         edited();
       });
+      const skill = view.fishing.skill;
       body.replaceChildren(
         section(
+          "fishing",
           "Fishing",
-          Object.assign(document.createElement("p"), {
-            className: "control-panel-field-help",
-            textContent: `A Fish tool facing water casts the line; the bound Fishing skill (${view.fishing.skill ?? "none: fishing is off"}) reads these tables and trains from its gather progression.`,
-          }),
-          labelled("Water tiles", water, "Two-letter codes, comma-separated."),
-          rowsEditor(
-            "gathering-bands",
-            "Catches: the last band the skill is below",
-            f.bands as { lt: number; fish: string }[],
-            [
-              { key: "lt", label: "Skill below", kind: "int" },
-              { key: "fish", label: "Fish", kind: "text", list: itemsList.id },
-            ],
-            () => ({ lt: 100, fish: "" }),
-          ),
-          rowsEditor(
-            "gathering-bite",
-            "Bites: 1 in this, from the last row the skill is above",
-            f.fishCheck as { gt: number; value: number }[],
-            [
-              { key: "gt", label: "Skill above", kind: "int" },
-              { key: "value", label: "1 in", kind: "int" },
-            ],
-            () => ({ gt: 0, value: 1 }),
+          `Players fish by using a fishing tool while facing water. ${skill ? `It trains ${skillName(skill)}.` : "No skill is set as the fishing skill, so fishing is off."}`,
+          true,
+          labelled(
+            "Water tiles",
+            water,
+            "Two-letter tile codes players can fish in, comma-separated.",
           ),
           labelled(
-            "Catches from one tile",
+            "Catches before a spot runs out",
             int(
               "gathering-anti-macro",
               f.antiMacroStart as number,
               1,
               1_000_000,
               false,
-              "Catches from one tile",
+              "Catches before a spot runs out",
               (v) => {
                 f.antiMacroStart = v ?? 1;
               },
             ),
+            "After this many catches from one tile, players must fish from another tile to catch more.",
           ),
           labelled(
-            "Told when spent",
+            "Message when a spot runs out",
             text("gathering-stopped", String(f.stoppedText ?? ""), (t) => {
               f.stoppedText = t;
             }),
           ),
         ),
-        section("Preview", preview),
+        section(
+          "catches",
+          "Catches",
+          "Which fish players catch at each skill value.",
+          true,
+          rowsEditor(
+            "gathering-bands",
+            "Fish by skill",
+            "A fisher catches the fish of the lowest “below skill” number they are under.",
+            "+ Add a fish",
+            f.bands as { lt: number; fish: string }[],
+            [
+              { key: "fish", label: "Fish", kind: "text", list: itemsList.id },
+              { key: "lt", label: "Below skill", kind: "int" },
+            ],
+            () => ({ lt: 100, fish: "" }),
+          ),
+        ),
+        section(
+          "bites",
+          "Bites",
+          "The chance each cast gets a bite, at each skill value.",
+          true,
+          rowsEditor(
+            "gathering-bite",
+            "Bite chance by skill",
+            "From each skill value on, a cast bites 1 time in this many. The last row the skill reaches wins.",
+            "+ Add a skill row",
+            f.fishCheck as { gt: number; value: number }[],
+            [
+              { key: "gt", label: "From skill", kind: "int", offset: 1 },
+              { key: "value", label: "1 in", kind: "int", min: 1 },
+            ],
+            () => ({ gt: 0, value: 1 }),
+          ),
+        ),
+        section(
+          "odds",
+          "Odds",
+          "How fishing plays at each skill value, worked out by the game's own rules from the form as it is now (before you save).",
+          false,
+          preview,
+        ),
       );
       drawPreview();
     } else if (part === "farming") {
       title.textContent = "Farming";
       const f = fixedWork as Record<string, unknown> | null;
       if (!f) {
-        body.replaceChildren(
-          Object.assign(document.createElement("p"), {
-            className: "control-panel-field-help",
-            textContent: "This world has no farming.",
-          }),
-        );
+        body.replaceChildren(helpLine("This world has no farming."));
+        update();
         return;
       }
       const skill = action(document.createElement("select"), "gathering-watering-skill");
       for (const s of view.skills) {
-        skill.append(option(s.skill));
+        skill.append(option(s.skill, s.display));
       }
       skill.value = String(f.wateringSkill ?? "");
       skill.addEventListener("change", () => {
         f.wateringSkill = skill.value;
         edited();
       });
+      // The tilled-soil test is stored `*SL*`: shown and typed as codes, comma-separated.
+      const soil = noAutofill(action(document.createElement("input"), "gathering-seed-test"));
+      soil.value = String(f.seedTest ?? "")
+        .split("*")
+        .filter((c) => c !== "")
+        .join(", ");
+      soil.addEventListener("input", () => {
+        const parts = soil.value
+          .split(",")
+          .map((x) => x.trim())
+          .filter((x) => x !== "");
+        if (!parts.every((x) => x.length === 2)) {
+          invalid.set(soil, "Seeds plant on: two-letter tile codes, comma-separated");
+        } else {
+          invalid.delete(soil);
+          f.seedTest = parts.length === 0 ? "" : `*${parts.join("*")}*`;
+        }
+        edited();
+      });
       body.replaceChildren(
         section(
-          "Farming",
+          "seeds",
+          "Seeds",
+          "Which items plant seeds, and where.",
+          true,
+          labelled(
+            "Seeds plant on",
+            soil,
+            "Tile codes of tilled soil, comma-separated, such as SL.",
+          ),
           rowsEditor(
             "gathering-seeds",
-            "Seeds: the item, and the tile it plants",
+            "Seeds",
+            "Using a seed item on tilled soil turns the soil into its planted tile.",
+            "+ Add a seed",
             f.seeds as { item: string; plants: string }[],
             [
-              { key: "item", label: "Seed", kind: "text", list: itemsList.id },
-              { key: "plants", label: "Plants", kind: "text", list: tilesList.id },
+              { key: "item", label: "Seed item", kind: "text", list: itemsList.id },
+              { key: "plants", label: "Planted tile", kind: "text", list: tilesList.id },
             ],
             () => ({ item: "", plants: "" }),
           ),
+        ),
+        section(
+          "watering",
+          "Watering",
+          "Watering a planted tile grows it. It takes swings like a harvest, read from the watering skill.",
+          true,
           labelled(
-            "Tilled soil",
-            text("gathering-seed-test", String(f.seedTest ?? ""), (t) => {
-              f.seedTest = t;
-            }),
-            "The tiles seeds plant on, separated by *.",
+            "Watering skill",
+            skill,
+            "The skill whose swings per harvest a watering tool uses.",
           ),
-          labelled("Watering skill", skill, "The skill whose hit counter a Water tool advances."),
           rowsEditor(
             "gathering-watering",
-            "Watering: a seeded tile and what it becomes",
+            "What watering grows",
+            "",
+            "+ Add a planted tile",
             f.watering as { from: string; to: string }[],
             [
-              { key: "from", label: "From", kind: "text", list: tilesList.id },
-              { key: "to", label: "To", kind: "text", list: tilesList.id },
+              { key: "from", label: "Planted tile", kind: "text", list: tilesList.id },
+              { key: "to", label: "Grows into", kind: "text", list: tilesList.id },
             ],
             () => ({ from: "", to: "" }),
           ),
+        ),
+        section(
+          "crops",
+          "Crops",
+          "What a fully grown tile gives when it is ready.",
+          true,
           rowsEditor(
             "gathering-produce",
-            "Produce: a grown tile drops this as regrowth reaches it",
+            "Crops",
+            "A grown tile drops its crop item when the world's crop check reaches it.",
+            "+ Add a crop",
             f.produce as { tile: string; item: string }[],
             [
-              { key: "tile", label: "Tile", kind: "text", list: tilesList.id },
-              { key: "item", label: "Item", kind: "text", list: itemsList.id },
+              { key: "tile", label: "Grown tile", kind: "text", list: tilesList.id },
+              { key: "item", label: "Crop item", kind: "text", list: itemsList.id },
             ],
             () => ({ tile: "", item: "" }),
           ),
@@ -1368,13 +1707,12 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
           b.setAttribute("aria-current", "true");
         }
         const name = document.createElement("span");
-        const tn = tileName(n.node.tile);
-        name.textContent = `${n.node.can} ${n.node.tile}${tn ? ` (${tn})` : ""}`;
+        name.textContent = `${n.node.can} ${tileName(n.node.tile) || n.node.tile}`;
         const meta = document.createElement("span");
         meta.className = "items-list-meta";
         meta.textContent = [
-          n.node.skill,
-          n.yield?.kind === "chance" ? n.yield.item : n.yield ? "ore" : "",
+          skillName(n.node.skill),
+          n.yield?.kind === "chance" ? n.yield.item : n.yield ? "ores" : "",
           (n.node.tier ?? 1) > 1 ? `tier ${n.node.tier}` : "",
         ]
           .filter((x) => x !== "")
@@ -1385,30 +1723,46 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
         return li;
       }),
     );
+    for (const b of fixedEl.querySelectorAll<HTMLButtonElement>("button")) {
+      if (part !== null && part !== "node" && b.dataset.part === part) {
+        b.setAttribute("aria-current", "true");
+      } else {
+        b.removeAttribute("aria-current");
+      }
+    }
   };
 
   const show = (v: ContentGatheringView) => {
     loading.hidden = true;
     view = v;
-    const opts = (l: HTMLDataListElement, values: string[]) => {
+    const opts = (l: HTMLDataListElement, values: { value: string; text?: string }[]) => {
       if (l.childElementCount !== values.length) {
-        l.replaceChildren(...values.map((x) => option(x)));
+        l.replaceChildren(...values.map((x) => option(x.value, x.text)));
       }
     };
     opts(
       tilesList,
-      v.choices.tiles.map((t) => t.code),
+      v.choices.tiles.map((t) => ({ value: t.code, ...(t.name ? { text: t.name } : {}) })),
     );
-    opts(itemsList, v.choices.items);
-    opts(soundsList, v.choices.sounds);
-    opts(yieldsList, v.choices.yields);
+    opts(
+      itemsList,
+      v.choices.items.map((x) => ({ value: x })),
+    );
+    opts(
+      soundsList,
+      v.choices.sounds.map((x) => ({ value: x })),
+    );
+    opts(
+      yieldsList,
+      v.choices.yields.map((x) => ({ value: x })),
+    );
     drawList();
     const total = v.otherDraft + (v.pending ? 1 : 0);
     draftLine.hidden = total === 0;
     draftText.textContent = v.pending
-      ? "The draft changes gathering, live once published. "
+      ? `You have unpublished gathering changes${v.otherDraft > 0 ? ` (and ${v.otherDraft} other ${v.otherDraft === 1 ? "change" : "changes"})` : ""}. Players get them once you publish. `
       : total > 0
-        ? `The draft holds ${v.otherDraft} other ${v.otherDraft === 1 ? "change" : "changes"}. `
+        ? `${v.otherDraft === 1 ? "1 unpublished change" : `${v.otherDraft} unpublished changes`} (none to gathering). Players get them once you publish. `
         : "";
     if (pendingOpen !== undefined && v.nodes[pendingOpen]) {
       const n = pendingOpen;
@@ -1439,6 +1793,7 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
           refill();
         }
         status.textContent = "";
+        update();
       }
     },
     receive(msg) {
@@ -1497,6 +1852,7 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
       form.hidden = true;
       loading.hidden = false;
       draftLine.hidden = true;
+      empty.hidden = true;
     },
     open(node) {
       if (node === undefined) {

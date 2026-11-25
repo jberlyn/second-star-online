@@ -9,7 +9,11 @@ import { afterAll, describe, expect, test } from "bun:test";
 import { RELEASE_PACK_DIRS } from "@secondstaronline/data/packs";
 import { content, gatherPreview, installContent } from "@secondstaronline/shared";
 
-import { draftGatheringChange, gatheringView } from "../src/content/gathering-page.ts";
+import {
+  draftGatheringChange,
+  gatheringFieldProblems,
+  gatheringView,
+} from "../src/content/gathering-page.ts";
 import { contentIntent } from "../src/content/page.ts";
 import { type ContentActor, ContentService } from "../src/content/service.ts";
 import { seedNewWorld, worldToCreate } from "../src/content/world-seed.ts";
@@ -205,5 +209,49 @@ describe("Gathering page changes", () => {
     });
     expect(answer.t === "contentGathering" && answer.result?.ok).toBe(true);
     expect(s.draft()).toEqual([]);
+  });
+});
+
+describe("refusals name the form's fields", () => {
+  test("a node's, a drop table's and the gathering section's problems read by the page's labels", () => {
+    const m = "bad";
+    expect(
+      gatheringFieldProblems([
+        { where: "gather/harvest/1/tools/0", message: m },
+        { where: "gather/harvest/0/becomes", message: m },
+        { where: "gather/harvest/2", message: m },
+        { where: "gather/yields/Logs/bySkill/1", message: m },
+        { where: "gather/yields/Logs", message: m },
+        { where: "gather/gathering/counterTable/3/value", message: m },
+        { where: "gather/gathering/fishing", message: m },
+        { where: "gather/gathering/fishing/bands/1/fish", message: m },
+        { where: "gather/gathering/farming/seeds", message: m },
+      ]).map((p) => p.where),
+    ).toEqual([
+      "Node 2: Only these tools 1",
+      "Node 1: Turns into",
+      "Node 3",
+      "Drop table Logs: Better odds with more skill 2",
+      "Drop table Logs",
+      "Swings per harvest 4",
+      "Fishing",
+      "Fishing: Fish by skill 2",
+      "Farming: Seeds",
+    ]);
+  });
+
+  test("a shape the schema refuses is named by the form's label", () => {
+    const s = service();
+    const node = gatheringView(s).nodes[0];
+    if (!node) {
+      throw new Error("no node");
+    }
+    const bad = draftGatheringChange(s, ADMIN, {
+      op: "node",
+      index: 0,
+      data: { node: { ...node.node, tier: 0 } },
+      expect: node.fingerprint,
+    });
+    expect(bad.ok ? [] : (bad.problems ?? []).map((p) => p.where)).toEqual(["Lowest tool tier"]);
   });
 });
