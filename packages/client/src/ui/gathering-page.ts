@@ -25,7 +25,7 @@ import {
 
 import { type Assets, drawSprite } from "../assets.ts";
 import { action, noAutofill } from "./action.ts";
-import { pageHeading, panelButton } from "./control-panel-kit.ts";
+import { formActions, pageHeading, panelButton, sectionTabs } from "./control-panel-kit.ts";
 import { canonical } from "./items-page.ts";
 import { chanceText } from "./skills-page.ts";
 
@@ -281,7 +281,7 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
   const buttons = document.createElement("div");
   buttons.className = "content-buttons";
   buttons.append(saveBtn, undoBtn, removeBtn);
-  form.append(title, stale, body, buttons, status);
+  form.append(title, stale, sectionTabs(form, "gathering").el, body, formActions(buttons, status));
   const loading = document.createElement("p");
   loading.className = "balance-loading";
   loading.textContent = "Loading…";

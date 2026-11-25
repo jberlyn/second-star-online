@@ -28,7 +28,13 @@ import type {
 
 import { action, noAutofill } from "./action.ts";
 import type { MonsterBodyPanel } from "./content-page.ts";
-import { pageHeading, panelButton } from "./control-panel-kit.ts";
+import {
+  formActions,
+  pageHeading,
+  panelButton,
+  sectionTabs,
+  sourcesNote,
+} from "./control-panel-kit.ts";
 import { canonical, clean, rollRange } from "./items-page.ts";
 
 /** A Monsters page change as the page sends it. */
@@ -310,7 +316,7 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
   listEl.setAttribute("aria-label", "Monsters");
   const listCount = document.createElement("p");
   listCount.className = "control-panel-field-help";
-  listBox.append(labelled("Find", search), labelled("Show", kindSel), listCount, listEl);
+  listBox.append(newBox, labelled("Find", search), labelled("Show", kindSel), listCount, listEl);
 
   // ---- the form ----
   const form = document.createElement("section");
@@ -343,7 +349,7 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
   identity.className = "balance-row";
   const identityTitle = document.createElement("h3");
   identityTitle.className = "balance-row-title";
-  identityTitle.textContent = "Name and body";
+  identityTitle.textContent = "Name";
   const display = noAutofill(action(document.createElement("input"), "monsters-display"));
   display.maxLength = 40;
   display.id = "monsters-display";
@@ -368,15 +374,24 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
     },
     "danger",
   );
-  const bodyHost = document.createElement("div");
-  bodyHost.className = "items-pictures-host";
+  const identityButtons = document.createElement("div");
+  identityButtons.className = "content-buttons";
+  identityButtons.append(renameBtn, removeBtn);
   identity.append(
     identityTitle,
     labelled("Display name", display, "What players see; empty shows its name."),
-    renameBtn,
-    removeBtn,
-    bodyHost,
+    identityButtons,
   );
+  // The body: a tab of its own, since it is tall.
+  const bodyBox = document.createElement("section");
+  bodyBox.className = "balance-row";
+  bodyBox.hidden = true;
+  const bodyTitle = document.createElement("h3");
+  bodyTitle.className = "balance-row-title";
+  bodyTitle.textContent = "Body";
+  const bodyHost = document.createElement("div");
+  bodyHost.className = "items-pictures-host";
+  bodyBox.append(bodyTitle, bodyHost);
   const rules = document.createElement("fieldset");
   rules.className = "items-rules";
   const groupsEl = document.createElement("div");
@@ -420,6 +435,9 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
   // The NPC file: loot, spells and flags, saved live.
   const npcBox = document.createElement("section");
   npcBox.className = "balance-row monsters-npc";
+  npcBox.dataset.tab = "Loot and NPC file";
+  // It saves on its own: the draft's Save bar steps aside while its tab shows.
+  npcBox.dataset.ownSave = "";
   const npcTitle = document.createElement("h3");
   npcTitle.className = "balance-row-title";
   npcTitle.textContent = "Loot, spells and NPC flags (its NPC file)";
@@ -469,7 +487,19 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
   // included (that is where it is fixed).
   npcBox.append(npcTitle, npcHelp, npcBody, npcButtons, npcWholeBtn, npcStatus);
 
-  form.append(title, tags, noticeLine, stale, identity, rules, buttons, status, npcBox);
+  const tabs = sectionTabs(form, "monsters");
+  form.append(
+    title,
+    tags,
+    noticeLine,
+    stale,
+    tabs.el,
+    identity,
+    bodyBox,
+    rules,
+    npcBox,
+    formActions(buttons, status),
+  );
 
   // The monster spells card.
   const spellsBox = document.createElement("details");
@@ -530,7 +560,7 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
   const layout = document.createElement("div");
   layout.className = "items-layout";
   layout.append(listBox, form);
-  el.append(draftLine, newBox, spellsBox, loading, layout);
+  el.append(draftLine, spellsBox, loading, layout);
 
   // ---- state ----
   let seq = 0;
@@ -706,19 +736,14 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
       sec.append(h);
       const from = v.sources.filter((x) => x.group === id);
       if (from.length > 0) {
-        const head = document.createElement("p");
-        head.className = "control-panel-field-help";
-        head.textContent = v.defined
-          ? "In the draft it plays its own definition:"
-          : "What it plays now comes from:";
-        const ul = document.createElement("ul");
-        ul.className = "items-sources";
-        for (const s of from) {
-          const li = document.createElement("li");
-          li.textContent = `${s.label}: ${s.from}`;
-          ul.append(li);
-        }
-        sec.append(head, ul);
+        sec.append(
+          sourcesNote(
+            v.defined
+              ? "In the draft it plays its own definition:"
+              : "What it plays now comes from:",
+            from.map((s) => `${s.label}: ${s.from}`),
+          ),
+        );
       }
       sec.append(...controls);
       if (v.pack) {
@@ -1624,6 +1649,7 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
       });
       if (body) {
         bodyHost.append(body.el);
+        bodyBox.hidden = false;
       }
     }
     body?.show(name, force);

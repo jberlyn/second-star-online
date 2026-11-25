@@ -40,7 +40,7 @@ import {
 } from "@secondstaronline/shared";
 
 import { action, noAutofill } from "./action.ts";
-import { pageHeading, panelButton } from "./control-panel-kit.ts";
+import { formActions, pageHeading, panelButton, sectionTabs } from "./control-panel-kit.ts";
 import { canonical } from "./items-page.ts";
 
 /** A Skills page change as the page sends it. */
@@ -425,7 +425,7 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
   listEl.setAttribute("aria-label", "Skills");
   const listCount = document.createElement("p");
   listCount.className = "control-panel-field-help";
-  listBox.append(labelled("Find", search), listCount, listEl);
+  listBox.append(newBox, labelled("Find", search), listCount, listEl);
 
   // ---- the form ----
   const form = document.createElement("section");
@@ -478,6 +478,7 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
         seq += 1;
         usageAsked = seq;
         removal.hidden = false;
+        tabs.select(removalTitle.textContent ?? "");
         removalBody.replaceChildren();
         say(removalStatus, "Finding where it is used…");
         actions.usage(seq, shown.skill);
@@ -492,6 +493,7 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
   // The removal panel.
   const removal = document.createElement("section");
   removal.className = "balance-row skills-removal";
+  removal.dataset.ownSave = "";
   removal.hidden = true;
   const removalTitle = document.createElement("h3");
   removalTitle.className = "balance-row-title";
@@ -525,14 +527,24 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
   });
   removal.append(removalTitle, removalBody, removeGo, removeCancel, removalStatus);
 
-  form.append(title, tags, noticeLine, stale, groups, buttons, status, removal);
+  const tabs = sectionTabs(form, "skills");
+  form.append(
+    title,
+    tags,
+    noticeLine,
+    stale,
+    tabs.el,
+    groups,
+    removal,
+    formActions(buttons, status),
+  );
   const loading = document.createElement("p");
   loading.className = "balance-loading";
   loading.textContent = "Loading…";
   const layout = document.createElement("div");
   layout.className = "items-layout";
   layout.append(listBox, form);
-  el.append(draftLine, newBox, loading, layout);
+  el.append(draftLine, loading, layout);
 
   // ---- state ----
   let seq = 0;

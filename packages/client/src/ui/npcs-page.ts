@@ -25,7 +25,7 @@ import {
 } from "@secondstaronline/shared";
 
 import { action, noAutofill } from "./action.ts";
-import { pageHeading, panelButton } from "./control-panel-kit.ts";
+import { formActions, pageHeading, panelButton, sectionTabs } from "./control-panel-kit.ts";
 
 export interface NpcsPageActions {
   view(seq: number, name?: string): void;
@@ -219,11 +219,11 @@ export function createNpcsPage(actions: NpcsPageActions): NpcsPage {
     monsterLink,
     stale,
     labelled("Edit as", modeSel),
+    sectionTabs(form, "npcs").el,
     sectionsEl,
     textBox,
     checkBox,
-    buttons,
-    status,
+    formActions(buttons, status),
   );
   const itemsList = document.createElement("datalist");
   itemsList.id = "npcs-items";

@@ -26,7 +26,13 @@ import { definesBehaviours } from "@secondstaronline/shared";
 
 import { action, noAutofill } from "./action.ts";
 import type { ItemPanels } from "./content-page.ts";
-import { pageHeading, panelButton } from "./control-panel-kit.ts";
+import {
+  formActions,
+  pageHeading,
+  panelButton,
+  sectionTabs,
+  sourcesNote,
+} from "./control-panel-kit.ts";
 
 /** An Items page change as the page sends it. */
 export interface ItemChange {
@@ -349,6 +355,7 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
   const listCount = document.createElement("p");
   listCount.className = "control-panel-field-help";
   listBox.append(
+    newBox,
     field("Find", search, "items-search"),
     field("Show", kindSel, "items-kind"),
     listCount,
@@ -386,7 +393,7 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
   identity.className = "balance-row";
   const identityTitle = document.createElement("h3");
   identityTitle.className = "balance-row-title";
-  identityTitle.textContent = "Name and pictures";
+  identityTitle.textContent = "Name";
   const display = noAutofill(action(document.createElement("input"), "items-display"));
   display.maxLength = 40;
   const renameBtn = panelButton("items-rename", "Rename in the draft", () => {
@@ -409,15 +416,24 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
     },
     "danger",
   );
-  const picturesHost = document.createElement("div");
-  picturesHost.className = "items-pictures-host";
+  const identityButtons = document.createElement("div");
+  identityButtons.className = "content-buttons";
+  identityButtons.append(renameBtn, removeBtn);
   identity.append(
     identityTitle,
     field("Display name", display, "items-display", "What players see; empty shows its name."),
-    renameBtn,
-    removeBtn,
-    picturesHost,
+    identityButtons,
   );
+  // The pictures: a tab of their own, since they are tall.
+  const pictures = document.createElement("section");
+  pictures.className = "balance-row";
+  pictures.hidden = true;
+  const picturesTitle = document.createElement("h3");
+  picturesTitle.className = "balance-row-title";
+  picturesTitle.textContent = "Pictures";
+  const picturesHost = document.createElement("div");
+  picturesHost.className = "items-pictures-host";
+  pictures.append(picturesTitle, picturesHost);
   // The rule groups: one fieldset, locked while a save is on its way.
   const rules = document.createElement("fieldset");
   rules.className = "items-rules";
@@ -454,14 +470,25 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
   const buttons = document.createElement("div");
   buttons.className = "content-buttons";
   buttons.append(saveBtn, undoEditBtn, revertBtn, dropBtn);
-  form.append(title, tags, noticeLine, stale, identity, rules, buttons, status);
+  const tabs = sectionTabs(form, "items");
+  form.append(
+    title,
+    tags,
+    noticeLine,
+    stale,
+    tabs.el,
+    identity,
+    pictures,
+    rules,
+    formActions(buttons, status),
+  );
   const loading = document.createElement("p");
   loading.className = "balance-loading";
   loading.textContent = "Loading…";
   const layout = document.createElement("div");
   layout.className = "items-layout";
   layout.append(listBox, form);
-  el.append(draftLine, newBox, loading, layout);
+  el.append(draftLine, loading, layout);
 
   // ---- state ----
   let seq = 0;
@@ -763,19 +790,13 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
       const h = document.createElement("h3");
       h.className = "balance-row-title";
       h.textContent = GROUP_TITLES[id] ?? id;
-      const from = document.createElement("ul");
-      from.className = "items-sources";
-      for (const s of item.sources.filter((x) => x.group === id)) {
-        const li = document.createElement("li");
-        li.textContent = `${s.label}: ${s.from}`;
-        from.append(li);
-      }
-      const fromHead = document.createElement("p");
-      fromHead.className = "control-panel-field-help";
-      fromHead.textContent = item.defined
-        ? "In the draft it plays its own definition:"
-        : "What it plays now comes from:";
-      sec.append(h, fromHead, from, ...controls);
+      const from = sourcesNote(
+        item.defined
+          ? "In the draft it plays its own definition:"
+          : "What it plays now comes from:",
+        item.sources.filter((x) => x.group === id).map((s) => `${s.label}: ${s.from}`),
+      );
+      sec.append(h, from, ...controls);
       if (item.pack) {
         const pack = item.pack;
         sec.append(
@@ -1423,6 +1444,7 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
       });
       if (panels) {
         picturesHost.append(panels.el);
+        pictures.hidden = false;
       }
     }
     panels?.show(name);

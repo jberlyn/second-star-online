@@ -1075,6 +1075,7 @@ body {
 }
 .items-list {
   max-height: 60vh;
+  min-height: 120px;
   overflow-y: auto;
   margin: 0;
   padding: 0;
@@ -1127,13 +1128,19 @@ body {
   font-size: 12px;
 }
 .items-checks {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2px 12px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 4px 12px;
 }
 .items-check {
-  white-space: nowrap;
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
   color: #ddd;
+}
+.items-check > input {
+  flex: none;
+  margin: 2px 0 0;
 }
 .items-list-editor {
   margin: 8px 0;
@@ -1153,6 +1160,119 @@ body {
 }
 .items-list-row .balance-field {
   flex: 0 1 140px;
+}
+/* Editor forms (control-panel-kit.ts): one section at a time behind tabs, where the rules came
+   from folded away, and the Save bar kept in view at the bottom. */
+.control-panel-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  margin: 4px -16px 0;
+  padding: 6px 16px 0;
+  background: #1d1d1d;
+  border-bottom: 1px solid #3a3a3a;
+}
+.control-panel-tabs[hidden],
+.control-panel-tab-hidden {
+  display: none;
+}
+.control-panel-tab {
+  padding: 5px 10px;
+  margin-bottom: -1px;
+  border: 1px solid transparent;
+  border-radius: 4px 4px 0 0;
+  background: none;
+  color: #aab4c8;
+  font: inherit;
+  cursor: pointer;
+}
+.control-panel-tab:hover {
+  color: #fff;
+  background: #262626;
+}
+.control-panel-tab[aria-selected="true"] {
+  color: #fff;
+  background: #1d1d1d;
+  border-color: #3a3a3a #3a3a3a #1d1d1d;
+}
+.control-panel-tab:focus-visible {
+  outline: 2px solid #6e8fd6;
+  outline-offset: -2px;
+}
+.control-panel-tabs + .balance-row,
+.control-panel-tabs ~ .items-rules > div > .balance-row:first-child {
+  border-top: 0;
+}
+.control-panel-sources {
+  margin: 0 0 8px;
+  color: #b8c4dd;
+  font-size: 12px;
+}
+.control-panel-sources > summary {
+  cursor: pointer;
+  color: #8b96ad;
+}
+.control-panel-sources > ul {
+  margin: 4px 0 0;
+}
+.control-panel-form-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+  margin: 8px -16px 0;
+  padding: 0 16px 12px;
+  background: #1d1d1d;
+  border-top: 1px solid #3a3a3a;
+  border-radius: 0 0 6px 6px;
+}
+.control-panel-own-save > .control-panel-form-actions {
+  display: none;
+}
+.items-form:has(> .control-panel-form-actions) {
+  padding-bottom: 0;
+}
+.items-list-box .items-new {
+  margin: 0 0 8px;
+}
+.items-list-box .items-new[open] {
+  padding: 8px;
+  background: #1d1d1d;
+  border: 1px solid #333;
+  border-radius: 4px;
+}
+/* On a wide screen an editor page fills the window: the list and the form scroll on their own,
+   so the list never scrolls away and the form's tabs and Save bar stay in view. */
+@media (min-width: 900px) {
+  .control-panel-main > .items-page:not(.world-page) {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+  .control-panel-main > .items-page:not(.world-page) > * {
+    flex: none;
+  }
+  .control-panel-main > .items-page:not(.world-page) > .items-layout {
+    flex: 1 1 auto;
+    min-height: 0;
+    flex-wrap: nowrap;
+  }
+  .items-page:not(.world-page) .items-list-box {
+    display: flex;
+    flex-direction: column;
+    max-height: 100%;
+    overflow-y: auto;
+  }
+  .items-page:not(.world-page) .items-list-box > .items-list {
+    flex: 1 1 auto;
+    max-height: none;
+  }
+  .items-page:not(.world-page) .items-form {
+    max-height: 100%;
+    overflow-y: auto;
+  }
 }
 /* The World page (ui/world-page.ts): the map canvas, its tile palette and the saved versions. */
 .world-canvas-box {

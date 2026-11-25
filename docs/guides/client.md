@@ -52,7 +52,7 @@ The UI files are:
 - [packages/client/src/ui/player-settings.ts](../../packages/client/src/ui/player-settings.ts): Player Settings window (controls, display, sound, chat, social & privacy, accessibility).
 - [packages/client/src/ui/screens.ts](../../packages/client/src/ui/screens.ts): title, login and character creation.
 - [packages/client/src/ui/control-panel.ts](../../packages/client/src/ui/control-panel.ts): the Control Panel, which replaces the game view for admin pages.
-- [packages/client/src/ui/control-panel-kit.ts](../../packages/client/src/ui/control-panel-kit.ts): the Control Panel's shared table, form field and confirmation.
+- [packages/client/src/ui/control-panel-kit.ts](../../packages/client/src/ui/control-panel-kit.ts): the Control Panel's shared table, form field, confirmation, and the editor forms' section tabs (`sectionTabs`), folded rule sources (`sourcesNote`) and Save bar kept in view (`formActions`).
 - [packages/client/src/ui/settings.ts](../../packages/client/src/ui/settings.ts): the Control Panel's Server Settings page.
 - [packages/client/src/ui/activity-log.ts](../../packages/client/src/ui/activity-log.ts): the Control Panel's Activity Log page.
 - [packages/client/src/ui/content-page.ts](../../packages/client/src/ui/content-page.ts): the Control Panel's Content page.

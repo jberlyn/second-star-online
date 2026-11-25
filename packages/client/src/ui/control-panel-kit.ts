@@ -314,3 +314,179 @@ function openConfirm(
   host.append(shade);
   stay.focus();
 }
+
+/** The label a section's tab shows: its `data-tab`, or its title. */
+function tabLabel(sec: HTMLElement): string {
+  return (
+    sec.dataset.tab ??
+    sec.querySelector(":scope > .balance-row-title, :scope > summary")?.textContent?.trim() ??
+    ""
+  );
+}
+
+/** The tab that shows every section at once. */
+export const ALL_SECTIONS = "All";
+
+export interface SectionTabs {
+  /** The tab strip: put it at the top of the form. */
+  readonly el: HTMLElement;
+  /** The label of the tab showing (`ALL_SECTIONS` for all of them). */
+  selected(): string;
+  /** Shows the section with this label (or every section). */
+  select(label: string): void;
+}
+
+/**
+ * Turns a long editor form into tabs, one section at a time, so an item's or a monster's rules
+ * need no scrolling. The sections are `form`'s `.balance-row` elements (not one inside another),
+ * however a page draws and redraws them: the strip follows the form as it changes, a section the
+ * page hides has no tab, and the tab chosen stays chosen from one record to the next (the Attack
+ * tab stays open as you move from sword to sword). The last tab shows every section.
+ */
+export function sectionTabs(form: HTMLElement, id: string): SectionTabs {
+  const strip = document.createElement("div");
+  strip.className = "control-panel-tabs";
+  strip.setAttribute("role", "tablist");
+  strip.setAttribute("aria-label", "Sections");
+  strip.hidden = true;
+  let chosen = "";
+  let labels: string[] = [];
+  let sections: HTMLElement[] = [];
+
+  const collect = () =>
+    [...form.querySelectorAll<HTMLElement>(".balance-row")].filter(
+      (s) =>
+        !s.hidden &&
+        !strip.contains(s) &&
+        !s.parentElement?.closest(".balance-row") &&
+        // A section inside a part the page hid (a form not open) has no tab either.
+        !s.parentElement?.closest("[hidden]") &&
+        tabLabel(s) !== "",
+    );
+
+  const show = () => {
+    const current = labels.includes(chosen) || chosen === ALL_SECTIONS ? chosen : labels[0];
+    for (const s of sections) {
+      s.classList.toggle(
+        "control-panel-tab-hidden",
+        current !== ALL_SECTIONS && tabLabel(s) !== current,
+      );
+    }
+    // A section that saves on its own (`data-own-save`): the form's Save bar steps aside.
+    form.classList.toggle(
+      "control-panel-own-save",
+      current !== ALL_SECTIONS &&
+        sections.some((s) => tabLabel(s) === current && s.dataset.ownSave !== undefined),
+    );
+    for (const b of strip.querySelectorAll<HTMLButtonElement>("button")) {
+      const on = b.dataset.tab === current;
+      b.setAttribute("aria-selected", String(on));
+      b.tabIndex = on ? 0 : -1;
+    }
+  };
+
+  const sync = () => {
+    sections = collect();
+    const next = sections.map(tabLabel);
+    if (next.join("\n") !== labels.join("\n")) {
+      labels = next;
+      strip.replaceChildren(
+        ...[...labels, ALL_SECTIONS].map((label) => {
+          const b = action(document.createElement("button"), `${id}-tab`);
+          b.type = "button";
+          b.className = "control-panel-tab";
+          b.setAttribute("role", "tab");
+          b.dataset.tab = label;
+          b.textContent = label;
+          b.addEventListener("click", () => select(label));
+          return b;
+        }),
+      );
+      strip.hidden = labels.length < 2;
+    }
+    show();
+  };
+
+  const select = (label: string) => {
+    chosen = label;
+    show();
+  };
+
+  // Arrow keys, Home and End move between tabs (the tab pattern), choosing as they go.
+  strip.addEventListener("keydown", (e) => {
+    const tabs = [...strip.querySelectorAll<HTMLButtonElement>("button")];
+    const at = tabs.indexOf(document.activeElement as HTMLButtonElement);
+    if (at < 0) {
+      return;
+    }
+    const to =
+      e.key === "ArrowRight"
+        ? (at + 1) % tabs.length
+        : e.key === "ArrowLeft"
+          ? (at - 1 + tabs.length) % tabs.length
+          : e.key === "Home"
+            ? 0
+            : e.key === "End"
+              ? tabs.length - 1
+              : -1;
+    const tab = tabs[to];
+    if (tab) {
+      e.preventDefault();
+      select(tab.dataset.tab ?? "");
+      tab.focus();
+    }
+  });
+
+  let queued = false;
+  new MutationObserver((records) => {
+    if (queued || records.every((r) => strip.contains(r.target))) {
+      return;
+    }
+    queued = true;
+    queueMicrotask(() => {
+      queued = false;
+      sync();
+    });
+  }).observe(form, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ["hidden"],
+  });
+  sync();
+
+  return {
+    el: strip,
+    selected: () =>
+      labels.includes(chosen) || chosen === ALL_SECTIONS ? chosen : (labels[0] ?? ""),
+    select,
+  };
+}
+
+/**
+ * Where a record's rules come from (its own definition, or the pack's rows), folded away under a
+ * one-line summary so it does not crowd the fields.
+ */
+export function sourcesNote(head: string, lines: readonly string[]): HTMLElement {
+  const box = document.createElement("details");
+  box.className = "control-panel-sources";
+  const summary = action(document.createElement("summary"), "control-panel-sources-toggle");
+  summary.textContent = `${head.replace(/:$/, "")} (${lines.length})`;
+  const ul = document.createElement("ul");
+  ul.className = "items-sources";
+  for (const line of lines) {
+    const li = document.createElement("li");
+    li.textContent = line;
+    ul.append(li);
+  }
+  box.append(summary, ul);
+  return box;
+}
+
+/** A form's bar of actions and its status line, kept in view at the bottom as the form scrolls. */
+export function formActions(...parts: HTMLElement[]): HTMLElement {
+  const bar = document.createElement("div");
+  bar.className = "control-panel-form-actions";
+  bar.append(...parts);
+  return bar;
+}
