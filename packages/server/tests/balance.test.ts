@@ -659,6 +659,48 @@ describe("the Balance page on a running server", () => {
     }
   });
 
+  test("an optional section opens even when the world leaves it out, to be added back", async () => {
+    const server = start();
+    try {
+      const open = (part: string) =>
+        contentIntent(server.content, ADMIN, {
+          t: "contentRow",
+          seq: 1,
+          dataset: "casino",
+          part,
+          key: null,
+        }) as { row: { optional?: boolean; published: unknown; schema?: unknown } | null };
+      expect(open("checkers").row?.optional).toBe(true);
+      // A section every world needs is not optional.
+      const casting = contentIntent(server.content, ADMIN, {
+        t: "contentRow",
+        seq: 2,
+        dataset: "monsters",
+        part: "rules",
+        key: null,
+      }) as { row: { optional?: boolean } };
+      expect(casting.row.optional).toBeUndefined();
+      // Turned off and published: the row still opens, empty, with its shape to add it back.
+      expect(
+        contentIntent(server.content, ADMIN, {
+          t: "contentDraft",
+          seq: 3,
+          dataset: "casino",
+          part: "checkers",
+          key: null,
+          op: "remove",
+          data: null,
+        }),
+      ).toMatchObject({ ok: true });
+      expect(server.content.publish(ADMIN, server.content.draftRev(), "").ok).toBe(true);
+      const gone = open("checkers").row;
+      expect(gone).toMatchObject({ optional: true, published: null });
+      expect(gone?.schema).toMatchObject({ type: "object" });
+    } finally {
+      await server.stop();
+    }
+  });
+
   test("a pack update to a row the operator changed shows on its row", async () => {
     const server = start();
     try {

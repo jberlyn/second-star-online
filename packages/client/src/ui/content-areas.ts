@@ -240,8 +240,14 @@ export const CRAFT_TABS: AreaTab[] = [
   },
 ];
 
-/** The Houses & Vehicles page. */
-export const HOUSE_TABS = (vehicleNumbers: AreaTab): AreaTab[] => [
+/**
+ * The Houses & Vehicles page. `removeVehicle` opens a vehicle's removal, which asks what happens to
+ * its riders, the parked ones and its deeds.
+ */
+export const HOUSE_TABS = (
+  vehicleNumbers: AreaTab,
+  removeVehicle?: (name: string) => void,
+): AreaTab[] => [
   {
     kind: "records",
     label: "House types",
@@ -258,7 +264,12 @@ export const HOUSE_TABS = (vehicleNumbers: AreaTab): AreaTab[] => [
     kind: "records",
     label: "Vehicles",
     help: "Each vehicle: its tiles, boarding, picture, rider and cannon.",
-    part: p("houses", "vehicles", "Vehicles", "", { noun: "vehicle" }),
+    part: p("houses", "vehicles", "Vehicles", "", {
+      noun: "vehicle",
+      ...(removeVehicle
+        ? { removeVia: { label: "Remove this vehicle…", run: removeVehicle } }
+        : {}),
+    }),
   },
   vehicleNumbers,
   {

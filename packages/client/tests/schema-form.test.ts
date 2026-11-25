@@ -49,6 +49,10 @@ test("every Classic part reads back from its form unchanged", () => {
       expect(`${dataset}/${part}:${canonical(form.value())}`).toBe(
         `${dataset}/${part}:${canonical(data[part])}`,
       );
+      // Every value has a control of its own: nothing is left as a value you can't change.
+      expect(`${dataset}/${part}:${form.el.querySelectorAll(".schema-form-kept").length}`).toBe(
+        `${dataset}/${part}:0`,
+      );
       checked.push(`${dataset}/${part}`);
     }
   }

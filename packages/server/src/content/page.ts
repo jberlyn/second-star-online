@@ -203,9 +203,11 @@ export function rowDetailOf(service: ContentService, ref: RowRef): ContentRowDet
   const d = service.draft().find((x) => sameRow(x, ref));
   const packValue = rowValue(service.packContent(), ref);
   const published = rowValue(service.publishedContent(), ref);
+  const optional = field === null && partOf(ref.dataset, ref.part)?.optional === true;
   if (packValue === undefined && published === undefined && !d) {
     const layer = service.operatorRows().find((r) => sameRow(r, ref));
-    if (!layer) {
+    // An optional section the world leaves out (a casino game) still opens, to be added.
+    if (!layer && !optional) {
       return null;
     }
   }
@@ -220,6 +222,7 @@ export function rowDetailOf(service: ContentService, ref: RowRef): ContentRowDet
     published: published ?? null,
     draft: d ? { op: d.op, data: d.data, author: d.author } : null,
     schema: rowSchema(ref.dataset, ref.part),
+    ...(optional ? { optional: true } : {}),
     ...revisionOf(service, ref),
     ...(ref.dataset === "npcFiles" && ref.key && service.npcEditorSaves().has(ref.key.toLowerCase())
       ? {

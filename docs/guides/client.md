@@ -41,10 +41,10 @@ The UI files are:
 - [packages/client/src/ui/mail.ts](../../packages/client/src/ui/mail.ts): mail list and compose panes.
 - [packages/client/src/ui/menubar.ts](../../packages/client/src/ui/menubar.ts): generic menu bar widget.
 - [packages/client/src/ui/newspaper.ts](../../packages/client/src/ui/newspaper.ts): newspaper reader and editor.
-- [packages/client/src/ui/npcs-page.ts](../../packages/client/src/ui/npcs-page.ts): the Control Panel's NPCs page (NPC files as sections or text).
-- [packages/client/src/ui/monsters-page.ts](../../packages/client/src/ui/monsters-page.ts): the Control Panel's Monsters page.
-- [packages/client/src/ui/skills-page.ts](../../packages/client/src/ui/skills-page.ts): the Control Panel's Skills page.
-- [packages/client/src/ui/gathering-page.ts](../../packages/client/src/ui/gathering-page.ts): the Control Panel's Gathering page.
+- [packages/client/src/ui/npcs-page.ts](../../packages/client/src/ui/npcs-page.ts): the NPC file editor: the Creatures & NPCs page's Talk & Shops tab, or the NPCs page for a role without the content editor (NPC files as sections or text).
+- [packages/client/src/ui/monsters-page.ts](../../packages/client/src/ui/monsters-page.ts): the Creatures & NPCs page's Creatures tab.
+- [packages/client/src/ui/skills-page.ts](../../packages/client/src/ui/skills-page.ts): the Skills & Classes page's Skills tab.
+- [packages/client/src/ui/gathering-page.ts](../../packages/client/src/ui/gathering-page.ts): the Gathering & Crafting page's Gathering tab.
 - [packages/client/src/ui/action.ts](../../packages/client/src/ui/action.ts): semantic action annotations.
 - [packages/client/src/ui/paint.ts](../../packages/client/src/ui/paint.ts): painting, viewer and camera screens.
 - [packages/client/src/ui/panel.ts](../../packages/client/src/ui/panel.ts): stats, inventory and skills panel.
@@ -55,7 +55,14 @@ The UI files are:
 - [packages/client/src/ui/control-panel-kit.ts](../../packages/client/src/ui/control-panel-kit.ts): the Control Panel's shared table, form field, confirmation, and the editor forms' section tabs (`sectionTabs`), folded rule sources (`sourcesNote`) and Save bar kept in view (`formActions`).
 - [packages/client/src/ui/settings.ts](../../packages/client/src/ui/settings.ts): the Control Panel's Server Settings page.
 - [packages/client/src/ui/activity-log.ts](../../packages/client/src/ui/activity-log.ts): the Control Panel's Activity Log page.
-- [packages/client/src/ui/content-page.ts](../../packages/client/src/ui/content-page.ts): the Control Panel's Content page.
+- [packages/client/src/ui/content-page.ts](../../packages/client/src/ui/content-page.ts): the Control Panel's Publish Changes page (unpublished changes, history, problems, where a row is used) and the Pictures & Sounds page's panels.
+- [packages/client/src/ui/content-areas.ts](../../packages/client/src/ui/content-areas.ts): which content page and tab edits each dataset part (`homeOf`), with their titles and help lines.
+- [packages/client/src/ui/content-area-page.ts](../../packages/client/src/ui/content-area-page.ts): the generic content page: a list beside a form, settings cards, and Save, Undo, Restore, Cancel and Remove, each naming the row's revision.
+- [packages/client/src/ui/schema-form.ts](../../packages/client/src/ui/schema-form.ts): a form drawn from a row's JSON Schema: lists, drop-downs, optional parts behind a tick box, names suggested as you type, "More options".
+- [packages/client/src/ui/content-words.ts](../../packages/client/src/ui/content-words.ts) and `content-words/`: each part's field labels, help lines and choices in plain words.
+- [packages/client/src/ui/content-diff.ts](../../packages/client/src/ui/content-diff.ts): what a pack update changed, as plain lines.
+- [packages/client/src/ui/content-requests.ts](../../packages/client/src/ui/content-requests.ts): the content pages' row, draft and discard requests as promises.
+- [packages/client/src/ui/balance-page.ts](../../packages/client/src/ui/balance-page.ts): the balance cards: Game Rules' Numbers, Spells' Damage and buffs, and Houses & Vehicles' Hull and cannon.
 - [packages/client/src/ui/characters.ts](../../packages/client/src/ui/characters.ts): the Control Panel's Characters page and player hub.
 - [packages/client/src/ui/character-editor.ts](../../packages/client/src/ui/character-editor.ts): the player hub's character editor and edit log.
 - [packages/client/src/ui/settings-roles.ts](../../packages/client/src/ui/settings-roles.ts): Server Settings' Roles and Staff pages.

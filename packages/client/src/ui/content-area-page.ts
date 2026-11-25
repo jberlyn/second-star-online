@@ -9,7 +9,7 @@
  * - **custom**: another page's panel shown as one of this page's tabs.
  *
  * Every form saves into the content store's shared draft, like the other editor pages: what you
- * save waits with the other unpublished changes until it is published from the Content page. Each
+ * save waits with the other unpublished changes until it is published on Publish Changes. Each
  * save names the row's revision as it was opened, so a save over someone else's newer change is
  * refused. An SSO page: 1.6 had no content editor.
  */
@@ -44,6 +44,11 @@ export interface AreaPart {
   noun?: string;
   /** Entries may not be added or removed here (another page does it, or the engine fixes them). */
   fixed?: boolean;
+  /**
+   * Removing an entry asks what happens to everything that uses it (a vehicle's riders, parked
+   * ones and deeds): Remove opens that form, with this label, instead of removing it outright.
+   */
+  removeVia?: { label: string; run(key: string): void };
   /** How an entry is listed, from its key (a class's name by its number); its key when left out. */
   labelOf?: (key: string) => string;
   /** A picture panel shown above an entry's form (a spell's cast effect), saving on its own. */
@@ -84,7 +89,7 @@ export interface AreaPageDeps {
   requests: ContentRequests;
   /** The words for a part's form. */
   words(dataset: string, part: string): FormWords;
-  /** Opens the Content page's unpublished changes, where the draft is published. */
+  /** Opens Publish Changes, where the unpublished changes are published. */
   openContent(): void;
 }
 
@@ -236,7 +241,12 @@ function rowEditor(
   });
   const restore = panelButton(`${id}-restore`, "Restore the original", () => void doRevert());
   const cancel = panelButton(`${id}-cancel`, "Cancel unpublished changes", () => void doDiscard());
-  const remove = panelButton(`${id}-remove`, "Remove", () => void doRemove(), "danger");
+  const remove = panelButton(
+    `${id}-remove`,
+    part.removeVia?.label ?? "Remove",
+    () => void doRemove(),
+    "danger",
+  );
   const left = document.createElement("div");
   left.className = "content-buttons";
   left.append(save, undo);
@@ -256,12 +266,16 @@ function rowEditor(
     const st = row?.status ?? null;
     restore.hidden = isNew || st !== "changed" || row?.draft?.op === "revert";
     cancel.hidden = isNew || !row?.draft;
+    // A section is removed only when the world may leave it out (a casino game): turned off.
+    const section = row?.key === null;
     remove.hidden =
       isNew ||
       part.fixed === true ||
-      row?.key === null ||
+      (section && row?.optional !== true) ||
+      (section && row?.published === null) ||
       st === "removed" ||
       row?.draft?.op === "remove";
+    remove.textContent = section ? "Turn this off" : (part.removeVia?.label ?? "Remove");
     for (const b of [restore, cancel, remove]) {
       b.disabled = busy;
     }
@@ -409,12 +423,19 @@ function rowEditor(
   };
 
   const doRemove = async () => {
-    if (!row || row.key === null) {
+    if (!row) {
       return;
     }
+    if (part.removeVia && row.key !== null) {
+      part.removeVia.run(row.key);
+      return;
+    }
+    const section = row.key === null;
     const yes = await confirmBox(box, {
-      text: `Remove ${row.key}? It goes when your changes are published, and the checks before publishing name anything that still uses it.`,
-      confirm: "Remove",
+      text: section
+        ? `Turn off ${part.title}? The world goes without it once your changes are published. You can add it back here.`
+        : `Remove ${row.key}? It goes when your changes are published, and the checks before publishing name anything that still uses it.`,
+      confirm: section ? "Turn it off" : "Remove",
       cancel: "Keep it",
       danger: true,
     });
@@ -425,7 +446,13 @@ function rowEditor(
     buttons();
     try {
       const a = await deps.requests.draft(row, "remove", null, row.revision);
-      answer(a.ok, a.ok ? "" : a.text, "It is removed when your changes are published.");
+      answer(
+        a.ok,
+        a.ok ? "" : a.text,
+        section
+          ? "It is turned off when your changes are published."
+          : "It is removed when your changes are published.",
+      );
       if (a.ok) {
         saved(row.key, false);
       }
@@ -483,11 +510,37 @@ function settingsCard(id: string, deps: AreaPageDeps, part: AreaPart): Card {
   const loading = document.createElement("p");
   loading.className = "balance-loading";
   loading.textContent = "Loading…";
-  const editor = rowEditor(`${id}-${part.part}`, deps, part, () => load(true));
-  el.append(h, help, loading, editor.el);
+  // After its own save the card shows what the draft now holds, whatever the form had.
+  const editor = rowEditor(`${id}-${part.part}`, deps, part, () => load(true, true));
+  const missing = document.createElement("div");
+  missing.className = "content-area-missing";
+  missing.hidden = true;
+  const missingText = document.createElement("p");
+  missingText.className = "control-panel-field-help";
+  missingText.textContent = "This world goes without it.";
+  let missingRow: ContentRowDetail | null = null;
+  missing.append(
+    missingText,
+    panelButton(`${id}-${part.part}-add`, "Add it", () => {
+      if (!missingRow) {
+        return;
+      }
+      missing.hidden = true;
+      editor.el.hidden = false;
+      editor.show(
+        {
+          ...missingRow,
+          draft: { op: "set", data: blank((missingRow.schema ?? {}) as JsonSchema), author: "" },
+        },
+        true,
+      );
+    }),
+  );
+  el.append(h, help, loading, missing, editor.el);
   let loaded = false;
-  const load = (force: boolean) => {
-    if ((loaded && !force) || (force && editor.dirty())) {
+  /** `own`: after the card's own save (a refresh never drops what is being edited). */
+  const load = (force: boolean, own = false) => {
+    if ((loaded && !force) || (force && !own && editor.dirty())) {
       return;
     }
     loaded = true;
@@ -495,8 +548,20 @@ function settingsCard(id: string, deps: AreaPageDeps, part: AreaPart): Card {
       .row({ dataset: part.dataset, part: part.part, key: null })
       .then((row) => {
         loading.hidden = true;
-        if (!editor.dirty()) {
+        if (editor.dirty() && !own) {
+          return;
+        }
+        // An optional section the world leaves out: offered to add, starting blank.
+        const absent =
+          row.optional === true &&
+          row.published === null &&
+          (row.draft === null || row.draft.op === "remove");
+        missing.hidden = !absent;
+        editor.el.hidden = absent;
+        if (!absent) {
           editor.show(row);
+        } else {
+          missingRow = row;
         }
       })
       .catch((e: Error) => {
@@ -848,6 +913,11 @@ export function createAreaPage(cfg: AreaConfig, deps: AreaPageDeps): AreaPage {
       }
     },
     published() {
+      // A page not on screen catches up when it is next shown.
+      if (!el.isConnected) {
+        stale = true;
+        return;
+      }
       for (const l of lives) {
         l.load(true);
       }

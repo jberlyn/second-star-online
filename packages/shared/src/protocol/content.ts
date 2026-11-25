@@ -1657,6 +1657,8 @@ export interface ContentRowDetail extends ContentRowRef {
    * Panel draws its form from it.
    */
   schema?: unknown;
+  /** A section a world may leave out (a casino game): it can be removed, and added back. */
+  optional?: boolean;
   /**
    * The row's revision, for a row a change must name (a balance row, the Balance page's
    * fingerprint): a save or discard sends it back, and is refused once the row has changed.

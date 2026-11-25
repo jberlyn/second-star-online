@@ -1,36 +1,26 @@
 /**
- * The Control Panel's Content page (issue #27): the live content store, built from the installed
- * packs (Classic by default) plus the operator's changes. 1.6 had nothing like it (content was
- * compiled into the client and server); it is a plain SSO page built from the Control Panel's
- * shared parts, and it lets content change before the item and balance editors exist.
+ * The Control Panel's Publish Changes page (issue #27; the Content page before) and its Pictures &
+ * Sounds page (`artEl`). The live content store is built from the installed packs (Classic by
+ * default) plus the operator's changes; every editor page saves into one shared draft, and this
+ * page publishes it. 1.6 had nothing like it (content was compiled into the client and server); it
+ * is a plain SSO page built from the Control Panel's shared parts.
  *
- * - **Installed packs**, with the version each runs at, and the **pack updates**: a row a newer
- *   pack version changed after you customised it, with the pack's old and new versions and yours,
- *   to take the pack's version or keep yours.
- * - **The draft**: the one shared draft, each change with its author, its pre-publish checks and
- *   Publish. A publish another admin's change would overwrite is refused.
- * - **Rows**: every row of a dataset field (an item, a text table) with its state, and an editor
- *   for one row's JSON that saves to the draft.
- * - **Where it is used** and **Remove** for an item, a monster or a vehicle (issues #28 and #44,
- *   content-usage.ts):
- *   the rows and the world's places that hold it, and a removal with its cleanup.
- * - **Item pictures** (issue #29, item-art.ts): a picture panel in an item row's editor, and a bulk
- *   upload that attaches PNGs named after items.
- * - **Worn layers** (issue #29, worn-art.ts): a worn picture panel in a worn item's row editor, and
- *   a section listing every worn layer, with a panel for each and a bulk upload of frames and
- *   sheets named after their layers or items.
- * - **Bodies** (issue #29, body-art.ts): a body panel in a monster row's editor, and a section
- *   listing every body the content draws, with a panel for each, New body and a bulk upload.
- * - **Spell effects** (issue #29, fx-art.ts): an effect panel in a spell row's editor, and a section
- *   listing every effect run the content and the engine draw, with a panel for each, New effect and
- *   a bulk upload.
- * - **Tiles** (issue #29, tile-art.ts): a section listing every tile in the catalogue, with a panel
- *   for each (picture, name, walkable, flags, taking it out) and tilesets added in bulk.
- * - **Sounds** (issue #29, sound-art.ts): a section listing every sound the content and the engine
- *   play, with a panel for each (hear it, replace its file, take the upload out), new sounds and a
- *   bulk upload.
- * - **Publish history**, with Undo for a whole publish, and what each publish did to the world.
- * - **Problems**: references nothing resolves, in content and in the world.
+ * - **Pack updates**: a row a newer pack version changed after you customised it, with what the
+ *   pack changed and how yours differs in plain words (content-diff.ts), to take the pack's version
+ *   or keep yours.
+ * - **Unpublished changes**: the one shared draft, each change with its author; clicking one opens
+ *   it on the page that edits it. Its pre-publish checks, the removals it holds, and Publish. A
+ *   publish another admin's change would overwrite is refused.
+ * - **Where it is used**, shown while a row is open (issues #28 and #44, content-usage.ts): an
+ *   item, a monster or a vehicle with every place that holds it, and its removal with the cleanup;
+ *   Restore the original and Cancel unpublished change for any row. No row is edited as JSON here:
+ *   every part of the content has a page with a form (content-areas.ts).
+ * - **History**, with Undo for a whole publish and what each publish did to the world.
+ * - **Find problems**: references nothing resolves, in content and in the world.
+ * - **Pictures & Sounds** (issue #29): item pictures (item-art.ts), worn layers (worn-art.ts),
+ *   bodies (body-art.ts), spell effects (fx-art.ts), tiles (tile-art.ts) and sounds (sound-art.ts),
+ *   one kind at a time, with bulk uploads. The Items, Creatures and Spells pages show one record's
+ *   panel through `itemPanels`, `monsterBody` and `spellEffect`.
  */
 import type { ArtFrameId } from "@secondstaronline/data";
 import type {
@@ -596,9 +586,9 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
   const draftTable = createTable<ContentDraftView>({
     label: "Draft changes",
     empty:
-      "Nothing to publish: there are no unpublished changes. Make changes on the Items, Monsters or other editor pages.",
+      "Nothing to publish: there are no unpublished changes. Make changes on the Items, Creatures & NPCs or other editor pages.",
     key: refLabel,
-    // A change opens on its own editor page when it has one; the JSON editor is the fallback.
+    // A change opens on the page that edits it; "Where it is used" is the fallback.
     open: {
       id: "content-draft-open",
       run: (d) => {
@@ -1668,7 +1658,7 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
     formField(
       "Show",
       artSel,
-      "To change one item's or monster's picture, the Items and Monsters pages are easier.",
+      "To change one item's, creature's or spell's picture, its own page is easier.",
     ),
   );
   artSel.addEventListener("change", () => showArt());

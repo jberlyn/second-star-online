@@ -2,7 +2,7 @@
  * The content store's row requests as promises, for the Control Panel pages built from content
  * forms (content-area-page.ts): list a part's rows, open one, put a change in the draft or take it
  * out. Each request carries a sequence number from its own range, so its answer is told apart from
- * the Content page's.
+ * the Publish Changes page's.
  */
 import type {
   ContentListing,
@@ -56,14 +56,37 @@ export interface ContentRequests {
 /** The first sequence number these requests use (the pages' own counters stay far below it). */
 export const REQUEST_SEQ_BASE = 1_500_000_000;
 
+/**
+ * The most requests waiting for an answer at once. A page of forms asks for many rows; the rest
+ * wait their turn, so the connection's message allowance (the gateway's token bucket) is never
+ * spent in one burst.
+ */
+export const MAX_IN_FLIGHT = 6;
+
 export function createContentRequests(send: (msg: ContentRequestMsg) => void): ContentRequests {
   let seq = REQUEST_SEQ_BASE;
   const waiting = new Map<number, { ok(v: unknown): void; fail(e: Error): void }>();
+  /** Requests not sent yet, in order. */
+  const queued: {
+    make: (seq: number) => ContentRequestMsg;
+    ok(v: unknown): void;
+    fail(e: Error): void;
+  }[] = [];
+  const pump = () => {
+    while (waiting.size < MAX_IN_FLIGHT && queued.length > 0) {
+      const q = queued.shift();
+      if (!q) {
+        return;
+      }
+      seq = seq >= 2 ** 31 - 1 ? REQUEST_SEQ_BASE : seq + 1;
+      waiting.set(seq, { ok: q.ok, fail: q.fail });
+      send(q.make(seq));
+    }
+  };
   const ask = <T>(make: (seq: number) => ContentRequestMsg): Promise<T> =>
     new Promise<T>((ok, fail) => {
-      seq = seq >= 2 ** 31 - 1 ? REQUEST_SEQ_BASE : seq + 1;
-      waiting.set(seq, { ok: ok as (v: unknown) => void, fail });
-      send(make(seq));
+      queued.push({ make, ok: ok as (v: unknown) => void, fail });
+      pump();
     });
   const ref = (r: ContentRowRef) => ({ dataset: r.dataset, part: r.part, key: r.key });
   return {
@@ -120,13 +143,15 @@ export function createContentRequests(send: (msg: ContentRequestMsg) => void): C
       }
       waiting.delete(msg.seq);
       w.ok(msg);
+      pump();
       return true;
     },
     reset() {
-      for (const w of waiting.values()) {
+      for (const w of [...waiting.values(), ...queued]) {
         w.fail(new Error("The connection was reset."));
       }
       waiting.clear();
+      queued.length = 0;
     },
   };
 }

@@ -990,6 +990,10 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
           "How much a hit takes off a vehicle's hull, how fast a parked one mends, and the cannon.",
           vehicleNumbers,
         ),
+        (name) =>
+          controlPanel.go("content", () =>
+            contentPage.openRow({ dataset: "houses", part: "vehicles", key: name }),
+          ),
       ),
     },
     areaDeps,
