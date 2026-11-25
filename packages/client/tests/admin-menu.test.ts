@@ -1,6 +1,6 @@
 /**
- * Client tests: the Admin, Game and Chat menus. Admin → NPC Editor opens the Control Panel's NPCs
- * page (issue #32 retired the frame-311 window).
+ * Client tests: the Admin, Game and Chat menus. The World and NPC Editors are Control Panel pages
+ * with no Admin menu items of their own (issues #32, #33 retired the frame-262 and frame-311 windows).
  */
 
 import { describe, expect, test } from "bun:test";
@@ -46,7 +46,7 @@ describe("the Admin, Game and Chat menus (menu 502)", () => {
     rules: { chatMaxChars: 200 },
   };
 
-  test("Admin holds Control Panel, World Editor, NPC Editor, then the three Assassin items; Admin Chat is on Chat; the editors open the Control Panel's World and NPCs pages", () => {
+  test("Admin holds Control Panel, then the three Assassin items; Admin Chat is on Chat; the World page opens on the map you stand on", () => {
     window.innerWidth = 1024;
     window.innerHeight = 768;
     const root = document.createElement("div");
@@ -56,11 +56,9 @@ describe("the Admin, Game and Chat menus (menu 502)", () => {
     c.onMessage(welcome);
     c.onMessage({ t: "permissions", permissions: [...PERMISSIONS] });
     c.onMessage(SNAPSHOT);
+    // No World Editor or NPC Editor: both are Control Panel pages.
     expect(menuTexts(root, "Admin")).toEqual([
       "Control Panel",
-      "-",
-      "World Editor",
-      "NPC Editor",
       "-",
       "Begin Assassin's Game",
       "Begin Lightning Assassin's Game",
@@ -72,26 +70,16 @@ describe("the Admin, Game and Chat menus (menu 502)", () => {
     menuClick(root, "Game", "Edit Newspaper");
     expect(c.sent).toContainEqual({ t: "newspaperLoad" });
     expect(root.querySelectorAll(".window-newspaper-editor:not([hidden])")).toHaveLength(1);
-    // The NPC Editor window is retired (issue #32): its item opens the Control Panel's NPCs page.
-    menuClick(root, "Admin", "NPC Editor");
+    menuClick(root, "Admin", "Control Panel");
     expect(c.sent).toContainEqual({ t: "controlPanelOpen" });
     c.onMessage({ t: "controlPanel" });
-    expect(c.sent).toContainEqual({ t: "contentNpcs", seq: expect.any(Number) });
-    expect(root.querySelector(".npcs-page")?.isConnected).toBe(true);
-    // For a content editor it is the Talk & Shops tab of Creatures & NPCs, shown.
-    expect(root.querySelector('.control-panel-link[aria-current="page"]')?.textContent).toBe(
-      "Creatures & NPCs",
-    );
-    expect(
-      root
-        .querySelector(".npcs-page")
-        ?.closest(".content-area-tab")
-        ?.classList.contains("control-panel-tab-hidden"),
-    ).toBe(false);
+    // The World page opens on the map the admin stood on (x1000y992), as the World Editor did.
+    root.querySelector<HTMLElement>('.control-panel-link[data-page="world"]')?.click();
+    expect(c.sent).toContainEqual(expect.objectContaining({ t: "contentMaps", mx: 1000, my: 992 }));
     app.stop();
   });
 
-  test("the NPCs page is in the sidebar only for a role without the content editor", () => {
+  test("the content permission alone gives every content page, maps and NPC files among them", () => {
     window.innerWidth = 1024;
     window.innerHeight = 768;
     const pagesFor = (permissions: string[]) => {
@@ -110,12 +98,16 @@ describe("the Admin, Game and Chat menus (menu 502)", () => {
       root.remove();
       return pages;
     };
-    // An NPC Editor alone keeps its page.
-    expect(pagesFor(["npcEditor"])).toEqual(["npcs"]);
-    // A content editor edits NPC files on the Talk & Shops tab of Creatures & NPCs.
-    const editor = pagesFor(["npcEditor", "contentEditor"]);
-    expect(editor).not.toContain("npcs");
+    // One permission: the World page and Creatures & NPCs (whose Talk & Shops tab edits NPC files),
+    // and no NPCs page of its own.
+    const editor = pagesFor(["contentEditor"]);
+    expect(editor).toContain("world");
     expect(editor).toContain("monsters");
+    expect(editor).not.toContain("npcs");
+    // Without it, neither.
+    const settings = pagesFor(["settings"]);
+    expect(settings).not.toContain("world");
+    expect(settings).not.toContain("monsters");
   });
 
   test("the Admin menu shows only for an administrator on the desktop", () => {
@@ -135,6 +127,9 @@ describe("the Admin, Game and Chat menus (menu 502)", () => {
     expect(titles(root)).toEqual(["Game", "Chat", "Admin"]);
     c.onMessage({ t: "permissions", permissions: [...MODERATOR.permissions] });
     expect(titles(root)).not.toContain("Admin");
+    // The content permission adds pages to the Control Panel, not items to the menu.
+    c.onMessage({ t: "permissions", permissions: ["contentEditor"] });
+    expect(menuTexts(root, "Admin")).toEqual(["Control Panel"]);
     app.stop();
   });
 

@@ -281,8 +281,6 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
   let permissions: ReadonlySet<string> = new Set();
   /** Whether the Control Panel is up (the World and NPC editors are its pages, issues #32-#33). */
   let editing: "controlPanel" | null = null;
-  /** A Control Panel page to show once the Control Panel opens (Admin → NPC Editor). */
-  let controlPanelPage: string | null = null;
 
   /** The title screen is the screen showing (the menu bar hides Game there). */
   let atTitle = false;
@@ -291,18 +289,6 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     atTitle: () => atTitle,
     can: (permission) => permissions.has(permission),
     shortcut: (act) => primaryKeyLabel(input.bindings, act),
-  };
-  /** Opens a Control Panel page, opening the Control Panel first when it is not up. */
-  /** Then, on the page the Control Panel opens on (a tab to show). */
-  let controlPanelThen: (() => void) | undefined;
-  const openPage = (page: string, then?: () => void) => {
-    if (editing === "controlPanel") {
-      controlPanel.go(page, then);
-    } else {
-      controlPanelPage = page;
-      controlPanelThen = then;
-      conn.send({ t: "controlPanelOpen" });
-    }
   };
   const menuActions: MenuActions = {
     // Game > Return To Title Screen: in play it is today's Log out.
@@ -313,23 +299,15 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     openWho: () => send({ t: "whoOpen" }),
     sendIm: () => ims.openSend(""),
     enterRoom: (r) => send({ t: "roomEnter", room: r }),
-    // The World Editor is the Control Panel's World page (issue #33).
-    // It opens on the map the admin stands on, as the World Editor did, unless one is open already.
-    worldEditor: () => {
-      const at = parseMapName(model.map?.name ?? "");
-      if (at) {
-        worldPage.prefer(at.mx, at.my);
-      }
-      openPage("world");
-    },
-    // The NPC Editor window is retired (issue #32): its menu item opens the NPCs page, which is
-    // the Talk & Shops tab of Creatures & NPCs for a content editor.
-    npcEditor: () =>
-      permissions.has("contentEditor")
-        ? openPage("monsters", () => monstersArea.showTab("Talk & Shops"))
-        : openPage("npcs"),
+    // The World and NPC Editors are Control Panel pages (issues #32, #33), with no menu items of
+    // their own. The World page opens on the map the admin stands on, as the World Editor did,
+    // unless one is open already.
     controlPanel: () => {
       if (editing !== "controlPanel") {
+        const at = parseMapName(model.map?.name ?? "");
+        if (at) {
+          worldPage.prefer(at.mx, at.my);
+        }
         conn.send({ t: "controlPanelOpen" });
       }
     },
@@ -784,7 +762,6 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     openContentRow: (row) => controlPanel.go("content", () => contentPage.openRow(row)),
     body: (saved) => contentPage.monsterBody(saved),
     openNpc: (name) => openNpc(name),
-    canOpenNpc: () => permissions.has("npcEditor"),
   });
   // The Skills and Gathering pages (issue #38).
   const skillsPage = createSkillsPage({
@@ -843,8 +820,6 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         monstersArea.showTab("Creatures");
         monstersPage.open(name);
       }),
-    canOpenMonster: () => permissions.has("contentEditor"),
-    lootElsewhere: () => permissions.has("contentEditor"),
   });
   const worldPage = createWorldPage(
     {
@@ -1049,24 +1024,19 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
    * Opens a row on the page that edits it (a link from another page or from a change on the
    * Content page): false when no page does or the role may not open it.
    */
-  /** An NPC's file: the Talk & Shops tab, or the NPCs page for a role without the content editor. */
+  /** An NPC's file: the Talk & Shops tab of Creatures & NPCs. */
   const openNpc = (name: string) => {
-    if (permissions.has("contentEditor")) {
-      controlPanel.go("monsters", () => {
-        monstersArea.showTab("Talk & Shops");
-        npcsPage.open(name);
-      });
-    } else {
-      controlPanel.go("npcs", () => npcsPage.open(name));
-    }
+    controlPanel.go("monsters", () => {
+      monstersArea.showTab("Talk & Shops");
+      npcsPage.open(name);
+    });
   };
   const openContentRow = (row: ContentRowRef): boolean => {
     const home = homeOf(row.dataset, row.part);
     if (!home) {
       return false;
     }
-    const allowed = home === "npcs" ? "npcEditor" : "contentEditor";
-    if (!permissions.has(allowed)) {
+    if (!permissions.has("contentEditor")) {
       return false;
     }
     const key = row.key;
@@ -1078,6 +1048,11 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
       if (home === "items" && row.dataset === "items" && key !== null) {
         itemsArea.showTab("Items");
         itemsPage.open(key);
+      } else if (home === "monsters" && row.dataset === "npcFiles") {
+        monstersArea.showTab("Talk & Shops");
+        if (key !== null) {
+          npcsPage.open(key);
+        }
       } else if (home === "monsters" && row.dataset === "monsters" && row.part !== "casting") {
         monstersArea.showTab("Creatures");
         if (key !== null) {
@@ -1094,7 +1069,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         }
       } else if (home === "gathering" && row.dataset === "gather") {
         gatheringArea.showTab("Gathering");
-      } else if (home !== "npcs") {
+      } else {
         areaPages[home]?.open(row.dataset, row.part, key);
       }
     });
@@ -1187,23 +1162,11 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         id: "world",
         title: "World",
         group: "Game",
-        permission: "worldEditor",
+        permission: "contentEditor",
         el: worldPage.el,
         onShow: () => worldPage.onShow(),
         changes: () => worldPage.changes(),
         discard: () => worldPage.discard(),
-      },
-      {
-        id: "npcs",
-        title: "NPCs",
-        group: "Game",
-        permission: "npcEditor",
-        // A content editor has it as the Talk & Shops tab of Creatures & NPCs.
-        unless: "contentEditor",
-        el: npcsPage.el,
-        onShow: () => npcsPage.onShow(),
-        changes: () => npcsPage.changes(),
-        discard: () => npcsPage.discard(),
       },
     ],
     // The classic editors are its World and NPCs pages now (issues #32, #33).
@@ -1777,13 +1740,9 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         if (!permissions.has("activityLog")) {
           activityPage.reset();
         }
-        if (!permissions.has("npcEditor")) {
-          npcsPage.reset();
-        }
-        if (!permissions.has("worldEditor")) {
-          worldPage.reset();
-        }
         if (!permissions.has("contentEditor")) {
+          npcsPage.reset();
+          worldPage.reset();
           packsPage.reset();
           contentPage.reset();
           balancePage.reset();
@@ -1965,11 +1924,6 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
           sign.close();
           charMenu.close();
           showControlPanel();
-        }
-        if (controlPanelPage) {
-          controlPanel.go(controlPanelPage, controlPanelThen);
-          controlPanelPage = null;
-          controlPanelThen = undefined;
         }
         return;
       case "npcClosed":

@@ -428,8 +428,7 @@ export type ContentHome =
   | "quests"
   | "community"
   | "balance"
-  | "pictures"
-  | "npcs";
+  | "pictures";
 
 /** Each page's title, as the sidebar says it. */
 export const HOME_TITLES: Record<ContentHome, string> = {
@@ -443,7 +442,6 @@ export const HOME_TITLES: Record<ContentHome, string> = {
   community: "Community",
   balance: "Game Rules",
   pictures: "Pictures & Sounds",
-  npcs: "NPCs",
 };
 
 /** Each page's tabs as data, to find a part's home. */
@@ -473,14 +471,13 @@ export function homeOf(dataset: string, part: string): ContentHome | null {
   if (dataset === "items" && (part === "items" || part === "definitions")) {
     return "items";
   }
+  // An NPC file is the Talk & Shops tab of Creatures & NPCs.
   if (
-    dataset === "monsters" &&
-    (part === "monsters" || part === "definitions" || part === "casting")
+    (dataset === "monsters" &&
+      (part === "monsters" || part === "definitions" || part === "casting")) ||
+    dataset === "npcFiles"
   ) {
     return "monsters";
-  }
-  if (dataset === "npcFiles") {
-    return "npcs";
   }
   if (dataset === "classes" && (part === "skills" || part === "skillOrder")) {
     return "skills";

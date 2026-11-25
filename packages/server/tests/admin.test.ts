@@ -1533,7 +1533,7 @@ describe("bans, settings and the logs in the game (real SQLite)", () => {
     ).toHaveLength(3);
   });
 
-  test("the NPCs page needs the NPC Editor's permission and saves as the NPC Editor does (issue #32)", async () => {
+  test("the NPC files need the content permission and save as the NPC Editor does (issue #32)", async () => {
     const { game, make } = await start();
     const alice = await make("Alice", "administrator");
     const bob = await make("Bob");

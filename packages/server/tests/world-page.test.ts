@@ -3,7 +3,7 @@
  * with its spawns and placed items; a map opens as the World Editor holds it, with its revision and
  * saved versions; a save is checked and applied as the World Editor's SAVE is, live and versioned,
  * and refused over a newer save; a saved version comes back as a save; and every intent is the
- * World Editor's permission's.
+ * content permission's.
  */
 import { beforeEach, describe, expect, test } from "bun:test";
 
@@ -69,7 +69,7 @@ describe("the World page (issue #33)", () => {
     return m as { view: ContentMapsView; result?: { ok: boolean; text: string } };
   };
 
-  test("only the World Editor's permission uses the page", async () => {
+  test("only the content permission uses the page", async () => {
     const { game, make } = await start();
     const bob = await make("Bob");
     game.intent(bob.characterId, { t: "contentMaps", seq: 1, mx: 1000, my: 992 });
@@ -290,7 +290,7 @@ describe("the World page (issue #33)", () => {
     });
     expect(answer(5).result?.ok).toBe(false);
     expect(answer(5).view.map?.map.header).toBe("A, saved");
-    // Without the World Editor's permission nothing is saved or restored, and it is logged.
+    // Without the content permission nothing is saved or restored, and it is logged.
     const before = sent.length;
     game.intent(bob.characterId, {
       t: "contentMapSave",

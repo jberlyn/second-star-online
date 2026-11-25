@@ -41,7 +41,7 @@ The UI files are:
 - [packages/client/src/ui/mail.ts](../../packages/client/src/ui/mail.ts): mail list and compose panes.
 - [packages/client/src/ui/menubar.ts](../../packages/client/src/ui/menubar.ts): generic menu bar widget.
 - [packages/client/src/ui/newspaper.ts](../../packages/client/src/ui/newspaper.ts): newspaper reader and editor.
-- [packages/client/src/ui/npcs-page.ts](../../packages/client/src/ui/npcs-page.ts): the NPC file editor: the Creatures & NPCs page's Talk & Shops tab, or the NPCs page for a role without the content editor (NPC files as sections or text).
+- [packages/client/src/ui/npcs-page.ts](../../packages/client/src/ui/npcs-page.ts): the NPC file editor: the Creatures & NPCs page's Talk & Shops tab (NPC files as plain-word sections).
 - [packages/client/src/ui/monsters-page.ts](../../packages/client/src/ui/monsters-page.ts): the Creatures & NPCs page's Creatures tab.
 - [packages/client/src/ui/skills-page.ts](../../packages/client/src/ui/skills-page.ts): the Skills & Classes page's Skills tab.
 - [packages/client/src/ui/gathering-page.ts](../../packages/client/src/ui/gathering-page.ts): the Gathering & Crafting page's Gathering tab.

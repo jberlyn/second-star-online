@@ -39,8 +39,6 @@ export interface MenuActions {
   openWho(): void;
   sendIm(): void;
   enterRoom(room: Room): void;
-  worldEditor(): void;
-  npcEditor(): void;
   controlPanel(): void;
   playerSettings(): void;
   editNewspaper(): void;
@@ -51,12 +49,7 @@ export interface MenuActions {
 const SEP: MenuItem = { kind: "sep" };
 
 /** The permissions behind the Admin menu's items: any one shows the menu. */
-const ADMIN_MENU: readonly Permission[] = [
-  "worldEditor",
-  "npcEditor",
-  "assassinGame",
-  ...CONTROL_PANEL_PERMISSIONS,
-];
+const ADMIN_MENU: readonly Permission[] = ["assassinGame", ...CONTROL_PANEL_PERMISSIONS];
 
 /** The desktop bar's menus: Game, Chat, Admin (for roles with an admin tool). */
 export function desktopMenus(state: MenuState, act: MenuActions): Menu[] {
@@ -73,7 +66,6 @@ export function desktopMenus(state: MenuState, act: MenuActions): Menu[] {
   });
   const room = (label: string, r: Room) => inGame(label, () => act.enterRoom(r));
   const controlPanel = () => CONTROL_PANEL_PERMISSIONS.some((p) => state.can(p));
-  const editors = () => state.can("worldEditor") || state.can("npcEditor");
   const gated = (label: string, run: () => void, permission: Permission) => ({
     ...item(label, run),
     visible: () => state.can(permission),
@@ -109,19 +101,16 @@ export function desktopMenus(state: MenuState, act: MenuActions): Menu[] {
         item("Clear Chat Text", act.clearChat),
       ],
     },
-    // The Control Panel holds Server Settings (in the File Editor's place); each editor moves there
-    // as its Control Panel page arrives.
+    // The Control Panel holds Server Settings (in the File Editor's place) and the editors.
     {
       title: "Admin",
       visible: () => play() && ADMIN_MENU.some((p) => state.can(p)),
       items: [
         { ...item("Control Panel", act.controlPanel), visible: controlPanel },
-        { kind: "sep", visible: () => controlPanel() && editors() },
-        gated("World Editor", act.worldEditor, "worldEditor"),
-        gated("NPC Editor", act.npcEditor, "npcEditor"),
-        // The editors are Control Panel pages (issues #32, #33): its own header returns to the game,
-        // and the classic bar never shows over them, so Return To Game has no place here.
-        { kind: "sep", visible: () => (controlPanel() || editors()) && state.can("assassinGame") },
+        // The World and NPC Editors are Control Panel pages (issues #32, #33), with no items here.
+        // Its own header returns to the game, and the classic bar never shows over it, so Return
+        // To Game has no place here either.
+        { kind: "sep", visible: () => controlPanel() && state.can("assassinGame") },
         gated("Begin Assassin's Game", () => act.assassin("GO"), "assassinGame"),
         gated("Begin Lightning Assassin's Game", () => act.assassin("LIGHTNING"), "assassinGame"),
         gated("End Assassin's Game", () => act.assassin("STOP"), "assassinGame"),

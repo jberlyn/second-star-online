@@ -1,6 +1,6 @@
 /**
  * The Control Panel's NPCs page (issue #32): every NPC file in a searchable list, and the open one
- * as a plain form behind four tabs (Talk; Shop; Bank and training; As a monster), in plain words:
+ * as a plain form behind three tabs (Talk; Shop; Bank and training), in plain words:
  * the file's text and tags are never shown. A line the form can't show (an owner line, an unknown
  * tag, a line read two ways) is listed as it is, with Take it out. An SSO page: 1.6 edited NPC
  * files as text in the NPC Editor window.
@@ -17,7 +17,6 @@ import {
   type ContentNpcView,
   checkNpcFile,
   editorLines,
-  NPC_FLAGS,
   type NpcListEntry,
   type NpcModel,
   npcFieldOk,
@@ -32,16 +31,11 @@ import { formActions, pageHeading, panelButton, sectionTabs } from "./control-pa
 export interface NpcsPageActions {
   view(seq: number, name?: string): void;
   save(seq: number, name: string, text: string, expect: string | null): void;
-  /** Opens a monster on the Monsters page. */
-  openMonster(name: string): void;
-  /** Whether the Monsters page may be opened (its permission). */
-  canOpenMonster?(): boolean;
   /**
-   * Whether a creature's loot, spells and behaviour are edited on the Creatures tab beside this
-   * page (a content editor's): the As a monster tab then stays out of the way, so each thing has
-   * one place. Its lines are kept as they are when the file is saved here.
+   * Opens a monster on the Creatures tab, which edits its loot, spells and behaviour: this page
+   * keeps those lines as they are when the file is saved.
    */
-  lootElsewhere?(): boolean;
+  openMonster(name: string): void;
 }
 
 export interface NpcsAnswer {
@@ -85,30 +79,13 @@ const LIST_FILTERS: readonly (readonly [string, string])[] = [
   ["species", "Monsters"],
 ];
 
-/** The flags that do something in play, with what each does. */
-const FLAG_TEXT: readonly (readonly [(typeof NPC_FLAGS)[number], string])[] = [
-  ["Still", "Stays in one place (never walks)"],
-  ["Passive", "Only fights once someone attacks it"],
-];
-
-const isKnownFlag = (line: string) => NPC_FLAGS.some((f) => f.toLowerCase() === line.toLowerCase());
-
-/** One loot line's chance a kill drops it: a line picked at random, then 1 in N. */
-export function lootOdds(lines: number, oneIn: number): string {
-  if (lines < 1 || oneIn < 1) {
-    return "";
-  }
-  const n = lines * oneIn;
-  return n === 1 ? "Every kill" : `About 1 in ${n.toLocaleString("en")} kills`;
-}
-
 export function createNpcsPage(actions: NpcsPageActions): NpcsPage {
   const el = document.createElement("div");
   el.className = "npcs-page items-page balance-page plain-editor";
   el.append(
     pageHeading(
       "NPCs",
-      "What each NPC says, sells and buys, whether it runs a bank or trains players, and what a monster drops and casts. Saving changes it straight away for everyone: there is nothing to publish.",
+      "What each NPC says, sells and buys, whether it runs a bank or trains players. Saving changes it straight away for everyone: there is nothing to publish.",
     ),
   );
   let ids = 0;
@@ -186,7 +163,7 @@ export function createNpcsPage(actions: NpcsPageActions): NpcsPage {
   tags.className = "balance-tags";
   const monsterLink = panelButton(
     "npcs-open-monster",
-    "Open its stats on the Monsters page",
+    "Open its stats on the Creatures tab",
     () => {
       if (shown) {
         actions.openMonster(shown.name);
@@ -282,8 +259,6 @@ export function createNpcsPage(actions: NpcsPageActions): NpcsPage {
   const invalid = new Map<HTMLElement, string>();
   /** The tabs drawn, each with whether the file has anything in it (its tab's dot). */
   let tabsUsed: { sec: HTMLElement; used: () => boolean }[] = [];
-  /** Redraws the loot lines' odds (they follow every line's chance and the number of lines). */
-  let refreshOdds = () => {};
 
   function emptySections(): Sections {
     const { mixed: _m, lines: _l, ...s } = npcModel("");
@@ -320,7 +295,6 @@ export function createNpcsPage(actions: NpcsPageActions): NpcsPage {
   // ---- controls ----
   const edited = () => {
     status.textContent = "";
-    refreshOdds();
     update();
   };
   const linesArea = (key: "bio" | "profile" | "chatter", label: string, help: string) => {
@@ -502,7 +476,6 @@ export function createNpcsPage(actions: NpcsPageActions): NpcsPage {
   };
   const drawSections = (mixed: number[], kept: { line: number; text: string }[]) => {
     tabsUsed = [];
-    refreshOdds = () => {};
     if (mixed.length > 0) {
       // A line read two ways (a drop line inside a Bio line) can't be shown as one field: take it
       // out, and the rest of the file is shown as usual.
@@ -524,26 +497,6 @@ export function createNpcsPage(actions: NpcsPageActions): NpcsPage {
       s.append(h, intro(help), ...kids);
       tabsUsed.push({ sec: s, used });
       return s;
-    };
-    /** The As a monster tab, hidden where the Creatures tab edits the same lines. */
-    const asMonster = (
-      titleText: string,
-      help: string,
-      used: () => boolean,
-      ...kids: HTMLElement[]
-    ) => {
-      const s = sec(titleText, help, used, ...kids);
-      s.hidden = actions.lootElsewhere?.() === true;
-      return s;
-    };
-    const more = (open: boolean, ...controls: HTMLElement[]) => {
-      const box = document.createElement("details");
-      box.className = "items-more";
-      box.open = open;
-      const summary = action(document.createElement("summary"), "npcs-more-toggle");
-      summary.textContent = "More options";
-      box.append(summary, ...controls);
-      return box;
     };
 
     // The till: one number, or none (a till from 0).
@@ -582,115 +535,6 @@ export function createNpcsPage(actions: NpcsPageActions): NpcsPage {
         }),
       );
     }
-
-    // Spells: the ticked ones in view, the rest folded under "Add a spell…".
-    const spellTags = [
-      ...(c?.spellTags ?? []),
-      ...work.spells.filter(
-        (x) => !(c?.spellTags ?? []).some((t) => t.toLowerCase() === x.toLowerCase()),
-      ),
-    ];
-    const has = new Set(work.spells.map((x) => x.toLowerCase()));
-    const spellBox = document.createElement("div");
-    spellBox.className = "items-pick";
-    spellBox.dataset.list = "spells";
-    const spellsOn = document.createElement("div");
-    spellsOn.className = "items-checks";
-    const spellsRest = document.createElement("details");
-    spellsRest.className = "items-more-picks";
-    const spellsSummary = action(document.createElement("summary"), "npcs-spells-more");
-    spellsSummary.textContent = "Add a spell…";
-    const spellsOff = document.createElement("div");
-    spellsOff.className = "items-checks";
-    spellsRest.append(spellsSummary, spellsOff);
-    for (const tag of spellTags) {
-      const tick = check(has.has(tag.toLowerCase()), tag, "npcs-spell", (on) => {
-        work.spells = on
-          ? [...work.spells, tag]
-          : work.spells.filter((x) => x.toLowerCase() !== tag.toLowerCase());
-      });
-      (has.has(tag.toLowerCase()) ? spellsOn : spellsOff).append(tick);
-    }
-    if (spellsOn.children.length === 0) {
-      const none = document.createElement("p");
-      none.className = "control-panel-field-help";
-      none.textContent = "None.";
-      spellsOn.append(none);
-    }
-    spellBox.append(spellsOn, spellsRest);
-
-    // Flags: the two that do something as ticks; any other line kept under More options.
-    // Any other flag does nothing in play: listed as it is, with Take it out (nothing to type).
-    const others = work.flags.filter((f) => !isKnownFlag(f));
-    const otherFlags = document.createElement("ul");
-    otherFlags.className = "npcs-other-flags";
-    for (const f of others) {
-      const li = document.createElement("li");
-      li.append(
-        `“${f}” `,
-        panelButton("npcs-flag-out", "Take it out", () => {
-          const at = work.flags.indexOf(f);
-          if (at >= 0) {
-            work.flags.splice(at, 1);
-          }
-          drawForm();
-          edited();
-        }),
-      );
-      otherFlags.append(li);
-    }
-    const flagTicks = FLAG_TEXT.map(([flag, label]) =>
-      check(
-        work.flags.some((f) => f.toLowerCase() === flag.toLowerCase()),
-        label,
-        `npcs-flag-${flag.toLowerCase()}`,
-        (on) => {
-          const rest = work.flags.filter((f) => f.toLowerCase() !== flag.toLowerCase());
-          work.flags = on ? [...rest, flag] : rest;
-        },
-      ),
-    );
-
-    const loot = rows(
-      "loot",
-      "Drops",
-      "drop",
-      "When it dies, one of these lines is picked at random, then that item drops 1 in N times. Put a number before the item to drop a pile, as in 15 Gold.",
-      () => work.loot,
-      () => ({ item: "", oneIn: 1 }),
-      (r, i) => {
-        const odds = document.createElement("span");
-        odds.className = "control-panel-field-help npcs-odds";
-        odds.dataset.row = String(i);
-        return [
-          labelled(
-            "Item",
-            text(
-              r.item,
-              `Drop ${i + 1}: item`,
-              (t) => {
-                r.item = t;
-              },
-              itemsList.id,
-            ),
-          ),
-          labelled(
-            "Drops 1 in",
-            num(r.oneIn, 1, `Drop ${i + 1}: 1 in`, (n) => {
-              r.oneIn = n;
-            }),
-          ),
-          odds,
-        ];
-      },
-    );
-    refreshOdds = () => {
-      for (const s of loot.querySelectorAll<HTMLElement>(".npcs-odds")) {
-        const r = work.loot[Number(s.dataset.row)];
-        s.textContent = r ? lootOdds(work.loot.length, r.oneIn) : "";
-      }
-    };
-    refreshOdds();
 
     const keptNote = oddLines(
       "This NPC also has lines the game doesn't use (a player shop's owner, an old or unknown line). They are kept as they are, or you can take them out:",
@@ -825,22 +669,6 @@ export function createNpcsPage(actions: NpcsPageActions): NpcsPage {
           ],
         ),
       ),
-      asMonster(
-        "As a monster",
-        "For an NPC that is also a monster: what it drops when killed, the spells it casts, and how it moves and fights.",
-        () => work.loot.length + work.spells.length + work.flags.length > 0,
-        loot,
-        labelled("Spells it casts", spellBox),
-        labelled("How it behaves", flagTicksBox(flagTicks)),
-        more(
-          others.length > 0,
-          labelled(
-            "Other flags",
-            otherFlags,
-            "Only the two above do anything in play; these are kept but ignored.",
-          ),
-        ),
-      ),
     );
     sectionsEl.append(keptNote);
     const classes = document.createElement("datalist");
@@ -851,12 +679,6 @@ export function createNpcsPage(actions: NpcsPageActions): NpcsPage {
       classes.append(o);
     }
     sectionsEl.append(classes);
-  };
-  const flagTicksBox = (ticks: HTMLElement[]) => {
-    const box = document.createElement("div");
-    box.className = "items-checks";
-    box.append(...ticks);
-    return box;
   };
   /** Each tab's dot: whether the file has anything in it. */
   const markUsed = () => {
@@ -915,7 +737,7 @@ export function createNpcsPage(actions: NpcsPageActions): NpcsPage {
       }),
     );
     markUsed();
-    monsterLink.hidden = !v.species || actions.canOpenMonster?.() === false;
+    monsterLink.hidden = !v.species;
     const isDirty = dirty();
     stale.hidden = !(isDirty && v.revision !== filledRevision);
     const t = currentText();

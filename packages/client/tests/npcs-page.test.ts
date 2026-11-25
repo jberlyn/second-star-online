@@ -2,14 +2,14 @@
  * The Control Panel's NPCs page (issue #32): the list, the open file as sections or text kept in
  * step, validation as you type with the server's own check, a save sending the whole text with the
  * revision the edit started from, and a file read two ways opening as text; and the plain form:
- * tabs in plain words with a dot on those with settings, the flags as ticks, the till as one
- * number, spells ticked or folded away, and each drop's odds.
+ * tabs in plain words with a dot on those with settings, the till as one number, and a monster's
+ * loot, spells and flags left to the Creatures tab.
  */
 import { afterEach, describe, expect, test } from "bun:test";
 
 import type { ContentNpcsView, ContentNpcView, NpcListEntry } from "@secondstaronline/shared";
 
-import { createNpcsPage, lootOdds, npcCheck, npcText } from "../src/ui/npcs-page.ts";
+import { createNpcsPage, npcCheck, npcText } from "../src/ui/npcs-page.ts";
 
 afterEach(() => document.body.replaceChildren());
 
@@ -161,7 +161,7 @@ describe("the NPCs page", () => {
     expect(t.q<HTMLTextAreaElement>('[data-action="npcs-bio"]').value).toBe("Name: Amber");
   });
 
-  test("a name with no file makes one, naming no revision; the Monsters link follows its permission", () => {
+  test("a name with no file makes one, naming no revision; and a monster links to its Creatures entry", () => {
     const t = page();
     t.open(amber({ name: "Cow", exists: false, revision: null, text: "", species: true }));
     const save = t.q<HTMLButtonElement>('[data-action="npcs-save"]');
@@ -237,7 +237,7 @@ describe("the plain-language form", () => {
     t.open(orc());
     await tick();
     expect(t.q<HTMLElement>(".items-empty-form").hidden).toBe(true);
-    expect(tabs(t)).toEqual(["Talk", "Shop", "Bank and training", "As a monster", "All"]);
+    expect(tabs(t)).toEqual(["Talk", "Shop", "Bank and training", "All"]);
     // The form never shows the file's tags; only the text view does.
     expect(t.q(".items-rules").textContent).not.toMatch(/\b(INV|SPL|FLG|SEL|BUY|GLD)\|/);
     expect(t.q(".balance-tags").textContent).toContain("Also a monster");
@@ -253,20 +253,19 @@ describe("the plain-language form", () => {
     expect(used(t)).toEqual(["Talk", "Shop", "Bank and training"]);
   });
 
-  test("the two flags that do something are ticks; any other flag is listed under More options", () => {
+  test("a monster's loot, spells and flags are the Creatures tab's: kept as they are on a save", () => {
     const t = page();
     t.open(orc());
-    const still = t.q<HTMLInputElement>('[data-action="npcs-flag-still"]');
-    const passive = t.q<HTMLInputElement>('[data-action="npcs-flag-passive"]');
-    expect([still.checked, passive.checked]).toEqual([false, true]);
-    const out = t.q<HTMLButtonElement>('[data-action="npcs-flag-out"]');
-    expect(out.closest("li")?.textContent).toContain("Grumpy");
-    expect(out.closest("details")?.open).toBe(true);
-    still.click();
-    passive.click();
+    for (const a of ["npcs-flag-still", "npcs-flag-out", "npcs-loot-add", "npcs-spell"]) {
+      expect(t.qa(`[data-action="${a}"]`)).toHaveLength(0);
+    }
+    expect(t.qa('[data-list="loot"], [data-list="spells"]')).toHaveLength(0);
+    const bio = t.q<HTMLTextAreaElement>('[data-action="npcs-bio"]');
+    bio.value = "Name: Big Orc";
+    bio.dispatchEvent(new Event("input"));
     t.q<HTMLButtonElement>('[data-action="npcs-save"]').click();
     expect(t.saves.at(-1)?.text).toBe(
-      "BIO|Name: Orc\rINV|Apple:4\rINV|5 Gold:2\rSPL|Splash\rFLG|Grumpy\rFLG|Still\rOWN|x",
+      "BIO|Name: Big Orc\rINV|Apple:4\rINV|5 Gold:2\rSPL|Splash\rFLG|Passive\rFLG|Grumpy\rOWN|x",
     );
   });
 
@@ -282,32 +281,6 @@ describe("the plain-language form", () => {
     gold.dispatchEvent(new Event("input"));
     t.q<HTMLButtonElement>('[data-action="npcs-save"]').click();
     expect(t.saves.at(-1)?.text).toBe("OWN|king\rBIO|Name: Amber\rSEL|Apple:10:5\rBUY|Apple:5");
-  });
-
-  test("ticked spells show; the rest wait under Add a spell", () => {
-    const t = page();
-    t.open(orc());
-    const box = t.q<HTMLElement>('[data-list="spells"]');
-    const shownTicks = [...box.querySelectorAll(":scope > .items-checks input")];
-    expect(shownTicks).toHaveLength(1);
-    expect(box.querySelector(".items-more-picks summary")?.textContent).toBe("Add a spell…");
-  });
-
-  test("each drop line says its odds a kill, following the chance and the number of lines", () => {
-    const t = page();
-    t.open(orc());
-    const odds = () => t.qa(".npcs-odds").map((s) => s.textContent);
-    // Two lines: one picked at random, then 1 in 4 or 1 in 2.
-    expect(odds()).toEqual(["About 1 in 8 kills", "About 1 in 4 kills"]);
-    const n = t
-      .qa('[data-list="loot"] .items-list-row')[1]
-      ?.querySelectorAll("input")[1] as HTMLInputElement;
-    n.value = "1";
-    n.dispatchEvent(new Event("input"));
-    expect(odds()).toEqual(["About 1 in 8 kills", "About 1 in 2 kills"]);
-    t.q<HTMLButtonElement>('[data-action="npcs-loot-remove"]').click();
-    expect(odds()).toEqual(["Every kill"]);
-    expect(lootOdds(3, 10)).toBe("About 1 in 30 kills");
   });
 });
 

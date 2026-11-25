@@ -60,10 +60,8 @@ describe("who may open the Control Panel", () => {
     expect(canOpenControlPanel(ADMINISTRATOR)).toBe(true);
     expect(canOpenControlPanel(roleWith("settings"))).toBe(true);
     expect(canOpenControlPanel(roleWith("drop"))).toBe(false);
-    // The World page (issue #33) is the World Editor's: that permission alone opens it too.
-    expect(canOpenControlPanel(roleWith("worldEditor"))).toBe(true);
-    // The NPCs page (issue #32) is the NPC Editor's: that permission alone opens the Control Panel.
-    expect(canOpenControlPanel(roleWith("npcEditor"))).toBe(true);
+    // The World page (issue #33) and the NPC files (issue #32) are content: that permission opens them.
+    expect(canOpenControlPanel(roleWith("contentEditor"))).toBe(true);
   });
 
   test("the administrator holds the Control Panel's permissions", () => {
@@ -132,10 +130,10 @@ describe("opening and leaving", () => {
       false,
     );
     expect(admin.editing).toBe("controlPanel");
-    // Only the NPC Editor's permission: stays too (the NPCs page).
-    expect(applyRole(world, admin, roleWith("npcEditor")).some((o) => o.msg.t === "snapshot")).toBe(
-      false,
-    );
+    // Only the content permission: stays too (the World page and the NPC files are its).
+    expect(
+      applyRole(world, admin, roleWith("contentEditor")).some((o) => o.msg.t === "snapshot"),
+    ).toBe(false);
     expect(admin.editing).toBe("controlPanel");
     const out = applyRole(world, admin, MODERATOR);
     expect(out).toContainEqual({ to: "admin", msg: { t: "editor", editing: false } });

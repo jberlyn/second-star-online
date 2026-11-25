@@ -178,7 +178,7 @@ describe("the playthrough", () => {
     );
     king = await login(server, "King");
     expect(
-      king.inbox.some((m) => m.t === "permissions" && m.permissions.includes("worldEditor")),
+      king.inbox.some((m) => m.t === "permissions" && m.permissions.includes("contentEditor")),
     ).toBe(true);
 
     // The NPCs page: Smithy becomes a trainer (the file is the NPC).

@@ -238,7 +238,7 @@ describe("Only server systems create items", () => {
       contentSkillRemove: ["key:string", "expect:string"],
       contentGatheringSet: ["expect:string"],
       // The NPCs page (issue #32): a whole NPC file's text, checked by the server as the NPC
-      // Editor's SAVE is (npcEditor permission).
+      // Editor's SAVE is (contentEditor permission).
       contentNpcs: ["name:string"],
       contentNpcSave: ["name:string", "text:string", "expect:string"],
       // A monster's NPC file sections (issue #31): the server checks each loot item and spell tag,

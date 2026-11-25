@@ -44,8 +44,8 @@ describe("the moderation migration", () => {
     runMigrations(
       db,
       // Every other migration; the mutes and roles ones rebuild tables this one makes, and the
-      // moderator defaults, Control Panel and player hub permissions ones edit the roles table, so
-      // they wait too.
+      // moderator defaults, Control Panel, player hub and content permissions ones edit the roles
+      // table, so they wait too.
       all.filter(
         (m) =>
           m.name !== MINE &&
@@ -53,7 +53,8 @@ describe("the moderation migration", () => {
           m.name !== "20261120_42_roles.sql" &&
           m.name !== "20261121_45_moderator_defaults.sql" &&
           m.name !== "20261121_49_control_panel_permissions.sql" &&
-          m.name !== "20261122_51_character_view.sql",
+          m.name !== "20261122_51_character_view.sql" &&
+          m.name !== "20261125_74_content_permission.sql",
       ),
     );
     const now = "2026-11-10T00:00:00.000Z";

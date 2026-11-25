@@ -70,7 +70,7 @@ test("no part is on two pages", () => {
 test("the editor pages' own parts go to their pages", () => {
   expect(homeOf("items", "definitions")).toBe("items");
   expect(homeOf("monsters", "casting")).toBe("monsters");
-  expect(homeOf("npcFiles", "files")).toBe("npcs");
+  expect(homeOf("npcFiles", "files")).toBe("monsters");
   expect(homeOf("balance", "spellEffects")).toBe("spells");
   expect(homeOf("balance", "cannon")).toBe("houses");
   expect(homeOf("balance", "drops")).toBe("balance");

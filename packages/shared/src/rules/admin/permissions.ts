@@ -17,13 +17,13 @@ export const TOOL_PERMISSIONS = [
   "spawn",
   /** `/roster`: read and set a map's monster roster. */
   "roster",
-  /** Admin menu → World Editor. */
-  "worldEditor",
-  /** Admin menu → NPC Editor. */
-  "npcEditor",
   /** Control Panel → Server Settings, which also edits and assigns the roles. */
   "settings",
-  /** Control Panel: create, edit and remove items, monsters and NPCs. */
+  /**
+   * Control Panel: create, edit and remove every kind of content: items, creatures, NPC files,
+   * maps (the World page) and the rest. It took in the World Editor's and NPC Editor's own
+   * permissions (`worldEditor`, `npcEditor`).
+   */
   "contentEditor",
   /** Control Panel: find characters and read their player hub. */
   "characterView",
@@ -93,10 +93,8 @@ const TOOL_LABELS: Record<ToolPermission, string> = {
   drop: "/drop: create items and gold",
   spawn: "/spawn: place a rostered monster",
   roster: "/roster: read and set a map's monsters",
-  worldEditor: "World Editor",
-  npcEditor: "NPC Editor",
   settings: "Server Settings, roles and staff",
-  contentEditor: "Control Panel: edit items, monsters and NPCs",
+  contentEditor: "Control Panel: edit content (items, creatures, NPCs, maps and the rest)",
   characterView: "Control Panel: look up characters (the player hub)",
   characterEditor: "Control Panel: edit characters",
   activityLog: "Control Panel: read the player activity log",
@@ -140,10 +138,6 @@ export const CONTROL_PANEL_PERMISSIONS: readonly Permission[] = [
   "characterView",
   "activityLog",
   "contentEditor",
-  // The NPCs page (issue #32).
-  "npcEditor",
-  // The World page (issue #33).
-  "worldEditor",
 ];
 
 /** Whether `role` may open the Control Panel (it holds a permission with a page there). */

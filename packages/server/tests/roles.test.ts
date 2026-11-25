@@ -10,6 +10,7 @@ import {
   LOCKOUT_TEXT,
   MODERATOR,
   PERMISSIONS,
+  type Permission,
   ROLE_TEXT,
   type RoleData,
   type RoleDef,
@@ -28,6 +29,18 @@ import { NEVER_PUSH } from "./helpers/sim.ts";
 type Out = { to: string; msg: ServerMsg }[];
 const NOW = "2026-11-20T00:00:00.000Z";
 const ROLES = "20261120_42_roles.sql";
+const CONTENT = "20261125_74_content_permission.sql";
+/** The World Editor's and NPC Editor's own permissions, which `contentEditor` took in. */
+const LEGACY = ["worldEditor", "npcEditor"];
+/** A role's permissions as the server reads them once the content migration has dropped LEGACY. */
+const kept = (ps: readonly string[]) =>
+  ps.filter((p) => !LEGACY.includes(p)).sort() as Permission[];
+/** Runs every migration that comes before `before`. */
+const upTo = (db: Db, before: string) =>
+  runMigrations(
+    db,
+    loadMigrations().filter((m) => m.name < before),
+  );
 
 describe("the roles migration", () => {
   test("immortal becomes administrator, player no role, and moderation rows keep role names", () => {
@@ -133,11 +146,15 @@ describe("the Control Panel permissions migration", () => {
         [r.id, r.id, JSON.stringify(r.permissions), NOW, NOW],
       );
     }
-    migrate(db);
+    // Up to the content migration, which has its own tests below.
+    upTo(db, CONTENT);
     return new Map(loadRoles(db).map((r) => [r.id, [...r.permissions].sort()]));
   };
   // Every permission there was before it (characterView came later, in its own migration).
-  const OLD_ALL = PERMISSIONS.filter((p) => !NEW.includes(p) && p !== "characterView");
+  const OLD_ALL = [
+    ...PERMISSIONS.filter((p) => !NEW.includes(p) && p !== "characterView"),
+    ...LEGACY,
+  ];
 
   test("every role that held every permission gets the new ones; the seeded roles match the defaults", () => {
     const roles = after([{ id: "owner", permissions: [...OLD_ALL].reverse() }]);
@@ -149,14 +166,12 @@ describe("the Control Panel permissions migration", () => {
   test("a stored non-string entry does not stand in for a missing permission", () => {
     const short = OLD_ALL.filter((p) => p !== "drop");
     const roles = after([{ id: "odd", permissions: [...short, null as unknown as string] }]);
-    expect(roles.get("odd")).toEqual([...short].sort());
+    expect(roles.get("odd")).toEqual(kept(short));
   });
 
   test("a role short of any permission is left as it is", () => {
     const short = OLD_ALL.filter((p) => p !== "drop");
-    expect(after([{ id: "builder", permissions: short }]).get("builder")).toEqual(
-      [...short].sort(),
-    );
+    expect(after([{ id: "builder", permissions: short }]).get("builder")).toEqual(kept(short));
   });
 });
 
@@ -176,7 +191,7 @@ describe("the player hub permission migration", () => {
         [r.id, r.id, JSON.stringify(r.permissions), NOW, NOW],
       );
     }
-    migrate(db);
+    upTo(db, CONTENT);
     const stored = new Map(
       db
         .query<{ id: string; permissions: string }, []>("SELECT id, permissions FROM roles")
@@ -185,7 +200,7 @@ describe("the player hub permission migration", () => {
     );
     return { roles: new Map(loadRoles(db).map((r) => [r.id, [...r.permissions].sort()])), stored };
   };
-  const OLD_ALL = PERMISSIONS.filter((p) => p !== "characterView");
+  const OLD_ALL = [...PERMISSIONS.filter((p) => p !== "characterView"), ...LEGACY];
 
   test("a role that held every permission gets characterView; the seeded roles match the defaults", () => {
     const { roles } = after([{ id: "owner", permissions: [...OLD_ALL] }]);
@@ -200,8 +215,67 @@ describe("the player hub permission migration", () => {
       { id: "builder", permissions: short },
       { id: "full", permissions: [...PERMISSIONS] },
     ]);
-    expect(roles.get("builder")).toEqual([...short].sort());
+    expect(roles.get("builder")).toEqual(kept(short));
     expect(stored.get("full")?.filter((p) => p === "characterView")).toEqual(["characterView"]);
+  });
+});
+
+describe("the content permission migration", () => {
+  /** Each role's stored permissions, from roles stored as they were before the migration. */
+  const after = (roles: { id: string; permissions: (string | null)[] }[]) => {
+    const db = openDatabase();
+    upTo(db, CONTENT);
+    for (const r of roles) {
+      db.run(
+        `INSERT INTO roles (id, name, rank, permissions, created_at, updated_at)
+         VALUES (?, ?, 3, ?, ?, ?)
+         ON CONFLICT (id) DO UPDATE SET permissions = excluded.permissions, updated_at = excluded.updated_at`,
+        [r.id, r.id, JSON.stringify(r.permissions), NOW, NOW],
+      );
+    }
+    migrate(db);
+    const rows = db
+      .query<{ id: string; permissions: string; updated_at: string }, []>(
+        "SELECT id, permissions, updated_at FROM roles",
+      )
+      .all();
+    return {
+      stored: new Map(rows.map((r) => [r.id, JSON.parse(r.permissions) as (string | null)[]])),
+      touched: new Map(rows.map((r) => [r.id, r.updated_at !== NOW])),
+      roles: new Map(loadRoles(db).map((r) => [r.id, [...r.permissions].sort()])),
+    };
+  };
+  const OLD_ALL = [...PERMISSIONS, ...LEGACY];
+
+  test("a role with the World or NPC Editor's permission gets contentEditor; the old names go", () => {
+    const { stored } = after([
+      { id: "mapper", permissions: ["settings", "worldEditor", "drop"] },
+      { id: "writer", permissions: ["npcEditor"] },
+      { id: "both", permissions: ["worldEditor", "contentEditor", "npcEditor"] },
+    ]);
+    // Order kept, contentEditor added at the end, and never twice.
+    expect(stored.get("mapper")).toEqual(["settings", "drop", "contentEditor"]);
+    expect(stored.get("writer")).toEqual(["contentEditor"]);
+    expect(stored.get("both")).toEqual(["contentEditor"]);
+  });
+
+  test("a role with every permission still has every one; the seeded roles match the defaults", () => {
+    const { roles, stored } = after([{ id: "owner", permissions: [...OLD_ALL] }]);
+    expect(roles.get("owner")).toEqual([...PERMISSIONS].sort());
+    expect(stored.get("owner")?.filter((p) => p === "contentEditor")).toEqual(["contentEditor"]);
+    expect(roles.get("administrator")).toEqual([...ADMINISTRATOR.permissions].sort());
+    expect(roles.get("moderator")).toEqual([...MODERATOR.permissions].sort());
+  });
+
+  test("a role with neither is left as it is, a stored non-string entry too", () => {
+    const { stored, touched } = after([
+      { id: "mod", permissions: ["kick", null, "ban"] },
+      { id: "builder", permissions: ["contentEditor"] },
+    ]);
+    expect(stored.get("mod")).toEqual(["kick", null, "ban"]);
+    expect(stored.get("builder")).toEqual(["contentEditor"]);
+    expect(touched.get("mod")).toBe(false);
+    expect(touched.get("builder")).toBe(false);
   });
 });
 

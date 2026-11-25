@@ -68,7 +68,7 @@ function panelWith(perms: Permission[], changes = { n: 0 }) {
         id: "worldEditor",
         title: "World Editor",
         group: "Classic tools",
-        permission: "worldEditor",
+        permission: "contentEditor",
         run: () => calls.push("worldEditor"),
       },
     ],
@@ -94,7 +94,7 @@ function panelWith(perms: Permission[], changes = { n: 0 }) {
 
 describe("the Control Panel shell", () => {
   test("the sidebar lists only the pages and classic tools your role may use, by group", () => {
-    const { sidebar, controlPanel, shown } = panelWith(["settings", "worldEditor"]);
+    const { sidebar, controlPanel, shown } = panelWith(["settings", "contentEditor"]);
     expect(sidebar()).toEqual([
       ["Server", "Server Settings"],
       ["Classic tools", "World Editor"],
@@ -157,7 +157,7 @@ describe("the Control Panel shell", () => {
   test("unsaved changes ask before Return to Game, another page or a classic tool", async () => {
     const changes = { n: 2 };
     const { q, calls, controlPanel } = panelWith(
-      ["settings", "activityLog", "worldEditor"],
+      ["settings", "activityLog", "contentEditor"],
       changes,
     );
     click(q(".control-panel-return"));

@@ -88,7 +88,7 @@ describe("the World Editor", () => {
     bob = await login("Bob");
     face(server, "Bob", "N"); // staging: 1.6 logs in facing south
     expect(
-      alice.inbox.some((m) => m.t === "permissions" && m.permissions.includes("worldEditor")),
+      alice.inbox.some((m) => m.t === "permissions" && m.permissions.includes("contentEditor")),
     ).toBe(true);
     bob.clear();
     bob.send({ t: "contentMaps", seq: 1, mx: 1000, my: 992 });

@@ -3086,24 +3086,6 @@
     "errors": []
   },
   {
-    "action": "roles-permission",
-    "tag": "INPUT",
-    "events": ["change", "input"],
-    "hidden": false,
-    "changed": false,
-    "calls": [],
-    "errors": []
-  },
-  {
-    "action": "roles-permission",
-    "tag": "INPUT",
-    "events": ["change", "input"],
-    "hidden": false,
-    "changed": false,
-    "calls": [],
-    "errors": []
-  },
-  {
     "action": "settings-revert",
     "tag": "BUTTON",
     "events": ["click"],
@@ -3159,8 +3141,6 @@
               "drop",
               "spawn",
               "roster",
-              "worldEditor",
-              "npcEditor",
               "settings",
               "contentEditor",
               "characterView",

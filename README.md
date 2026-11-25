@@ -48,7 +48,7 @@ Each new server begins on 1.6's own maps (the Classic pack), which you can expan
 
 ## Make it your own
 
-Use the in-game World Editor, NPC Editor, and server settings to shape your server. For deeper changes, the [modding guide](docs/modding.md) explains how to customize game data, add art and sound, and build your own image.
+Use the in-game Control Panel (its World page, content editors, and server settings) to shape your server. For deeper changes, the [modding guide](docs/modding.md) explains how to customize game data, add art and sound, and build your own image.
 
 Want to work on the game itself? Clone this repository, install [Bun](https://bun.sh/), and run:
 

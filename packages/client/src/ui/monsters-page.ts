@@ -75,10 +75,8 @@ export interface MonstersPageActions {
   openContentRow(row: ContentRowRef): void;
   /** #29's body panel (null with no art). */
   body(saved: () => void): MonsterBodyPanel | null;
-  /** Opens the monster's whole NPC file on the NPCs page (issue #32). */
+  /** Opens the monster's whole NPC file on the Talk & Shops tab (issue #32). */
   openNpc?(name: string): void;
-  /** Whether the NPCs page may be opened (its permission). */
-  canOpenNpc?(): boolean;
 }
 
 /** The answers the server sends the page. */
@@ -1696,10 +1694,7 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
   const updateNpc = () => {
     npcSaveBtn.textContent =
       npcShown?.exists === false ? "Create its NPC file" : "Save loot & spells";
-    npcWholeBtn.hidden =
-      actions.openNpc === undefined ||
-      actions.canOpenNpc?.() === false ||
-      shown?.published !== true;
+    npcWholeBtn.hidden = actions.openNpc === undefined || shown?.published !== true;
     const usable = shown?.published === true && npcShown !== null && npcShown.mixed.length === 0;
     npcButtons.hidden = !usable;
     // A monster with no file can attach an empty one.

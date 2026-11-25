@@ -226,7 +226,7 @@ function buildAll(): HTMLElement[] {
   const controlPanel = createControlPanel({
     pages: [{ id: "p", title: "P", group: "G", permission: "settings", el: kitPage }],
     links: [
-      { id: "l", title: "L", group: "Classic tools", permission: "worldEditor", run: () => {} },
+      { id: "l", title: "L", group: "Classic tools", permission: "contentEditor", run: () => {} },
     ],
     actions: noop,
     can: () => true,

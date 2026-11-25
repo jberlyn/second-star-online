@@ -538,7 +538,7 @@ export interface Game {
   /** Takes a character off the map and saves it. */
   leave(characterId: string): void;
   isOnline(characterId: string): boolean;
-  /** A World or NPC Editor user may send editor-sized frames (`EDITOR_MESSAGE_BYTES`). */
+  /** A content editor may send editor-sized frames (`EDITOR_MESSAGE_BYTES`). */
   canEdit(characterId: string): boolean;
   /** Roles that bypass login limits are exempt from the per-address socket count. */
   canModerate(characterId: string): boolean;
@@ -632,13 +632,13 @@ const EDITOR_INTENTS = new Set([
  * Editor's.
  */
 const ADMIN_INTENTS: Readonly<Record<string, { permission: Permission; reason: string }>> = {
-  // The Control Panel's NPCs page (issue #32): the NPC Editor's permission.
-  contentNpcs: { permission: "npcEditor", reason: "Attempting to get Admin access" },
-  contentNpcSave: { permission: "npcEditor", reason: "Attempting to get Admin access" },
-  // The World page (issue #33): the World Editor's permission and reason.
-  contentMaps: { permission: "worldEditor", reason: "Attempted Admin Access" },
-  contentMapSave: { permission: "worldEditor", reason: "Attempted Admin Access" },
-  contentMapRestore: { permission: "worldEditor", reason: "Attempted Admin Access" },
+  // The NPC file editor (issue #32, the Talk & Shops tab): the NPC Editor's reason.
+  contentNpcs: { permission: "contentEditor", reason: "Attempting to get Admin access" },
+  contentNpcSave: { permission: "contentEditor", reason: "Attempting to get Admin access" },
+  // The World page (issue #33): the World Editor's reason.
+  contentMaps: { permission: "contentEditor", reason: "Attempted Admin Access" },
+  contentMapSave: { permission: "contentEditor", reason: "Attempted Admin Access" },
+  contentMapRestore: { permission: "contentEditor", reason: "Attempted Admin Access" },
   settingsOpen: { permission: "settings", reason: "Attempted Admin Access" },
   settingsSave: { permission: "settings", reason: "Attempted Admin Access" },
   roleSave: { permission: "settings", reason: "Attempted Admin Access" },
@@ -3599,10 +3599,7 @@ export function createGame(deps: GameDeps): Game {
 
     canEdit(characterId) {
       const p = world.players.get(characterId);
-      return (
-        p !== undefined &&
-        (can(p.role, "worldEditor") || can(p.role, "npcEditor") || can(p.role, "contentEditor"))
-      );
+      return p !== undefined && can(p.role, "contentEditor");
     },
 
     canModerate(characterId) {

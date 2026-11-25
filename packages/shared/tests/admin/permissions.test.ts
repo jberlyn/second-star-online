@@ -66,10 +66,16 @@ describe("the default roles", () => {
       Bun.file(new URL(`../../../server/migrations/${name}`, import.meta.url)).text();
     const roles = await migration("20261120_42_roles.sql");
     const admin = roleToData(ADMINISTRATOR);
+    // The World Editor's and NPC Editor's permissions were there from the start, after /roster;
+    // the content permission took them in later.
+    const withEditors = (ps: string[]) => {
+      const at = ps.indexOf("roster") + 1;
+      return [...ps.slice(0, at), "worldEditor", "npcEditor", ...ps.slice(at)];
+    };
     // The Control Panel's permissions came later, given to every role that held all the others.
     const controlPanel = ["contentEditor", "characterEditor", "activityLog"];
-    const seeded = admin.permissions.filter(
-      (p) => !controlPanel.includes(p) && p !== "characterView",
+    const seeded = withEditors(
+      admin.permissions.filter((p) => !controlPanel.includes(p) && p !== "characterView"),
     );
     expect(roles).toContain(
       `('${admin.id}', '${admin.name}', ${admin.rank},\n    '${JSON.stringify(seeded)}'`,
@@ -81,9 +87,14 @@ describe("the default roles", () => {
     }
     // The player hub's came after that, the same way.
     const hub = await migration("20261122_51_character_view.sql");
-    const beforeHub = admin.permissions.filter((p) => p !== "characterView");
+    const beforeHub = withEditors(admin.permissions.filter((p) => p !== "characterView"));
     expect(hub).toContain(`json_each('${JSON.stringify(beforeHub)}')`);
     expect(hub).toContain("'characterView'");
+    // Then the content permission took in the two editors' (it adds itself, so none is left out).
+    const content = await migration("20261125_74_content_permission.sql");
+    expect(content).toContain("IN ('worldEditor', 'npcEditor')");
+    expect(PERMISSIONS).not.toContain("worldEditor");
+    expect(PERMISSIONS).not.toContain("npcEditor");
     // The moderator seed lost /pardon, /iplookup, /save and /Refresh in a later migration.
     const mod = roleToData(MODERATOR);
     expect(roles).toContain(`('${mod.id}', '${mod.name}', ${mod.rank},`);

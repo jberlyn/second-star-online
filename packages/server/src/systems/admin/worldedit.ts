@@ -1,7 +1,7 @@
 /**
  * The World Editor on the server.
  *
- * - Open: the `worldEditor` permission only. You leave the map: everyone there sees you go (`##!` + `LeaveGroup`), and
+ * - Open: the Control Panel's World page (the `contentEditor` permission). You leave the map: everyone there sees you go (`##!` + `LeaveGroup`), and
  *   nothing on it ticks for you. The editor loads the map you were on.
  * - Load: the map at X/Y, or the blank-map template when there is none.
  * - Save: validated, then the map, its roster and live monsters, and its placed items are replaced;
