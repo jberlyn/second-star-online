@@ -215,10 +215,21 @@ describe("the Server Settings page", () => {
 
   test("Save sends only the open page's values; Revert asks again", () => {
     const { w, row, saves, loads, type, btn, open } = win();
-    type(
-      row("portalTargets").querySelector("textarea") as HTMLTextAreaElement,
-      "x1y1 2 3\nx5y5 6 7",
-    );
+    // Each target is a row of its own: map, x and y, added with + Add point.
+    const targets = row("portalTargets");
+    expect(targets.querySelector("textarea")).toBeNull();
+    for (const values of [
+      ["x1y1", "2", "3"],
+      ["x5y5", "6", "7"],
+    ]) {
+      targets.querySelector<HTMLButtonElement>('[data-action="settings-points-add"]')?.click();
+      const boxes = [
+        ...targets.querySelectorAll<HTMLInputElement>('[data-action="settings-points-value"]'),
+      ].slice(-3);
+      for (const [i, b] of boxes.entries()) {
+        type(b, values[i] ?? "");
+      }
+    }
     btn("settings-save").click();
     expect(saves).toEqual([
       {
@@ -433,7 +444,7 @@ describe("the Server Settings page", () => {
     expect(checkValue(start, { map: "home", x: 1, y: 1 })).toBe("Enter a map name like x1000y992.");
     expect(checkValue(spirit, null)).toBeNull();
     expect(checkValue(portal, parsePoints("x1y1 2 3\nx1y1 2"))).toBe(
-      "Line 2: write a map and a tile, like x1000y992 5 5 (x 1-17, y 1-12).",
+      "Row 2: give a map like x1000y992 and a tile, x 1-17 and y 1-12.",
     );
     expect(valueText(portal, [])).toBe("none");
   });
@@ -452,10 +463,10 @@ describe("the Server Settings page", () => {
     expect(parsePrizes("a\nb\nc\nd\ne")).toEqual(["a", "b", "c", "d"]);
     expect(checkValue(prizes, ["Long Sword", "1000 Gold", "", "Knife"])).toBeNull();
     expect(checkValue(prizes, ["Long Sword", "Excalibur", "", ""])).toBe(
-      "Line 2: write an item, an amount like 1000 Gold, or leave it empty.",
+      "Place 2: give an item, an amount like 1000 Gold, or leave it empty.",
     );
     expect(checkValue(prizes, ["0 Gold", "", "", ""])).toBe(
-      "Line 1: write an item, an amount like 1000 Gold, or leave it empty.",
+      "Place 1: give an item, an amount like 1000 Gold, or leave it empty.",
     );
     expect(valueText(prizes, prizes.default)).toBe("Long Sword, 1000 Gold, 500 Gold, Knife");
     const saves: Record<string, unknown>[] = [];
@@ -465,9 +476,18 @@ describe("the Server Settings page", () => {
       load: () => {},
     });
     w.show([{ id: "items", title: "Items", kind: "rows" }], [prizes]);
-    const t = w.el.querySelector("textarea") as HTMLTextAreaElement;
-    expect(t.value).toBe("Long Sword\n1000 Gold\n500 Gold\nKnife");
-    expect(t.getAttribute("data-action")).not.toBeNull();
+    // A box for each place, first to fourth.
+    const boxes = [
+      ...w.el.querySelectorAll<HTMLInputElement>('[data-action="settings-prizes-value"]'),
+    ];
+    expect(boxes.map((b) => b.value)).toEqual(["Long Sword", "1000 Gold", "500 Gold", "Knife"]);
+    expect(boxes.map((b) => b.getAttribute("aria-label"))).toEqual([
+      "1st place: Prize",
+      "2nd place: Prize",
+      "3rd place: Prize",
+      "4th place: Prize",
+    ]);
+    expect(w.el.querySelector("textarea")).toBeNull();
   });
 
   test("Login news: free text up to 1000 characters, empty for none", () => {

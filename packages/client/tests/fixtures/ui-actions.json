@@ -969,6 +969,11 @@
     "hidden": 0,
     "disabled": 0
   },
+  "hub-edit-spellbook-add": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
   "hub-edit-sta": {
     "count": 1,
     "hidden": 0,
@@ -980,6 +985,11 @@
     "disabled": 0
   },
   "hub-edit-vault": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-edit-vault-add": {
     "count": 1,
     "hidden": 0,
     "disabled": 0
@@ -1484,6 +1494,16 @@
     "hidden": 0,
     "disabled": 0
   },
+  "settings-points": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "settings-points-add": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
   "settings-reset": {
     "count": 6,
     "hidden": 0,
@@ -1510,7 +1530,7 @@
     "disabled": 0
   },
   "settings-value": {
-    "count": 8,
+    "count": 7,
     "hidden": 0,
     "disabled": 0
   },

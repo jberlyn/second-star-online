@@ -33,7 +33,7 @@ import {
 } from "@secondstaronline/shared";
 
 import { action, gameInput } from "./action.ts";
-import { trapTab } from "./control-panel-kit.ts";
+import { rowList, trapTab } from "./control-panel-kit.ts";
 import {
   type CustomPage,
   createRolesPage,
@@ -249,7 +249,7 @@ export function checkValue(r: SettingRow, v: unknown): string | null {
       );
       return bad < 0
         ? null
-        : `Line ${bad + 1}: write a map and a tile, like x1000y992 5 5 (x 1-17, y 1-12).`;
+        : `Row ${bad + 1}: give a map like x1000y992 and a tile, x 1-17 and y 1-12.`;
     }
     case "maps": {
       const list = v as unknown[];
@@ -257,7 +257,7 @@ export function checkValue(r: SettingRow, v: unknown): string | null {
         return `Enter at most ${MAX_MAPS} maps.`;
       }
       const bad = list.findIndex((m) => typeof m !== "string" || !MAP_NAME.test(m));
-      return bad < 0 ? null : `Line ${bad + 1}: write a map name, like x1000y992.`;
+      return bad < 0 ? null : `Row ${bad + 1}: give a map name, like x1000y992.`;
     }
     case "zone":
       return typeof v === "string" && v !== "" ? null : "Pick a time zone from the list.";
@@ -266,7 +266,7 @@ export function checkValue(r: SettingRow, v: unknown): string | null {
       const bad = list.findIndex((l) => typeof l !== "string" || l.length > 60 || !prizeLineOk(l));
       return bad < 0
         ? null
-        : `Line ${bad + 1}: write an item, an amount like 1000 Gold, or leave it empty.`;
+        : `Place ${bad + 1}: give an item, an amount like 1000 Gold, or leave it empty.`;
     }
     case "text":
       return typeof v === "string" && v.length <= TEXT_MAX
@@ -469,51 +469,66 @@ function createRow(r: SettingRow, onChange: () => void): RowState {
       break;
     }
     case "points": {
-      const t = action(document.createElement("textarea"), "settings-value");
-      t.className = "settings-points";
-      t.setAttribute("aria-label", `${r.label}: one "map x y" per line`);
-      t.placeholder = "None. One per line: map x y, like x1000y992 5 5";
-      t.spellcheck = false;
-      t.rows = 3;
-      read = () => parsePoints(t.value);
+      // Map points: a row each (map, x, y), added and removed with buttons.
+      const list = rowList({
+        id: "settings-points",
+        noun: "point",
+        max: MAX_POINTS,
+        columns: [
+          { label: "Map", placeholder: "Map, like x1000y992" },
+          { label: "x", numeric: true },
+          { label: "y", numeric: true },
+        ],
+      });
+      read = () =>
+        parsePoints(
+          list
+            .rows()
+            .map((r) => r.join(" "))
+            .join("\n"),
+        );
       write = (v) => {
-        t.value = pointsText(v);
+        list.set(
+          Array.isArray(v) ? v.filter(isPoint).map((p) => [p.map, String(p.x), String(p.y)]) : [],
+        );
       };
-      fields.push(t);
-      control.append(t);
+      fields.push(list.el);
+      control.append(list.el);
       break;
     }
     case "maps": {
-      const t = action(document.createElement("textarea"), "settings-value");
-      t.className = "settings-points";
-      t.setAttribute("aria-label", `${r.label}: one map name per line`);
-      t.placeholder = "None. One map per line, like x1000y992";
-      t.spellcheck = false;
-      t.rows = 3;
-      read = () => parseMaps(t.value);
+      const list = rowList({
+        id: "settings-maps",
+        noun: "map",
+        max: MAX_MAPS,
+        columns: [{ label: "Map", placeholder: "Map, like x1000y992" }],
+      });
+      read = () =>
+        list
+          .rows()
+          .map((r) => r[0] ?? "")
+          .filter((m) => m !== "");
       write = (v) => {
-        t.value = Array.isArray(v) ? v.filter((m) => typeof m === "string").join("\n") : "";
+        list.set(Array.isArray(v) ? v.filter((m) => typeof m === "string").map((m) => [m]) : []);
       };
-      fields.push(t);
-      control.append(t);
+      fields.push(list.el);
+      control.append(list.el);
       break;
     }
     case "prizes": {
-      const t = action(document.createElement("textarea"), "settings-value");
-      t.className = "settings-points";
-      t.setAttribute(
-        "aria-label",
-        `${r.label}: first, second, third and fourth place, one per line`,
-      );
-      t.placeholder = "Long Sword\n1000 Gold\n500 Gold\nKnife";
-      t.spellcheck = false;
-      t.rows = 4;
-      read = () => parsePrizes(t.value);
+      // First to fourth place, one box each: an item, "<n> Gold", or empty for none.
+      const list = rowList({
+        id: "settings-prizes",
+        noun: "prize",
+        fixed: ["1st place", "2nd place", "3rd place", "4th place"],
+        columns: [{ label: "Prize", placeholder: "An item, or like 500 Gold; empty for none" }],
+      });
+      read = () => list.rows().map((r) => r[0] ?? "");
       write = (v) => {
-        t.value = Array.isArray(v) ? v.map((m) => String(m)).join("\n") : "";
+        list.set(Array.isArray(v) ? v.map((m) => [String(m)]) : []);
       };
-      fields.push(t);
-      control.append(t);
+      fields.push(list.el);
+      control.append(list.el);
       break;
     }
     case "text": {

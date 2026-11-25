@@ -1638,25 +1638,37 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
         "monsters-npc-flag",
       ),
     );
-    const flagsArea = noAutofill(action(document.createElement("textarea"), "monsters-npc-flags"));
-    flagsArea.rows = 2;
-    flagsArea.value = others().join("\n");
-    flagsArea.addEventListener("input", () => {
-      const typed = flagsArea.value.split("\n").filter((f) => f.trim() !== "");
-      npcWork.flags = [...npcWork.flags.filter((f) => known(f)), ...typed];
-      edited();
-    });
+    // Other flags are kept for scripts and tools; they're listed as they are, with Take it out.
+    const flagsArea = document.createElement("ul");
+    flagsArea.className = "npcs-other-flags";
+    for (const f of others()) {
+      const li = document.createElement("li");
+      li.append(
+        `“${f}” `,
+        panelButton("monsters-npc-flag-out", "Take it out", () => {
+          const at = npcWork.flags.indexOf(f);
+          if (at >= 0) {
+            npcWork.flags.splice(at, 1);
+          }
+          li.remove();
+          edited();
+        }),
+      );
+      flagsArea.append(li);
+    }
     const flagsMore = document.createElement("details");
     flagsMore.className = "items-more";
     flagsMore.open = others().length > 0;
+    // Nothing to show when every flag is one of the two above.
+    flagsMore.hidden = others().length === 0;
     const flagsSummary = action(document.createElement("summary"), "monsters-more-toggle");
     flagsSummary.textContent = "More options";
     flagsMore.append(
       flagsSummary,
       labelled(
-        "Other flag lines",
+        "Other flags",
         flagsArea,
-        "One per line, kept in its NPC file for scripts and other tools. The game itself reads only the two above.",
+        "Kept in its NPC file for scripts and other tools. The game itself reads only the two above.",
       ),
     );
     npcBody.replaceChildren(

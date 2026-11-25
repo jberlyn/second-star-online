@@ -35,7 +35,7 @@ import {
 
 import { action, gameInput } from "./action.ts";
 import { activityTime } from "./activity-log.ts";
-import { confirmBox, createTable, formField, panelButton } from "./control-panel-kit.ts";
+import { confirmBox, createTable, formField, panelButton, rowList } from "./control-panel-kit.ts";
 
 /** The worn-gear fields in the paperdoll's order, with their labels. */
 const WORN: readonly [string, string][] = [
@@ -121,13 +121,6 @@ function grid(...fields: HTMLElement[]): HTMLElement {
 
 /** A whole number typed in a field, or NaN (the limits check names it). */
 const num = (i: HTMLInputElement): number => (i.value.trim() === "" ? Number.NaN : Number(i.value));
-
-/** One name per line, blank lines dropped. */
-const lines = (t: HTMLTextAreaElement): string[] =>
-  t.value
-    .split("\n")
-    .map((l) => l.trim())
-    .filter((l) => l !== "");
 
 export interface CharacterEditorOptions {
   /** Sends an edit; false while another change is still waiting for its answer. */
@@ -268,10 +261,32 @@ export function createCharacterEditor(opts: CharacterEditorOptions): CharacterEd
         ] as const,
     ),
   );
-  const vault = action(document.createElement("textarea"), "hub-edit-vault");
-  vault.rows = 4;
-  const spellbook = action(document.createElement("textarea"), "hub-edit-spellbook");
-  spellbook.rows = 4;
+  const spellList = `${itemList}-spells`;
+  // The vault and the spellbook: a row per item or spell, added and removed with buttons.
+  const vault = rowList({
+    id: "hub-edit-vault",
+    noun: "item",
+    max: 15,
+    columns: [{ label: "Item", list: itemList }],
+  });
+  const spellbook = rowList({
+    id: "hub-edit-spellbook",
+    noun: "spell",
+    columns: [{ label: "Spell", list: spellList }],
+  });
+  /** A labelled list with its help line under it. */
+  const listField = (label: string, list: { el: HTMLElement }, help: string) => {
+    const box = document.createElement("div");
+    box.className = "control-panel-field";
+    const l = document.createElement("div");
+    l.className = "control-panel-field-label";
+    l.textContent = label;
+    const h = document.createElement("p");
+    h.className = "control-panel-field-help";
+    h.textContent = help;
+    box.append(l, list.el, h);
+    return box;
+  };
   const goldBox = section(
     "Gold and bank",
     grid(formField("Gold carried", gold), formField("Bank", bank)),
@@ -291,8 +306,8 @@ export function createCharacterEditor(opts: CharacterEditorOptions): CharacterEd
   const storeBox = section(
     "Vault and spellbook",
     grid(
-      formField("Vault", vault, "One item per line, at most 15."),
-      formField("Spellbook", spellbook, "One spell per line, in the order the book lists them."),
+      listField("Vault", vault, "At most 15 items."),
+      listField("Spellbook", spellbook, "In the order the book lists them."),
     ),
   );
 
@@ -395,7 +410,8 @@ export function createCharacterEditor(opts: CharacterEditorOptions): CharacterEd
   );
   saveBox.classList.add("hub-edit-save", "hub-wide");
   const items = datalist(itemList, []);
-  saveBox.append(items);
+  const spells = datalist(spellList, []);
+  saveBox.append(items, spells);
   // The class list, the factions, the skills and the item suggestions follow the content store, so
   // a publish that adds a class, a faction, a skill or an item shows here at once.
   onContent((c) => {
@@ -436,6 +452,13 @@ export function createCharacterEditor(opts: CharacterEditorOptions): CharacterEd
       ...c.items.items.map((i) => {
         const o = document.createElement("option");
         o.value = i.name;
+        return o;
+      }),
+    );
+    spells.replaceChildren(
+      ...c.spells.spells.map((sp) => {
+        const o = document.createElement("option");
+        o.value = sp.name;
         return o;
       }),
     );
@@ -481,8 +504,8 @@ export function createCharacterEditor(opts: CharacterEditorOptions): CharacterEd
       const v = c.equip[f as keyof EditableCharacter["equip"]] ?? "NOTHING";
       input.value = v === "NOTHING" ? "" : v;
     }
-    vault.value = c.vault.join("\n");
-    spellbook.value = c.spellbook.join("\n");
+    vault.set(c.vault.map((v) => [v]));
+    spellbook.set(c.spellbook.map((v) => [v]));
     posMap.value = c.position.map;
     posX.value = String(c.position.x);
     posY.value = String(c.position.y);
@@ -542,8 +565,8 @@ export function createCharacterEditor(opts: CharacterEditorOptions): CharacterEd
       feet: wornValue("feet"),
       ring: wornValue("ring"),
     },
-    vault: lines(vault),
-    spellbook: lines(spellbook),
+    vault: vault.rows().map((r) => r[0] ?? ""),
+    spellbook: spellbook.rows().map((r) => r[0] ?? ""),
     position: { map: posMap.value.trim(), x: num(posX), y: num(posY) },
     respawn:
       resMap.value.trim() === "" && c.respawn === null

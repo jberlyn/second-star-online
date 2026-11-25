@@ -2527,9 +2527,18 @@
     "errors": []
   },
   {
-    "action": "settings-value",
-    "tag": "TEXTAREA",
+    "action": "settings-points",
+    "tag": "DIV",
     "events": ["change", "input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "settings-points-add",
+    "tag": "BUTTON",
+    "events": ["click"],
     "hidden": false,
     "changed": false,
     "calls": [],
@@ -6334,7 +6343,7 @@
   },
   {
     "action": "hub-edit-vault",
-    "tag": "TEXTAREA",
+    "tag": "DIV",
     "events": ["input"],
     "hidden": false,
     "changed": false,
@@ -6342,9 +6351,27 @@
     "errors": []
   },
   {
+    "action": "hub-edit-vault-add",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
     "action": "hub-edit-spellbook",
-    "tag": "TEXTAREA",
+    "tag": "DIV",
     "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-spellbook-add",
+    "tag": "BUTTON",
+    "events": ["click"],
     "hidden": false,
     "changed": false,
     "calls": [],

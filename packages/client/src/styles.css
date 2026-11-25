@@ -4572,3 +4572,32 @@ body {
   margin: 4px 0;
   padding-left: 18px;
 }
+/* A short list of rows (control-panel-kit.ts `rowList`): a few boxes per row, Add and Remove. */
+.control-panel-rowlist-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.control-panel-rowlist-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.control-panel-rowlist-row > input {
+  flex: 1 1 140px;
+  min-width: 0;
+}
+.control-panel-rowlist-row > input.control-panel-rowlist-number {
+  flex: 0 0 5em;
+}
+.control-panel-rowlist-label {
+  flex: 0 0 7em;
+  color: var(--ui-text-soft);
+}
+.control-panel-rowlist > .control-panel-btn {
+  margin-top: 4px;
+}
+.control-panel-rowlist > [hidden] {
+  display: none;
+}

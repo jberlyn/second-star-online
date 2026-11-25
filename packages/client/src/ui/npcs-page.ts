@@ -1,9 +1,9 @@
 /**
  * The Control Panel's NPCs page (issue #32): every NPC file in a searchable list, and the open one
- * as a plain form behind four tabs (Talk; Shop; Bank and training; As a monster), or as its text,
- * kept in step: switching views carries the edit across. The form names things in plain words
- * (the file's tags only appear in the text view). An SSO page: 1.6 edited NPC files as text in
- * the NPC Editor window.
+ * as a plain form behind four tabs (Talk; Shop; Bank and training; As a monster), in plain words:
+ * the file's text and tags are never shown. A line the form can't show (an owner line, an unknown
+ * tag, a line read two ways) is listed as it is, with Take it out. An SSO page: 1.6 edited NPC
+ * files as text in the NPC Editor window.
  *
  * - The file is what the server's readers read, so the forms only write the lines a section holds;
  *   every other line (`OWN|`, blank lines, an unknown tag) stays where it is, and an unchanged entry
@@ -199,37 +199,8 @@ export function createNpcsPage(actions: NpcsPageActions): NpcsPage {
   stale.hidden = true;
   stale.textContent =
     "Someone saved this NPC while you were editing it, so saving will be refused. Undo your changes to see theirs.";
-  const modeSel = action(document.createElement("select"), "npcs-mode");
-  modeSel.id = "npcs-mode";
-  for (const [v, t] of [
-    ["forms", "Simple form"],
-    ["text", "The file as text (advanced)"],
-  ]) {
-    const o = document.createElement("option");
-    o.value = v as string;
-    o.textContent = t as string;
-    modeSel.append(o);
-  }
-  const modeBox = labelled(
-    "View",
-    modeSel,
-    "The text view shows the NPC file itself, line by line. Your changes carry across when you switch.",
-  );
-  modeBox.classList.add("npcs-mode");
   const sectionsEl = document.createElement("fieldset");
   sectionsEl.className = "items-rules";
-  const textArea = noAutofill(action(document.createElement("textarea"), "npcs-text"));
-  textArea.id = "npcs-text";
-  textArea.className = "content-json";
-  textArea.rows = 20;
-  textArea.spellcheck = false;
-  const textBox = labelled(
-    "The NPC file",
-    textArea,
-    "One line each, starting with a tag: BIO| and PRO| (its Bio window), RND| (things it says), SEL|item:price:stock (sells), BUY|item:price (buys), GLD|gold (its till), BNK| (runs a bank), TRN|class:price (promotions), INV|item:N (drops 1 in N), SPL|spell (casts), FLG|Still or FLG|Passive.",
-  );
-  textBox.classList.add("npcs-text-view");
-  textBox.hidden = true;
   const checkBox = document.createElement("div");
   checkBox.className = "npcs-check";
   checkBox.setAttribute("role", "status");
@@ -275,9 +246,7 @@ export function createNpcsPage(actions: NpcsPageActions): NpcsPage {
     stale,
     sectionTabs(form, "npcs").el,
     sectionsEl,
-    textBox,
     checkBox,
-    modeBox,
     formActions(buttons, status),
   );
   const itemsList = document.createElement("datalist");
@@ -308,7 +277,6 @@ export function createNpcsPage(actions: NpcsPageActions): NpcsPage {
   let loaded = "";
   let filledRevision: string | null = null;
   let work: Sections = emptySections();
-  let mode: "forms" | "text" = "forms";
   let busy = false;
   /** Fields whose text does not read. */
   const invalid = new Map<HTMLElement, string>();
@@ -327,9 +295,6 @@ export function createNpcsPage(actions: NpcsPageActions): NpcsPage {
   };
   /** The text a save would send, or null while a field does not read. */
   const currentText = (): string | null => {
-    if (mode === "text") {
-      return textArea.value;
-    }
     if (invalid.size > 0) {
       return null;
     }
@@ -499,14 +464,54 @@ export function createNpcsPage(actions: NpcsPageActions): NpcsPage {
     return box;
   };
 
+  /** Line `n` (from 1) of the file as the form would save it. */
+  const lineText = (n: number): string => {
+    const t = currentText() ?? base;
+    return editorLines(t)[n - 1] ?? "";
+  };
+  /** Takes line `n` out of the file; the form is drawn again from what is left. */
+  const takeOut = (n: number) => {
+    const t = currentText() ?? base;
+    const lines = editorLines(t);
+    lines.splice(n - 1, 1);
+    base = lines.join("\r");
+    work = modelOf(base).s;
+    invalid.clear();
+    drawForm();
+    edited();
+  };
+  /** Lines the form can't show, each with Take it out. */
+  const oddLines = (head: string, lines: readonly { line: number; text: string }[]) => {
+    const box = document.createElement("div");
+    box.className = "npcs-odd-lines balance-stale";
+    const p = document.createElement("p");
+    p.textContent = head;
+    const ul = document.createElement("ul");
+    for (const l of lines) {
+      const li = document.createElement("li");
+      const t = document.createElement("span");
+      t.textContent = `“${l.text}” `;
+      li.append(
+        t,
+        panelButton("npcs-take-out", "Take it out", () => takeOut(l.line)),
+      );
+      ul.append(li);
+    }
+    box.append(p, ul);
+    return box;
+  };
   const drawSections = (mixed: number[], kept: { line: number; text: string }[]) => {
     tabsUsed = [];
     refreshOdds = () => {};
     if (mixed.length > 0) {
-      const p = document.createElement("p");
-      p.className = "balance-stale";
-      p.textContent = `Line ${mixed.join(", ")} is read two ways at once (a drop line inside another line): change it in the file as text.`;
-      sectionsEl.replaceChildren(p);
+      // A line read two ways (a drop line inside a Bio line) can't be shown as one field: take it
+      // out, and the rest of the file is shown as usual.
+      sectionsEl.replaceChildren(
+        oddLines(
+          "These lines are read two ways at once (a drop line inside another line), so the form can't show this NPC until they are taken out:",
+          mixed.map((n) => ({ line: n, text: lineText(n) })),
+        ),
+      );
       return;
     }
     const c = choices;
@@ -565,9 +570,18 @@ export function createNpcsPage(actions: NpcsPageActions): NpcsPage {
       "Gold in its till",
       gold,
       work.gold.length > 1
-        ? `This file has ${work.gold.length} till lines and only one is allowed: remove the others in the file as text.`
+        ? `This NPC has ${work.gold.length} tills and only one is allowed. This is the first; Keep only this one takes the others out.`
         : "The gold it has right now to pay players who sell to it. Saving sets it to this; empty means none.",
     );
+    if (work.gold.length > 1) {
+      goldBox.append(
+        panelButton("npcs-one-till", "Keep only this one", () => {
+          work.gold = work.gold.slice(0, 1);
+          drawForm();
+          edited();
+        }),
+      );
+    }
 
     // Spells: the ticked ones in view, the rest folded under "Add a spell…".
     const spellTags = [
@@ -606,21 +620,25 @@ export function createNpcsPage(actions: NpcsPageActions): NpcsPage {
     spellBox.append(spellsOn, spellsRest);
 
     // Flags: the two that do something as ticks; any other line kept under More options.
-    const otherFlags = noAutofill(action(document.createElement("textarea"), "npcs-flags"));
+    // Any other flag does nothing in play: listed as it is, with Take it out (nothing to type).
     const others = work.flags.filter((f) => !isKnownFlag(f));
-    otherFlags.rows = Math.max(2, Math.min(6, others.length + 1));
-    otherFlags.value = others.join("\n");
-    otherFlags.addEventListener("input", () => {
-      const lines = otherFlags.value.split("\n").filter((l) => l !== "");
-      const bad = lines.find((l) => !npcFieldOk(l));
-      if (bad !== undefined) {
-        invalid.set(otherFlags, `Other flag lines: "${bad}" cannot hold | : \` * ^`);
-      } else {
-        invalid.delete(otherFlags);
-        work.flags = [...work.flags.filter(isKnownFlag), ...lines];
-      }
-      edited();
-    });
+    const otherFlags = document.createElement("ul");
+    otherFlags.className = "npcs-other-flags";
+    for (const f of others) {
+      const li = document.createElement("li");
+      li.append(
+        `“${f}” `,
+        panelButton("npcs-flag-out", "Take it out", () => {
+          const at = work.flags.indexOf(f);
+          if (at >= 0) {
+            work.flags.splice(at, 1);
+          }
+          drawForm();
+          edited();
+        }),
+      );
+      otherFlags.append(li);
+    }
     const flagTicks = FLAG_TEXT.map(([flag, label]) =>
       check(
         work.flags.some((f) => f.toLowerCase() === flag.toLowerCase()),
@@ -674,10 +692,9 @@ export function createNpcsPage(actions: NpcsPageActions): NpcsPage {
     };
     refreshOdds();
 
-    const keptNote = intro(
-      kept.length === 0
-        ? ""
-        : `This file also has lines the form doesn't show. They are kept as they are; to change them, switch View to the file as text: ${kept.map((k) => `line ${k.line} "${k.text}"`).join(", ")}.`,
+    const keptNote = oddLines(
+      "This NPC also has lines the game doesn't use (a player shop's owner, an old or unknown line). They are kept as they are, or you can take them out:",
+      kept,
     );
     keptNote.hidden = kept.length === 0;
 
@@ -818,9 +835,9 @@ export function createNpcsPage(actions: NpcsPageActions): NpcsPage {
         more(
           others.length > 0,
           labelled(
-            "Other flag lines",
+            "Other flags",
             otherFlags,
-            "One per line. Only the two above do anything in play; anything else here is kept but ignored.",
+            "Only the two above do anything in play; these are kept but ignored.",
           ),
         ),
       ),
@@ -848,28 +865,23 @@ export function createNpcsPage(actions: NpcsPageActions): NpcsPage {
     }
   };
 
-  /** Shows the open file in the mode chosen, from `base` and `work`. */
+  /** Shows the open file, from `base` and `work`. */
   const drawForm = () => {
     if (!shown) {
       return;
     }
-    sectionsEl.hidden = mode !== "forms";
-    textBox.hidden = mode !== "text";
-    if (mode === "text") {
-      tabsUsed = [];
+    // A file with a line read two ways can't be written from the form yet: shown from the file.
+    let text = base;
+    try {
+      text = npcText(base, work);
+    } catch {
+      text = base;
     }
-    if (mode === "forms") {
-      const m = modelOf(npcText(base, work));
-      const kept = m.lines
-        .filter((l) => l.kind === null && l.text !== "")
-        .map((l) => ({ line: l.line, text: l.text }));
-      drawSections(m.mixed, kept);
-      // The file as text is only offered when the form can't show all of it: the form covers
-      // everything an NPC file does in play.
-      modeBox.hidden = m.mixed.length === 0 && kept.length === 0;
-    } else {
-      modeBox.hidden = false;
-    }
+    const m = modelOf(text);
+    const kept = m.lines
+      .filter((l) => l.kind === null && l.text !== "")
+      .map((l) => ({ line: l.line, text: l.text }));
+    drawSections(m.mixed, kept);
   };
 
   const fill = () => {
@@ -882,50 +894,8 @@ export function createNpcsPage(actions: NpcsPageActions): NpcsPage {
     const m = modelOf(base);
     work = m.s;
     invalid.clear();
-    // A file read two ways opens as text.
-    if (m.mixed.length > 0) {
-      mode = "text";
-      modeSel.value = "text";
-    }
-    textArea.value = base.replace(/\r\n|\r/g, "\n");
     drawForm();
   };
-
-  modeSel.addEventListener("change", () => {
-    const next = modeSel.value === "text" ? "text" : "forms";
-    if (next === mode) {
-      return;
-    }
-    if (next === "text") {
-      // The sections' edit becomes the text.
-      const t = currentText();
-      if (t === null) {
-        modeSel.value = "forms";
-        say(status, "Fix the fields marked in red first.", false);
-        return;
-      }
-      textArea.value = t.replace(/\r\n|\r/g, "\n");
-    } else {
-      // The text's edit becomes the sections: the text is the new base.
-      const m = modelOf(textArea.value);
-      if (m.mixed.length > 0) {
-        modeSel.value = "text";
-        say(
-          status,
-          `Line ${m.mixed.join(", ")} is read two ways at once: fix it here in the text first.`,
-          false,
-        );
-        return;
-      }
-      base = textArea.value;
-      work = m.s;
-      invalid.clear();
-    }
-    mode = next;
-    drawForm();
-    update();
-  });
-  textArea.addEventListener("input", () => edited());
 
   const update = () => {
     const v = shown;
@@ -968,7 +938,6 @@ export function createNpcsPage(actions: NpcsPageActions): NpcsPage {
     undoBtn.hidden = !isDirty;
     undoBtn.disabled = busy;
     sectionsEl.disabled = busy;
-    textArea.readOnly = busy;
   };
 
   const drawList = () => {
@@ -1122,8 +1091,6 @@ export function createNpcsPage(actions: NpcsPageActions): NpcsPage {
       loaded = "";
       filledRevision = null;
       work = emptySections();
-      mode = "forms";
-      modeSel.value = "forms";
       busy = false;
       invalid.clear();
       search.value = "";
@@ -1132,7 +1099,6 @@ export function createNpcsPage(actions: NpcsPageActions): NpcsPage {
       checkBox.textContent = "";
       listEl.replaceChildren();
       sectionsEl.replaceChildren();
-      textArea.value = "";
       form.hidden = true;
       empty.hidden = false;
       tabsUsed = [];

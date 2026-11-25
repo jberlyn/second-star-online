@@ -100,31 +100,28 @@ describe("the NPCs page", () => {
     });
   });
 
-  test("the text view carries the sections' edit, and back; a refused line is shown as you type", () => {
+  test("a refused line is shown as you type; a chatter line saves with the rest of the file", () => {
     const t = page();
     t.open(amber());
     t.q<HTMLButtonElement>('[data-action="npcs-buys-remove"]').click();
-    const mode = t.q<HTMLSelectElement>("#npcs-mode");
-    mode.value = "text";
-    mode.dispatchEvent(new Event("change"));
-    const area = t.q<HTMLTextAreaElement>("#npcs-text");
-    expect(area.value).toBe("OWN|king\nBIO|Name: Amber\nSEL|Apple:10:5\nGLD|100");
-    area.value += "\nSEL|Fire:5:1";
-    area.dispatchEvent(new Event("input"));
+    t.q<HTMLButtonElement>('[data-action="npcs-sells-add"]').click();
+    const item = t
+      .qa('[data-list="sells"] .items-list-row')[1]
+      ?.querySelector("input") as HTMLInputElement;
+    item.value = "Fire";
+    item.dispatchEvent(new Event("input"));
     expect(t.q(".npcs-check").textContent).toContain('"Fire" is not an item');
     expect(t.q<HTMLButtonElement>('[data-action="npcs-save"]').disabled).toBe(true);
-    area.value = area.value.replace("SEL|Fire:5:1", "RND|Hello");
-    area.dispatchEvent(new Event("input"));
-    mode.value = "forms";
-    mode.dispatchEvent(new Event("change"));
-    expect(t.q<HTMLTextAreaElement>('[data-action="npcs-chatter"]')?.value).toBe("Hello");
-    // Still unsaved after the switch: the save sends the edit made as text.
+    t.qa('[data-action="npcs-sells-remove"]')[1]?.click();
+    const chatter = t.q<HTMLTextAreaElement>('[data-action="npcs-chatter"]');
+    chatter.value = "Hello";
+    chatter.dispatchEvent(new Event("input"));
     const save = t.q<HTMLButtonElement>('[data-action="npcs-save"]');
     expect(save.disabled).toBe(false);
     expect(t.p.changes()).toBe(1);
     save.click();
     expect(t.saves.at(-1)?.text).toBe(
-      "OWN|king\nBIO|Name: Amber\nSEL|Apple:10:5\nGLD|100\nRND|Hello",
+      "OWN|king\rBIO|Name: Amber\rSEL|Apple:10:5\rGLD|100\rRND|Hello",
     );
   });
 
@@ -141,17 +138,12 @@ describe("the NPCs page", () => {
     expect(price.isConnected && price.value).toBe("-2");
   });
 
-  test("Undo changes after a switch puts back the file as shown; a stale file says so", () => {
+  test("Undo changes puts back the file as shown; a stale file says so", () => {
     const t = page();
     t.open(amber());
-    const mode = t.q<HTMLSelectElement>("#npcs-mode");
-    mode.value = "text";
-    mode.dispatchEvent(new Event("change"));
-    const area = t.q<HTMLTextAreaElement>("#npcs-text");
-    area.value = area.value.replace("Name: Amber", "Name: Ann");
-    area.dispatchEvent(new Event("input"));
-    mode.value = "forms";
-    mode.dispatchEvent(new Event("change"));
+    const bio = t.q<HTMLTextAreaElement>('[data-action="npcs-bio"]');
+    bio.value = "Name: Ann";
+    bio.dispatchEvent(new Event("input"));
     // Someone saves Amber meanwhile: the edit stays, marked stale.
     t.p.onShow();
     t.p.receive({
@@ -188,24 +180,36 @@ describe("the NPCs page", () => {
     expect(t.qa("button[data-npc]")).toHaveLength(0);
   });
 
-  test("a file read two ways opens as text", () => {
+  test("no text view: a line read two ways is listed with Take it out, then the form shows", () => {
     const t = page();
-    t.open(amber({ text: "BIO|I sell INV|x:1" }));
-    expect(t.q<HTMLSelectElement>("#npcs-mode").value).toBe("text");
+    t.open(amber({ text: "BIO|I sell INV|x:1\rSEL|Apple:10:5" }));
+    // Nothing shows the file's text or its tags as something to type.
+    expect(t.p.el.querySelector("#npcs-text, #npcs-mode")).toBeNull();
+    expect(t.q(".npcs-odd-lines").textContent).toContain("BIO|I sell INV|x:1");
+    expect(t.qa('[data-list="sells"] .items-list-row')).toHaveLength(0);
+    t.q<HTMLButtonElement>('[data-action="npcs-take-out"]').click();
+    expect(t.qa(".npcs-odd-lines").filter((e) => !e.hidden)).toHaveLength(0);
+    expect(t.qa('[data-list="sells"] .items-list-row')).toHaveLength(1);
+    t.q<HTMLButtonElement>('[data-action="npcs-save"]').click();
+    expect(t.saves.at(-1)?.text).toBe("SEL|Apple:10:5");
   });
 
-  test("the file as text is only offered when the form can't show all of it", () => {
+  test("a line the game doesn't use is kept, or taken out from its list", () => {
     const t = page();
-    const viewBox = () => t.q<HTMLElement>(".npcs-mode");
-    // Every line is one the form shows: no text view, nothing programmer-shaped.
-    t.open(amber({ text: "BIO|Name: Amber\rSEL|Apple:10:5" }));
-    expect(viewBox().hidden).toBe(true);
-    // A line the form doesn't show (OWN|) is kept, and the text view is there to change it.
     t.open(amber());
-    expect(viewBox().hidden).toBe(false);
-    // A file read two ways opens as text, with the view offered.
-    t.open(amber({ text: "BIO|I sell INV|x:1" }));
-    expect(viewBox().hidden).toBe(false);
+    const odd = t.qa(".npcs-odd-lines").find((e) => !e.hidden);
+    expect(odd?.textContent).toContain("OWN|king");
+    t.q<HTMLButtonElement>('[data-action="npcs-take-out"]').click();
+    t.q<HTMLButtonElement>('[data-action="npcs-save"]').click();
+    expect(t.saves.at(-1)?.text).toBe("BIO|Name: Amber\rSEL|Apple:10:5\rBUY|Apple:5\rGLD|100");
+  });
+
+  test("two tills: Keep only this one takes the others out", () => {
+    const t = page();
+    t.open(amber({ text: "GLD|100\rGLD|5" }));
+    t.q<HTMLButtonElement>('[data-action="npcs-one-till"]').click();
+    t.q<HTMLButtonElement>('[data-action="npcs-save"]').click();
+    expect(t.saves.at(-1)?.text).toBe("GLD|100");
   });
 
   test("the shared helpers: the text a save sends, and the server's check", () => {
@@ -249,15 +253,15 @@ describe("the plain-language form", () => {
     expect(used(t)).toEqual(["Talk", "Shop", "Bank and training"]);
   });
 
-  test("the two flags that do something are ticks; any other flag line is kept under More options", () => {
+  test("the two flags that do something are ticks; any other flag is listed under More options", () => {
     const t = page();
     t.open(orc());
     const still = t.q<HTMLInputElement>('[data-action="npcs-flag-still"]');
     const passive = t.q<HTMLInputElement>('[data-action="npcs-flag-passive"]');
     expect([still.checked, passive.checked]).toEqual([false, true]);
-    const other = t.q<HTMLTextAreaElement>('[data-action="npcs-flags"]');
-    expect(other.value).toBe("Grumpy");
-    expect(other.closest("details")?.open).toBe(true);
+    const out = t.q<HTMLButtonElement>('[data-action="npcs-flag-out"]');
+    expect(out.closest("li")?.textContent).toContain("Grumpy");
+    expect(out.closest("details")?.open).toBe(true);
     still.click();
     passive.click();
     t.q<HTMLButtonElement>('[data-action="npcs-save"]').click();

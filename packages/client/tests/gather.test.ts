@@ -118,7 +118,7 @@ describe("the treasure maps setting", () => {
   test("one map per line; a bad line is named", () => {
     expect(parseMaps("x1y1\n\n  x-2y30 \n")).toEqual(["x1y1", "x-2y30"]);
     expect(checkValue(row, ["x1y1", "x2y2"])).toBeNull();
-    expect(checkValue(row, ["x1y1", "town"])).toBe("Line 2: write a map name, like x1000y992.");
+    expect(checkValue(row, ["x1y1", "town"])).toBe("Row 2: give a map name, like x1000y992.");
     expect(valueText(row, [])).toBe("none");
     expect(valueText(row, ["x1y1", "x2y2"])).toBe("2 maps");
   });

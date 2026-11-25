@@ -239,7 +239,7 @@ export const SETTINGS = {
     ...duration(10, HOUR),
     default: 150,
     tooltip:
-      "Time between an NPC's random lines (RND| lines in its NPC file), such as a God's. Everyone on the map sees them.",
+      "Time between the things an NPC says out loud (its Things it says, on the Talk & Shops tab), such as a God's. Everyone on the map sees them.",
     source:
       "1.6 rolled per player against a ladder that never scaled; 150 s was its average with one player on the map.",
   }),

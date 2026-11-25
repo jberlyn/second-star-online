@@ -461,7 +461,7 @@ describe("the plain-language form", () => {
     expect(save(t).disabled).toBe(true);
   });
 
-  test("the NPC flags the game reads are tick boxes; others stay as text", () => {
+  test("the NPC flags the game reads are tick boxes; others are listed, to keep or take out", () => {
     const t = page();
     t.p.onShow();
     t.p.open("Orc");
@@ -478,11 +478,15 @@ describe("the plain-language form", () => {
     const flags = t.qa('[data-action="monsters-npc-flag"]') as HTMLInputElement[];
     expect(flags.map((f) => f.checked)).toEqual([false, false]);
     (flags[0] as HTMLInputElement).click();
-    const other = t.q<HTMLTextAreaElement>('[data-action="monsters-npc-flags"]');
-    expect(other.value).toBe("Custom");
-    expect(other.closest("details")?.open).toBe(true);
+    // Any other flag is listed as it is, with Take it out: nothing to type.
+    const out = t.q<HTMLButtonElement>('[data-action="monsters-npc-flag-out"]');
+    expect(out.closest("li")?.textContent).toContain("Custom");
+    expect(out.closest("details")?.open).toBe(true);
+    expect(t.p.el.querySelector('[data-action="monsters-npc-flags"]')).toBeNull();
+    // Taken out, it goes with the next save.
+    t.q<HTMLButtonElement>('[data-action="monsters-npc-flag-out"]').click();
     t.q<HTMLButtonElement>('[data-action="monsters-npc-save"]').click();
-    expect(t.npcSets.at(-1)?.s.flags).toEqual(["Custom", "Passive"]);
+    expect(t.npcSets.at(-1)?.s.flags).toEqual(["Passive"]);
   });
 
   test("ticking a spell adds it to the file's spells", () => {

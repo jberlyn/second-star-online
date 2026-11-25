@@ -505,3 +505,117 @@ export function formActions(...parts: HTMLElement[]): HTMLElement {
   bar.append(...parts);
   return bar;
 }
+
+/** One column of a `rowList`. */
+export interface RowListColumn {
+  label: string;
+  /** A narrow box for a number. */
+  numeric?: boolean;
+  /** A `<datalist>` id whose names are offered as you type. */
+  list?: string;
+  placeholder?: string;
+}
+
+/** A list of short rows: each row a few boxes, added and removed with buttons (nothing to type
+ * one per line). Its element sends `input` when a row is added or removed. */
+export interface RowList {
+  readonly el: HTMLElement;
+  /** Each row's values, trimmed; rows left wholly empty are dropped (fixed rows are kept). */
+  rows(): string[][];
+  set(rows: readonly (readonly string[])[]): void;
+}
+
+/**
+ * A list of rows of a few text boxes, with **+ Add** and **Remove**, for a setting that is a short
+ * list (map points, map names, a vault's items). With `fixed`, the rows are those, each with its
+ * label, and none is added or removed (first to fourth place).
+ */
+export function rowList(opts: {
+  id: string;
+  columns: readonly RowListColumn[];
+  noun: string;
+  max?: number;
+  fixed?: readonly string[];
+}): RowList {
+  const el = action(document.createElement("div"), opts.id);
+  el.className = "control-panel-rowlist";
+  const body = document.createElement("div");
+  body.className = "control-panel-rowlist-rows";
+  const empty = document.createElement("p");
+  empty.className = "control-panel-field-help";
+  empty.textContent = "None.";
+  const add = panelButton(`${opts.id}-add`, `+ Add ${opts.noun}`, () => {
+    addRow([]);
+    changed();
+    body.lastElementChild?.querySelector("input")?.focus();
+  });
+  const inputs: HTMLInputElement[][] = [];
+  const changed = () => {
+    empty.hidden = inputs.length > 0 || opts.fixed !== undefined;
+    add.hidden = opts.fixed !== undefined;
+    add.disabled = opts.max !== undefined && inputs.length >= opts.max;
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+  };
+  const addRow = (values: readonly string[]) => {
+    const row = document.createElement("div");
+    row.className = "control-panel-rowlist-row";
+    const fixedLabel = opts.fixed?.[inputs.length];
+    if (fixedLabel !== undefined) {
+      const l = document.createElement("span");
+      l.className = "control-panel-rowlist-label";
+      l.textContent = fixedLabel;
+      row.append(l);
+    }
+    const boxes = opts.columns.map((c, i) => {
+      const b = action(document.createElement("input"), `${opts.id}-value`);
+      b.type = "text";
+      b.value = values[i] ?? "";
+      b.setAttribute("aria-label", fixedLabel ? `${fixedLabel}: ${c.label}` : c.label);
+      b.placeholder = c.placeholder ?? c.label;
+      b.autocomplete = "off";
+      if (c.numeric) {
+        b.inputMode = "numeric";
+        b.className = "control-panel-rowlist-number";
+      }
+      if (c.list) {
+        b.setAttribute("list", c.list);
+      }
+      return b;
+    });
+    row.append(...boxes);
+    if (opts.fixed === undefined) {
+      const rm = panelButton(`${opts.id}-remove`, "Remove", () => {
+        const at = inputs.indexOf(boxes);
+        if (at >= 0) {
+          inputs.splice(at, 1);
+        }
+        row.remove();
+        changed();
+      });
+      row.append(rm);
+    }
+    inputs.push(boxes);
+    body.append(row);
+  };
+  el.append(body, empty, add);
+  const set = (rows: readonly (readonly string[])[]) => {
+    body.replaceChildren();
+    inputs.length = 0;
+    const want = opts.fixed ? opts.fixed.map((_, i) => rows[i] ?? []) : rows;
+    for (const r of want) {
+      addRow(r);
+    }
+    empty.hidden = inputs.length > 0 || opts.fixed !== undefined;
+    add.hidden = opts.fixed !== undefined;
+    add.disabled = opts.max !== undefined && inputs.length >= opts.max;
+  };
+  set([]);
+  return {
+    el,
+    rows: () =>
+      inputs
+        .map((boxes) => boxes.map((b) => b.value.trim()))
+        .filter((r) => opts.fixed !== undefined || r.some((v) => v !== "")),
+    set,
+  };
+}
