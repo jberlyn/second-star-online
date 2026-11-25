@@ -163,13 +163,20 @@ export function formField(
   return row;
 }
 
-/** Keeps Tab and Shift+Tab inside `box`'s buttons, so a question cannot be tabbed past. */
+/**
+ * Keeps Tab and Shift+Tab inside `box`'s controls (its enabled buttons and inputs, a checkbox
+ * included), so a question cannot be tabbed past.
+ */
 export function trapTab(box: HTMLElement, e: KeyboardEvent): void {
   if (e.key !== "Tab") {
     return;
   }
-  const stops = [...box.querySelectorAll<HTMLElement>("button:not([disabled])")];
-  // The box itself (focused by a click on its text) counts as outside the buttons.
+  const stops = [
+    ...box.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), input:not([disabled]):not([type="hidden"])',
+    ),
+  ];
+  // The box itself (focused by a click on its text) counts as outside the controls.
   const first = stops[0];
   const last = stops.at(-1);
   if (!first || !last) {
@@ -196,6 +203,14 @@ export interface ConfirmOptions {
   danger?: boolean;
   /** Lines listed under the question: what the change will do, one per line. */
   list?: readonly string[];
+  /** A checkbox under the question (off unless `checked`), with a hint shown under it. */
+  check?: { action: string; label: string; checked?: boolean; hint?: string };
+}
+
+/** What `confirmChoice` answers: the button, and the checkbox's state when it has one. */
+export interface ConfirmChoice {
+  yes: boolean;
+  checked: boolean;
 }
 
 /**
@@ -204,69 +219,98 @@ export interface ConfirmOptions {
  * the box while it is open and goes back to where it was when it closes.
  */
 export function confirmBox(host: HTMLElement, opts: ConfirmOptions): Promise<boolean> {
+  return new Promise((resolve) => openConfirm(host, opts, (c) => resolve(c.yes)));
+}
+
+/** `confirmBox`, answering with the checkbox's state too (`opts.check`). */
+export function confirmChoice(host: HTMLElement, opts: ConfirmOptions): Promise<ConfirmChoice> {
+  return new Promise((resolve) => openConfirm(host, opts, resolve));
+}
+
+function openConfirm(
+  host: HTMLElement,
+  opts: ConfirmOptions,
+  resolve: (c: ConfirmChoice) => void,
+): void {
   host
     .querySelector<HTMLElement>(".control-panel-confirm")
     ?.dispatchEvent(new Event("control-panel-cancel"));
   const before = document.activeElement;
-  return new Promise((resolve) => {
-    const shade = action(document.createElement("div"), "control-panel-confirm-backdrop");
-    shade.className = "control-panel-confirm";
-    const box = action(document.createElement("div"), "control-panel-confirm");
-    box.className = "control-panel-confirm-box";
-    // Clicking the question's text keeps focus in the box, so Escape and Tab still work.
-    box.tabIndex = -1;
-    box.setAttribute("role", "alertdialog");
-    box.setAttribute("aria-modal", "true");
-    const p = document.createElement("p");
-    fieldIds += 1;
-    p.id = `control-panel-confirm-text-${fieldIds}`;
-    p.textContent = opts.text;
-    box.setAttribute("aria-labelledby", p.id);
-    let list: HTMLUListElement | null = null;
-    if (opts.list && opts.list.length > 0) {
-      list = document.createElement("ul");
-      list.className = "control-panel-confirm-list";
-      for (const line of opts.list) {
-        const li = document.createElement("li");
-        li.textContent = line;
-        list.append(li);
-      }
+  const shade = action(document.createElement("div"), "control-panel-confirm-backdrop");
+  shade.className = "control-panel-confirm";
+  const box = action(document.createElement("div"), "control-panel-confirm");
+  box.className = "control-panel-confirm-box";
+  // Clicking the question's text keeps focus in the box, so Escape and Tab still work.
+  box.tabIndex = -1;
+  box.setAttribute("role", "alertdialog");
+  box.setAttribute("aria-modal", "true");
+  const p = document.createElement("p");
+  fieldIds += 1;
+  p.id = `control-panel-confirm-text-${fieldIds}`;
+  p.textContent = opts.text;
+  box.setAttribute("aria-labelledby", p.id);
+  let list: HTMLUListElement | null = null;
+  if (opts.list && opts.list.length > 0) {
+    list = document.createElement("ul");
+    list.className = "control-panel-confirm-list";
+    for (const line of opts.list) {
+      const li = document.createElement("li");
+      li.textContent = line;
+      list.append(li);
     }
-    const done = (yes: boolean) => {
-      shade.remove();
-      if (before instanceof HTMLElement && before.isConnected) {
-        before.focus();
-      }
-      resolve(yes);
-    };
-    const stay = panelButton("control-panel-confirm-cancel", opts.cancel, () => done(false));
-    const go = panelButton(
-      "control-panel-confirm-ok",
-      opts.confirm,
-      () => done(true),
-      opts.danger ? "danger" : "primary",
-    );
-    const buttons = document.createElement("div");
-    buttons.className = "control-panel-confirm-buttons";
-    buttons.append(stay, go);
-    box.append(p, ...(list ? [list] : []), buttons);
-    box.addEventListener("keydown", (e) => {
-      trapTab(box, e);
-      if (e.key === "Escape") {
-        e.preventDefault();
-        e.stopPropagation();
-        done(false);
-      }
-    });
-    shade.addEventListener("control-panel-cancel", () => done(false));
-    // A click on the dimmed backdrop does not move focus out from under the question.
-    shade.addEventListener("pointerdown", (e) => {
-      if (e.target === shade) {
-        e.preventDefault();
-      }
-    });
-    shade.append(box);
-    host.append(shade);
-    stay.focus();
+  }
+  let check: HTMLInputElement | null = null;
+  let checkRow: HTMLElement | null = null;
+  if (opts.check) {
+    check = action(document.createElement("input"), opts.check.action);
+    check.type = "checkbox";
+    check.checked = opts.check.checked === true;
+    const label = document.createElement("label");
+    label.className = "control-panel-confirm-check";
+    label.append(check, ` ${opts.check.label}`);
+    checkRow = document.createElement("div");
+    checkRow.append(label);
+    if (opts.check.hint) {
+      const hint = document.createElement("p");
+      hint.className = "control-panel-confirm-hint";
+      hint.textContent = opts.check.hint;
+      checkRow.append(hint);
+    }
+  }
+  const done = (yes: boolean) => {
+    shade.remove();
+    if (before instanceof HTMLElement && before.isConnected) {
+      before.focus();
+    }
+    resolve({ yes, checked: check?.checked === true });
+  };
+  const stay = panelButton("control-panel-confirm-cancel", opts.cancel, () => done(false));
+  const go = panelButton(
+    "control-panel-confirm-ok",
+    opts.confirm,
+    () => done(true),
+    opts.danger ? "danger" : "primary",
+  );
+  const buttons = document.createElement("div");
+  buttons.className = "control-panel-confirm-buttons";
+  buttons.append(stay, go);
+  box.append(p, ...(list ? [list] : []), ...(checkRow ? [checkRow] : []), buttons);
+  box.addEventListener("keydown", (e) => {
+    trapTab(box, e);
+    if (e.key === "Escape") {
+      e.preventDefault();
+      e.stopPropagation();
+      done(false);
+    }
   });
+  shade.addEventListener("control-panel-cancel", () => done(false));
+  // A click on the dimmed backdrop does not move focus out from under the question.
+  shade.addEventListener("pointerdown", (e) => {
+    if (e.target === shade) {
+      e.preventDefault();
+    }
+  });
+  shade.append(box);
+  host.append(shade);
+  stay.focus();
 }

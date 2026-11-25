@@ -62,9 +62,16 @@ import type { Assets } from "../assets.ts";
 import { action, gameInput } from "./action.ts";
 import { createArtUploader, postUpload } from "./art-uploads.ts";
 import { createBodies, createBodyArtPicker } from "./body-art.ts";
-import { drawRemovals, drawUsage, type RemovalPlan, removalForm } from "./content-usage.ts";
+import {
+  drawRemovals,
+  drawUsage,
+  type RemovalPlan,
+  removalForm,
+  removalHeadline,
+} from "./content-usage.ts";
 import {
   confirmBox,
+  confirmChoice,
   createTable,
   formField,
   pageHeading,
@@ -93,7 +100,8 @@ export interface ContentPageActions {
     expect?: string,
   ): void;
   discard(seq: number, ref: ContentRowRef, expect?: string): void;
-  publish(seq: number, summary: string, draftRev: string): void;
+  /** `logoutEveryone`: log every other player out while it publishes (issue #40). */
+  publish(seq: number, summary: string, draftRev: string, logoutEveryone: boolean): void;
   undo(seq: number, id: string): void;
   notice(seq: number, ref: ContentRowRef, accept: boolean): void;
   /** Where an item or a monster is used. */
@@ -644,11 +652,22 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
       }
       const count = overview.draft.length;
       const draftRev = overview.draftRev;
-      void confirmBox(root, {
+      const removing = overview.removals ?? [];
+      // Off by default; suggested when the draft removes something players hold or the world has.
+      const inWorld = removing.some((r) => r.inWorld > 0);
+      void confirmChoice(root, {
         text: `Publish ${count} change${count === 1 ? "" : "s"}? They go live for every player at once.`,
         confirm: "Publish",
         cancel: "Not yet",
-      }).then((yes) => {
+        ...(removing.length > 0 ? { list: [removalHeadline(removing)] } : {}),
+        check: {
+          action: "content-publish-logout",
+          label: "Log everyone out while publishing",
+          hint: inWorld
+            ? "Suggested: this draft removes items or monsters that players hold or that are in the world. Everyone but you is logged out and saved first, and nobody can log in until the publish ends."
+            : "Everyone but you is logged out and saved first, and nobody can log in until the publish ends.",
+        },
+      }).then(({ yes, checked }) => {
         if (yes) {
           resultSeq = next();
           resultInEditor = false;
@@ -656,7 +675,7 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
             summary.value = "";
             refreshAll();
           };
-          actions.publish(resultSeq, summary.value, draftRev);
+          actions.publish(resultSeq, summary.value, draftRev, checked);
         }
       });
     },
@@ -1777,18 +1796,28 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
       {
         label: "Summary",
         cell: (p) => {
-          if (p.cleanup.length === 0) {
+          if (p.cleanup.length === 0 && p.loggedOut === null) {
             return p.summary;
           }
           const cell = document.createElement("div");
-          const ul = document.createElement("ul");
-          ul.className = "content-usage-list";
-          for (const line of p.cleanup) {
-            const li = document.createElement("li");
-            li.textContent = line;
-            ul.append(li);
+          cell.append(p.summary);
+          if (p.cleanup.length > 0) {
+            const ul = document.createElement("ul");
+            ul.className = "content-usage-list";
+            for (const line of p.cleanup) {
+              const li = document.createElement("li");
+              li.textContent = line;
+              ul.append(li);
+            }
+            cell.append(ul);
           }
-          cell.append(p.summary, ul);
+          // Shown apart from what it did to the world: Undo's warning is about that alone.
+          if (p.loggedOut !== null) {
+            const note = document.createElement("p");
+            note.className = "content-history-logout";
+            note.textContent = `Logged everyone else out while publishing: ${p.loggedOut === 0 ? "nobody else was online" : p.loggedOut === 1 ? "1 player" : `${p.loggedOut} players`}.`;
+            cell.append(note);
+          }
           return cell;
         },
       },

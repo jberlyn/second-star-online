@@ -100,13 +100,15 @@ export const contentDiscardSchema = z.strictObject({
 
 /**
  * Publishes the draft as the admin last saw it (`draftRev`, the overview's revision), so a change
- * another admin made since refuses the publish.
+ * another admin made since refuses the publish. `logoutEveryone` (issue #40) logs every other
+ * player out first and refuses logins until the publish ends.
  */
 export const contentPublishSchema = z.strictObject({
   t: z.literal("contentPublish"),
   seq,
   summary: z.string().max(200),
   draftRev: z.string().regex(/^[0-9a-f]{16}$/),
+  logoutEveryone: z.boolean().optional(),
 });
 
 /** Undoes a publish as a whole. */
@@ -995,6 +997,8 @@ export interface ContentRemovalView {
   lines: string[];
   /** Places it is still used that the publish leaves (references, retired copies). */
   stillUsed: number;
+  /** Places in the world that hold it now (bags, banks, the ground, live monsters, quests). */
+  inWorld: number;
 }
 
 /** A change in the shared draft. */
@@ -1525,6 +1529,8 @@ export interface ContentPublishView {
   undoneBy: string | null;
   /** What it did to the world (purged copies, cleared spawns), a line each; an undo leaves it. */
   cleanup: string[];
+  /** How many players it logged out while publishing (issue #40); null when it did not. */
+  loggedOut: number | null;
 }
 
 /** An installed pack. */

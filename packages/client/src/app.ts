@@ -688,7 +688,14 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         send({ t: "contentDraft", seq, ...ref, op, data, ...(expect ? { expect } : {}) }),
       discard: (seq, ref, expect) =>
         send({ t: "contentDiscard", seq, ...ref, ...(expect ? { expect } : {}) }),
-      publish: (seq, summary, draftRev) => send({ t: "contentPublish", seq, summary, draftRev }),
+      publish: (seq, summary, draftRev, logoutEveryone) =>
+        send({
+          t: "contentPublish",
+          seq,
+          summary,
+          draftRev,
+          ...(logoutEveryone ? { logoutEveryone } : {}),
+        }),
       undo: (seq, id) => send({ t: "contentUndo", seq, id }),
       notice: (seq, ref, accept) => send({ t: "contentNotice", seq, ...ref, accept }),
       usage: (seq, kind, key) => send({ t: "contentUsage", seq, kind, key }),

@@ -18,7 +18,7 @@ import { runApp } from "../src/app.ts";
 import type { Assets } from "../src/assets.ts";
 import type { Connection } from "../src/net.ts";
 import { type ControlPanelActions, createControlPanel } from "../src/ui/control-panel.ts";
-import { confirmBox, createTable, formField } from "../src/ui/control-panel-kit.ts";
+import { confirmBox, confirmChoice, createTable, formField } from "../src/ui/control-panel-kit.ts";
 import { createWindowLayer } from "../src/ui/window.ts";
 import { menuClick, menuTexts, SNAPSHOT, titles } from "./helpers/menu-helpers.ts";
 
@@ -344,6 +344,67 @@ describe("the Control Panel's shared parts", () => {
     box?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
     expect(await answer).toBe(false);
     expect(document.activeElement).toBe(trigger);
+  });
+
+  test("a question's checkbox is a Tab stop: Tab wraps to it and Shift+Tab wraps from it", async () => {
+    const host = document.createElement("div");
+    document.body.append(host);
+    const answer = confirmChoice(host, {
+      text: "Publish?",
+      confirm: "Publish",
+      cancel: "Not yet",
+      check: { action: "content-publish-logout", label: "Log everyone out while publishing" },
+    });
+    const box = host.querySelector(".control-panel-confirm-box");
+    const check = host.querySelector<HTMLInputElement>('[data-action="content-publish-logout"]');
+    const [no, yes] = [
+      ...host.querySelectorAll<HTMLButtonElement>(".control-panel-confirm-box button"),
+    ];
+    expect(document.activeElement === no).toBe(true);
+    // From the last button, Tab wraps to the checkbox, the first stop.
+    yes?.focus();
+    box?.dispatchEvent(new KeyboardEvent("keydown", { key: "Tab", bubbles: true }));
+    expect(document.activeElement === check).toBe(true);
+    // Shift+Tab from the checkbox wraps to the last button.
+    box?.dispatchEvent(new KeyboardEvent("keydown", { key: "Tab", shiftKey: true, bubbles: true }));
+    expect(document.activeElement === yes).toBe(true);
+    // From the box itself, Tab goes to the checkbox; Space ticks it and the answer says so.
+    (box as HTMLElement | null)?.focus();
+    box?.dispatchEvent(new KeyboardEvent("keydown", { key: "Tab", bubbles: true }));
+    expect(document.activeElement === check).toBe(true);
+    check?.click();
+    yes?.click();
+    expect(await answer).toEqual({ yes: true, checked: true });
+    host.remove();
+  });
+
+  test("a question with a checkbox answers its state on cancel and on Escape too", async () => {
+    const host = document.createElement("div");
+    document.body.append(host);
+    const opts = {
+      text: "Publish?",
+      confirm: "Publish",
+      cancel: "Not yet",
+      check: { action: "content-publish-logout", label: "Log everyone out while publishing" },
+    };
+    const first = confirmChoice(host, opts);
+    host.querySelector<HTMLInputElement>('[data-action="content-publish-logout"]')?.click();
+    host.querySelector<HTMLButtonElement>('[data-action="control-panel-confirm-cancel"]')?.click();
+    expect(await first).toEqual({ yes: false, checked: true });
+    const second = confirmChoice(host, opts);
+    // Off by default, and the stay button has the focus.
+    expect(
+      host.querySelector<HTMLInputElement>('[data-action="content-publish-logout"]')?.checked,
+    ).toBe(false);
+    expect(
+      document.activeElement === host.querySelector('[data-action="control-panel-confirm-cancel"]'),
+    ).toBe(true);
+    host
+      .querySelector(".control-panel-confirm-box")
+      ?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    expect(await second).toEqual({ yes: false, checked: false });
+    expect(host.querySelector(".control-panel-confirm")).toBeNull();
+    host.remove();
   });
 
   test("a floating window larger than the screen shrinks to fit; a small one keeps its size", () => {

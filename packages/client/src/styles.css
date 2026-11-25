@@ -951,6 +951,19 @@ body {
   color: #ddd;
   font-size: 13px;
 }
+.control-panel-confirm-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 14px;
+  color: #eee;
+  cursor: pointer;
+}
+.control-panel-confirm-box p.control-panel-confirm-hint {
+  margin: -8px 0 14px 22px;
+  color: #e8c46a;
+  font-size: 13px;
+}
 .control-panel-confirm-buttons {
   display: flex;
   justify-content: flex-end;

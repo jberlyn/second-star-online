@@ -94,6 +94,7 @@ export function overviewOf(service: ContentService, world?: ContentWorld): Conte
       undoOf: p.undoOf,
       undoneBy: p.undoneBy,
       cleanup: p.cleanup,
+      loggedOut: p.loggedOut,
     })),
     packs: service
       .installedPacks()
@@ -369,12 +370,16 @@ export function removalOf(msg: Extract<InGameMsg, { t: "contentRemove" }>): Remo
       };
 }
 
-/** Answers one Content page intent. */
+/**
+ * Answers one Content page intent. `loggedOut` is how many players the game logged out for a
+ * publish that asked for it (issue #40).
+ */
 export function contentIntent(
   service: ContentService,
   actor: ContentActor,
   msg: Exclude<ContentIntent, { t: "contentNpcFile" | "contentNpcFileSet" }>,
   world?: ContentWorld,
+  loggedOut?: number,
 ): ContentServerMsg {
   switch (msg.t) {
     case "contentOverview":
@@ -705,8 +710,10 @@ export function contentIntent(
     case "contentPublish": {
       return result(
         msg.seq,
-        service.publish(actor, msg.draftRev, msg.summary, world),
-        "Published: it is live for everyone.",
+        service.publish(actor, msg.draftRev, msg.summary, world, loggedOut),
+        loggedOut === undefined
+          ? "Published: it is live for everyone."
+          : `Published: it is live for everyone. ${loggedOut === 1 ? "1 player was" : `${loggedOut} players were`} logged out for it.`,
       );
     }
     case "contentUndo":

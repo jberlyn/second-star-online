@@ -361,6 +361,8 @@ export interface RemovalSummary {
   lines: string[];
   /** Places it is still used that the publish leaves as they are (content references, retired copies). */
   stillUsed: number;
+  /** Places in the world that hold it now: the publish confirmation's logout hint (issue #40). */
+  inWorld: number;
 }
 
 /** The references nothing resolves, in content and in the world. */
@@ -4517,16 +4519,21 @@ export class ContentService {
   }
 
   /**
-   * Publishes the draft. `draftRev` is the revision of the draft as the admin last saw it; when
-   * another admin changed it since, the publish is refused, so nobody publishes over someone
-   * else's work. Every check must pass.
+   * Every check a publish of `draftRev` runs before it writes anything: an empty draft, one changed
+   * since the admin looked, the draft's checks with its retirements and orphans settled against
+   * the world, and the maps' tiles. A publish that logs everyone out (issue #40) runs it first, so
+   * a publish that would be refused logs nobody out.
    */
-  publish(
-    actor: ContentActor,
+  publishPreflight(draftRev: string, world?: ContentWorld): ContentResult<null> {
+    const plan = this.publishPlan(draftRev, world);
+    return plan.ok ? { ok: true, value: null } : plan;
+  }
+
+  /** The publish's checks, and what it would write when they pass. */
+  private publishPlan(
     draftRev: string,
-    summary: string,
     world?: ContentWorld,
-  ): ContentResult<StoredPublish> {
+  ): ContentResult<{ actions: WorldAction[]; draft: DraftRow[]; nextData: ContentData }> {
     const asDrafted = this.draft();
     if (asDrafted.length === 0) {
       return fail("the draft is empty");
@@ -4569,6 +4576,27 @@ export class ContentService {
     if (draft.length === 0) {
       return fail("the draft changes nothing once settled: discard it");
     }
+    return { ok: true, value: { actions, draft, nextData } };
+  }
+
+  /**
+   * Publishes the draft. `draftRev` is the revision of the draft as the admin last saw it; when
+   * another admin changed it since, the publish is refused, so nobody publishes over someone
+   * else's work. Every check must pass. `loggedOut` is how many players the game logged out for it
+   * (issue #40), recorded in the publish log and the audit entry; absent when nobody was.
+   */
+  publish(
+    actor: ContentActor,
+    draftRev: string,
+    summary: string,
+    world?: ContentWorld,
+    loggedOut?: number,
+  ): ContentResult<StoredPublish> {
+    const plan = this.publishPlan(draftRev, world);
+    if (!plan.ok) {
+      return plan;
+    }
+    const { actions, draft, nextData } = plan.value;
     const now = this.now();
     const layer = contentRows(this.db);
     const changes: PublishChange[] = draft
@@ -4601,7 +4629,7 @@ export class ContentService {
     // published content). A crash or a throw part-way leaves none of it written.
     try {
       this.db.transaction(() => {
-        this.writePublish(changes, actor, now, summary, nextCopy.hash, (got) => {
+        this.writePublish(changes, actor, now, summary, nextCopy.hash, loggedOut, (got) => {
           id = got;
         });
         // The live NPC file saves get the content's cleanup, before the game lays them again; each
@@ -4617,9 +4645,15 @@ export class ContentService {
           }
         }
         this.rebuild();
-        if (actions.length > 0 && world) {
-          const lines = world.apply(actions, actor, id);
-          setPublishCleanup(this.db, id, { actions, lines });
+        const applied = actions.length > 0 && world ? actions : [];
+        const lines = applied.length > 0 && world ? world.apply(applied, actor, id) : [];
+        // The logout is kept apart from the world's cleanup lines: Undo warns only about those.
+        if (applied.length > 0 || loggedOut !== undefined) {
+          setPublishCleanup(this.db, id, {
+            actions: applied,
+            lines,
+            ...(loggedOut === undefined ? {} : { loggedOut }),
+          });
         }
       })();
     } catch (e) {
@@ -4735,6 +4769,7 @@ export class ContentService {
     now: string,
     summary: string,
     hash: string,
+    loggedOut: number | undefined,
     setId: (id: string) => void,
   ): void {
     {
@@ -4762,7 +4797,11 @@ export class ContentService {
           actor: actor.accountId,
           command: "content publish",
           target: id,
-          after: changes.map(rowLabel),
+          // A publish that logged everyone out (issue #40) says so, and how many.
+          after:
+            loggedOut === undefined
+              ? changes.map(rowLabel)
+              : { rows: changes.map(rowLabel), loggedOut },
         },
         now,
       );
@@ -5440,7 +5479,13 @@ export class ContentService {
           : action.kind === "monster" && action.live === "leave"
             ? placeCount(places.filter((p) => p.place === "live"))
             : 0;
-      out.push({ kind, key: d.key, lines, stillUsed: left.length + stays });
+      out.push({
+        kind,
+        key: d.key,
+        lines,
+        stillUsed: left.length + stays,
+        inWorld: placeCount(places),
+      });
     }
     return out;
   }

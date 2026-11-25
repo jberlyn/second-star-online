@@ -3146,6 +3146,16 @@ export function createGame(deps: GameDeps): Game {
     return can(role, "bypassIpBan") ? null : ipBanRefusal(ip);
   };
 
+  /**
+   * A publish that logs everyone out (issue #40) holds this while it logs them out and publishes:
+   * every way in (a login, a resume, a new character, entering the map) is refused with
+   * `TEXT.publishing`. The publish runs synchronously on the game thread and releases it in a
+   * `finally`, so it never outlives the publish; a restart starts unlocked.
+   */
+  let publishLock = false;
+  /** How many players that publish logged out, for its log and audit entry. */
+  let publishLoggedOut: number | undefined;
+
   const core: Game = {
     world,
     get settings() {
@@ -3156,6 +3166,9 @@ export function createGame(deps: GameDeps): Game {
     contractPointProblems: () => [...pointProblems(settings, peekMap), ...vehicleProblems()],
 
     async login(name, password, ip = "") {
+      if (publishLock) {
+        return { ok: false, text: TEXT.publishing };
+      }
       const account = findAccountByUsername(db, name);
       // SSO's login limits. An address over its per-address count is refused, except for a role
       // with `bypassLoginLimits` (an operator behind a shared address must still get in), and
@@ -3181,6 +3194,9 @@ export function createGame(deps: GameDeps): Game {
         return { ok: false, text: TEXT.badPassword };
       }
       noteLoginSuccess(limits, account.id, ip, tried);
+      if (publishLock) {
+        return { ok: false, text: TEXT.publishing };
+      }
       const character = findCharacterByAccount(db, account.id);
       if (!character) {
         return { ok: false, text: TEXT.noSuchName };
@@ -3196,6 +3212,9 @@ export function createGame(deps: GameDeps): Game {
     },
 
     async create(msg, ip = "") {
+      if (publishLock) {
+        return { ok: false, text: TEXT.publishing };
+      }
       const choice = {
         name: msg.name,
         sex: msg.sex,
@@ -3234,6 +3253,10 @@ export function createGame(deps: GameDeps): Game {
       } catch (err) {
         unnoteCreate(limits, ip, counted);
         throw err;
+      }
+      if (publishLock) {
+        unnoteCreate(limits, ip, counted);
+        return { ok: false, text: TEXT.publishing };
       }
       // A publish during the hash may have taken the class off the screen: checked again.
       const late = creationError(choice);
@@ -3293,6 +3316,9 @@ export function createGame(deps: GameDeps): Game {
     },
 
     refusal(characterId, ip) {
+      if (publishLock) {
+        return TEXT.publishing;
+      }
       const c = findCharacterById(db, characterId);
       const account = c ? findAccountById(db, c.accountId) : null;
       return account ? banRefusal(account.id, roleOf(account.role), ip) : ipBanRefusal(ip);
@@ -3305,7 +3331,7 @@ export function createGame(deps: GameDeps): Game {
     },
 
     enter(characterId, resumed, ip = "") {
-      if (world.players.has(characterId)) {
+      if (world.players.has(characterId) || publishLock) {
         return false;
       }
       const c = findCharacterById(db, characterId);
@@ -3617,6 +3643,7 @@ export function createGame(deps: GameDeps): Game {
                 { accountId: p.accountId, name: p.name },
                 msg as Parameters<typeof contentIntent>[2],
                 contentWorld,
+                msg.t === "contentPublish" ? publishLoggedOut : undefined,
               )
             : { t: "contentResult", seq, ok: false, text: "This server has no content service." },
         );
@@ -4355,6 +4382,127 @@ export function createGame(deps: GameDeps): Game {
       }
     }
   };
+  /** An intent in its own transaction: a throw rolls its writes back and logs its player out. */
+  const guardedIntent = (characterId: string, msg: InGameMsg) => {
+    const mark = world.activity.length;
+    try {
+      db.transaction(() => {
+        inner.intent(characterId, msg);
+        flushActivity();
+      })();
+      commitLogs();
+      rollbacks.length = 0;
+      deliver(afterCommit.splice(0));
+    } catch (err) {
+      afterCommit.length = 0;
+      for (const undo of rollbacks.splice(0).reverse()) {
+        undo();
+      }
+      // A read (the Activity Log, /chatlog) may have written the buffers: that rolled back too.
+      rollbackLogs();
+      // Their writes rolled back and they reload from SQL, so their events from this call go
+      // too. Others keep theirs: their memory, which is what gets saved, did change.
+      dropActivity(characterId, mark);
+      // A server fault is a bug, not cheating: it goes to the error log, naming who it hit, and
+      // never to the cheat log.
+      const p = world.players.get(characterId);
+      fault(`intent ${msg.t} from ${p?.name ?? characterId}`, err);
+      deps.kick?.(characterId, TEXT.serverError);
+      // A kick without a gateway (tests) still takes the player off the map.
+      if (world.players.has(characterId)) {
+        evict(characterId);
+      }
+    }
+    stampChat();
+  };
+  /**
+   * A publish that logs everyone out first (issue #40). Under the publish lock, every player but
+   * the publishing admin is logged out the usual way (each saved, trades cancelled, windows
+   * closed; other staff and anyone in the Control Panel too), each in their own transaction, so a
+   * publish that then rolls back or throws keeps their saves. The publish runs as any publish
+   * does, and the lock is released however it ends. Anything that would not reach the publish (no
+   * permission, which the gate logs, or any check the publish itself runs first:
+   * `ContentService.publishPreflight`) goes the usual way and logs nobody out. A logout whose save
+   * fails stops it: nothing is published and the admin is told whose save failed.
+   */
+  const publishAlone = (characterId: string, msg: Extract<InGameMsg, { t: "contentPublish" }>) => {
+    const p = world.players.get(characterId);
+    const service = deps.content;
+    if (!p || !can(p.role, "contentEditor") || !service) {
+      guardedIntent(characterId, msg);
+      return;
+    }
+    // The publish's own checks, before anyone is logged out; a refusal goes the usual way, which
+    // runs them again and answers with the problems. A throw is a fault, as in any intent.
+    let refused: boolean;
+    try {
+      refused = !service.publishPreflight(msg.draftRev, contentWorld).ok;
+    } catch (err) {
+      fault(`intent ${msg.t} from ${p.name}`, err);
+      deps.kick?.(characterId, TEXT.serverError);
+      if (world.players.has(characterId)) {
+        evict(characterId);
+      }
+      return;
+    }
+    if (refused) {
+      guardedIntent(characterId, msg);
+      return;
+    }
+    publishLock = true;
+    try {
+      let loggedOut = 0;
+      for (const id of [...world.players.keys()]) {
+        if (id === characterId) {
+          continue;
+        }
+        const name = world.players.get(id)?.name ?? id;
+        // Saved first, then disconnected (the gateway's own leave then finds nobody to save).
+        const saved = guardedLeave(id);
+        deps.kick?.(id, saved ? TEXT.publishing : TEXT.serverError);
+        if (!saved) {
+          // A save that failed loses that player's state since their last save: nothing is
+          // published, and the admin is told whose save it was.
+          send(characterId, {
+            t: "contentResult",
+            seq: msg.seq,
+            ok: false,
+            text: `Not published: saving ${name} failed while logging everyone out, so nothing was published${loggedOut > 0 ? ` (${loggedOut === 1 ? "1 player was" : `${loggedOut} players were`} logged out first)` : ""}. The server's error log has the reason.`,
+          });
+          return;
+        }
+        loggedOut += 1;
+      }
+      publishLoggedOut = loggedOut;
+      guardedIntent(characterId, msg);
+    } finally {
+      publishLock = false;
+      publishLoggedOut = undefined;
+    }
+  };
+  /**
+   * Takes a character off the map and saves it in its own transaction: false when that threw (the
+   * fault is logged and the player evicted, to reload from SQL).
+   */
+  const guardedLeave = (characterId: string): boolean => {
+    const mark = world.activity.length;
+    let ok = true;
+    try {
+      db.transaction(() => {
+        inner.leave(characterId);
+        flushActivity();
+      })();
+      commitLogs();
+    } catch (err) {
+      ok = false;
+      rollbackLogs();
+      fault("leave", err);
+      evict(characterId);
+      dropActivity(characterId, mark);
+    }
+    stampChat();
+    return ok;
+  };
   return Object.assign(core, {
     enter(characterId: string, resumed: boolean, ip?: string) {
       const mark = world.activity.length;
@@ -4379,52 +4527,14 @@ export function createGame(deps: GameDeps): Game {
       }
     },
     leave(characterId: string) {
-      const mark = world.activity.length;
-      try {
-        db.transaction(() => {
-          inner.leave(characterId);
-          flushActivity();
-        })();
-        commitLogs();
-      } catch (err) {
-        rollbackLogs();
-        fault("leave", err);
-        evict(characterId);
-        dropActivity(characterId, mark);
-      }
-      stampChat();
+      guardedLeave(characterId);
     },
     intent(characterId: string, msg: InGameMsg) {
-      const mark = world.activity.length;
-      try {
-        db.transaction(() => {
-          inner.intent(characterId, msg);
-          flushActivity();
-        })();
-        commitLogs();
-        rollbacks.length = 0;
-        deliver(afterCommit.splice(0));
-      } catch (err) {
-        afterCommit.length = 0;
-        for (const undo of rollbacks.splice(0).reverse()) {
-          undo();
-        }
-        // A read (the Activity Log, /chatlog) may have written the buffers: that rolled back too.
-        rollbackLogs();
-        // Their writes rolled back and they reload from SQL, so their events from this call go
-        // too. Others keep theirs: their memory, which is what gets saved, did change.
-        dropActivity(characterId, mark);
-        // A server fault is a bug, not cheating: it goes to the error log, naming who it hit, and
-        // never to the cheat log.
-        const p = world.players.get(characterId);
-        fault(`intent ${msg.t} from ${p?.name ?? characterId}`, err);
-        deps.kick?.(characterId, TEXT.serverError);
-        // A kick without a gateway (tests) still takes the player off the map.
-        if (world.players.has(characterId)) {
-          evict(characterId);
-        }
+      if (msg.t === "contentPublish" && msg.logoutEveryone === true) {
+        publishAlone(characterId, msg);
+        return;
       }
-      stampChat();
+      guardedIntent(characterId, msg);
     },
     tick() {
       deps.probe?.begin();

@@ -381,9 +381,54 @@ describe("the Content page", () => {
     (p.el.querySelector('[data-action="content-summary"]') as HTMLInputElement).value =
       "Rename Ale";
     publish.click();
+    // "Log everyone out while publishing" is off by default, with no suggestion.
+    const logout = p.el.querySelector('[data-action="content-publish-logout"]') as HTMLInputElement;
+    expect(logout.checked).toBe(false);
+    expect(p.el.textContent).not.toContain("Suggested");
     confirm();
     await settle();
-    expect(last("publish")?.args).toEqual(["Rename Ale", "0123456789abcdef"]);
+    expect(last("publish")?.args).toEqual(["Rename Ale", "0123456789abcdef", false]);
+  });
+
+  test("the publish confirmation suggests logging everyone out when a removal is in the world", async () => {
+    const { p, last, confirm, settle } = page();
+    p.onShow();
+    p.receive({
+      t: "contentOverview",
+      seq: last("overview")?.seq ?? 0,
+      overview: overview({
+        draft: [
+          {
+            dataset: "items",
+            part: "items",
+            key: "Ale",
+            op: "remove",
+            author: "A",
+            updatedAt: "2026-11-22T01:02:03.000Z",
+          },
+        ],
+        removals: [
+          {
+            kind: "item",
+            key: "Ale",
+            lines: ["Deleted: 5 copies of Ale held by 2 characters"],
+            stillUsed: 0,
+            inWorld: 2,
+          },
+        ],
+      }),
+    });
+    (p.el.querySelector('[data-action="content-publish"]') as HTMLButtonElement).click();
+    const box = p.el.querySelector('[data-action="control-panel-confirm"]') as HTMLElement;
+    expect(box.textContent).toContain("This draft removes 1 item.");
+    expect(box.textContent).toContain("Log everyone out while publishing");
+    expect(box.textContent).toContain("Suggested");
+    const logout = box.querySelector('[data-action="content-publish-logout"]') as HTMLInputElement;
+    expect(logout.checked).toBe(false);
+    logout.click();
+    confirm();
+    await settle();
+    expect(last("publish")?.args.at(-1)).toBe(true);
   });
 
   test("a failing check blocks Publish and lists the problems", () => {
@@ -505,6 +550,7 @@ describe("the Content page", () => {
       rows: ["items/items/Ale"],
       undoOf: null,
       cleanup: [],
+      loggedOut: null,
     };
     p.receive({
       t: "contentOverview",
@@ -909,14 +955,14 @@ describe("where an item or a monster is used, and its removal (issue #28)", () =
   test("the draft says what its removals will do", () => {
     expect(
       removalHeadline([
-        { kind: "item", key: "Ale", lines: [], stillUsed: 3 },
-        { kind: "item", key: "Mead", lines: [], stillUsed: 2 },
-        { kind: "monster", key: "Slime", lines: [], stillUsed: 0 },
+        { kind: "item", key: "Ale", lines: [], stillUsed: 3, inWorld: 0 },
+        { kind: "item", key: "Mead", lines: [], stillUsed: 2, inWorld: 0 },
+        { kind: "monster", key: "Slime", lines: [], stillUsed: 0, inWorld: 0 },
       ]),
     ).toBe("This draft removes 2 items and 1 monster still used in 5 places.");
-    expect(removalHeadline([{ kind: "monster", key: "Slime", lines: [], stillUsed: 0 }])).toBe(
-      "This draft removes 1 monster.",
-    );
+    expect(
+      removalHeadline([{ kind: "monster", key: "Slime", lines: [], stillUsed: 0, inWorld: 0 }]),
+    ).toBe("This draft removes 1 monster.");
     const { p, last } = page();
     p.onShow();
     p.receive({
@@ -929,6 +975,7 @@ describe("where an item or a monster is used, and its removal (issue #28)", () =
             key: "Ale",
             lines: ["5 copies in the bags of 2 characters stay (retired: no more can be made)"],
             stillUsed: 2,
+            inWorld: 1,
           },
         ],
       }),
@@ -954,6 +1001,7 @@ describe("where an item or a monster is used, and its removal (issue #28)", () =
             undoOf: null,
             undoneBy: null,
             cleanup: ["Deleted: 5 copies of Ale held by 2 characters"],
+            loggedOut: null,
           },
         ],
       }),
@@ -962,6 +1010,36 @@ describe("where an item or a monster is used, and its removal (issue #28)", () =
     (p.el.querySelector('[data-action="content-undo"]') as HTMLButtonElement).click();
     await settle();
     expect(p.el.textContent).toContain("is not undone");
+  });
+
+  test("a publish that only logged everyone out shows the count, and Undo warns of nothing done to the world", async () => {
+    const { p, last, settle } = page();
+    p.onShow();
+    p.receive({
+      t: "contentOverview",
+      seq: last("overview")?.seq ?? 0,
+      overview: overview({
+        history: [
+          {
+            id: "p1",
+            at: "2026-11-22T01:00:00.000Z",
+            actorName: "A",
+            summary: "Cheaper ale",
+            rows: ["items/items/Ale"],
+            undoOf: null,
+            undoneBy: null,
+            cleanup: [],
+            loggedOut: 3,
+          },
+        ],
+      }),
+    });
+    expect(p.el.textContent).toContain("Logged everyone else out while publishing: 3 players.");
+    (p.el.querySelector('[data-action="content-undo"]') as HTMLButtonElement).click();
+    await settle();
+    const box = p.el.querySelector('[data-action="control-panel-confirm"]') as HTMLElement;
+    expect(box.textContent).toContain("Undo");
+    expect(box.textContent).not.toContain("is not undone");
   });
 
   test("Look for problems lists them, in the world and in content", () => {

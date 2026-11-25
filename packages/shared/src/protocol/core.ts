@@ -326,6 +326,8 @@ export const TEXT = {
   replaced: "You logged in from somewhere else.",
   /** SSO: a resume token that expired or was never issued. */
   resumeFailed: "Your session has ended. Please log in again.",
+  /** SSO: a content publish that logs everyone out (issue #40), and a login refused meanwhile. */
+  publishing: "The server is publishing new content. Please log in again in a moment.",
 } as const;
 
 /** WebSocket close codes the server uses. */

@@ -324,6 +324,8 @@ export interface StoredPublish {
   undoneBy: string | null;
   /** What the publish did to the world (issue #28): a line per thing done; empty for none. */
   cleanup: string[];
+  /** How many players it logged out (issue #40); null for a publish that did not. */
+  loggedOut: number | null;
 }
 
 interface PublishRecord {
@@ -352,6 +354,9 @@ const toPublish = (r: PublishRecord): StoredPublish => ({
   undoOf: r.undo_of,
   undoneBy: r.undone_by,
   cleanup: r.cleanup ? ((JSON.parse(r.cleanup) as { lines?: string[] }).lines ?? []) : [],
+  loggedOut: r.cleanup
+    ? ((JSON.parse(r.cleanup) as { loggedOut?: number }).loggedOut ?? null)
+    : null,
 });
 
 /** Logs a publish and returns its id. An undo also marks the publish it undid. */
@@ -416,11 +421,11 @@ export function publishById(db: Db, id: string): StoredPublish | null {
   return r ? toPublish(r) : null;
 }
 
-/** Records what a publish did to the world. */
+/** Records what a publish did to the world, and how many players it logged out (issue #40). */
 export function setPublishCleanup(
   db: Db,
   id: string,
-  cleanup: { actions: readonly unknown[]; lines: readonly string[] },
+  cleanup: { actions: readonly unknown[]; lines: readonly string[]; loggedOut?: number },
 ): void {
   db.query("UPDATE content_publishes SET cleanup = ? WHERE id = ?").run(
     JSON.stringify(cleanup),
