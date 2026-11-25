@@ -229,6 +229,14 @@ describe("Only server systems create items", () => {
       contentMonsters: ["name:string"],
       contentMonsterSet: ["name:string", "display:string", "copyFrom:string", "expect:string"],
       contentMonsterSpells: ["expect:string"],
+      // The Skills and Gathering pages (issue #38): a skill's key (a new one's is checked as a
+      // key), the skill's or gathering part's revision as the page saw it. A form's `data` and a
+      // removal's `refs` are checked by the server field by field; nothing here names an item.
+      contentSkills: ["key:string"],
+      contentSkillSet: ["key:string", "expect:string"],
+      contentSkillUsage: ["key:string"],
+      contentSkillRemove: ["key:string", "expect:string"],
+      contentGatheringSet: ["expect:string"],
       // The NPCs page (issue #32): a whole NPC file's text, checked by the server as the NPC
       // Editor's SAVE is (npcEditor permission).
       contentNpcs: ["name:string"],

@@ -107,6 +107,11 @@ export interface ContentWorld {
   /** How many different characters hold a copy of the item (bag, gear or vault). */
   holders(spellings: readonly string[]): number;
   /**
+   * How many characters have a value of a skill stored, by its key (issue #38). Optional: a world
+   * that cannot say counts none.
+   */
+  skillHolders?(key: string): number;
+  /**
    * A publish starts (before its transaction): memory is noted so a rollback can put it back, and
    * what the game tells clients from here, the new store included, is held until `commit` (or
    * dropped by `rollback`).

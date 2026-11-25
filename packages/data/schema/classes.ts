@@ -145,12 +145,35 @@ export const classesDataSchema = z
     creation: creationSchema,
     skillGain: z.strictObject({ weaponSkills: skillGainSchema.shape.weaponSkills }),
     progression: progressionSchema,
+    /**
+     * The Skills page's order (issue #38): these skills first, in this order, then every other
+     * shown skill in list order. Left out, the page lists the skills in list order. Only the page's
+     * order: characters keep each skill's value under its key whatever the order.
+     */
+    skillOrder: z.array(z.string().min(1)).max(1000).optional(),
   })
   .superRefine((data, ctx) => {
     for (const issue of checkProgression(data.progression, data.skills)) {
       ctx.addIssue({ code: "custom", path: issue.path, message: issue.message });
     }
     const names = new Set(data.skills.map((s) => s.skill));
+    const ordered = new Set<string>();
+    (data.skillOrder ?? []).forEach((skill, i) => {
+      if (!names.has(skill)) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["skillOrder", i],
+          message: `${skill} is not in skills`,
+        });
+      } else if (ordered.has(skill)) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["skillOrder", i],
+          message: `${skill} is listed twice`,
+        });
+      }
+      ordered.add(skill);
+    });
     data.classes.forEach((c, i) => {
       c.promotion?.skillGrants.forEach((skill, j) => {
         if (!names.has(skill)) {

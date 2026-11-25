@@ -96,6 +96,7 @@ import { createContentPage } from "./ui/content-page.ts";
 import { createControlPanel } from "./ui/control-panel.ts";
 import { createFriendsWindow } from "./ui/friends.ts";
 import { desktopMenus, type MenuActions, type MenuState } from "./ui/gamemenu.ts";
+import { createGatheringPage } from "./ui/gathering-page.ts";
 import { createGuildCenter } from "./ui/guildcenter.ts";
 import { createImWindows } from "./ui/im.ts";
 import { createItemsPage } from "./ui/items-page.ts";
@@ -114,6 +115,7 @@ import { createSettingsPanel } from "./ui/settings.ts";
 import { createGameView, type GameView } from "./ui/shells.ts";
 import { createShopWindow } from "./ui/shop.ts";
 import { createSignPanel } from "./ui/sign.ts";
+import { createSkillsPage } from "./ui/skills-page.ts";
 import { createSlotMachine } from "./ui/slots.ts";
 import { fitScale, wholeStage } from "./ui/stage.ts";
 import { createTradeWindow } from "./ui/trade.ts";
@@ -746,6 +748,34 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     openNpc: (name) => controlPanel.go("npcs", () => npcsPage.open(name)),
     canOpenNpc: () => permissions.has("npcEditor"),
   });
+  // The Skills and Gathering pages (issue #38).
+  const skillsPage = createSkillsPage({
+    view: (seq, key) => send({ t: "contentSkills", seq, ...(key !== undefined ? { key } : {}) }),
+    set: (seq, change) =>
+      send({
+        t: "contentSkillSet",
+        seq,
+        key: change.key,
+        op: change.op,
+        ...(change.data !== undefined ? { data: change.data } : {}),
+        ...(change.expect !== undefined ? { expect: change.expect } : {}),
+      }),
+    usage: (seq, key) => send({ t: "contentSkillUsage", seq, key }),
+    remove: (seq, key, refs, expect) => send({ t: "contentSkillRemove", seq, key, refs, expect }),
+    openContent: () => controlPanel.go("content"),
+    openContentRow: (row) => controlPanel.go("content", () => contentPage.openRow(row)),
+    openItem: (name) => controlPanel.go("items", () => itemsPage.open(name)),
+    openGathering: (node) => controlPanel.go("gathering", () => gatheringPage.open(node)),
+  });
+  const gatheringPage = createGatheringPage(
+    {
+      view: (seq) => send({ t: "contentGathering", seq }),
+      set: (seq, change) => send({ t: "contentGatheringSet", seq, ...change }),
+      openContent: () => controlPanel.go("content"),
+      openSkill: (key) => controlPanel.go("skills", () => skillsPage.open(key)),
+    },
+    assets,
+  );
   // The Packs page (issue #34): export and import, files over HTTP with an upload ticket.
   const packsPage = createPacksPage({
     view: (seq) => send({ t: "contentPacks", seq }),
@@ -842,6 +872,26 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         onShow: () => monstersPage.onShow(),
         changes: () => monstersPage.changes(),
         discard: () => monstersPage.discard(),
+      },
+      {
+        id: "skills",
+        title: "Skills",
+        group: "Game",
+        permission: "contentEditor",
+        el: skillsPage.el,
+        onShow: () => skillsPage.onShow(),
+        changes: () => skillsPage.changes(),
+        discard: () => skillsPage.discard(),
+      },
+      {
+        id: "gathering",
+        title: "Gathering",
+        group: "Game",
+        permission: "contentEditor",
+        el: gatheringPage.el,
+        onShow: () => gatheringPage.onShow(),
+        changes: () => gatheringPage.changes(),
+        discard: () => gatheringPage.discard(),
       },
       {
         id: "packs",
@@ -1265,6 +1315,8 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
       balancePage.published();
       itemsPage.published();
       monstersPage.published();
+      skillsPage.published();
+      gatheringPage.published();
       worldPage.published();
     },
   });
@@ -1284,6 +1336,8 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     balancePage.published();
     itemsPage.published();
     monstersPage.published();
+    skillsPage.published();
+    gatheringPage.published();
   });
   conn.onMessage = (msg: ServerMsg) => contentSync.receive(msg);
   const handleMessage = (msg: ServerMsg) => {
@@ -1449,6 +1503,8 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
           balancePage.reset();
           itemsPage.reset();
           monstersPage.reset();
+          skillsPage.reset();
+          gatheringPage.reset();
         }
         if (permissions.has("characterView")) {
           charactersPage.permissionsChanged();
@@ -1495,6 +1551,13 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
       case "contentMonsters":
       case "contentNpcFile":
         monstersPage.receive(msg);
+        return;
+      case "contentSkills":
+      case "contentSkillUsage":
+        skillsPage.receive(msg);
+        return;
+      case "contentGathering":
+        gatheringPage.receive(msg);
         return;
       case "contentNpcs":
         npcsPage.receive(msg);
@@ -1830,6 +1893,8 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     balancePage.reset();
     itemsPage.reset();
     monstersPage.reset();
+    skillsPage.reset();
+    gatheringPage.reset();
     npcsPage.reset();
     worldPage.reset();
     packsPage.reset();

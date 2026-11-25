@@ -120,6 +120,26 @@ export function skillValue(skills: readonly number[], name: string): number {
   return i === undefined ? 0 : (skills[i] ?? 0);
 }
 
+/**
+ * The skills in the Skills page's order (issue #38): those `skillOrder` names first, in its order,
+ * then the rest in list order. Hidden skills are included; the page leaves them out.
+ */
+export function skillPageOrder<T extends { skill: string }>(classes: {
+  skills: readonly T[];
+  skillOrder?: readonly string[] | undefined;
+}): T[] {
+  const byKey = new Map(classes.skills.map((s) => [s.skill, s]));
+  const first: T[] = [];
+  for (const k of classes.skillOrder ?? []) {
+    const row = byKey.get(k);
+    if (row) {
+      first.push(row);
+      byKey.delete(k);
+    }
+  }
+  return [...first, ...classes.skills.filter((s) => byKey.has(s.skill))];
+}
+
 /** The name players see for a skill (its `display`, else its key); the name itself if unknown. */
 export function skillDisplay(name: string): string {
   const i = SKILL_INDEX.get(skillNorm(name));

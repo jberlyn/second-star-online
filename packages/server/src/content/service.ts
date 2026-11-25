@@ -227,6 +227,7 @@ import {
   withOptionalDatasets,
 } from "./rows.ts";
 import { mergePackArt, packArtLayers } from "./served-assets.ts";
+import { skillFingerprint } from "./skills-page.ts";
 import {
   badKeyForm,
   bindingProblems,
@@ -260,6 +261,9 @@ export interface ContentActor {
   accountId: string;
   name: string;
 }
+
+/** A `draftChange` refused part-way: its transaction rolls back. */
+class DraftRefused extends Error {}
 
 /** The store as clients receive it: every dataset but the server-only ones. */
 export interface ClientCopy {
@@ -3285,6 +3289,22 @@ export class ContentService {
       const item = this.draftItem(d, ref.key);
       return this.itemFingerprintOf(item?.name ?? ref.key, draft);
     }
+    // A skill: the Skills page's form and the Content page's JSON editor share its revision
+    // (issue #38).
+    if (ref.dataset === "classes" && ref.part === "skills" && ref.key !== null) {
+      return skillFingerprint(this, ref.key);
+    }
+    // The gathering sections the Gathering page writes (issue #38).
+    if (
+      ref.dataset === "gather" &&
+      (ref.part === "harvest" || ref.part === "yields" || ref.part === "gathering")
+    ) {
+      const draft = this.draft();
+      return rowHash({
+        value: rowValue(this.draftContent(draft), ref) ?? null,
+        pending: draft.find((r) => sameRow(r, ref))?.op ?? null,
+      });
+    }
     // The monster spells: the Monsters page's card and the Content page's JSON editor (issue #31).
     if (ref.dataset === "monsters" && ref.part === "casting") {
       return this.monsterSpellsFingerprint(this.draft());
@@ -3477,37 +3497,54 @@ export class ContentService {
     label: string,
     rows: { ref: RowRef; op: DraftRow["op"] | "discard"; data: unknown }[],
   ): ContentResult<string> {
-    const before = this.draft();
-    const had = new Set(this.check().map((p) => `${p.where}\u0000${p.message}`));
-    const restore = () => {
-      for (const r of rows) {
-        const was = before.find((d) => sameRow(d, r.ref));
-        if (was) {
-          upsertDraftRow(this.db, was);
-        } else {
-          deleteDraftRow(this.db, r.ref.dataset, r.ref.part, r.ref.key);
-        }
-      }
-    };
-    for (const r of rows) {
-      const got =
-        r.op === "discard" ? this.draftDiscard(r.ref) : this.draftSet(actor, r.ref, r.op, r.data);
-      if (!got.ok) {
-        restore();
-        return got.problems
-          ? fail(`${label} was not saved.`, monsterFieldProblems(name, got.problems))
-          : got;
-      }
-    }
-    // Every problem the change brings, wherever it is reported (a trap's flag refused at the
-    // monster's unchanged definition, a name clash reported at the other monster).
-    const id = (p: { where: string; message: string }) => `${p.where}\u0000${p.message}`;
-    const problems = this.check().filter((p) => !had.has(id(p)));
-    if (problems.length > 0) {
-      restore();
-      return fail(`${label} was not saved.`, monsterFieldProblems(name, problems));
+    const r = this.draftChange(actor, rows);
+    if (!r.ok) {
+      return r.problems
+        ? fail(`${label} was not saved.`, monsterFieldProblems(name, r.problems))
+        : r;
     }
     return { ok: true, value: "" };
+  }
+
+  /**
+   * Writes rows into the draft as one change (a Control Panel page's save: issues #31, #38), in
+   * order, then runs the checks: when a row is refused, or the change brings a problem the draft
+   * did not have (wherever it is reported), every row goes back to what the draft held. A refusal
+   * carries the row's or the new problems.
+   */
+  draftChange(
+    actor: ContentActor,
+    rows: readonly { ref: RowRef; op: DraftRow["op"] | "discard"; data: unknown }[],
+  ): ContentResult {
+    const had = new Set(this.check().map((p) => `${p.where}\u0000${p.message}`));
+    const id = (p: { where: string; message: string }) => `${p.where}\u0000${p.message}`;
+    // One transaction: a refusal rolls back every row it wrote and every side effect of them (a
+    // world cleanup dropped, a monster's definition removed with it).
+    let refused: ContentResult | null = null;
+    try {
+      this.db.transaction(() => {
+        for (const r of rows) {
+          const got =
+            r.op === "discard"
+              ? this.draftDiscard(r.ref)
+              : this.draftSet(actor, r.ref, r.op, r.data);
+          if (!got.ok) {
+            refused = got;
+            throw new DraftRefused();
+          }
+        }
+        const problems = this.check().filter((p) => !had.has(id(p)));
+        if (problems.length > 0) {
+          refused = fail("the change brings new problems", problems);
+          throw new DraftRefused();
+        }
+      })();
+    } catch (e) {
+      if (!(e instanceof DraftRefused)) {
+        throw e;
+      }
+    }
+    return refused ?? { ok: true, value: undefined };
   }
 
   /**

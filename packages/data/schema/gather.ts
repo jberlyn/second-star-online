@@ -137,6 +137,12 @@ export const gatherDataSchema = z
             below: z.number().int(),
             /** Tested in order against one cached tile: at most one change per call. */
             tiles: z.array(tilePair),
+            /**
+             * Whether it drops farming produce rather than changing tiles (issue #38). Left out, a
+             * check with no tiles drops produce (Classic's `DoVeg`); `false` keeps a tile check
+             * whose pairs are all gone a tile check that changes nothing.
+             */
+            produce: z.boolean().optional(),
           }),
         ),
       }),

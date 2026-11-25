@@ -122,7 +122,18 @@ export function factionPerk(f: Faction, kind: FactionPerkKind): number {
   if (perk) {
     return perk.values[Math.min(Math.max(0, f.tier), perk.values.length - 1)] ?? 0;
   }
-  return content().social.factionRules.perkDefaults[kind] ?? 0;
+  return perkDefault(content().social.factionRules, kind);
+}
+
+/**
+ * A perk's value for anyone outside a faction that has it: the world's `perkDefaults`, else 0.
+ * Shared with the Control Panel's previews (issue #38).
+ */
+export function perkDefault(
+  rules: { perkDefaults: Partial<Record<FactionPerkKind, number>> },
+  kind: FactionPerkKind,
+): number {
+  return rules.perkDefaults[kind] ?? 0;
 }
 
 const fill = (text: string, values: { NAME?: string; NPC?: string; ITEM?: string }) =>

@@ -17,7 +17,10 @@ import type {
   ChanceSettings,
   Curve,
   Formula,
+  ProgressionData,
   ProgressionSource,
+  SkillProgression,
+  StatTable,
   XpSettings,
 } from "@secondstaronline/data";
 
@@ -80,6 +83,25 @@ function merge<T extends object>(base: T | false | undefined, own: T | false | u
   return own === undefined ? b : { ...b, ...own };
 }
 
+/**
+ * A skill's settings for one source: its own over the world's default for its model, field by
+ * field; undefined when it does not train from the source. What `train` uses, and what the Control
+ * Panel's previews show (issue #38).
+ */
+export function sourceSettings(
+  p: ProgressionData,
+  progression: SkillProgression | undefined,
+  source: ProgressionSource,
+): ChanceSettings | XpSettings | undefined {
+  const prog = progression ?? { model: "chance" as const };
+  const defaults: Partial<Record<ProgressionSource, ChanceSettings | XpSettings | false>> =
+    prog.model === "chance" ? p.defaults.chance : p.defaults.xp;
+  const own = prog.on as
+    | Partial<Record<ProgressionSource, ChanceSettings | XpSettings | false>>
+    | undefined;
+  return merge<ChanceSettings | XpSettings>(defaults[source], own?.[source]);
+}
+
 onContent((c) => {
   const p = c.classes.progression;
   TOTALS.clear();
@@ -92,7 +114,7 @@ onContent((c) => {
     const defaults = prog.model === "chance" ? p.defaults.chance : p.defaults.xp;
     for (const source of Object.keys(defaults).concat(Object.keys(prog.on ?? {}))) {
       const s = source as ProgressionSource;
-      on[s] = merge<object>(defaults[s], prog.on?.[s]);
+      on[s] = sourceSettings(p, prog, s);
     }
     if (prog.model === "chance") {
       return { model: "chance", on };
@@ -114,6 +136,16 @@ onContent((c) => {
 
 const RANDOM = /^(?:(\d+) \+ )?random\((\d+)\)$/;
 
+/**
+ * Where a formula finds stat tables and other skills: the installed store's, or (for the Control
+ * Panel's previews, issue #38) a draft's.
+ */
+export interface FormulaEnv {
+  tables: Readonly<Record<string, StatTable>>;
+  /** Another skill's value, by any spelling (0 when the world has none). */
+  skill(name: string): number;
+}
+
 /** What a formula reads. */
 interface Reading {
   t: Trainee;
@@ -121,11 +153,16 @@ interface Reading {
   skill: number;
   tier: number;
   damage: number;
+  /** Tables and skills other than the store's (a preview of a draft). */
+  env?: FormulaEnv;
 }
 
 /** A stat table's value for a stat. */
-function tableValue(name: string, t: Trainee): number | undefined {
-  const tables = content().classes.progression.tables;
+function tableValue(
+  name: string,
+  t: Trainee,
+  tables: Readonly<Record<string, StatTable>> = content().classes.progression.tables,
+): number | undefined {
   const table = Object.hasOwn(tables, name) ? tables[name] : undefined;
   if (!table) {
     return undefined;
@@ -168,7 +205,11 @@ function read(name: string, r: Reading): number {
     case "damage":
       return r.damage;
   }
-  return statOf(name, r.t) ?? tableValue(name, r.t) ?? skillValue(r.t.skills, name);
+  return (
+    statOf(name, r.t) ??
+    tableValue(name, r.t, r.env?.tables) ??
+    (r.env ? r.env.skill(name) : skillValue(r.t.skills, name))
+  );
 }
 
 /**
@@ -212,6 +253,23 @@ function evalFormula(f: Formula, r: Reading, rng: Rng): number {
     }
   }
   return out;
+}
+
+/**
+ * A formula's value as the game evaluates it, for a preview (issue #38): the trained skill at
+ * `skill`, the tool's `tier`, a hit's `damage`, and `env`'s tables and skills.
+ */
+export function formulaValue(
+  f: Formula,
+  at: { t: Trainee; skill: number; tier?: number; damage?: number },
+  env: FormulaEnv,
+  rng: Rng,
+): number {
+  return evalFormula(
+    f,
+    { t: at.t, skill: at.skill, tier: at.tier ?? 0, damage: at.damage ?? 0, env },
+    rng,
+  );
 }
 
 /** A formula as an item's teaching reads it: no skill or tool, only the reader's stats. */
@@ -431,6 +489,50 @@ function requirementMet(t: Trainee, s: ChanceSettings | XpSettings): boolean {
   return !s.requires || skillValue(t.skills, s.requires.skill) > s.requires.above;
 }
 
+/**
+ * Whether an action rolls a `chance` skill's dice at value `v` below `cap`, as each source's 1.6
+ * guard tested it before rolling: `defend` always rolls; `gather` and `craft` need `min <= v <
+ * cap`; the rest need `0 < v < cap`. Shared with the Control Panel's preview (issue #38).
+ */
+export function chanceRolls(
+  source: ProgressionSource,
+  s: ChanceSettings,
+  v: number,
+  cap: number,
+): boolean {
+  switch (source) {
+    case "defend":
+      return true;
+    case "gather":
+    case "craft":
+      return v >= (s.min ?? 0) && v < cap;
+    default:
+      return v > 0 && v < cap;
+  }
+}
+
+/**
+ * Whether a roll of 1 raises the skill, tested after the roll as 1.6 tested it: `defend` its guard
+ * (`0 < v < cap`), `kill` the monster's cap (`monsterCap`), and every source the requirement.
+ */
+export function chanceCounts(
+  source: ProgressionSource,
+  s: ChanceSettings,
+  v: number,
+  cap: number,
+  monsterCap: number | undefined,
+  requirementOk: boolean,
+): boolean {
+  switch (source) {
+    case "defend":
+      return v < cap && v > 0 && requirementOk;
+    case "kill":
+      return (!s.monsterCap || v < (monsterCap ?? Infinity)) && requirementOk;
+    default:
+      return requirementOk;
+  }
+}
+
 function trainChance(
   t: Trainee,
   i: number,
@@ -446,36 +548,13 @@ function trainChance(
   const v = t.skills[i] ?? 0;
   // No skill rises past 100, whatever a cap says.
   const cap = Math.min(SKILL_MAX, extra.cap ?? capValue(s.cap, t.faction));
-  const reading: Reading = { t, skill: v, tier: extra.tier ?? 0, damage: extra.damage ?? 0 };
-  const n = () => evalFormula(roll, reading, rng);
-  let ok: boolean;
-  switch (source) {
-    case "defend":
-      // 1.6 rolled before testing anything.
-      ok = rng.random(n()) === 1 && v < cap && v > 0 && requirementMet(t, s);
-      break;
-    case "kill": {
-      if (!(v > 0 && v < cap)) {
-        return 0;
-      }
-      const hit = rng.random(n()) === 1;
-      ok = (!s.monsterCap || v < (extra.monsterCap ?? Infinity)) && hit && requirementMet(t, s);
-      break;
-    }
-    case "gather":
-    case "craft":
-      if (v < (s.min ?? 0) || v >= cap) {
-        return 0;
-      }
-      ok = rng.random(n()) === 1 && requirementMet(t, s);
-      break;
-    default:
-      if (!(v > 0 && v < cap)) {
-        return 0;
-      }
-      ok = rng.random(n()) === 1 && requirementMet(t, s);
+  if (!chanceRolls(source, s, v, cap)) {
+    return 0;
   }
-  if (!ok) {
+  const reading: Reading = { t, skill: v, tier: extra.tier ?? 0, damage: extra.damage ?? 0 };
+  // The roll comes first; what 1.6 tested after it is tested after it.
+  const hit = rng.random(evalFormula(roll, reading, rng)) === 1;
+  if (!hit || !chanceCounts(source, s, v, cap, extra.monsterCap, requirementMet(t, s))) {
     return 0;
   }
   t.skills[i] = v + 1;

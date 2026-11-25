@@ -25,7 +25,7 @@
  *   row (see the stats page).
  * - Spellbook (frame 67): the spell list, Info and the cast button (spellbook.ts).
  * - Skills (frame 65): a row for each skill the content shows (`classes.skills` without
- *   `hidden`, in their order: 1.6's fixed list of 35 for Classic): names
+ *   `hidden`, in the Skills page's order, `skillOrder` then list order: 1.6's fixed list of 35 for Classic): names
  *   (the skill name field, Arial 12 bold) at (620, 117) and values (the skill value field,
  *   Arial 12) at (736, 117), one per line. The arrows #162 (up, loc (609, 122)) and #161 (down,
  *   (609, 274)) move both columns 32 px on mouse-down with no limit either way.
@@ -46,6 +46,7 @@ import {
   PAPERDOLL_SIZE,
   paperdollLayers,
   portraitLayers,
+  skillPageOrder,
   xpShown,
 } from "@secondstaronline/shared";
 
@@ -1200,7 +1201,7 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
       levelValue.textContent = String(level);
     },
     setSkills(skills, xp = {}) {
-      const rows = content().classes.skills.filter((s) => !s.hidden);
+      const rows = skillPageOrder(content().classes).filter((s) => !s.hidden);
       shownSkills = rows.map((r) => r.skill);
       skillValues = skills;
       skillXp = xp;

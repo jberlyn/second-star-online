@@ -15,13 +15,22 @@ import type {
   ArtSound,
   ArtTile,
   ArtWorn,
+  ChanceSettings,
+  Curve,
   EquipSlot,
+  GatherData,
+  HarvestNode,
   Item,
   ItemDefinition,
   ItemRulesData,
   Monster,
   MonsterDefinition,
   MonsterSpellRule,
+  ProgressionData,
+  Skill,
+  StatTable,
+  XpSettings,
+  YieldTable,
 } from "@secondstaronline/data";
 
 import type { BodyUse } from "../content/bodies.ts";
@@ -597,6 +606,75 @@ export const contentMonsterSetSchema = z.strictObject({
     .optional(),
 });
 
+/** Asks for the Skills page's view (issue #38), with `key` the skill open. */
+export const contentSkillsSchema = z.strictObject({
+  t: z.literal("contentSkills"),
+  seq,
+  key: z.string().min(1).max(80).optional(),
+});
+
+/** A skill's or gathering part's revision as the page last showed it. */
+const pageExpect = z
+  .string()
+  .regex(/^[0-9a-f]{16}$/)
+  .optional();
+
+/**
+ * One Skills page change (issue #38). `set` writes the skill (`data`: its display name, whether it
+ * is hidden, its progression, its place on the Skills page, its start values by start class, the
+ * promotions that grant it, and its curve); `create` adds skill `key` (a permanent key, never
+ * renamed) from `data`; `discard` drops the draft's changes to it. `expect` is the skill as the
+ * page last showed it (`ContentSkillView.fingerprint`); `create` names none. The server checks
+ * `data` field by field and refuses a change that brings a new problem.
+ */
+export const contentSkillSetSchema = z.strictObject({
+  t: z.literal("contentSkillSet"),
+  seq,
+  key: z.string().trim().min(1).max(40),
+  op: z.enum(["set", "create", "discard"]),
+  data: z.unknown().optional(),
+  expect: pageExpect,
+});
+
+/** Where a skill is used (issue #38): every reference, and the characters with a value stored. */
+export const contentSkillUsageSchema = z.strictObject({
+  t: z.literal("contentSkillUsage"),
+  seq,
+  key: z.string().min(1).max(80),
+});
+
+/**
+ * Removes a skill in the draft (issue #38): each reference the usage listed is cleared or pointed
+ * at another skill (`refs`, checked by the server against the usage it builds again). Characters'
+ * stored values stay. Refused while a binding names it, or when the skill changed since `expect`.
+ */
+export const contentSkillRemoveSchema = z.strictObject({
+  t: z.literal("contentSkillRemove"),
+  seq,
+  key: z.string().min(1).max(80),
+  refs: z.unknown(),
+  expect: pageExpect,
+});
+
+/** Asks for the Gathering page's view (issue #38). */
+export const contentGatheringSchema = z.strictObject({ t: z.literal("contentGathering"), seq });
+
+/**
+ * One Gathering page change (issue #38): a harvest node's fields (`node`, with `index` the node
+ * and `data` its node, yield table and regrowth), a new node (`newNode`), a node's removal
+ * (`removeNode`), fishing's, farming's or the hit counter's tables, or `discard` (the draft's
+ * gathering changes go). `expect` is the part as the page last showed it. The server checks `data`
+ * against the schema and refuses a change that brings a new problem.
+ */
+export const contentGatheringSetSchema = z.strictObject({
+  t: z.literal("contentGatheringSet"),
+  seq,
+  op: z.enum(["node", "newNode", "removeNode", "fishing", "farming", "counter", "discard"]),
+  index: z.number().int().min(0).max(10_000).optional(),
+  data: z.unknown().optional(),
+  expect: pageExpect,
+});
+
 /** The Monster spells card's save (issue #31, stage 4): every monster spell, in the draft. */
 export const contentMonsterSpellsSchema = z.strictObject({
   t: z.literal("contentMonsterSpells"),
@@ -1166,6 +1244,197 @@ export interface ContentMonstersView {
   monsterDraft: number;
 }
 
+/** The progression sources, by their place on the Skills page. */
+export type SkillSource = "kill" | "shot" | "defend" | "cast" | "gather" | "craft" | "hit";
+
+/** One skill in the Skills page's list (issue #38), in Skills page order. */
+export interface SkillListEntry {
+  skill: string;
+  /** The name players see. */
+  display: string;
+  hidden: boolean;
+  model: "chance" | "xp";
+  /** `pack`: the pack's, unchanged; `edited`: a pack skill the operator changed; `yours`: added. */
+  state: "pack" | "edited" | "yours";
+  /** The draft changes it. */
+  pending: boolean;
+}
+
+/** Something that trains or reads a skill, as the Skills page lists it (read-only). */
+export interface SkillTrainer {
+  /** What it is. */
+  kind:
+    | "weapon"
+    | "item"
+    | "node"
+    | "fishing"
+    | "watering"
+    | "recipe"
+    | "spell"
+    | "book"
+    | "promotion"
+    | "binding"
+    | "other";
+  /** What the page says. */
+  text: string;
+  /** Where it is set: a Control Panel page, and what to open there. */
+  page: "items" | "gathering" | "content";
+  /** The item to open on the Items page. */
+  item?: string;
+  /** The harvest node to open on the Gathering page. */
+  node?: number;
+  /** The row to open on the Content page. */
+  row?: ContentRowRef;
+}
+
+/** One skill's form on the Skills page (issue #38). */
+export interface ContentSkillView {
+  skill: string;
+  /** The skill row as the draft holds it. */
+  row: Skill;
+  /** Its place on the Skills page, from 1. */
+  order: number;
+  /** The installed packs have it. */
+  inPack: boolean;
+  /** It is published (a skill only the draft has is removed by discarding it). */
+  published: boolean;
+  /** Each start class's starting value for it (null: not set, so 1). */
+  starts: { code: number; label: string; value: number | null }[];
+  /** The promotions, and whether each grants it. */
+  promotions: { code: number; name: string; grants: boolean }[];
+  /** Its `xp` curve as the draft holds it, and the other skills that use the same curve. */
+  curve: { name: string; curve: Curve; sharedWith: string[] } | null;
+  /** What trains it or reads it, each linking where it is set. */
+  trains: SkillTrainer[];
+  /** The bindings that name it (it cannot be removed while one does). */
+  bindings: string[];
+  /** The draft changes it. */
+  pending: boolean;
+  /** The skill as shown, for `contentSkillSet`'s and `contentSkillRemove`'s `expect`. */
+  fingerprint: string;
+  /** A pack update changed it under the operator's change. */
+  notice: { packName: string; packVersion: string; note: string } | null;
+}
+
+/** The Skills page's view: the list, the open skill, and what the previews read. */
+export interface ContentSkillsView {
+  skills: SkillListEntry[];
+  skill: ContentSkillView | null;
+  /** The draft's progression: its line, stat tables, curves and world defaults. */
+  progression: ProgressionData;
+  /** Every skill's key, for picks (a requirement, a replacement). */
+  keys: string[];
+  /** Each curve's revision, for a save's `curve.expect`. */
+  curveFingerprints: Record<string, string>;
+  /** What a `faction` and a `mage` cap are for an unaffiliated character (the perk defaults). */
+  caps: { faction: number; mage: number };
+  /** Draft changes outside the skills' rows, and inside them. */
+  otherDraft: number;
+  skillDraft: number;
+}
+
+/** One reference to a skill, for its removal (issue #38). */
+export interface SkillUseView {
+  /** The reference's id, which `contentSkillRemove`'s `refs` names. */
+  id: string;
+  /** Where it is, as the page says it. */
+  where: string;
+  /** Clearing it is possible (otherwise it can only be pointed at another skill). */
+  clearable: boolean;
+  /** What clearing does. */
+  clears: string;
+}
+
+/** Where a skill is used, for its removal (issue #38). */
+export interface ContentSkillUsage {
+  skill: string;
+  display: string;
+  uses: SkillUseView[];
+  /** The characters with a value of it stored (kept, and restored if it returns). */
+  characters: number;
+  /** The bindings that name it: it cannot be removed until each points elsewhere. */
+  bindings: string[];
+  /** The skill as the usage was built, for `contentSkillRemove`'s `expect`. */
+  fingerprint: string;
+}
+
+/** A skill's progression as the Gathering page's preview reads it. */
+export interface GatheringSkill {
+  skill: string;
+  display: string;
+  model: "chance" | "xp";
+  /** Its `gather` settings, its own over the world's default; null when gathering never trains it. */
+  gather: ChanceSettings | XpSettings | null;
+  /** An `xp` skill's curve and cap. */
+  curve: Curve | null;
+  cap: number | "faction" | "mage" | null;
+}
+
+/** One harvest node on the Gathering page (issue #38). */
+export interface GatheringNodeView {
+  index: number;
+  node: HarvestNode;
+  /** The yield table it rolls (null: none), and the other nodes rolling the same table. */
+  yield: YieldTable | null;
+  yieldSharedWith: number[];
+  /** The regrowth check that turns its spent tile back (by handler), or null. */
+  regrows: string | null;
+  /** The node as shown, for `contentGatheringSet`'s `expect`. */
+  fingerprint: string;
+}
+
+/** The Gathering page's view (issue #38). */
+export interface ContentGatheringView {
+  nodes: GatheringNodeView[];
+  /** The hits a tool takes per success, by the skill (`gathering.counterTable`). */
+  counter: { rows: { gt: number; value: number }[]; fingerprint: string };
+  /** Fishing (null: the world has none). */
+  fishing: {
+    data: NonNullable<GatherData["gathering"]["fishing"]> | null;
+    fingerprint: string;
+    skill: string | null;
+  };
+  /** Farming (null: the world has none). */
+  farming: { data: NonNullable<GatherData["gathering"]["farming"]> | null; fingerprint: string };
+  /** The regrowth checks: their handlers and how often each runs. */
+  /**
+   * The regrowth checks: their handlers, how often each runs, and whether it drops farming produce
+   * (a node's tile never regrows by one).
+   */
+  regrowth: {
+    roll: number;
+    tiles: number;
+    checks: { handler: string; below: number; produce: boolean }[];
+  };
+  /** An ore strike's find chance (`gathering.mining.findChance`), when the world mines. */
+  findChance: number | null;
+  /** The tool rows that gather, with their tiers. */
+  tools: { pattern: string; match: "exact" | "contains"; can: string; tier: number }[];
+  /** Every yield table by name, used or not. */
+  yields: Record<string, YieldTable>;
+  /** Each yield table's revision, for a node save's `yieldExpect`. */
+  yieldFingerprints: Record<string, string>;
+  /** Every skill's gathering progression, for the preview. */
+  skills: GatheringSkill[];
+  /** The draft's stat tables, for formulas. */
+  tables: Record<string, StatTable>;
+  /** What a `faction` and a `mage` cap are for an unaffiliated character. */
+  caps: { faction: number; mage: number };
+  /** The values the form's picks offer. */
+  choices: {
+    cans: string[];
+    sounds: string[];
+    tiles: { code: string; name: string }[];
+    items: string[];
+    yields: string[];
+  };
+  /** Draft changes to gathering, and elsewhere. */
+  pending: boolean;
+  otherDraft: number;
+  /** Every gathering row as shown, for `discard`'s `expect`. */
+  fingerprint: string;
+}
+
 /** One name on the NPCs page's list (issue #32). */
 export interface NpcListEntry {
   name: string;
@@ -1419,6 +1688,22 @@ export type ContentServerMsg =
       t: "contentMonsters";
       seq: number;
       view: ContentMonstersView;
+      result?: { ok: boolean; text: string; problems?: ContentProblemView[] };
+    }
+  /** The Skills page's view, after a `contentSkills` ask or with a change's answer (issue #38). */
+  | {
+      t: "contentSkills";
+      seq: number;
+      view: ContentSkillsView;
+      result?: { ok: boolean; text: string; problems?: ContentProblemView[] };
+    }
+  /** Where a skill is used, or why it cannot be said. */
+  | { t: "contentSkillUsage"; seq: number; usage: ContentSkillUsage | null; error?: string }
+  /** The Gathering page's view, after a `contentGathering` ask or with a change's answer. */
+  | {
+      t: "contentGathering";
+      seq: number;
+      view: ContentGatheringView;
       result?: { ok: boolean; text: string; problems?: ContentProblemView[] };
     }
   /**

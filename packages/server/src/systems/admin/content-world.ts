@@ -87,6 +87,8 @@ export interface ContentWorldStore {
   /** Every map not in `skip`, with its four tile layers. */
   mapLayers(skip: readonly string[]): { map: string; layers: string[][] }[];
   setInventoryQty(id: string, qty: number): void;
+  /** How many characters have a value of the skill stored under `key` (issue #38). */
+  skillHolders(key: string): number;
   saveShopFile(npc: string, text: string, ledger: ShopLedger, by: string, now: string): void;
 }
 
@@ -1093,6 +1095,9 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
     },
     holders(spellings: readonly string[]) {
       return itemPlaces(spellings).characters;
+    },
+    skillHolders(key: string) {
+      return store.skillHolders(key);
     },
     begin,
     tell(out) {

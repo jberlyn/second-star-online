@@ -191,6 +191,7 @@ export {
 } from "./rules/progression/creation.ts";
 export * from "./rules/progression/medals.ts";
 export { MEDAL_AT } from "./rules/progression/medals.ts";
+export * from "./rules/progression/preview.ts";
 export * from "./rules/progression/progress.ts";
 export * from "./rules/progression/progression.ts";
 export * from "./rules/progression/promotion.ts";

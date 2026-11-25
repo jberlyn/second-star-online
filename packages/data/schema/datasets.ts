@@ -116,6 +116,7 @@ export {
   type VehicleBalance,
 } from "./balance.ts";
 export { toolCanSchema } from "./common.ts";
+export { gatherDataSchema, harvestNodeSchema, yieldTableSchema } from "./gather.ts";
 export {
   equipSlotSchema,
   itemBehaviourSchema,
@@ -134,7 +135,14 @@ export {
   packManifestSchema,
   packVersionSchema,
 } from "./pack.ts";
-export { checkProgression, FORMULA_MAX, formulaRange, skillDependents } from "./progression.ts";
+export {
+  checkProgression,
+  curveSchema,
+  FORMULA_MAX,
+  formulaRange,
+  skillDependents,
+  skillProgressionSchema,
+} from "./progression.ts";
 export {
   type WorldMap,
   type WorldPoint,

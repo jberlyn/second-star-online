@@ -161,7 +161,7 @@ The **engine fixtures** never take a behaviour, and no new content item may take
 
 | Field | Meaning |
 |---|---|
-| `tile`, `becomes` | The tile, and what it turns into on a success |
+| `tile`, `becomes` | The tile, and what it turns into on a success (`gathering.regrowth.checks` turns it back: a check's `tiles` pairs; a check with no tiles, or `produce: true`, drops farming produce instead, and `produce: false` keeps a check with no pairs a tile check) |
 | `can` | The kind of tool that works it: `Chop`, `Mine`, `Dig` or `Farm` |
 | `tools` | Only these tools work it, by exact item name (Classic: each hammer its own rock, the Shovel, the Hoe) |
 | `tier` | The lowest tool tier that works it (1 when left out). A lower tier is refused: "You need a better tool to mine this." |
@@ -174,6 +174,8 @@ The **engine fixtures** never take a behaviour, and no new content item may take
 | `hitSound`, `successSound` | The swing sound when the faced tile is the node's, and the sound to the gatherer on a success |
 
 A refusal is said once, not on every swing, while the attack key stays held. **`yields`** holds the drop tables by name: `{ "kind": "chance", "item", "chance", "bySkill"? }` drops its item on `random(chance) = 1` (Classic's Logs, 1 in 3, and the two chunks, 1 in 130), with the chance taken from the last `bySkill` `{ gt, value }` row the skill is above when it has them; `{ "kind": "ore" }` is the mining strike, whose crystal count, colour pool and ore odds stay in `gathering.mining`. Fishing and watering are their own kinds: a `Fish` tool fishes the `gathering.fishing` water with its catch bands, and a `Water` tool waters `gathering.farming.watering` soil, reading `farming.wateringSkill` for its hits, and sprinkles on every swing. Regrowth stays in `gathering.regrowth.checks`: a new node that should grow back adds a check row there.
+
+The Control Panel's **Gathering** page ([Running a server](running-a-server.md#the-gathering-page)) edits the nodes, their yield tables and regrowth, fishing, farming and the hit counter, with a preview of each skill value and tool tier's chance of success and expected yield.
 
 So a new gathering skill needs no code. For example, add a `Panning` skill, a `Gold Pan` item with a `tools` row `{ "match": "exact", "pattern": "Gold Pan", "can": "Dig" }`, a node `{ "tile": "Q9", "can": "Dig", "tools": ["Gold Pan"], "becomes": "R9", "skill": "Panning", "gains": true, "yield": "Gold Dust", ... }`, a `Gold Dust` chance table, a `gather` progression on Panning (`"progression": { "model": "chance", "on": { "gather": { "roll": 12, "cap": 100 } } }`), and a regrowth check from `R9` back to `Q9`.
 
@@ -611,6 +613,7 @@ A faction an operator removes keeps its members' saved memberships, their loyalt
 
 - `classes`: each class's `code`, `name`, optional `statBonus` and `promotion` (its `skillGrants`, and `statChanges`, an SPmax floor applied before the grants);
 - `skills`: each skill's `skill` (its permanent key), an optional `display` name, and `hidden` for a skill the Skills page leaves out;
+- `skillOrder` (optional): the Skills page's order, as skill keys; the skills it names come first, in its order, then the rest in the order of `skills`. It changes only what the page shows, never what characters store;
 - `startClasses`: the classes the creation screen offers, in its order, each with its class `code`, an optional `label` (the class's name when absent) and its starting `skills` by key;
 - `creation`: the creation screen's `sexes` (below) and the rest of the new-character record (the starting gold, hunger, profile text and so on);
 - `skillGain.weaponSkills`: which skills a kill or a hit trains for each weapon (`weapon`, `match`, `skills`). A kill rolls them in the list's order (Classic's lists are in 1.6's roll order);
@@ -619,7 +622,7 @@ A faction an operator removes keeps its members' saved memberships, their loyalt
 How skills behave:
 
 - **Saved by key.** A character stores each skill's value under its `skill` key, so skills can be added, removed or reordered at any time. A character who has never had a skill starts it at `1` (`NEW_SKILL_VALUE`), and their next save writes it. A removed skill's values stay saved, and come back if the skill returns. Two skills whose keys read the same with case and spaces ignored (`MartialArts` and `Martial Arts`) are refused, because the rules find skills that way.
-- **Shown by `display`.** The Skills page lists every skill without `hidden`, in the order of `skills`, under its `display` name (the key when absent); with more skills than fit, its arrows scroll the list, as 1.6's did. The same name is used in the advance line (`progression.line`) and in the character editor. Classic hides Meditation, Terrain Navigating and Item Identification, as 1.6 did.
+- **Shown by `display`.** The Skills page lists every skill without `hidden`, in the order of `skillOrder` then `skills`, under its `display` name (the key when absent); with more skills than fit, its arrows scroll the list, as 1.6's did. The same name is used in the advance line (`progression.line`) and in the character editor. Classic hides Meditation, Terrain Navigating and Item Identification, as 1.6 did.
 - **Starting values by key.** A start class names only the skills it starts above 1. The creation screen draws one radio per start class in the space 1.6 gave its three; more than three scroll there.
 - **Sexes and heads are content.** `creation.sexes` lists the sexes the creation screen offers, in order: `{ "code", "label", "heads" }`. `code` is what characters are saved with, `label` what the screen, the Bio and the player hub show, and `heads` the heads it may wear, in the order the head arrows step through them (picking the sex shows its first). Each head is drawn from the paperdoll art `Head<n>` (`Head<n>-F2-S` in the preview). Classic's are 1.6's: `{ "code": 1, "label": "Male", "heads": [1, 3, 4, 5, 6, 9, 10] }` and `{ "code": 2, "label": "Female", "heads": [2, 7, 8, 11] }`, beside the MALE and FEMALE the screen's art spells out; any other list is written over those words, two rows at a time, scrolling beyond. The server refuses a sex the world lacks or a head that sex does not have; a character saved with a sex later removed keeps it (the Bio leaves it blank). Adding a head needs its paperdoll frames: a pack's (Classic's eleven; the Minimal pack's `Head1` and `Head2`), or `Head<n>` uploaded on a running server's Content page ([Worn layers](running-a-server.md#worn-layers)).
 - How each skill rises is content: its [progression](#progression).
@@ -689,19 +692,18 @@ Mining on a RuneScape-style curve to level 10 (a longer table, or a formula, goe
 
 with `{ "skill": "Mining", "progression": { "model": "xp", "curve": "runescape" } }` on the skill and `"xp": 70` on the gold rock's harvest node. The `hit` default gives every `xp`-model weapon skill 4 XP per point of damage; with `requires` rows on the bigger weapons ([Requirements](#requirements)), the skill gates the damage and the damage pays the XP.
 
-### Example: Swimming
+### Example: a new gathering skill, from the Control Panel
 
-Append to `classes.json` `skills`:
+Skills and gathering are edited on the Control Panel's **Skills** and **Gathering** pages ([Running a server](running-a-server.md#the-skills-page)), which write the rows above into the content draft. To add Quarrying, an XP skill trained by breaking quarry stone with tiered picks:
 
-```json
-{ "skill": "Swimming" }
-```
+1. **Skills → New skill**: key `Quarrying` (one word: formulas name skills by their key, and it never changes), progression **XP and levels**, level curve `quarry` (a new curve). **Make it in the draft.** In its form, set the curve (say a table `0, 100, 100, 150` and the formula `200` past it); give the **Gather** source **its own settings** with the XP rows `set 10`, `multiply tier`; give Fighters a start value if you like. The preview shows the XP each level takes and how many actions each level costs, at the tool tier you pick.
+2. **Items → New item**: `Bronze Pick` and `Iron Pick`, each copying the Mining Hammer; in each form, under its tool use, **Mine** at tier 1 and tier 2, sharing the counter `Pick`.
+3. **Gathering → New harvest node**: on a layer-2 tile, **Mine**, becoming the spent tile, skill **Quarrying**, each success trains it, a new yield table `Quarry stone` (an item, 1 in N). The preview shows, for each Quarrying value and pick tier, the swings a success takes, its chance, the drops and the XP each success gives.
+4. Publish on the Content page. Breaking the stone with the Iron Pick gives 20 XP a success, twice the Bronze Pick's.
 
-It shows on the Skills page at once, at 1 for everyone, and rises from whatever source the world defaults give it (in Classic, kills by a weapon that lists it, and none else). To have Fighters start at 10, add it to their start class:
+The pages write ordinary rows: `{ "skill": "Quarrying", "progression": { "model": "xp", "curve": "quarry", "on": { "gather": { "xp": [{ "op": "set", "value": 10 }, { "op": "multiply", "value": "tier" }] } } } }` in `skills`, the `quarry` curve in `progression.curves`, the two picks' definitions, and the node and its table in `gather.json`.
 
-```json
-{ "code": 1, "skills": { "Slash": 20, "Thrust": 20, "Swimming": 10 } }
-```
+The editors combine the mechanics the engine has: a new kind of activity, such as swimming across water, needs code. To remove a skill, its form's **Remove…** lists everything that names it (skill books' formulas included) and the characters with a value stored; each reference is cleared or pointed at another skill, and characters keep their values.
 
 ## Bindings (`bindings.json`)
 

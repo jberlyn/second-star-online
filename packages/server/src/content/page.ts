@@ -15,6 +15,7 @@ import {
 } from "@secondstaronline/shared";
 
 import { SPRITE_MAX_SIDE, UPLOAD_MAX_BYTES } from "./art.ts";
+import { draftGatheringChange, gatheringView } from "./gathering-page.ts";
 import {
   datasetParts,
   KEYED_LISTS,
@@ -27,6 +28,7 @@ import {
   sameRow,
 } from "./rows.ts";
 import type { ContentActor, ContentResult, ContentService } from "./service.ts";
+import { draftSkillChange, draftSkillRemoval, skillsView, skillUsage } from "./skills-page.ts";
 import type { ContentWorld, Removal } from "./world.ts";
 
 /** A wire ref as the service's ref, or null when it names no dataset. */
@@ -58,9 +60,12 @@ function staleRow(service: ContentService, ref: RowRef, expect: string | undefin
   // An item's catalogue row (and a monster's species record, issue #31) is checked when the editor
   // names the revision it opened (the Content page always does); a change naming none (a script, a
   // test) is not refused.
+  // So are a skill and the gathering sections (issue #38).
   if (
     ((ref.dataset === "items" && ref.part === "items") ||
-      (ref.dataset === "monsters" && ref.part === "monsters")) &&
+      (ref.dataset === "monsters" && ref.part === "monsters") ||
+      (ref.dataset === "classes" && ref.part === "skills") ||
+      ref.dataset === "gather") &&
     expect === undefined
   ) {
     return null;
@@ -278,7 +283,13 @@ type ContentIntent = Extract<
       | "contentNpcFileSet"
       | "contentMonsters"
       | "contentMonsterSet"
-      | "contentMonsterSpells";
+      | "contentMonsterSpells"
+      | "contentSkills"
+      | "contentSkillSet"
+      | "contentSkillUsage"
+      | "contentSkillRemove"
+      | "contentGathering"
+      | "contentGatheringSet";
   }
 >;
 
@@ -323,6 +334,13 @@ export const CONTENT_INTENTS = [
   "contentMonsters",
   "contentMonsterSet",
   "contentMonsterSpells",
+  // The Skills and Gathering pages (issue #38).
+  "contentSkills",
+  "contentSkillSet",
+  "contentSkillUsage",
+  "contentSkillRemove",
+  "contentGathering",
+  "contentGatheringSet",
   // A monster's NPC file sections (issue #31): the game answers these, since they save live.
   "contentNpcFile",
   "contentNpcFileSet",
@@ -557,6 +575,63 @@ export function contentIntent(
         t: "contentMonsters",
         seq: msg.seq,
         view: service.monstersView(),
+        result: r.ok
+          ? { ok: true, text: r.value }
+          : { ok: false, text: r.error, ...(r.problems ? { problems: r.problems } : {}) },
+      };
+    }
+    case "contentSkills":
+      return { t: "contentSkills", seq: msg.seq, view: skillsView(service, msg.key) };
+    case "contentSkillSet": {
+      const r = draftSkillChange(service, actor, {
+        key: msg.key,
+        op: msg.op,
+        ...(msg.data !== undefined ? { data: msg.data } : {}),
+        ...(msg.expect !== undefined ? { expect: msg.expect } : {}),
+      });
+      return {
+        t: "contentSkills",
+        seq: msg.seq,
+        view: skillsView(service, msg.key),
+        result: r.ok
+          ? { ok: true, text: r.value }
+          : { ok: false, text: r.error, ...(r.problems ? { problems: r.problems } : {}) },
+      };
+    }
+    case "contentSkillUsage": {
+      const r = skillUsage(service, msg.key, world);
+      return r.ok
+        ? { t: "contentSkillUsage", seq: msg.seq, usage: r.value }
+        : { t: "contentSkillUsage", seq: msg.seq, usage: null, error: r.error };
+    }
+    case "contentSkillRemove": {
+      const r = draftSkillRemoval(service, actor, {
+        key: msg.key,
+        refs: msg.refs,
+        ...(msg.expect !== undefined ? { expect: msg.expect } : {}),
+      });
+      return {
+        t: "contentSkills",
+        seq: msg.seq,
+        view: skillsView(service, r.ok ? undefined : msg.key),
+        result: r.ok
+          ? { ok: true, text: r.value }
+          : { ok: false, text: r.error, ...(r.problems ? { problems: r.problems } : {}) },
+      };
+    }
+    case "contentGathering":
+      return { t: "contentGathering", seq: msg.seq, view: gatheringView(service) };
+    case "contentGatheringSet": {
+      const r = draftGatheringChange(service, actor, {
+        op: msg.op,
+        ...(msg.index !== undefined ? { index: msg.index } : {}),
+        ...(msg.data !== undefined ? { data: msg.data } : {}),
+        ...(msg.expect !== undefined ? { expect: msg.expect } : {}),
+      });
+      return {
+        t: "contentGathering",
+        seq: msg.seq,
+        view: gatheringView(service),
         result: r.ok
           ? { ok: true, text: r.value }
           : { ok: false, text: r.error, ...(r.problems ? { problems: r.problems } : {}) },

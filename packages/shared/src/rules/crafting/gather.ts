@@ -194,7 +194,7 @@ export function hitCounter(counters: GatherCounters, counter: string, skill: num
   // Only the counter's own count (never an inherited property, should `counters` have a prototype).
   let c = Object.hasOwn(counters, counter) ? (counters[counter] ?? 0) : 0;
   if (c < 1) {
-    c = gtCascade(G.counterTable, skill, 1) ?? 1;
+    c = hitsPerSuccess(G.counterTable, skill);
   }
   c -= 1;
   Object.defineProperty(counters, counter, {
@@ -282,8 +282,23 @@ export function rollYield(name: string | undefined, skill: number, rng: Rng): st
   if (t.kind === "ore") {
     return rollMiningFind(skill, rng);
   }
-  const chance = t.bySkill ? (gtCascade(t.bySkill, skill, t.chance) ?? t.chance) : t.chance;
-  return rng.random(chance) === 1 ? t.item : null;
+  return rng.random(yieldOdds(t, skill)) === 1 ? t.item : null;
+}
+
+/**
+ * The `n` of a chance table's `random(n) = 1` at a skill: the last `bySkill` row the skill is above,
+ * else its `chance`. Shared with the Gathering page's preview (issue #38).
+ */
+export function yieldOdds(t: Extract<YieldTable, { kind: "chance" }>, skill: number): number {
+  return t.bySkill ? (gtCascade(t.bySkill, skill, t.chance) ?? t.chance) : t.chance;
+}
+
+/**
+ * The count a tool's empty counter loads at a skill (`hitCounter`): the hits each success takes.
+ * Below 1, the counter never empties, so the tool never succeeds.
+ */
+export function hitsPerSuccess(counterTable: readonly GtRow[], skill: number): number {
+  return gtCascade(counterTable, skill, 1) ?? 1;
 }
 
 // ---- fishing ---------------------------------------------------------------------------------
@@ -342,10 +357,13 @@ export function fishingSpot(
   return { mapId, x, y, left: ANTI_MACRO_START };
 }
 
-/** The fish a skill catches: one kind per band. */
-export function fishFor(skill: number): string | null {
+/** The fish a skill catches: one kind per band (the installed store's, or `bands`). */
+export function fishFor(
+  skill: number,
+  bands: readonly { lt: number; fish: string }[] = G.fishing?.bands ?? [],
+): string | null {
   let fish: string | null = null;
-  for (const b of G.fishing?.bands ?? []) {
+  for (const b of bands) {
     if (skill < b.lt) {
       fish = b.fish;
     }
@@ -354,8 +372,10 @@ export function fishFor(skill: number): string | null {
 }
 
 /** The bite chance for a Fishing skill: `random(n) = 1`; skill 0 uses the first row's odds. */
-export function fishCheck(skill: number): number {
-  const rows = G.fishing?.fishCheck ?? [];
+export function fishCheck(
+  skill: number,
+  rows: readonly GtRow[] = G.fishing?.fishCheck ?? [],
+): number {
   return gtCascade(rows, skill, rows[0]?.value ?? 1) ?? 1;
 }
 
@@ -445,7 +465,7 @@ export function regrowthFrame(hooks: RegrowthHooks, rng: Rng): void {
     const x = rng.random(R.tileRoll[0]);
     const y = rng.random(R.tileRoll[1]);
     const code = tileAt(hooks.layer2(), x, y);
-    if (c.tiles.length > 0) {
+    if (!isProduceCheck(c)) {
       const pair = c.tiles.find((t) => lingoEq(t.from, code));
       if (pair) {
         hooks.setTile(x, y, pair.to);
@@ -457,6 +477,15 @@ export function regrowthFrame(hooks: RegrowthHooks, rng: Rng): void {
       hooks.produce(x, y, grown.item);
     }
   }
+}
+
+/**
+ * A regrowth check drops farming produce (rather than changing tiles): its `produce` flag, or,
+ * left out, no tiles of its own (Classic's `DoVeg`). The Gathering page never adds a harvest
+ * node's tile pair to one (issue #38).
+ */
+export function isProduceCheck(c: { tiles: readonly unknown[]; produce?: boolean | undefined }) {
+  return c.produce ?? c.tiles.length === 0;
 }
 
 /**

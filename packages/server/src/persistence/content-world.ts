@@ -121,6 +121,17 @@ export function contentWorldStore(db: Db) {
       db.query("UPDATE inventory SET qty = ? WHERE id = ?").run(qty, id);
     },
 
+    /** How many characters have a value of the skill stored under `key` (issue #38). */
+    skillHolders(key: string): number {
+      return (
+        db
+          .query<{ n: number }, [string]>(
+            "SELECT count(DISTINCT character_id) AS n FROM character_skills WHERE skill = ?",
+          )
+          .get(key)?.n ?? 0
+      );
+    },
+
     /** Writes a player shop's rewritten file and its new ledger. */
     saveShopFile(npc: string, text: string, ledger: StoredShop, by: string, now: string): void {
       saveNpcFile(db, { npc, text }, by, now);

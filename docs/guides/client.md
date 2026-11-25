@@ -43,6 +43,8 @@ The UI files are:
 - [packages/client/src/ui/newspaper.ts](../../packages/client/src/ui/newspaper.ts): newspaper reader and editor.
 - [packages/client/src/ui/npcs-page.ts](../../packages/client/src/ui/npcs-page.ts): the Control Panel's NPCs page (NPC files as sections or text).
 - [packages/client/src/ui/monsters-page.ts](../../packages/client/src/ui/monsters-page.ts): the Control Panel's Monsters page.
+- [packages/client/src/ui/skills-page.ts](../../packages/client/src/ui/skills-page.ts): the Control Panel's Skills page.
+- [packages/client/src/ui/gathering-page.ts](../../packages/client/src/ui/gathering-page.ts): the Control Panel's Gathering page.
 - [packages/client/src/ui/action.ts](../../packages/client/src/ui/action.ts): semantic action annotations.
 - [packages/client/src/ui/paint.ts](../../packages/client/src/ui/paint.ts): painting, viewer and camera screens.
 - [packages/client/src/ui/panel.ts](../../packages/client/src/ui/panel.ts): stats, inventory and skills panel.
