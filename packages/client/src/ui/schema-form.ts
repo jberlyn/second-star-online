@@ -317,6 +317,19 @@ export function entryTitle(v: unknown, at: number): string {
     if (first) {
       return first.length > 48 ? `${first.slice(0, 45)}…` : first;
     }
+    // Numbers only: its first few values ("Faces 1, 1, 1 · Bonus 50").
+    const bits = Object.entries(v as Record<string, unknown>)
+      .filter(
+        ([, x]) =>
+          typeof x === "number" ||
+          (Array.isArray(x) && x.length > 0 && x.every((y) => typeof y === "number")),
+      )
+      .slice(0, 3)
+      .map(([k, x]) => `${humanize(k)} ${Array.isArray(x) ? x.join(", ") : x}`);
+    if (bits.length > 0) {
+      const t = bits.join(" · ");
+      return t.length > 48 ? `${t.slice(0, 45)}…` : t;
+    }
   }
   if (typeof v === "string" && v.trim() !== "") {
     return v.length > 48 ? `${v.slice(0, 45)}…` : v;
