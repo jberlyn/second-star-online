@@ -25,6 +25,7 @@ import {
   newsIsNew,
   PLAYFIELD_RECT,
   type PlayerPreferences,
+  parseMapName,
   primaryKeyLabel,
   type RestoreTarget,
   type ServerMsg,
@@ -117,7 +118,7 @@ import { fitScale, wholeStage } from "./ui/stage.ts";
 import { createTradeWindow } from "./ui/trade.ts";
 import { createWhoWindow } from "./ui/who.ts";
 import { createWindowLayer } from "./ui/window.ts";
-import { createWorldEditor, type WorldEditor } from "./ui/worldeditor.ts";
+import { createWorldPage } from "./ui/world-page.ts";
 
 const TAB_KEY_ACTION: Readonly<Record<Tab, KeyAction>> = {
   stats: "tabStats",
@@ -256,9 +257,8 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
   // The classic layout draws 1.6's menu bar above the stage.
   /** Your role's permissions as the server last sent them (it still checks every request). */
   let permissions: ReadonlySet<string> = new Set();
-  let editor: WorldEditor | null = null;
-  /** Which editor, or the Control Panel, is up; each opens from the other. */
-  let editing: "world" | "controlPanel" | null = null;
+  /** Whether the Control Panel is up (the World and NPC editors are its pages, issues #32-#33). */
+  let editing: "controlPanel" | null = null;
   /** A Control Panel page to show once the Control Panel opens (Admin → NPC Editor). */
   let controlPanelPage: string | null = null;
 
@@ -270,6 +270,15 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     can: (permission) => permissions.has(permission),
     shortcut: (act) => primaryKeyLabel(input.bindings, act),
   };
+  /** Opens a Control Panel page, opening the Control Panel first when it is not up. */
+  const openPage = (page: string) => {
+    if (editing === "controlPanel") {
+      controlPanel.go(page);
+    } else {
+      controlPanelPage = page;
+      conn.send({ t: "controlPanelOpen" });
+    }
+  };
   const menuActions: MenuActions = {
     // Game > Return To Title Screen: in play it is today's Log out.
     returnToTitle: () => (menuState.inPlay() ? conn.send({ t: "logout" }) : toTitle()),
@@ -279,20 +288,17 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     openWho: () => send({ t: "whoOpen" }),
     sendIm: () => ims.openSend(""),
     enterRoom: (r) => send({ t: "roomEnter", room: r }),
+    // The World Editor is the Control Panel's World page (issue #33).
+    // It opens on the map the admin stands on, as the World Editor did, unless one is open already.
     worldEditor: () => {
-      if (editing !== "world") {
-        conn.send({ t: "editOpen" });
+      const at = parseMapName(model.map?.name ?? "");
+      if (at) {
+        worldPage.prefer(at.mx, at.my);
       }
+      openPage("world");
     },
     // The NPC Editor window is retired (issue #32): its menu item opens the NPCs page.
-    npcEditor: () => {
-      if (editing === "controlPanel") {
-        controlPanel.go("npcs");
-      } else {
-        controlPanelPage = "npcs";
-        conn.send({ t: "controlPanelOpen" });
-      }
-    },
+    npcEditor: () => openPage("npcs"),
     controlPanel: () => {
       if (editing !== "controlPanel") {
         conn.send({ t: "controlPanelOpen" });
@@ -741,6 +747,21 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     openMonster: (name) => controlPanel.go("monsters", () => monstersPage.open(name)),
     canOpenMonster: () => permissions.has("contentEditor"),
   });
+  const worldPage = createWorldPage(
+    {
+      view: (seq, at, list) =>
+        send({
+          t: "contentMaps",
+          seq,
+          ...(at ? { mx: at.mx, my: at.my } : {}),
+          ...(list ? { list: true } : {}),
+        }),
+      save: (seq, map, expect) => send({ t: "contentMapSave", seq, map, expect }),
+      restore: (seq, mx, my, version, expect) =>
+        send({ t: "contentMapRestore", seq, mx, my, version, expect }),
+    },
+    assets,
+  );
   const controlPanel = createControlPanel({
     pages: [
       {
@@ -810,6 +831,16 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         discard: () => monstersPage.discard(),
       },
       {
+        id: "world",
+        title: "World",
+        group: "Game",
+        permission: "worldEditor",
+        el: worldPage.el,
+        onShow: () => worldPage.onShow(),
+        changes: () => worldPage.changes(),
+        discard: () => worldPage.discard(),
+      },
+      {
         id: "npcs",
         title: "NPCs",
         group: "Game",
@@ -820,17 +851,8 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         discard: () => npcsPage.discard(),
       },
     ],
-    // The classic World Editor, until its Control Panel page arrives (#33). The NPC Editor's place
-    // is the NPCs page in the sidebar (#32).
-    links: [
-      {
-        id: "worldEditor",
-        title: "World Editor",
-        group: "Classic tools",
-        permission: "worldEditor",
-        run: menuActions.worldEditor,
-      },
-    ],
+    // The classic editors are its World and NPCs pages now (issues #32, #33).
+    links: [],
     actions: {
       returnToGame: menuActions.returnToGame,
       returnToTitle: menuActions.returnToTitle,
@@ -1220,6 +1242,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
       balancePage.published();
       itemsPage.published();
       monstersPage.published();
+      worldPage.published();
     },
   });
   // Art published (issue #29): the map's tile layers are drawn once per map, so new tiles redraw
@@ -1232,6 +1255,8 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     if (changed.includes("items")) {
       panel.refreshArt();
     }
+    // The World page's palette and map are drawn from the sheets too.
+    worldPage.published();
     contentPage.published();
     balancePage.published();
     itemsPage.published();
@@ -1252,6 +1277,8 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         if (editing) {
           leaveEditing();
         }
+        // An answer to a World page save sent before the drop may never come.
+        worldPage.connectionLost();
         if (!game) {
           enterGame();
         }
@@ -1390,6 +1417,9 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         if (!permissions.has("npcEditor")) {
           npcsPage.reset();
         }
+        if (!permissions.has("worldEditor")) {
+          worldPage.reset();
+        }
         if (!permissions.has("contentEditor")) {
           contentPage.reset();
           balancePage.reset();
@@ -1442,6 +1472,9 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         return;
       case "contentNpcs":
         npcsPage.receive(msg);
+        return;
+      case "contentMaps":
+        worldPage.receive(msg);
         return;
       case "content":
         // The content sync fetches and installs the store; nothing else to do here.
@@ -1518,26 +1551,8 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         restoreTo(msg.text, msg.restoreTo);
         return;
       case "editor":
-        if (msg.editing) {
-          if (!editor) {
-            editor = createWorldEditor(assets, {
-              load: (mx, my) => send({ t: "editLoad", mx, my }),
-              save: (map) => send({ t: "editSave", map }),
-            });
-          }
-          if (editing !== "world") {
-            leaveEditing();
-            editing = "world";
-            releaseAll(input, sink);
-            sign.close();
-            charMenu.close();
-            show(editor.screen);
-          }
-          editor.show(msg.map, msg.exists);
-        } else {
-          // The snapshot that follows puts the game back (Return To Game → frame 49).
-          leaveEditing();
-        }
+        // Return to Game: the snapshot that follows puts the game back.
+        leaveEditing();
         return;
       case "controlPanel":
         if (editing !== "controlPanel") {
@@ -1649,9 +1664,6 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         sign.show(signText(msg.n));
         return;
       case "chat":
-        if (editing === "world") {
-          editor?.addChat(msg.text);
-        }
         chat.add(msg.text, msg.color);
         // The game's chat log is not on screen in the Control Panel: the line shows there too.
         if (editing === "controlPanel") {
@@ -1776,6 +1788,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     itemsPage.reset();
     monstersPage.reset();
     npcsPage.reset();
+    worldPage.reset();
     playerSettingsWin.window.close();
     inFlightPrefsId = null;
     ignores = [];

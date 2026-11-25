@@ -1,10 +1,10 @@
 /**
- * Bot script: Alice, an administrator, opens the World Editor (Bob sees her leave), paints the seed map,
+ * Bot script: Alice, an administrator, opens the Control Panel's World page (issue #33, the World
+ * Editor's successor; Bob sees her leave), paints the seed map,
  * ticks SAFE AREA, writes a sign and a header, places an Exit to x1001y992, a Sign 1 and a Slime,
  * and saves: Bob gets the map again with all of it. She loads x1001y992 (blank), saves it as a new
  * map, and returns to the game where she stood. Bob reads the sign with Ctrl, walks onto the Exit
- * and arrives on x1001y992. A save from a player, or from an administrator outside the editor, is
- * ignored.
+ * and arrives on x1001y992. A save from a player is ignored.
  */
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
@@ -12,7 +12,16 @@ import { type CreateMsg, type EditorMap, type ServerMsg, TEXT } from "@secondsta
 
 import { countMapVersions, findMapByCoords } from "../src/persistence/maps.ts";
 import type { Rng } from "../src/rng.ts";
-import { type Bot, connectBot, face, settle, startTestServer, type TestServer } from "./harness.ts";
+import {
+  type Bot,
+  connectBot,
+  face,
+  pageMap,
+  pageSave,
+  settle,
+  startTestServer,
+  type TestServer,
+} from "./harness.ts";
 
 const make = (name: string): CreateMsg => ({
   t: "create",
@@ -31,9 +40,7 @@ const make = (name: string): CreateMsg => ({
 /** No spawns, moves, attacks or pushes. */
 const rng: Rng = { random: (n) => (n >= 1 ? n : 0) };
 
-type Editor = Extract<ServerMsg, { t: "editor"; editing: true }>;
 type Snapshot = Extract<ServerMsg, { t: "snapshot" }>;
-const isEditor = (m: ServerMsg): m is Editor => m.t === "editor" && m.editing;
 const isSnapshot = (m: ServerMsg): m is Snapshot => m.t === "snapshot";
 
 describe("the World Editor", () => {
@@ -41,6 +48,7 @@ describe("the World Editor", () => {
   let alice: Bot;
   let bob: Bot;
   let edited: EditorMap;
+  let revision: string | null = null;
 
   const tick = async (n: number) => {
     await settle();
@@ -75,7 +83,7 @@ describe("the World Editor", () => {
     await server.stop();
   });
 
-  test("only an administrator opens the editor; Bob sees Alice leave", async () => {
+  test("only an administrator opens the World page; Bob sees Alice leave", async () => {
     alice = await login("Alice");
     bob = await login("Bob");
     face(server, "Bob", "N"); // staging: 1.6 logs in facing south
@@ -83,17 +91,17 @@ describe("the World Editor", () => {
       alice.inbox.some((m) => m.t === "permissions" && m.permissions.includes("worldEditor")),
     ).toBe(true);
     bob.clear();
-    bob.send({ t: "editOpen" });
+    bob.send({ t: "contentMaps", seq: 1, mx: 1000, my: 992 });
     await settle();
-    expect(bob.inbox.some((m) => m.t === "editor")).toBe(false);
-    alice.send({ t: "editOpen" });
-    const ed = await alice.waitFor(isEditor);
-    expect([ed.map.mx, ed.map.my, ed.exists]).toEqual([1000, 992, true]);
+    expect(bob.inbox.some((m) => m.t === "contentMaps")).toBe(false);
+    const ed = await pageMap(alice, { mx: 1000, my: 992 });
+    expect([ed.map.mx, ed.map.my, ed.revision !== null]).toEqual([1000, 992, true]);
     await bob.waitFor((m) => m.t === "delta" && m.events.some((e) => e.e === "leave"));
     edited = ed.map;
+    revision = ed.revision;
   });
 
-  test("SAVE writes the map, the roster and the placed items; Bob gets it again", async () => {
+  test("a save writes the map, the roster and the placed items; Bob gets it again", async () => {
     const m = structuredClone(edited);
     m.layers[0][1] = m.layers[0][1]?.replace(/^G1 G1/, "G1 W1") ?? "";
     m.flags.canFight = "O";
@@ -107,9 +115,7 @@ describe("the World Editor", () => {
     m.mobs = [{ name: "Slime", x: 14, y: 3 }, null, null, null];
     bob.clear();
     alice.clear();
-    alice.send({ t: "editSave", map: m });
-    const alert = await alice.waitFor((x) => x.t === "alert");
-    expect(alert).toEqual({ t: "alert", text: TEXT.mapSaved });
+    await pageSave(alice, m, revision);
     const snap = await bob.waitFor(isSnapshot);
     expect(snap.map.layers[0][1]?.startsWith("G1 W1")).toBe(true);
     expect(snap.map.signs[0]).toBe("Welcome to town");
@@ -128,22 +134,20 @@ describe("the World Editor", () => {
   test("a save from a player is ignored", async () => {
     const m = structuredClone(edited);
     m.header = "Bob's town";
-    bob.send({ t: "editSave", map: m });
+    bob.send({ t: "contentMapSave", seq: 2, map: m, expect: null });
     await settle();
     expect(findMapByCoords(server.db, 1000, 992)?.title).toBe("Town");
   });
 
-  test("LOAD of a missing map shows a blank map; SAVE creates it", async () => {
+  test("a missing map opens blank; a save creates it", async () => {
     alice.clear();
-    alice.send({ t: "editLoad", mx: 1001, my: 992 });
-    const ed = await alice.waitFor(isEditor);
-    expect(ed.exists).toBe(false);
+    const ed = await pageMap(alice, { mx: 1001, my: 992 });
+    expect(ed.revision).toBeNull();
     expect(ed.map.layers[0][0]?.startsWith("H1")).toBe(true);
     const fresh = structuredClone(ed.map);
     fresh.layers[0] = fresh.layers[0].map((r) => r.replaceAll("H1", "G1"));
     fresh.flags.canFight = "X";
-    alice.send({ t: "editSave", map: fresh });
-    await alice.waitFor((x) => x.t === "alert");
+    await pageSave(alice, fresh, null);
     expect(findMapByCoords(server.db, 1001, 992)).not.toBeNull();
   });
 

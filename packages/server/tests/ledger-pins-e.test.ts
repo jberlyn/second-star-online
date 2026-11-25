@@ -138,19 +138,25 @@ async function adminGame(opts: { crashPoint?: (label: string) => void } = {}) {
 }
 
 describe("Server-side roles, admin commands and editors", () => {
-  test("SSO: World Editor and NPC Editor saves are in audit_log; a newspaper save is not", async () => {
+  test("SSO: map and NPC file saves are in audit_log; a newspaper save is not", async () => {
     const { db, sent, game, make } = await adminGame();
     const al = await make("Al", "administrator");
     expect(recentAudit(db, 50)).toEqual([]);
 
-    game.intent(al, { t: "editOpen" });
-    const ed = sent.findLast((m) => m.msg.t === "editor")?.msg;
-    if (ed?.t !== "editor" || !ed.editing) {
-      throw new Error("no editor");
+    game.intent(al, { t: "controlPanelOpen" });
+    game.intent(al, { t: "contentMaps", seq: 9, mx: 1000, my: 992 });
+    const maps = sent.findLast((m) => m.msg.t === "contentMaps")?.msg;
+    if (maps?.t !== "contentMaps" || !maps.view.map) {
+      throw new Error("no map");
     }
-    game.intent(al, { t: "editSave", map: { ...ed.map, header: "Audited" } });
-    expect(sent.at(-1)?.msg.t).toBe("alert");
-    game.intent(al, { t: "editClose" });
+    const ed = maps.view.map;
+    game.intent(al, {
+      t: "contentMapSave",
+      seq: 10,
+      map: { ...ed.map, header: "Audited" },
+      expect: ed.revision,
+    });
+    expect(sent.at(-1)?.msg).toMatchObject({ t: "contentMaps", result: { ok: true } });
 
     game.intent(al, { t: "controlPanelOpen" });
     game.intent(al, { t: "contentNpcs", seq: 1, name: "Amber" });

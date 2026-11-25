@@ -57,7 +57,7 @@ const liveIn = (map: WorldMap, slot: number, name: string, x: number, y: number,
 };
 
 describe("World editor saves keep loot and player drops", () => {
-  test("design change: the editor shows and replaces only placed items, at most 20; loot and drops stay", () => {
+  test("design change: the editor shows and replaces only placed items, at most 200; loot and drops stay", () => {
     const a = testMap("x1000y992");
     a.ground.push(
       { id: "loot", item: "2 Gold", x: 1, y: 1, kind: "loot", expiresAt: 1 },
@@ -73,7 +73,7 @@ describe("World editor saves keep loot and player drops", () => {
       x: (i % 17) + 1,
       y: Math.floor(i / 17) + 4,
     }));
-    expect(EDITOR_ITEM_SLOTS).toBe(20);
+    expect(EDITOR_ITEM_SLOTS).toBe(200);
     expect(saveError(m)).not.toBeNull();
     m.items = [{ name: "Long Sword", x: 9, y: 9 }];
     let n = 0;

@@ -31,7 +31,6 @@ import { migrate } from "../src/persistence/migrations.ts";
 import { loadNpcFiles, npcFileVersions } from "../src/persistence/npcfiles.ts";
 import { npcFileRevision, npcRevisionOf } from "../src/systems/admin/npcedit.ts";
 import { npcPageFile, saveNpcPage } from "../src/systems/admin/npcpage.ts";
-import { openEditor } from "../src/systems/admin/worldedit.ts";
 import { giveGoldToNpc } from "../src/systems/economy/intents.ts";
 import { ledgerFromTemplate, type ShopLedger } from "../src/systems/economy/shop.ts";
 import type { ItemCtx } from "../src/systems/inventory/items.ts";

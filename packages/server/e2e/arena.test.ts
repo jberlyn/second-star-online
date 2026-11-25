@@ -1,5 +1,5 @@
 /**
- * Bot script: Alice, an administrator, paints a `6P` patch through the World Editor's SAVE. Before it,
+ * Bot script: Alice, an administrator, paints a `6P` patch through the World page's save. Before it,
  * Bob types `Challenge` and is told "This is not an arena!". After it, Bob's `Challenge` is read by
  * both bots as "Bob has entered the arena!" and Alice sees him jump onto a `6P` tile; a second one
  * says "You are already in a battle!!". Bob's `quit` is read by both as "Bob has stopped fighting."
@@ -10,7 +10,15 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import type { CreateMsg, DeltaEvent, EditorMap, ServerMsg } from "@secondstaronline/shared";
 
 import type { Rng } from "../src/rng.ts";
-import { type Bot, connectBot, settle, startTestServer, type TestServer } from "./harness.ts";
+import {
+  type Bot,
+  connectBot,
+  pageMap,
+  pageSave,
+  settle,
+  startTestServer,
+  type TestServer,
+} from "./harness.ts";
 
 const make = (name: string): CreateMsg => ({
   t: "create",
@@ -32,9 +40,7 @@ const rng: Rng = {
   random: (n) => (n >= 1 ? (queued[n]?.shift() ?? n) : 0),
 };
 
-type Editor = Extract<ServerMsg, { t: "editor"; editing: true }>;
 type Snapshot = Extract<ServerMsg, { t: "snapshot" }>;
-const isEditor = (m: ServerMsg): m is Editor => m.t === "editor" && m.editing;
 const isSnapshot = (m: ServerMsg): m is Snapshot => m.t === "snapshot";
 
 const PAINTED: [number, number][] = [
@@ -104,15 +110,12 @@ describe("the arena challenge", () => {
     expect(chats(alice)).toEqual([]);
   });
 
-  test("the arena is painted through the World Editor's SAVE", async () => {
-    alice.send({ t: "editOpen" });
-    const ed: Editor = await alice.waitFor(isEditor);
-    const m: EditorMap = structuredClone(ed.map);
+  test("the arena is painted through the World page's save", async () => {
+    const { map: m, revision } = await pageMap(alice, { mx: 1000, my: 992 });
     for (const [x, y] of PAINTED) {
       m.layers[0][y - 1] = withCode(m.layers[0][y - 1] ?? "", x, "6P");
     }
-    alice.send({ t: "editSave", map: m });
-    await alice.waitFor((x) => x.t === "alert");
+    await pageSave(alice, m, revision);
     alice.clear();
     alice.send({ t: "editClose" });
     await alice.waitFor(isSnapshot);

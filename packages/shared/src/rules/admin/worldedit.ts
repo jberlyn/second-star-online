@@ -64,6 +64,11 @@ export interface EditorMob {
   name: string;
   x: number;
   y: number;
+  /**
+   * The slot has no home tile (`/roster` set it): it spawns anywhere, and `x`/`y` only mark it on
+   * the map. Placing it on a tile clears this.
+   */
+  anywhere?: true;
 }
 
 /** An item placed in the editor (sprites 158-177). */
@@ -88,12 +93,20 @@ export interface EditorMap {
   fog: MapFog;
   /** Sprites 180-183 in order: the four roster slots; null where nothing is placed. */
   mobs: [EditorMob | null, EditorMob | null, EditorMob | null, EditorMob | null];
-  /** At most 20 (sprites 158-177). */
+  /** At most `EDITOR_ITEM_SLOTS`. */
   items: EditorItem[];
 }
 
-/** Item sprites 158-177: the most items one map's editor can hold. */
-export const EDITOR_ITEM_SLOTS = 20;
+/**
+ * The most items one map's editor holds. 1.6's World Editor had 20 (sprites 158-177); the World page
+ * holds every item placed on a map, `/drop` included, up to this bound.
+ */
+export const EDITOR_ITEM_SLOTS = 200;
+
+/** Whether a code is one the editors may paint (the palette pages; the save checks the same set). */
+export function isPaletteCode(code: string): boolean {
+  return PALETTE_CODES.has(code);
+}
 
 /** Bounds on free text. Not game rules: the original fields had none. */
 export const SIGN_MAX = 1000;

@@ -13,8 +13,10 @@ import {
   airshipWalkGrid,
   anyMapName,
   banNotice,
+  blankMap,
   CHARACTER_SEARCH_LIMIT,
   CHAT_COLOR,
+  type ContentMapsView,
   type CreateMsg,
   can,
   canOpenControlPanel,
@@ -179,7 +181,11 @@ import {
   findMapByCoords,
   findMapById,
   insertMapVersion,
+  latestMapVersionId,
   listInteriorMapNames,
+  listMapPlacements,
+  listMapVersions,
+  mapVersionData,
   saveMap,
   saveMapExits,
   saveMapLayers,
@@ -279,7 +285,7 @@ import {
   applySave,
   closeEditor,
   editorMap,
-  openEditor,
+  editorView,
   SAVED,
   saveError,
   versionData,
@@ -523,9 +529,6 @@ export interface Game {
  */
 const EDITOR_INTENTS = new Set([
   "controlPanelOpen",
-  "editOpen",
-  "editLoad",
-  "editSave",
   "editClose",
   "settingsOpen",
   "settingsSave",
@@ -543,6 +546,10 @@ const EDITOR_INTENTS = new Set([
   // The NPCs page (issue #32).
   "contentNpcs",
   "contentNpcSave",
+  // The World page (issue #33).
+  "contentMaps",
+  "contentMapSave",
+  "contentMapRestore",
   "assassinGame",
   // IM, Away and chat rooms are their own windows (MIAWs), usable over the editors.
   "im",
@@ -568,12 +575,13 @@ const EDITOR_INTENTS = new Set([
  * Editor's.
  */
 const ADMIN_INTENTS: Readonly<Record<string, { permission: Permission; reason: string }>> = {
-  editOpen: { permission: "worldEditor", reason: "Attempted Admin Access" },
-  editLoad: { permission: "worldEditor", reason: "Attempted Admin Access" },
-  editSave: { permission: "worldEditor", reason: "Attempted Admin Access" },
   // The Control Panel's NPCs page (issue #32): the NPC Editor's permission.
   contentNpcs: { permission: "npcEditor", reason: "Attempting to get Admin access" },
   contentNpcSave: { permission: "npcEditor", reason: "Attempting to get Admin access" },
+  // The World page (issue #33): the World Editor's permission and reason.
+  contentMaps: { permission: "worldEditor", reason: "Attempted Admin Access" },
+  contentMapSave: { permission: "worldEditor", reason: "Attempted Admin Access" },
+  contentMapRestore: { permission: "worldEditor", reason: "Attempted Admin Access" },
   settingsOpen: { permission: "settings", reason: "Attempted Admin Access" },
   settingsSave: { permission: "settings", reason: "Attempted Admin Access" },
   roleSave: { permission: "settings", reason: "Attempted Admin Access" },
@@ -597,11 +605,8 @@ const ADMIN_INTENTS: Readonly<Record<string, { permission: Permission; reason: s
   assassinGame: { permission: "assassinGame", reason: "Attempted Admin Access" },
 };
 
-/** LOAD and SAVE belong to the editor they are sent from. */
-function editingOk(p: Player, t: string): boolean {
-  if (t === "editLoad" || t === "editSave") {
-    return p.editing === "world";
-  }
+/** No admin intent belongs to one place any more: the World and NPC editors are Control Panel pages. */
+function editingOk(_p: Player, _t: string): boolean {
   return true;
 }
 
@@ -2312,17 +2317,29 @@ export function createGame(deps: GameDeps): Game {
     month: houseMonth,
   });
 
-  const editSave = (p: Player, m: EditorMap) => {
-    if (!can(p.role, "worldEditor") || p.editing !== "world") {
-      return;
-    }
+  /**
+   * A map save, from the in-game World Editor or the Control Panel's World page (issue #33): checked
+   * (`saveError`), the map it replaces kept as a version, applied live to everyone on it, audited.
+   * `expect` is the revision the World page showed (null: no map there); the in-game editor names
+   * none. Returns whether it saved and what to tell the saver.
+   */
+  const saveEditorMap = (
+    p: Player,
+    m: EditorMap,
+    expect?: string | null,
+  ): { ok: boolean; text: string } => {
     const error = saveError(m);
     if (error) {
-      send(p.id, { t: "alert", text: error });
-      return;
+      return { ok: false, text: error };
     }
     const name = mapName(m.mx, m.my);
     const before = loadMap(name);
+    if (expect !== undefined && expect !== mapRevisionOf(before, m.mx, m.my)) {
+      return {
+        ok: false,
+        text: `Map ${name} changed since you opened it (another admin saved it): open it again before saving.`,
+      };
+    }
     const now = isoNow();
     let result: ReturnType<typeof applySave> | null = null;
     db.transaction(() => {
@@ -2380,7 +2397,112 @@ export function createGame(deps: GameDeps): Game {
       deliver((result as ReturnType<typeof applySave>).out);
     }
     audit({ actor: p.accountId, command: "editSave", target: name });
-    send(p.id, { t: "alert", text: SAVED });
+    return { ok: true, text: SAVED };
+  };
+  /**
+   * A map's revision as the World page names it, null with no map: a hash of the editor's view (so
+   * `/roster`, `/drop` and other live changes count) and of its newest version's id (every save and
+   * restore adds one, so a save of identical content, or a restore back to it, still counts).
+   */
+  const mapRevisionOf = (m: WorldMap | null, mx: number, my: number): string | null =>
+    m
+      ? new Bun.CryptoHasher("sha256")
+          .update(JSON.stringify(editorView(m, mx, my)))
+          .update(`\n${latestMapVersionId(db, m.id) ?? ""}`)
+          .digest("hex")
+          .slice(0, 16)
+      : null;
+  /** Why a saved version cannot be put back as it is (content changed since), or undefined. */
+  const versionBlocked = (data: unknown, mx: number, my: number): string | undefined => {
+    const v = versionAsEditorMap(data, mx, my);
+    return v ? (saveError(v) ?? undefined) : "This version's data cannot be read.";
+  };
+  /**
+   * The World page's view (issue #33): with `list` every grid map (a scan of the world, so only when
+   * asked), and with a position the map open.
+   */
+  const mapsView = (mx?: number, my?: number, list = false): ContentMapsView => {
+    const maps = list ? listMapPlacements(db) : null;
+    if (mx === undefined || my === undefined) {
+      return { maps, map: null };
+    }
+    // A position with no map is looked at, not loaded: `loadMap` would remember the miss for ever,
+    // so browsing empty positions would grow the cache.
+    const name = mapName(mx, my);
+    const m = mapCache.get(name) ?? (findMapByCoords(db, mx, my, 0) ? loadMap(name) : null);
+    const names = new Map<string, string>();
+    const nameOf = (id: string) => {
+      if (!names.has(id)) {
+        names.set(id, findAccountById(db, id)?.username ?? id);
+      }
+      return names.get(id) as string;
+    };
+    return {
+      maps,
+      map: {
+        map: m ? editorView(m, mx, my) : blankMap(mx, my),
+        exists: m !== null,
+        revision: mapRevisionOf(m, mx, my),
+        versions: m
+          ? listMapVersions(db, m.id).map((v) => {
+              const blocked = versionBlocked(v.data, mx, my);
+              return { id: v.id, by: nameOf(v.savedBy), at: v.at, ...(blocked ? { blocked } : {}) };
+            })
+          : [],
+      },
+    };
+  };
+  /** A saved version of a map as the editor holds a map, to save it back. */
+  const versionAsEditorMap = (data: unknown, mx: number, my: number): EditorMap | null => {
+    const v = data as {
+      title?: string;
+      layers?: EditorMap["layers"];
+      flags?: EditorMap["flags"];
+      exit1?: EditorMap["exit1"];
+      exit2?: EditorMap["exit2"];
+      signs?: EditorMap["signs"];
+      fog?: EditorMap["fog"];
+      roster?: { species: string | null; home: { x: number; y: number } | null }[];
+      items?: { name: string; x: number; y: number }[];
+    } | null;
+    if (!v?.layers || !v.flags) {
+      return null;
+    }
+    const blank = blankMap(mx, my);
+    // A slot with no home (`/roster`) comes back so, as `editorView` shows it.
+    const mobs = [0, 1, 2, 3].map((i) => {
+      const r = v.roster?.[i];
+      if (!r?.species) {
+        return null;
+      }
+      return r.home
+        ? { name: r.species, x: r.home.x, y: r.home.y }
+        : { name: r.species, x: i + 1, y: 1, anywhere: true as const };
+    }) as EditorMap["mobs"];
+    // Versions saved before factions were content name 1.6's letters (the migration rewrote live
+    // maps, not their history): W, M and A are the three factions; X and O are none.
+    const legacy: Record<string, string> = {
+      W: "warrior",
+      M: "mage",
+      A: "adventurer",
+      X: "",
+      O: "",
+    };
+    const fct = v.flags.fctSpwn ?? "";
+    return {
+      mx,
+      my,
+      layers: v.layers,
+      flags: { ...v.flags, fctSpwn: legacy[fct] ?? fct },
+      header: v.title ?? "",
+      signs: v.signs ?? blank.signs,
+      exit1: v.exit1 ?? null,
+      exit2: v.exit2 ?? null,
+      fog: v.fog ?? blank.fog,
+      mobs,
+      // Every placed item comes back; past `EDITOR_ITEM_SLOTS` the save refuses it (`blocked`).
+      items: v.items ?? [],
+    };
   };
 
   // House interiors whose house is gone (a crash between a demolition and its deferred delete, or
@@ -2813,6 +2935,40 @@ export function createGame(deps: GameDeps): Game {
         cheat(p.name, p.ip, gate.reason);
         return;
       }
+      // The World page (issue #33): maps saved live, as the World Editor saves them.
+      if (msg.t === "contentMaps") {
+        send(p.id, {
+          t: "contentMaps",
+          seq: msg.seq,
+          view: mapsView(msg.mx, msg.my, msg.list === true),
+        });
+        return;
+      }
+      if (msg.t === "contentMapSave") {
+        const r = saveEditorMap(p, msg.map, msg.expect);
+        send(p.id, {
+          t: "contentMaps",
+          seq: msg.seq,
+          view: mapsView(msg.map.mx, msg.map.my),
+          result: r,
+        });
+        return;
+      }
+      if (msg.t === "contentMapRestore") {
+        const m = loadMap(mapName(msg.mx, msg.my));
+        const data = m ? mapVersionData(db, m.id, msg.version) : null;
+        const restored = data ? versionAsEditorMap(data, msg.mx, msg.my) : null;
+        const r = restored
+          ? saveEditorMap(p, restored, msg.expect)
+          : { ok: false, text: "That version of the map is not there any more." };
+        send(p.id, {
+          t: "contentMaps",
+          seq: msg.seq,
+          view: mapsView(msg.mx, msg.my),
+          result: r.ok ? { ok: true, text: "The version is back: it is the map now." } : r,
+        });
+        return;
+      }
       // The NPCs page (issue #32): a whole NPC file, saved live as the NPC Editor does.
       if (msg.t === "contentNpcs") {
         send(p.id, {
@@ -3006,18 +3162,6 @@ export function createGame(deps: GameDeps): Game {
           audit({ actor: p.accountId, command: "assassin", target: msg.mode });
           flushChanged([...world.players.values()]); // online winners' prizes
           persistItems([]);
-          return;
-        case "editOpen":
-          deliver(openEditor(world, p, loadMap, parseMapName(p.map.name), casinoDeps));
-          return;
-        case "editLoad":
-          if (p.editing === "world") {
-            const { map, exists } = editorMap(loadMap, msg.mx, msg.my);
-            send(p.id, { t: "editor", editing: true, map, exists });
-          }
-          return;
-        case "editSave":
-          editSave(p, msg.map);
           return;
         case "editClose":
           deliver(closeEditor(world, p));

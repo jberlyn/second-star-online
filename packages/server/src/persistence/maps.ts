@@ -267,3 +267,91 @@ export function listInteriorMapNames(db: Db): string[] {
     .all()
     .map((r) => houseMapName(r.mx, r.my, r.slot));
 }
+
+/** One grid map as the Control Panel's World page lists it (issue #33). */
+export interface MapListing {
+  mx: number;
+  my: number;
+  name: string;
+  title: string;
+  /** The species its roster names, in slot order (empty slots left out). */
+  roster: string[];
+  /** The items placed on it in an editor (`admin` ground items). */
+  items: string[];
+}
+
+/** Every grid map (no house interiors) with its roster and placed items. */
+export function listMapPlacements(db: Db): MapListing[] {
+  const maps = db
+    .query<{ id: string; mx: number; my: number; title: string }, []>(
+      "SELECT id, mx, my, title FROM maps WHERE slot = 0 ORDER BY mx, my",
+    )
+    .all();
+  const roster = new Map<string, string[]>();
+  for (const r of db
+    .query<{ map_id: string; species: string }, []>(
+      "SELECT map_id, species FROM map_slots WHERE species IS NOT NULL ORDER BY map_id, slot",
+    )
+    .all()) {
+    roster.set(r.map_id, [...(roster.get(r.map_id) ?? []), r.species]);
+  }
+  const items = new Map<string, string[]>();
+  for (const r of db
+    .query<{ map_id: string; item: string }, []>(
+      "SELECT map_id, item FROM ground_items WHERE kind = 'admin' ORDER BY map_id, created_at",
+    )
+    .all()) {
+    items.set(r.map_id, [...(items.get(r.map_id) ?? []), r.item]);
+  }
+  return maps.map((m) => ({
+    mx: m.mx,
+    my: m.my,
+    name: anyMapName(m.mx, m.my, 0),
+    title: m.title,
+    roster: roster.get(m.id) ?? [],
+    items: items.get(m.id) ?? [],
+  }));
+}
+
+/** A map's saved versions, newest first: who saved over each, and when. */
+export function listMapVersions(
+  db: Db,
+  mapId: string,
+  limit = 50,
+): { id: string; savedBy: string; at: string; data: unknown }[] {
+  return db
+    .query<{ id: string; saved_by: string; created_at: string; data: string }, [string, number]>(
+      "SELECT id, saved_by, created_at, data FROM map_versions WHERE map_id = ? ORDER BY created_at DESC, id DESC LIMIT ?",
+    )
+    .all(mapId, limit)
+    .map((r) => ({
+      id: r.id,
+      savedBy: r.saved_by,
+      at: r.created_at,
+      data: JSON.parse(r.data) as unknown,
+    }));
+}
+
+/**
+ * The id of a map's newest version, or null: every save (and restore) adds one, so it tells two
+ * saves of the same content apart.
+ */
+export function latestMapVersionId(db: Db, mapId: string): string | null {
+  return (
+    db
+      .query<{ id: string }, [string]>(
+        "SELECT id FROM map_versions WHERE map_id = ? ORDER BY created_at DESC, id DESC LIMIT 1",
+      )
+      .get(mapId)?.id ?? null
+  );
+}
+
+/** One saved version's data (`versionData`), or null. */
+export function mapVersionData(db: Db, mapId: string, id: string): unknown {
+  const row = db
+    .query<{ data: string }, [string, string]>(
+      "SELECT data FROM map_versions WHERE map_id = ? AND id = ?",
+    )
+    .get(mapId, id);
+  return row ? (JSON.parse(row.data) as unknown) : null;
+}

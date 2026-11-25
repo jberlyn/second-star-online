@@ -201,11 +201,11 @@ describe("the NPCs page (the NPC Editor's successor, issue #32)", () => {
     expect(server.game.world.npcs.get("amber")?.chatter).toEqual(["Hello"]);
   });
 
-  test("the World Editor opens from the Control Panel; Return To Game puts Alice back", async () => {
+  test("the World page opens from the Control Panel; Return To Game puts Alice back", async () => {
     alice.clear();
     bob.clear();
-    alice.send({ t: "editOpen" });
-    await alice.waitFor((m) => m.t === "editor" && m.editing);
+    alice.send({ t: "contentMaps", seq: 9, mx: 1000, my: 992 });
+    await alice.waitFor((m) => m.t === "contentMaps");
     alice.send({ t: "editClose" });
     const snap = await alice.waitFor(
       (m): m is Extract<ServerMsg, { t: "snapshot" }> => m.t === "snapshot",

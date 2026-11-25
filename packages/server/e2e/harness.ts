@@ -14,6 +14,7 @@ import type {
   ClientMsg,
   CreateMsg,
   DeltaEvent,
+  EditorMap,
   InventoryView,
   ServerMsg,
 } from "@secondstaronline/shared";
@@ -452,4 +453,38 @@ export function queueRng(): QueueRng {
       fixed.clear();
     },
   };
+}
+
+type MapsAnswer = Extract<ServerMsg, { t: "contentMaps" }>;
+let mapSeq = 1_000_000;
+
+/**
+ * Opens a map on the Control Panel's World page (issue #33) as the bot's admin, taking it off the
+ * map as the World Editor did: the map as the editor holds it, and its revision. `at` defaults to
+ * the map the bot stands on.
+ */
+export async function pageMap(
+  bot: Bot,
+  at: { mx: number; my: number },
+): Promise<{ map: EditorMap; revision: string | null }> {
+  // Opens the Control Panel (nothing happens when it is open already); intents run in order, so
+  // the map is asked for from inside it.
+  bot.send({ t: "controlPanelOpen" });
+  const seq = ++mapSeq;
+  bot.send({ t: "contentMaps", seq, mx: at.mx, my: at.my });
+  const a = await bot.waitFor((m): m is MapsAnswer => m.t === "contentMaps" && m.seq === seq);
+  if (!a.view.map) {
+    throw new Error("no map");
+  }
+  return { map: structuredClone(a.view.map.map), revision: a.view.map.revision };
+}
+
+/** Saves a map from the World page (issue #33); throws if the save is refused. */
+export async function pageSave(bot: Bot, map: EditorMap, revision: string | null): Promise<void> {
+  const seq = ++mapSeq;
+  bot.send({ t: "contentMapSave", seq, map, expect: revision });
+  const a = await bot.waitFor((m): m is MapsAnswer => m.t === "contentMaps" && m.seq === seq);
+  if (!a.result?.ok) {
+    throw new Error(`map save refused: ${a.result?.text}`);
+  }
 }

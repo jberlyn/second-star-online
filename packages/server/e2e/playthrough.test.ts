@@ -57,6 +57,8 @@ import {
   lastInv,
   login,
   make,
+  pageMap,
+  pageSave,
   place,
   type QueueRng,
   queueRng,
@@ -68,8 +70,6 @@ import {
   tick,
 } from "./harness.ts";
 
-type Editor = Extract<ServerMsg, { t: "editor"; editing: true }>;
-const isEditor = (m: ServerMsg): m is Editor => m.t === "editor" && m.editing;
 const isSnapshot = (m: ServerMsg) => m.t === "snapshot";
 const goldOf = (bot: Bot) => lastInv(bot)?.gold;
 
@@ -125,16 +125,12 @@ describe("the playthrough", () => {
         throw e;
       }
     }, 30_000);
-  /** King loads a map in the World Editor, changes it and saves it. */
+  /** King opens a map on the World page, changes it and saves it. */
   const editMap = async (mx: number, my: number, fn: (m: EditorMap) => void) => {
-    king.clear();
-    king.send({ t: "editLoad", mx, my });
-    const ed = await king.waitFor(isEditor);
-    const m = structuredClone(ed.map);
+    const { map: m, revision } = await pageMap(king, { mx, my });
     fn(m);
     king.clear();
-    king.send({ t: "editSave", map: m });
-    await king.waitFor((x) => x.t === "alert" && x.text === TEXT.mapSaved);
+    await pageSave(king, m, revision);
   };
   const who = (name: string) => {
     const p = [...server.game.world.players.values()].find((x) => x.name === name);
@@ -205,9 +201,7 @@ describe("the playthrough", () => {
       result: { ok: true, text: "Saved Smithy's NPC file: it is live now." },
     });
 
-    // World Editor: the four maps.
-    king.send({ t: "editOpen" });
-    await king.waitFor(isEditor);
+    // The World page: the four maps (King is in the Control Panel already).
     await editMap(1000, 992, (m) => {
       m.header = "Town";
       m.exit1 = { mx: 1000, my: 993, x: 3, y: 3 };
@@ -266,8 +260,6 @@ describe("the playthrough", () => {
         { name: "Checkers Table", x: 12, y: 4 },
       ];
     });
-    king.send({ t: "editLoad", mx: 1000, my: 992 });
-    await king.waitFor(isEditor);
     king.clear();
     king.send({ t: "editClose" });
     await king.waitFor(isSnapshot);

@@ -56,9 +56,11 @@ export function editorView(m: WorldMap, mx: number, my: number): EditorMap {
     if (!s.species) {
       return null;
     }
-    // A slot set by `/roster` has no editor tile: shown on row 1 under its slot number.
-    const home = s.home ?? { x: i + 1, y: 1 };
-    return { name: s.species, x: home.x, y: home.y };
+    // A slot set by `/roster` has no editor tile: it spawns anywhere, marked on row 1 under its
+    // slot number, and a save keeps it so until it is placed on a tile.
+    return s.home
+      ? { name: s.species, x: s.home.x, y: s.home.y }
+      : { name: s.species, x: i + 1, y: 1, anywhere: true };
   });
   return {
     mx,
@@ -73,7 +75,6 @@ export function editorView(m: WorldMap, mx: number, my: number): EditorMap {
     mobs: [mobs[0] ?? null, mobs[1] ?? null, mobs[2] ?? null, mobs[3] ?? null],
     items: m.ground
       .filter((g) => g.kind === "admin")
-      .slice(0, 20)
       .map((g) => ({ name: dropText(g), x: g.x, y: g.y })),
   };
 }
@@ -118,28 +119,9 @@ export function leaveForEditor(
   return out;
 }
 
-/** Admin menu → World Editor. Anyone without `worldEditor` gets nothing. */
-export function openEditor(
-  world: World,
-  p: Player,
-  loadMap: (name: string) => WorldMap | null,
-  coords: { mx: number; my: number } | null,
-  casino: CasinoDeps,
-): Outgoing[] {
-  if (!can(p.role, "worldEditor") || p.editing === "world" || !coords) {
-    return [];
-  }
-  const out = leaveForEditor(world, p, "world", casino);
-  const { map, exists } = editorMap(loadMap, coords.mx, coords.my);
-  out.push({ to: p.id, msg: { t: "editor", editing: true, map, exists } });
-  return out;
-}
-
 /** Whether `role` may stay where `editing` is (a role change can take it away). */
 export function mayEdit(role: Player["role"], editing: Editing): boolean {
   switch (editing) {
-    case "world":
-      return can(role, "worldEditor");
     case "controlPanel":
       return canOpenControlPanel(role);
   }
@@ -214,12 +196,14 @@ export function applySave(
     }
     const name = placed ? (editorMobName(placed.name) ?? placed.name) : null;
     s.species = name;
-    s.home = placed ? { x: placed.x, y: placed.y } : null;
+    // A slot with no home (`anywhere`) stays so: the spawner puts it on a free tile.
+    const home = placed && !placed.anywhere ? { x: placed.x, y: placed.y } : null;
+    s.home = home;
     s.pause = 0;
     s.dirty = true;
     // `name:HP:x:y` with the species' HP, as a spawn takes it.
     s.live =
-      name && placed
+      name && placed && home
         ? {
             name,
             hp: spawnHp(name),

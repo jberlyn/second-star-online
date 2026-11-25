@@ -1,6 +1,7 @@
 /**
  * The World Editor on the server and exits in play, with seeded tick replays and real SQL.
  */
+
 import { describe, expect, test } from "bun:test";
 
 import {
@@ -20,12 +21,12 @@ import {
 } from "../src/persistence/maps.ts";
 import { migrate } from "../src/persistence/migrations.ts";
 import { loadSlots, saveSlots } from "../src/persistence/monsters.ts";
+import { openControlPanel } from "../src/systems/admin/control-panel.ts";
 import {
   applySave,
   closeEditor,
   editorItemOk,
   editorView,
-  openEditor,
   saveError,
 } from "../src/systems/admin/worldedit.ts";
 import { species } from "../src/systems/monsters/slots.ts";
@@ -104,10 +105,10 @@ describe("opening, saving and closing", () => {
     join(p);
     join(imm);
     const casino = { graceTicks: 600, addGoldOffline: () => {} };
-    expect(openEditor(world, p, () => a, { mx: 1000, my: 992 }, casino)).toEqual([]);
-    const out = openEditor(world, imm, () => a, { mx: 1000, my: 992 }, casino);
+    expect(openControlPanel(world, p, casino)).toEqual([]);
+    const out = openControlPanel(world, imm, casino);
     expect(out.some((o) => o.to === "p" && o.msg.t === "delta")).toBe(true);
-    expect(out.some((o) => o.to === "imm" && o.msg.t === "editor")).toBe(true);
+    expect(out.some((o) => o.to === "imm" && o.msg.t === "controlPanel")).toBe(true);
     expect(world.rooms.get("x1000y992")?.players).toEqual([p]);
     imm.char.hunger = 100;
     run(5);
@@ -157,12 +158,16 @@ describe("opening, saving and closing", () => {
     expect(editorView(a, 1000, 992).items).toEqual([{ name: "20 Apple", x: 3, y: 3 }]);
   });
 
-  test("the editor shows a /roster slot without a tile on row 1 under its slot number", () => {
+  test("a /roster slot without a tile spawns anywhere, marked on row 1, and a save keeps it so", () => {
     const a = testMap("x1000y992");
     if (a.slots[2]) {
       a.slots[2].species = "Wolf";
     }
-    expect(editorView(a, 1000, 992).mobs[2]).toEqual({ name: "Wolf", x: 3, y: 1 });
+    const m = editorView(a, 1000, 992);
+    expect(m.mobs[2]).toEqual({ name: "Wolf", x: 3, y: 1, anywhere: true });
+    const { world } = setup([a]);
+    applySave(world, a, m, () => "id");
+    expect(a.slots[2]).toMatchObject({ species: "Wolf", home: null, live: null });
   });
 });
 

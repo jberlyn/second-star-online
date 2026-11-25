@@ -24,7 +24,7 @@ import { migrate } from "../src/persistence/migrations.ts";
 import { saveRole } from "../src/persistence/roles.ts";
 import { applyRole } from "../src/systems/admin/commands.ts";
 import { openControlPanel } from "../src/systems/admin/control-panel.ts";
-import { closeEditor, openEditor } from "../src/systems/admin/worldedit.ts";
+import { closeEditor } from "../src/systems/admin/worldedit.ts";
 import { offerTrade, openTrade } from "../src/systems/economy/trade.ts";
 import { dueGives } from "../src/systems/inventory/items.ts";
 import { player, rngByN, setup, testMap } from "./helpers/sim.ts";
@@ -59,7 +59,9 @@ describe("who may open the Control Panel", () => {
     expect(canOpenControlPanel(MODERATOR)).toBe(false);
     expect(canOpenControlPanel(ADMINISTRATOR)).toBe(true);
     expect(canOpenControlPanel(roleWith("settings"))).toBe(true);
-    expect(canOpenControlPanel(roleWith("worldEditor", "drop"))).toBe(false);
+    expect(canOpenControlPanel(roleWith("drop"))).toBe(false);
+    // The World page (issue #33) is the World Editor's: that permission alone opens it too.
+    expect(canOpenControlPanel(roleWith("worldEditor"))).toBe(true);
     // The NPCs page (issue #32) is the NPC Editor's: that permission alone opens the Control Panel.
     expect(canOpenControlPanel(roleWith("npcEditor"))).toBe(true);
   });
@@ -114,10 +116,7 @@ describe("opening and leaving", () => {
   test("moving between the Control Panel and the World Editor never puts the admin back on the map", () => {
     const { world, map, admin } = scene();
     openControlPanel(world, admin, casino);
-    const steps = [
-      openEditor(world, admin, () => map, { mx: 1000, my: 992 }, casino),
-      openControlPanel(world, admin, casino),
-    ];
+    const steps = [openControlPanel(world, admin, casino), openControlPanel(world, admin, casino)];
     expect(admin.editing).toBe("controlPanel");
     for (const out of steps) {
       expect(out.some((o) => o.msg.t === "snapshot" || o.msg.t === "delta")).toBe(false);

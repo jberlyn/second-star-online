@@ -30,17 +30,17 @@ An entry uses this shape; `Pinned by` is optional:
 | Section | Entries |
 |---|---:|
 | [Design changes](#design-changes) | 83 |
-| [Fixed bugs](#fixed-bugs) | 306 |
+| [Fixed bugs](#fixed-bugs) | 303 |
 | [Kept on purpose](#kept-on-purpose) | 12 |
 | [Server authority and exploits](#server-authority-and-exploits) | 138 |
 | [Not in SSO](#not-in-sso) | 40 |
-| **Total** | **579** |
+| **Total** | **576** |
 
 By system (the code folder that holds the change):
 
 | System | Bugs fixed | Server authority and exploits |
 |---|---:|---:|
-| admin | [14](#admin) | [25](#server-side-admin) |
+| admin | [11](#admin) | [25](#server-side-admin) |
 | casino | [16](#casino) | [3](#server-side-casino) |
 | chat | [12](#chat) | [7](#server-side-chat) |
 | combat | [28](#combat) | [7](#server-side-combat) |
@@ -66,12 +66,12 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 #### World editor saves keep loot and player drops
 - **Kind:** Limit lifted
-- **What you notice:** Saving a map in the World Editor leaves loot and player drops that appeared while it was open.
+- **What you notice:** Saving a map on the World page leaves loot and player drops that appeared while it was open, and keeps every item placed on it.
 - **1.6:** Save rewrote the entire 20-slot item file from the editor's loaded sprites, wiping loot and drops that arrived after loading.
-- **SSO:** The editor shows and saves only placed items, including operator placements and `/drop`, at most 20; loot and player drops are untouched.
+- **SSO:** The World page shows and saves only placed items, including operator placements and `/drop`, at most 200 (every one, so a save never drops a `/drop` past 1.6's 20); loot and player drops are untouched.
 - **Why:** The 20-item ground limit is lifted and saving a map should not destroy players' items.
 - **In the code:** `packages/server/src/systems/admin/worldedit.ts` (`applySave`)
-- **Pinned by:** `save: the placed monsters become the roster and live monsters at full HP; loot stays` (packages/server/tests/worldedit.test.ts); `design change: the editor shows and replaces only placed items, at most 20; loot and drops stay` (packages/server/tests/ledger-pins-d.test.ts)
+- **Pinned by:** `save: the placed monsters become the roster and live monsters at full HP; loot stays` (packages/server/tests/worldedit.test.ts); `design change: the editor shows and replaces only placed items, at most 200; loot and drops stay` (packages/server/tests/ledger-pins-d.test.ts)
 
 #### No per-swing target slot limit
 - **Kind:** Limit lifted
@@ -184,6 +184,15 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Pinned by:** `a player gets nothing; an admin leaves the room, stops ticking and gets the Control Panel`; `moving between the Control Panel and the World Editor never puts the admin back on the map`; `a player's controlPanelOpen is refused and written to the cheat log`; `a role that loses its Control Panel permissions is sent back to the game` (packages/server/tests/control-panel.test.ts); `the Control Panel replaces the game and its menu bar; Return to Game brings the game back`; `floating windows open over the Control Panel at their own size, and IMs are counted`; `unsaved changes ask before Return to Game, another page or a classic tool` (packages/client/tests/control-panel.test.ts); `every role that held every permission gets the new ones; the seeded roles match the defaults` (packages/server/tests/roles.test.ts)
 
 
+#### The World Editor is the Control Panel's World page
+- **Kind:** World content
+- **What you notice:** Admin → World Editor opens the Control Panel's **World** page: every map in a searchable list (by position, header, or the monsters and items placed on it), and the open map drawn with the game's art, with layers shown or hidden, pencil, fat brush, whole-layer fill, flood fill, rectangle fill, eyedropper, select with copy, cut and paste, stamps, and undo and redo; the four spawns, placed items, exits, signs, header, flags and fog as forms; and the map's saved versions, each one restorable. Saving applies at once, as the World Editor's always did.
+- **1.6:** The World Editor (frames 262-288) painted one tile at a time with a pencil, a five-tile brush or a whole-layer bucket from a palette in pages of 60, placed monsters and items by clicking, and kept no history.
+- **SSO:** The page sends the same map a World Editor save sent, and the server checks and applies it the same way (`editorMapError`, `applySave`), keeping the map it replaced as a version; a restore is a save of an old version. A save names the revision of the map it started from and is refused over a newer save. The frame-262 window and its LOAD and SAVE messages are gone.
+- **Why:** Building a world one tile at a time with no undo was slow and unforgiving.
+- **In the code:** `packages/client/src/ui/world-page.ts`; `packages/shared/src/rules/admin/mapedit.ts`; `packages/server/src/game.ts` (`saveEditorMap`, `mapsView`)
+- **Pinned by:** `undo and redo walk the history; a new change drops the redo side` (packages/shared/tests/admin/mapedit.test.ts); `a pencil paints the active layer; undo and redo walk it; the save names the opened revision` (packages/client/tests/world-page.test.ts); `a map opens with its revision; a save applies live and is versioned; a stale one is refused; a version comes back` (packages/server/tests/world-page.test.ts)
+
 #### NPC files are edited on the Control Panel's NPCs page
 - **Kind:** World content
 - **What you notice:** Admin → NPC Editor opens the Control Panel's **NPCs** page: every NPC file in a searchable list (shopkeepers, bankers, trainers, those that drop loot), and the open one as forms, one per section (Bio, profile, chatter, what it sells and buys, its till, banker, trainer, loot, spells and flags), with item and class pickers, or as its text. Switching between the two carries the edit across, and the server's own check runs as you type. Saving applies at once, as the NPC Editor's always did.
@@ -191,15 +200,15 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** The forms write only the lines their section holds; every other line (`OWN|`, blank lines, an unknown tag) stays where it is, and an unchanged entry keeps its line exactly, so a file round-trips byte for byte. A line read two ways (a drop line inside a Bio line) opens the file as text. The frame-311 window and its LOAD and SAVE messages are gone. The Monsters page links to a monster's whole NPC file.
 - **Why:** Operators should not need to know the line syntax to run a shop or give a monster loot.
 - **In the code:** `packages/client/src/ui/npcs-page.ts`; `packages/shared/src/rules/admin/npcfile.ts` (`npcModel`, `withNpcModel`); `packages/server/src/systems/admin/npcpage.ts`
-- **Pinned by:** `every Classic file reads as the game reads it, and comes back byte for byte` (packages/shared/tests/admin/npcfile-model.test.ts); `a sell added in the sections saves the whole file, other lines kept, with its revision`; `the text view carries the sections' edit, and back; a refused line is shown as you type` (packages/client/tests/npcs-page.test.ts); `Admin holds Control Panel, World Editor, NPC Editor, Return To Game, then the three Assassin items; Admin Chat is on Chat; NPC Editor opens the Control Panel's NPCs page` (packages/client/tests/admin-menu.test.ts)
+- **Pinned by:** `every Classic file reads as the game reads it, and comes back byte for byte` (packages/shared/tests/admin/npcfile-model.test.ts); `a sell added in the sections saves the whole file, other lines kept, with its revision`; `the text view carries the sections' edit, and back; a refused line is shown as you type` (packages/client/tests/npcs-page.test.ts); `Admin holds Control Panel, World Editor, NPC Editor, then the three Assassin items; Admin Chat is on Chat; the editors open the Control Panel's World and NPCs pages` (packages/client/tests/admin-menu.test.ts)
 #### Roster chat commands for operators
 - **Kind:** World content
 - **What you notice:** An administrator can inspect or change the four monster roster slots with `/roster`; the World Editor can also set them.
 - **1.6:** A GM placed up to four monsters with the World Editor; there was no roster chat command.
-- **SSO:** `/roster` lists the roster, `/roster <1-4> <species>` sets a slot and `/roster <1-4> clear` clears it. For anyone else they are an unknown command. The command remains useful for species the editor's lists do not offer; a slot set through it has no editor tile and appears on row 1 under its slot number. The first administrator comes from `bun run admin:role`.
+- **SSO:** `/roster` lists the roster, `/roster <1-4> <species>` sets a slot and `/roster <1-4> clear` clears it. For anyone else they are an unknown command. The command remains useful for species the editor's lists do not offer; a slot set through it has no home tile: it spawns anywhere, the World page marks it faintly on row 1 under its slot number, and a save keeps it so until it is placed on a tile. The first administrator comes from `bun run admin:role`.
 - **Why:** Operators needed a way to place monsters before the editor existed.
 - **In the code:** `packages/server/src/systems/admin/roster.ts` (`handleRoster`)
-- **Pinned by:** `an administrator lists, sets and clears slots; the change is saved`; `SSO: anyone else is told it is an unknown command; nothing is said` (packages/server/tests/monsters-db.test.ts)
+- **Pinned by:** `an administrator lists, sets and clears slots; the change is saved`; `SSO: anyone else is told it is an unknown command; nothing is said` (packages/server/tests/monsters-db.test.ts); `a /roster slot without a tile spawns anywhere, marked on row 1, and a save keeps it so` (packages/server/tests/worldedit.test.ts)
 
 #### Spawn chat command for operators
 - **Kind:** World content
@@ -230,11 +239,11 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 #### Monsters without art are not placeable
 - **Kind:** World content
-- **What you notice:** The monster editor does not offer monsters whose walking art is missing.
+- **What you notice:** The World page's spawn lists do not offer monsters whose walking art is missing.
 - **1.6:** Stone Skull, Dragon, Ogre, the Strippers and Overlord, bodies 500, 501, 503, 855–857 and 988, have no front-walk bitmap in the character cast and would have been invisible if placed.
 - **SSO:** Their stats, loot and experience remain in the monster data, but the editor does not offer them.
 - **Why:** An invisible monster never worked as a visible feature; an operator can enable one if art is added.
-- **In the code:** `packages/client/src/ui/worldeditor.ts` (`createWorldEditor`), `packages/server/src/systems/admin/roster.ts` (`handleRoster`)
+- **In the code:** `packages/client/src/ui/world-page.ts` (`createWorldPage`, the spawn lists), `packages/server/src/systems/admin/roster.ts` (`handleRoster`)
 - **Pinned by:** `design change: the editor lists offer no art-less body; their data stays` (packages/server/tests/ledger-pins-d.test.ts); `an administrator lists, sets and clears slots; the change is saved` (packages/server/tests/monsters-db.test.ts)
 
 #### A Classic world is 1.6's distributed maps
@@ -472,15 +481,6 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Why:** The user reported the steps as misaligned wood under the right panel.
 - **In the code:** `packages/data/build/assets-lib/panel-tabs.ts` (`mendPanelSeam`, `PANEL_SEAM`)
 - **Pinned by:** `the mended wood lines up across the strip` (packages/data/tests/assets.test.ts)
-
-#### World Editor sign panel text and OK align inside its frame
-- **Kind:** Platform
-- **What you notice:** The sign text field sits inside the World Editor sign frame, and the panel shows one crisp OK.
-- **1.6:** The score put the editable `SignText` field at (26,20) inside the sign panel, 228×54, and the 31×19 Internal #91 bitmap's top-left at (228,69) over the OK baked into Internal #10.
-- **SSO:** The textarea starts at (24,24) with a 13px line height, clear of the frame's top border. Internal #91 is drawn at its natural 31×19 size at (233,72), exactly over the baked OK, inside the same 39×29 hit area.
-- **Why:** A browser textarea starts its text at the top of its box, unlike Director's field inset, so the score's rect put text against the top border. Stretching the OK bitmap to the sprite's 39×29 box offset its glyph and left the baked OK showing beside it.
-- **In the code:** `packages/client/src/ui/worldeditor.ts` (`createWorldEditor`), `packages/client/src/styles.css` (`.we-sign`)
-- **Pinned by:** `the sign panel's text field and OK patch line up with Internal #10` (packages/client/tests/worldeditor.test.ts)
 
 #### /logchat becomes a browser download
 - **Kind:** Platform
@@ -860,30 +860,21 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 #### World editor faction checkboxes are mutually exclusive
 - **Kind:** Bug fixed
-- **What you notice:** Ticking W, M, or A in the World Editor clears the other two boxes.
+- **What you notice:** A map's faction spawn is one faction: the World page's Faction spawn picks one, or none.
 - **1.6:** Ticking A cleared M twice and left W ticked.
 - **SSO:** `clickFaction` clears the other two boxes on every faction toggle: the map holds one faction, by key, and each box picks the faction `factionRules.editorBoxes` gives it.
 - **Why:** Prevents ambiguous multi-faction checkbox states.
 - **In the code:** `packages/shared/src/rules/admin/worldedit.ts` (`clickFaction`)
-- **Pinned by:** `the W, M and A boxes pick Classic's Warrior, Mage and Adventurer and are mutually exclusive` (packages/shared/tests/admin/worldedit.test.ts); `faction checkboxes W, M and A are mutually exclusive in the editor UI` (packages/client/tests/worldeditor.test.ts)
-
-#### World editor lit S layer button stays on layer S
-- **Kind:** Bug fixed
-- **What you notice:** Clicking the already-lit S layer button in the World Editor keeps layer S selected and only S lit.
-- **1.6:** Clicking lit S switched to layer 3 and lit 3 without unlighting S.
-- **SSO:** `clickLayer` is a no-op when any already-lit layer button is clicked.
-- **Why:** Makes all four layer buttons behave consistently.
-- **In the code:** `packages/shared/src/rules/admin/worldedit.ts` (`clickLayer`)
-- **Pinned by:** `layer buttons select their layer; clicking any lit layer button (including S) is stable` (packages/shared/tests/admin/worldedit.test.ts); `clicking lit layer S stays on layer S and keeps only S lit` (packages/client/tests/worldeditor.test.ts)
+- **Pinned by:** `the W, M and A boxes pick Classic's Warrior, Mage and Adventurer and are mutually exclusive` (packages/shared/tests/admin/worldedit.test.ts)
 
 #### World editor resets exit fields when loading a map without exits
 - **Kind:** Bug fixed
-- **What you notice:** Loading a map that has no exit clears the World Editor's exit fields instead of keeping the previous map's exits.
+- **What you notice:** Opening a map that has no exit on the World page leaves its exit fields empty instead of keeping the previous map's exits.
 - **1.6:** Absent exits left the previous map's exit fields populated, so saving wrote stale exits into the new map.
 - **SSO:** `exitFieldsAfterLoad` resets to `EMPTY_EXIT_FIELDS` when an exit is `null`.
 - **Why:** Prevents accidentally copying exits from an earlier map onto a new map on save.
 - **In the code:** `packages/shared/src/rules/admin/worldedit.ts` (`exitFieldsAfterLoad`)
-- **Pinned by:** `loading a map without an exit resets the exit fields so saving does not recreate a stale exit` (packages/shared/tests/admin/worldedit.test.ts); `loading a map with no exit resets the exit fields so saving does not recreate a stale exit` (packages/client/tests/worldeditor.test.ts)
+- **Pinned by:** `loading a map without an exit resets the exit fields so saving does not recreate a stale exit` (packages/shared/tests/admin/worldedit.test.ts)
 
 #### An NPC file shows every line, and a save never writes over a change it has not seen
 - **Kind:** Bug fixed
@@ -929,24 +920,6 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Why:** The windows were 1.6 reader limits with no gameplay purpose, and only surprised operators writing long files.
 - **In the code:** `packages/shared/src/rules/admin/npcfile.ts` (`parseNpcFile`, `checkNpcFile`, `NPC_MAX_LINES`); `packages/shared/src/rules/monsters/loot.ts` (`rollLoot`)
 - **Pinned by:** `bug fixed: INV| counts on any line, past line 80 too`; `bug fixed: RND| counts on any line, past line 20 too`; `warned: inert tags only; no line is outside a reader's window` (packages/shared/tests/admin/npcfile.test.ts); `bug fixed: a chatter line past line 20 saves with no warning, and is said` (packages/server/e2e/npc-editor.test.ts)
-
-#### World Editor palette: empty slots are blank
-- **Kind:** Bug fixed
-- **What you notice:** Empty World Editor palette slots are blank and cannot be clicked.
-- **1.6:** Page 10 stopped at member 589; its last 11 slots retained whichever tiles had previously occupied those sprites and could still be painted.
-- **SSO:** Empty slots on every page are blank and unclickable. Added tiles without a member fill page 10's slots 50–60 first, followed by pages of 60. Without added tiles, only those last 11 page-10 slots visibly change.
-- **Why:** Stale slots duplicated tiles from earlier pages and depended on the route to page 10.
-- **In the code:** `packages/client/src/ui/worldeditor.ts` (`createWorldEditor`), `packages/shared/src/rules/admin/worldedit.ts` (`palettePageOf`, `palettePagesOf`)
-- **Pinned by:** `empty palette slots are blank and unclickable on every page; added tiles fill page 10 first` (packages/client/tests/worldeditor.test.ts)
-
-#### The World Editor's sign panel leaves the exit fields alone
-- **Kind:** Bug fixed
-- **What you notice:** Clicking the sign panel while exit panel 1 is open no longer hides exit 1's map X field or its neighbours.
-- **1.6:** The sign panel's background had a script that swapped exit 1's map X sprite to a blank picture and hid it and two neighbouring fields until you left the editor.
-- **SSO:** The sign panel's background is plain art with no click.
-- **Why:** The exit fields should stay editable while signs are edited.
-- **In the code:** `packages/client/src/ui/worldeditor.ts` (`createWorldEditor`)
-- **Pinned by:** `divergence: the sign panel's background leaves exit 1's map X field alone` (packages/client/tests/worldeditor.test.ts)
 
 ### casino
 
@@ -3749,7 +3722,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** Each account's role grants permissions, and the server checks the permission for each command and editor. Editor writes are validated and versioned. Admin commands that act on a player or the world (not `/inventory`, `/location` or `/banlist`, and `/iplookup` only when the player is online), world and NPC editor saves, setting changes and role changes are recorded in `audit_log` with actor, command, target, before and after; newspaper saves are not recorded; `bun run admin:audit [n]` reads it.
 - **Why:** Without server checks anyone could rewrite the world and ban lists.
 - **In the code:** `packages/shared/src/rules/admin/permissions.ts` (`can`), `packages/server/src/systems/admin/commands.ts` (`handleAdmin`), `packages/server/src/systems/admin/worldedit.ts` (`applySave`)
-- **Pinned by:** `an administrator holds every permission and an account with no role none` (packages/shared/tests/admin/permissions.test.ts); `SSO: a player's admin command is answered as an unknown one, privately, and does nothing` (packages/server/tests/admin.test.ts); `a role edit applies to everyone online who holds it at once, and is audited` (packages/server/tests/roles.test.ts); `a map round-trips exits, signs, fog and header; versions are kept` (packages/server/tests/worldedit.test.ts); `a save writes the file and its old version and drops the stored ledger; a restart loads it` (packages/server/tests/npcedit.test.ts); `every admin action is in the audit log` (packages/server/e2e/admin-and-settings.test.ts); `SSO: /inventory, /location, /banlist and an offline /iplookup are not audited; an online /iplookup is` (packages/server/tests/ledger-pins-a.test.ts); `SSO: World Editor and NPC Editor saves are in audit_log; a newspaper save is not` (packages/server/tests/ledger-pins-e.test.ts)
+- **Pinned by:** `an administrator holds every permission and an account with no role none` (packages/shared/tests/admin/permissions.test.ts); `SSO: a player's admin command is answered as an unknown one, privately, and does nothing` (packages/server/tests/admin.test.ts); `a role edit applies to everyone online who holds it at once, and is audited` (packages/server/tests/roles.test.ts); `a map round-trips exits, signs, fog and header; versions are kept` (packages/server/tests/worldedit.test.ts); `a save writes the file and its old version and drops the stored ledger; a restart loads it` (packages/server/tests/npcedit.test.ts); `every admin action is in the audit log` (packages/server/e2e/admin-and-settings.test.ts); `SSO: /inventory, /location, /banlist and an offline /iplookup are not audited; an online /iplookup is` (packages/server/tests/ledger-pins-a.test.ts); `SSO: map and NPC file saves are in audit_log; a newspaper save is not` (packages/server/tests/ledger-pins-e.test.ts)
 
 #### Login and account-creation limits
 - **Kind:** Exploit closed
@@ -3775,8 +3748,8 @@ Changes that move authority from the client to the server and close exploits tha
 - **1.6:** Exit fields, signs and headers were free text written into the map file. An exit could name any map or tile, including one off screen.
 - **SSO:** An exit is empty or has whole-number map coordinates and a tile on the map (1–17, 1–12). House-map coordinates may instead use matching `H1` or `H2` prefixes. Signs have at most 1,000 characters and headers 200. Tiles must be on the palette and monsters on the editor's lists. An exit with one field left blank is refused rather than read as 0, and the editor refuses it before sending, with the server's line (“An exit needs a whole-number map and a tile on the map.”).
 - **Why:** The server validates editor writes before they change the world.
-- **In the code:** `packages/server/src/systems/admin/worldedit.ts` (`saveError`, `applySave`), `packages/shared/src/rules/admin/worldedit.ts` (`exitFromFields`, `exitError`), `packages/client/src/ui/worldeditor.ts` (`createWorldEditor`)
-- **Pinned by:** `SSO: an exit needs whole-number map coordinates and a tile on the map, or matching H1/H2 prefixes`; `SSO: signs hold at most 1,000 characters and the header 200`; `SSO: tiles off the palette and monsters off the editor's lists are refused` (packages/server/tests/ledger-pins-a.test.ts); `the save is checked: palette codes, 12 rows of 17, listed monsters, ≤ 20 items, fog` (packages/shared/tests/admin/worldedit.test.ts); `bug fixed: an exit with one field left blank is no number, not map 0` (packages/shared/tests/admin/worldedit.test.ts); `bug fixed: an exit with a blank map field is refused before sending, with the server's line` (packages/client/tests/worldeditor.test.ts)
+- **In the code:** `packages/server/src/systems/admin/worldedit.ts` (`saveError`, `applySave`), `packages/shared/src/rules/admin/worldedit.ts` (`exitFromFields`, `exitError`), `packages/client/src/ui/world-page.ts` (`createWorldPage`)
+- **Pinned by:** `SSO: an exit needs whole-number map coordinates and a tile on the map, or matching H1/H2 prefixes`; `SSO: signs hold at most 1,000 characters and the header 200`; `SSO: tiles off the palette and monsters off the editor's lists are refused` (packages/server/tests/ledger-pins-a.test.ts); `the save is checked: palette codes, 12 rows of 17, listed monsters, ≤ 200 items, fog` (packages/shared/tests/admin/worldedit.test.ts); `bug fixed: an exit with one field left blank is no number, not map 0` (packages/shared/tests/admin/worldedit.test.ts)
 
 #### NPC editor checks its files
 - **Kind:** Exploit closed

@@ -38,7 +38,6 @@ import { createSignPanel } from "../src/ui/sign.ts";
 import { createTradeWindow } from "../src/ui/trade.ts";
 import { createWhoWindow } from "../src/ui/who.ts";
 import { createWindowLayer } from "../src/ui/window.ts";
-import { createWorldEditor } from "../src/ui/worldeditor.ts";
 
 // ---- every pointer listener, recorded as components are built --------------------------------
 const POINTER_EVENTS = new Set([
@@ -437,13 +436,7 @@ function buildAll(): HTMLElement[] {
   pSocial.window.el.querySelector<HTMLButtonElement>('.settings-link[data-page="social"]')?.click();
   pSocial.dispose();
 
-  // The World Editor with a map shown, every panel open; the sign panel in play.
-  const editor = createWorldEditor(fakeAssets, noop);
-  editor.show(blankMap(1000, 992), false);
-  holder(editor.screen.items.map((i) => i.el));
-  for (const el of editor.screen.items.map((i) => i.el)) {
-    el.hidden = false;
-  }
+  // The sign panel in play. (The World Editor is the Control Panel's World page, issue #33.)
   holder([createSignPanel(fakeAssets).el]);
 
   const alertRoot = holder([]);

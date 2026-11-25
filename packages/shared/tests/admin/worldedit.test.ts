@@ -184,7 +184,7 @@ describe("LOAD and SAVE", () => {
     expect(Number.isNaN(e?.my)).toBe(true);
     expect(Number.isInteger(e?.my)).toBe(false);
   });
-  test("the save is checked: palette codes, 12 rows of 17, listed monsters, ≤ 20 items, fog", () => {
+  test("the save is checked: palette codes, 12 rows of 17, listed monsters, ≤ 200 items, fog", () => {
     const ok = () => true;
     expect(editorMapError(blankMap(1, 1), ok)).toBeNull();
     const bad = blankMap(1, 1);
@@ -199,7 +199,7 @@ describe("LOAD and SAVE", () => {
     mob.mobs[0] = { name: "slime", x: 1, y: 1 };
     expect(editorMapError(mob, ok)).toBeNull();
     const items = blankMap(1, 1);
-    items.items = Array.from({ length: 21 }, () => ({ name: "Exit", x: 1, y: 1 }));
+    items.items = Array.from({ length: 201 }, () => ({ name: "Exit", x: 1, y: 1 }));
     expect(editorMapError(items, ok)).not.toBeNull();
     const fog = blankMap(1, 1);
     fog.fog = { tex: "Cloudy1", blend: 15, r: 0, g: 0, b: 0 };

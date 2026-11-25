@@ -142,6 +142,8 @@ export const CONTROL_PANEL_PERMISSIONS: readonly Permission[] = [
   "contentEditor",
   // The NPCs page (issue #32).
   "npcEditor",
+  // The World page (issue #33).
+  "worldEditor",
 ];
 
 /** Whether `role` may open the Control Panel (it holds a permission with a page there). */

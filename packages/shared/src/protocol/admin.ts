@@ -42,6 +42,12 @@ const mapExit = z
   .nullable();
 
 const placed = z.strictObject({ name: z.string().min(1).max(40), x: tileX, y: tileY });
+const placedMob = z.strictObject({
+  name: z.string().min(1).max(40),
+  x: tileX,
+  y: tileY,
+  anywhere: z.literal(true).optional(),
+});
 
 /** One editor save; the server checks the rest (`editorMapError`). */
 export const editorMapSchema = z.strictObject({
@@ -66,22 +72,56 @@ export const editorMapSchema = z.strictObject({
     g: z.number().int().min(0).max(255),
     b: z.number().int().min(0).max(255),
   }),
-  mobs: z.tuple([placed.nullable(), placed.nullable(), placed.nullable(), placed.nullable()]),
+  mobs: z.tuple([
+    placedMob.nullable(),
+    placedMob.nullable(),
+    placedMob.nullable(),
+    placedMob.nullable(),
+  ]),
   items: z.array(placed).max(EDITOR_ITEM_SLOTS),
 });
 
-/** Admin menu → World Editor. */
-export const editOpenSchema = z.strictObject({ t: z.literal("editOpen") });
+// ---- the Control Panel's World page (issue #33) ----
 
-/** LOAD or a map arrow: the map at X/Y. */
-export const editLoadSchema = z.strictObject({
-  t: z.literal("editLoad"),
-  mx: gridPos,
-  my: gridPos,
+const pageSeq = z.number().int().min(0).max(Number.MAX_SAFE_INTEGER);
+const mapRevision = z
+  .string()
+  .regex(/^[0-9a-f]{16}$/)
+  .nullable();
+
+/**
+ * Asks for the World page's view: with `list`, every grid map with its spawns and placed items, and
+ * with `mx`/`my` the map open (as the editor holds it, with its revision and saved versions).
+ */
+export const contentMapsSchema = z.strictObject({
+  t: z.literal("contentMaps"),
+  seq: pageSeq,
+  mx: gridPos.optional(),
+  my: gridPos.optional(),
+  list: z.boolean().optional(),
 });
 
-/** SAVE. */
-export const editSaveSchema = z.strictObject({ t: z.literal("editSave"), map: editorMapSchema });
+/**
+ * The World page's save: the map as the in-game World Editor's SAVE sends it, checked and applied
+ * the same way, live. `expect` is the map's revision as the page last showed it (null: no map
+ * there yet); a save over a newer one is refused.
+ */
+export const contentMapSaveSchema = z.strictObject({
+  t: z.literal("contentMapSave"),
+  seq: pageSeq,
+  map: editorMapSchema,
+  expect: mapRevision,
+});
+
+/** Puts a saved version of a map back, as a save (so it is versioned too). */
+export const contentMapRestoreSchema = z.strictObject({
+  t: z.literal("contentMapRestore"),
+  seq: pageSeq,
+  mx: gridPos,
+  my: gridPos,
+  version: z.string().min(1).max(64),
+  expect: mapRevision,
+});
 
 /** Admin menu → Return To Game. */
 export const editCloseSchema = z.strictObject({ t: z.literal("editClose") });
@@ -366,13 +406,43 @@ export interface SettingRow {
   zero?: string;
 }
 
-export type AdminServerMsg =
+/** One grid map on the World page's list (issue #33). */
+export interface MapListEntry {
+  mx: number;
+  my: number;
+  name: string;
+  title: string;
+  /** The species its roster names. */
+  roster: string[];
+  /** The items placed on it in an editor. */
+  items: string[];
+}
+
+/** The World page's view (issue #33). */
+export interface ContentMapsView {
+  /** Every grid map, when asked for (`list`); null otherwise. */
+  maps: MapListEntry[] | null;
   /**
-   * The World Editor shows a map (the map, item and monster fetches, then the map render): on
-   * entering, on LOAD and on the arrows. `editing` is false when the editor closes; the map
-   * snapshot follows.
+   * The map open: as the editor holds it, its revision (null with no map there) and its latest
+   * versions; `blocked` says why a version cannot be restored as it is.
    */
-  | { t: "editor"; editing: true; map: EditorMap; exists: boolean }
+  map: {
+    map: EditorMap;
+    exists: boolean;
+    revision: string | null;
+    versions: { id: string; by: string; at: string; blocked?: string }[];
+  } | null;
+}
+
+export type AdminServerMsg =
+  /** The World page's view (issue #33), after an ask or with a save's or restore's answer. */
+  | {
+      t: "contentMaps";
+      seq: number;
+      view: ContentMapsView;
+      result?: { ok: boolean; text: string };
+    }
+  /** Return to Game left the Control Panel; the map snapshot follows. */
   | { t: "editor"; editing: false }
   /** The Control Panel opens. Return to Game closes it with `editor` (`editing: false`). */
   | { t: "controlPanel" }

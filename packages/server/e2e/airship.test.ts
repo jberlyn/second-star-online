@@ -1,5 +1,5 @@
 /**
- * Bot script: Alice, an administrator, paints two `J2` pads through the World Editor's SAVE and drops an
+ * Bot script: Alice, an administrator, paints two `J2` pads through the World page's save and drops an
  * Airship Deed beside herself. She uses it facing a pad (the airship appears, the deed is gone);
  * Bob, standing next to it, is told it is not his; Alice boards with Ctrl (body 57 for Bob), flies
  * over water in 8-frame steps, is refused a drop "from the sky" and a landing off a pad, parks on
@@ -10,7 +10,16 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import type { CreateMsg, DeltaEvent, EditorMap, ServerMsg } from "@secondstaronline/shared";
 
 import type { Rng } from "../src/rng.ts";
-import { type Bot, connectBot, face, settle, startTestServer, type TestServer } from "./harness.ts";
+import {
+  type Bot,
+  connectBot,
+  face,
+  pageMap,
+  pageSave,
+  settle,
+  startTestServer,
+  type TestServer,
+} from "./harness.ts";
 
 const make = (name: string): CreateMsg => ({
   t: "create",
@@ -29,9 +38,7 @@ const make = (name: string): CreateMsg => ({
 /** No spawns, moves, attacks or pushes. */
 const rng: Rng = { random: (n) => (n >= 1 ? n : 0) };
 
-type Editor = Extract<ServerMsg, { t: "editor"; editing: true }>;
 type Snapshot = Extract<ServerMsg, { t: "snapshot" }>;
-const isEditor = (m: ServerMsg): m is Editor => m.t === "editor" && m.editing;
 const isSnapshot = (m: ServerMsg): m is Snapshot => m.t === "snapshot";
 
 /** Replaces the code at column `x` of a layer row. */
@@ -86,19 +93,16 @@ describe("the Airship", () => {
     await server.stop();
   });
 
-  test("pads are painted through the World Editor's SAVE: J2 at (6,5) and (9,5), water at (7,5)", async () => {
+  test("pads are painted through the World page's save: J2 at (6,5) and (9,5), water at (7,5)", async () => {
     alice = await login("Alice");
     face(server, "Alice", "N"); // staging: 1.6 logs in facing south
     bob = await login("Bob");
     face(server, "Bob", "N"); // staging: 1.6 logs in facing south
-    alice.send({ t: "editOpen" });
-    const ed: Editor = await alice.waitFor(isEditor);
-    const m: EditorMap = structuredClone(ed.map);
+    const { map: m, revision } = await pageMap(alice, { mx: 1000, my: 992 });
     let row = m.layers[0][4] ?? "";
     row = withCode(withCode(withCode(row, 6, "J2"), 9, "J2"), 7, "W1");
     m.layers[0][4] = row;
-    alice.send({ t: "editSave", map: m });
-    await alice.waitFor((x) => x.t === "alert");
+    await pageSave(alice, m, revision);
     alice.clear();
     alice.send({ t: "editClose" });
     await alice.waitFor(isSnapshot);

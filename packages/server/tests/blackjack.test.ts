@@ -1,13 +1,14 @@
 /**
  * Sim tests: the Blackjack Table.
  */
+
 import { describe, expect, test } from "bun:test";
 
 import type { ServerMsg } from "@secondstaronline/shared";
 import { ADMINISTRATOR } from "@secondstaronline/shared";
 
 import { adminWarp } from "../src/systems/admin/commands.ts";
-import { openEditor } from "../src/systems/admin/worldedit.ts";
+import { openControlPanel } from "../src/systems/admin/control-panel.ts";
 import {
   bjBid,
   bjHit,
@@ -515,16 +516,10 @@ describe("a dropped connection", () => {
     a.role = ADMINISTRATOR;
     casinoLeave(t.world, b, t.deps);
     t.world.players.delete("Bob");
-    const out = openEditor(
-      t.world,
-      a,
-      (n) => (n === t.map.name ? t.map : null),
-      { mx: 1000, my: 992 },
-      t.deps,
-    );
+    const out = openControlPanel(t.world, a, t.deps);
     expect(out.some((m) => m.to === "Alice" && m.msg.t === "bj" && !m.msg.open)).toBe(true);
     expect(a.casino).toBeNull();
-    expect(a.editing).toBe("world");
+    expect(a.editing).toBe("controlPanel");
     expect(a.invDirty).toBe(true);
     expect(t.offline).toEqual([["Bob", 30]]);
     expect(t.world.casinoTables.size).toBe(0);

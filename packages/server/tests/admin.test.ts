@@ -8,6 +8,7 @@ import {
   ADMIN_TEXT,
   ADMINISTRATOR,
   banNotice,
+  blankMap,
   buildContentStore,
   CHAT_COLOR,
   type ContentData,
@@ -30,7 +31,7 @@ import { migrate } from "../src/persistence/migrations.ts";
 import { loadNpcFiles } from "../src/persistence/npcfiles.ts";
 import { loadSettingOverrides, saveSettingOverride } from "../src/persistence/settings.ts";
 import { type AdminDeps, applyRole, type CharacterAccount } from "../src/systems/admin/commands.ts";
-import { openEditor } from "../src/systems/admin/worldedit.ts";
+import { openControlPanel } from "../src/systems/admin/control-panel.ts";
 import { type ChatDeps, handleChat } from "../src/systems/chat/chat.ts";
 import { setAway } from "../src/systems/chat/im.ts";
 import { enterRoom, roomSay } from "../src/systems/chat/rooms.ts";
@@ -383,17 +384,11 @@ describe("warps", () => {
     const imm2 = player("Ed", seed, 1, 1);
     imm2.role = ADMINISTRATOR;
     world.players.set(imm2.id, imm2);
-    openEditor(
-      world,
-      imm2,
-      () => seed,
-      { mx: 1000, my: 992 },
-      {
-        graceTicks: 600,
-        addGoldOffline: () => {},
-      },
-    );
-    expect(imm2.editing).toBe("world");
+    openControlPanel(world, imm2, {
+      graceTicks: 600,
+      addGoldOffline: () => {},
+    });
+    expect(imm2.editing).toBe("controlPanel");
     const out = say(imm, "/warp Ed x1001y992 4 4");
     expect(imm2.editing).toBeNull();
     expect(out).toContainEqual({ to: "Ed", msg: { t: "editor", editing: false } });
@@ -788,17 +783,11 @@ describe("kicks, bans, roles and classes", () => {
     const { imm, say, world, seed } = scene();
     say(imm, "/warpscript help");
     expect(imm.warpscript).toBe("help");
-    openEditor(
-      world,
-      imm,
-      () => seed,
-      { mx: 1000, my: 992 },
-      {
-        graceTicks: 600,
-        addGoldOffline: () => {},
-      },
-    );
-    expect(imm.editing).toBe("world");
+    openControlPanel(world, imm, {
+      graceTicks: 600,
+      addGoldOffline: () => {},
+    });
+    expect(imm.editing).toBe("controlPanel");
     const out = applyRole(world, imm, MODERATOR);
     expect(imm.role).toBe(MODERATOR);
     expect(imm.warpscript).toBeNull();
@@ -1725,16 +1714,10 @@ describe("bans, settings and the logs in the game (real SQLite)", () => {
     const a = game.world.players.get(ann.characterId) as Player;
     a.vehicle = "Battleship";
     a.hull = 120;
-    openEditor(
-      game.world,
-      a,
-      () => a.map,
-      { mx: 1000, my: 992 },
-      {
-        graceTicks: 600,
-        addGoldOffline: () => {},
-      },
-    );
+    openControlPanel(game.world, a, {
+      graceTicks: 600,
+      addGoldOffline: () => {},
+    });
     expect([...game.world.rooms.values()].some((r) => r.players.includes(a))).toBe(false);
     try {
       const d = structuredClone(classicData) as ContentData;
@@ -1904,13 +1887,18 @@ describe("bans, settings and the logs in the game (real SQLite)", () => {
       text: "GLD|1",
       expect: null,
     });
-    // An administrator's editor SAVE from outside the editor is no honest client's either.
-    game.intent(alice.characterId, { t: "editLoad", mx: 1, my: 1 });
+    // A player's World page save is no honest client's either.
+    game.intent(bob.characterId, {
+      t: "contentMapSave",
+      seq: 2,
+      map: blankMap(1000, 992),
+      expect: null,
+    });
     expect(game.settings.jailSentence).toBe(600);
     expect(recentCheats(db, 10)).toEqual([
       { name: "Bob", ip: "10.0.0.1", reason: "Attempted Admin Access" },
       { name: "Bob", ip: "10.0.0.1", reason: "Attempting to get Admin access" },
-      { name: "Alice", ip: "10.0.0.1", reason: "Attempted Admin Access" },
+      { name: "Bob", ip: "10.0.0.1", reason: "Attempted Admin Access" },
     ]);
     sent.length = 0;
     game.intent(alice.characterId, { t: "chat", text: "/CheatFile" });
@@ -1918,7 +1906,7 @@ describe("bans, settings and the logs in the game (real SQLite)", () => {
       "* Cheater Log:",
       "Bob - at IP 10.0.0.1 - Attempted Admin Access",
       "Bob - at IP 10.0.0.1 - Attempting to get Admin access",
-      "Alice - at IP 10.0.0.1 - Attempted Admin Access",
+      "Bob - at IP 10.0.0.1 - Attempted Admin Access",
     ]);
   });
 

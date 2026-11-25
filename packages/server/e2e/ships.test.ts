@@ -1,6 +1,6 @@
 /**
  * Bot script: Alice, an administrator, paints a strait of water (row 5, columns 7-14) through the
- * World Editor's SAVE. Bob builds a Boat from the north shore and boards it; Alice builds a
+ * World page's save. Bob builds a Boat from the north shore and boards it; Alice builds a
  * Battleship from the west shore and boards it (body 56 for Bob). She sails at walking pace, is
  * stopped by the land and refused a drop "into the ocean", then fires her cannon east down the
  * strait: each shot spends a Cannonball, plays as `CannonballShotR` from her ship, and takes 16 off
@@ -26,6 +26,8 @@ import {
   face,
   idOf,
   lastInv,
+  pageMap,
+  pageSave,
   settle,
   startTestServer,
   type TestServer,
@@ -49,9 +51,7 @@ const make = (name: string): CreateMsg => ({
 /** No spawns, moves, attacks or pushes; every cannonball rolls the top of random(3), 16. */
 const rng: Rng = { random: (n) => (n >= 1 ? n : 0) };
 
-type Editor = Extract<ServerMsg, { t: "editor"; editing: true }>;
 type Snapshot = Extract<ServerMsg, { t: "snapshot" }>;
-const isEditor = (m: ServerMsg): m is Editor => m.t === "editor" && m.editing;
 const isSnapshot = (m: ServerMsg): m is Snapshot => m.t === "snapshot";
 
 /** Bag slot (1-based) the deed and the Cannonballs are put in before login. */
@@ -117,21 +117,18 @@ describe("Boats and Battleships", () => {
     await server.stop();
   });
 
-  test("a strait of water is painted through the World Editor's SAVE: row 5, columns 7-14", async () => {
+  test("a strait of water is painted through the World page's save: row 5, columns 7-14", async () => {
     alice = await login("Alice");
     face(server, "Alice", "E"); // staging: 1.6 logs in facing south
     bob = await login("Bob");
     face(server, "Bob", "S");
-    alice.send({ t: "editOpen" });
-    const ed: Editor = await alice.waitFor(isEditor);
-    const m: EditorMap = structuredClone(ed.map);
+    const { map: m, revision } = await pageMap(alice, { mx: 1000, my: 992 });
     const row = (m.layers[0][4] ?? "").split(" ");
     for (let x = 7; x <= 14; x++) {
       row[x - 1] = "W1";
     }
     m.layers[0][4] = row.join(" ");
-    alice.send({ t: "editSave", map: m });
-    await alice.waitFor((x) => x.t === "alert");
+    await pageSave(alice, m, revision);
     alice.send({ t: "editClose" });
     await alice.waitFor(isSnapshot);
     alice.send({ t: "mapReady" });

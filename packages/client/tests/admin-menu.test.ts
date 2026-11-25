@@ -46,7 +46,7 @@ describe("the Admin, Game and Chat menus (menu 502)", () => {
     rules: { chatMaxChars: 200 },
   };
 
-  test("Admin holds Control Panel, World Editor, NPC Editor, Return To Game, then the three Assassin items; Admin Chat is on Chat; NPC Editor opens the Control Panel's NPCs page", () => {
+  test("Admin holds Control Panel, World Editor, NPC Editor, then the three Assassin items; Admin Chat is on Chat; the editors open the Control Panel's World and NPCs pages", () => {
     window.innerWidth = 1024;
     window.innerHeight = 768;
     const root = document.createElement("div");
@@ -61,7 +61,6 @@ describe("the Admin, Game and Chat menus (menu 502)", () => {
       "-",
       "World Editor",
       "NPC Editor",
-      "Return To Game",
       "-",
       "Begin Assassin's Game",
       "Begin Lightning Assassin's Game",

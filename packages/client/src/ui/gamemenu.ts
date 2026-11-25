@@ -74,9 +74,6 @@ export function desktopMenus(state: MenuState, act: MenuActions): Menu[] {
   const room = (label: string, r: Room) => inGame(label, () => act.enterRoom(r));
   const controlPanel = () => CONTROL_PANEL_PERMISSIONS.some((p) => state.can(p));
   const editors = () => state.can("worldEditor") || state.can("npcEditor");
-  // Return To Game leaves the World Editor, the one editor the classic bar shows over (the NPC
-  // Editor is the Control Panel's NPCs page, issue #32).
-  const worldEditor = () => state.can("worldEditor");
   const gated = (label: string, run: () => void, permission: Permission) => ({
     ...item(label, run),
     visible: () => state.can(permission),
@@ -122,7 +119,8 @@ export function desktopMenus(state: MenuState, act: MenuActions): Menu[] {
         { kind: "sep", visible: () => controlPanel() && editors() },
         gated("World Editor", act.worldEditor, "worldEditor"),
         gated("NPC Editor", act.npcEditor, "npcEditor"),
-        { ...item("Return To Game", act.returnToGame), visible: worldEditor },
+        // The editors are Control Panel pages (issues #32, #33): its own header returns to the game,
+        // and the classic bar never shows over them, so Return To Game has no place here.
         { kind: "sep", visible: () => (controlPanel() || editors()) && state.can("assassinGame") },
         gated("Begin Assassin's Game", () => act.assassin("GO"), "assassinGame"),
         gated("Begin Lightning Assassin's Game", () => act.assassin("LIGHTNING"), "assassinGame"),

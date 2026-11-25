@@ -25,6 +25,7 @@ export * from "./rules/admin/auditlog.ts";
 export * from "./rules/admin/character-edit.ts";
 export * from "./rules/admin/characters.ts";
 export * from "./rules/admin/chatlog.ts";
+export * from "./rules/admin/mapedit.ts";
 export * from "./rules/admin/moderation.ts";
 export * from "./rules/admin/npcfile.ts";
 // Bindings a module fills when content is installed (`export let ... onContent`), named again.

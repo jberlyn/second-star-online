@@ -131,7 +131,7 @@ describe("Only server systems create items", () => {
 
   test("SSO: the only free text a client sends is chat, mail, names and the editors' fields", () => {
     // A new string field must be added here deliberately. Of these, only the World Editor's placed
-    // items (`editSave`, worldEditor permission) and an administrator's `/drop` in `chat` text name
+    // items (`contentMapSave`, worldEditor permission) and an administrator's `/drop` in `chat` text name
     // an item for the server to create, each checked by the server.
     expect(stringFields()).toEqual({
       login: ["name:string", "password:string"],
@@ -275,7 +275,8 @@ describe("Only server systems create items", () => {
         "reason:string",
       ],
       characterUndo: ["name:string", "id:string", "reason:string"],
-      editSave: [
+      // The World page (issue #33): a map as the World Editor's SAVE sent it, and the revision.
+      contentMapSave: [
         "map.layers[][]:string",
         "map.flags.canFight:string",
         "map.flags.fctSpwn:string",
@@ -286,7 +287,9 @@ describe("Only server systems create items", () => {
         "map.fog.tex:string",
         "map.mobs[].name:string",
         "map.items[].name:string",
+        "expect:string",
       ],
+      contentMapRestore: ["version:string", "expect:string"],
       roleSave: ["role.id:string", "role.name:string", "role.permissions[]:string"],
       roleDelete: ["id:string"],
       roleAssign: ["name:string", "role:string"],
@@ -353,7 +356,6 @@ describe("File editor and path-based file access removed", () => {
     // path, and write it through the NPC file check. (The NPC Editor's load went with its window,
     // issue #32; the NPCs page names an NPC by name too.)
     expect(types.filter((t) => /file|transfer|char|view|load/i.test(t))).toEqual([
-      "editLoad",
       "contentOverview",
       "contentUploadTicket",
       "contentNpcFile",
@@ -375,12 +377,17 @@ describe("File editor and path-based file access removed", () => {
       expect(inGameSchema.safeParse({ t, path: "../sso.sqlite" }).success).toBe(false);
     }
     // The loads that remain address data by id: map coordinates and an NPC's name.
-    expect(fields("editLoad")).toEqual(["mx:number", "my:number"]);
+    expect(fields("contentMaps")).toEqual(["seq:number", "mx:number", "my:number", "list:boolean"]);
     expect(fields("newspaperLoad")).toEqual([]);
     expect(fields("contentNpcs")).toEqual(["seq:number", "name:string"]);
     expect(
-      inGameSchema.safeParse({ t: "editLoad", mx: 1000, my: 992, path: "maps/x1000y992.txt" })
-        .success,
+      inGameSchema.safeParse({
+        t: "contentMaps",
+        seq: 1,
+        mx: 1000,
+        my: 992,
+        path: "maps/x1000y992.txt",
+      }).success,
     ).toBe(false);
   });
 
