@@ -221,6 +221,18 @@ describe("the rows a change writes", () => {
     });
   });
 
+  test("choosing, or a new body for a monster, is refused when its body changed since the panel showed it (issue #31)", () => {
+    const goblin = input().monsters.find((m) => m.name === "Goblin")?.body as number;
+    expect(
+      planBody({ op: "choose", monster: "Goblin", body: 1000, from: goblin }, input()).ok,
+    ).toBe(true);
+    const stale = planBody(
+      { op: "choose", monster: "Goblin", body: 1000, from: goblin + 1 },
+      input(),
+    );
+    expect(stale.ok ? "" : stale.error).toContain("someone changed it since you opened it");
+  });
+
   test("Sol fix: a monster's own body is repainted only while it still draws it alone", () => {
     const uses = (n: number) =>
       n === 1000

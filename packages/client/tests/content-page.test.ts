@@ -1074,7 +1074,7 @@ describe("monster bodies on the Content page (issue #29, stage 4)", () => {
     sel.value = "55";
     $("body-art-use").click();
     await settle();
-    expect(last("body")?.args[0]).toEqual({ op: "choose", monster: "Wolf", body: 55 });
+    expect(last("body")?.args[0]).toEqual({ op: "choose", monster: "Wolf", body: 55, from: 1000 });
     p.receive({ t: "contentResult", seq: last("body")?.seq ?? 0, ok: true, text: "ok", body: 55 });
     await settle();
     expect(last("row")?.seq).toBe(rowSeq);

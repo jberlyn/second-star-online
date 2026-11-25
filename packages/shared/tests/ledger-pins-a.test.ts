@@ -44,7 +44,10 @@ describe("the client's messages", () => {
   });
 
   test("SSO: no client message reports a result: hit points, damage, XP, level, a kill or a monster's state", () => {
-    for (const t of types) {
+    // The Monsters page's messages (issue #31, contentEditor permission) edit monster content in the
+    // draft; none reports anything that happened in play.
+    const monsterContent = ["contentMonsters", "contentMonsterSet", "contentMonsterSpells"];
+    for (const t of types.filter((x) => !monsterContent.includes(x))) {
       expect(t).not.toMatch(/hp|health|damage|xp|exp|level|kill|score|monster|result/i);
     }
   });

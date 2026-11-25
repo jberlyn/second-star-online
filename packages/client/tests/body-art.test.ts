@@ -316,7 +316,8 @@ describe("the panel", () => {
     }
     click(p.el, "body-art-use");
     await tick();
-    expect(sent).toEqual([{ op: "choose", monster: "Orc", body: 1000 }]);
+    // It names the body the panel showed it with (issue #31), so a change since is refused.
+    expect(sent).toEqual([{ op: "choose", monster: "Orc", body: 1000, from: 30 }]);
   });
 
   test("a sheet that cannot be cut into four by four is refused before it is uploaded", async () => {

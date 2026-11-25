@@ -1539,6 +1539,33 @@ describe("bans, settings and the logs in the game (real SQLite)", () => {
     ).toHaveLength(3);
   });
 
+  test("the Monsters page's intents need the Content page's permission (issue #31)", async () => {
+    const { game, make } = await start();
+    const bob = await make("Bob");
+    sent.length = 0;
+    game.intent(bob.characterId, { t: "contentMonsters", seq: 1, name: "Orc" });
+    game.intent(bob.characterId, {
+      t: "contentMonsterSet",
+      seq: 2,
+      name: "Orc",
+      op: "set",
+      record: { hp: 1 },
+      expect: "0".repeat(16),
+    });
+    game.intent(bob.characterId, {
+      t: "contentMonsterSpells",
+      seq: 3,
+      spells: [],
+      expect: "0".repeat(16),
+    });
+    expect(sent.filter((o) => o.to === bob.characterId && o.msg.t.startsWith("content"))).toEqual(
+      [],
+    );
+    expect(
+      recentCheats(db, 3).filter((c) => c.name === "Bob" && c.reason === "Attempted Admin Access"),
+    ).toHaveLength(3);
+  });
+
   test("a monster's NPC file sections need the Content page's permission and save as the NPC Editor does (issue #31)", async () => {
     const { game, make } = await start();
     const alice = await make("Alice", "administrator");

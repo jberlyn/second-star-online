@@ -270,7 +270,10 @@ type ContentIntent = Extract<
       | "contentItems"
       | "contentItemSet"
       | "contentNpcFile"
-      | "contentNpcFileSet";
+      | "contentNpcFileSet"
+      | "contentMonsters"
+      | "contentMonsterSet"
+      | "contentMonsterSpells";
   }
 >;
 
@@ -308,6 +311,9 @@ export const CONTENT_INTENTS = [
   "contentBalanceSet",
   "contentItems",
   "contentItemSet",
+  "contentMonsters",
+  "contentMonsterSet",
+  "contentMonsterSpells",
   // A monster's NPC file sections (issue #31): the game answers these, since they save live.
   "contentNpcFile",
   "contentNpcFileSet",
@@ -486,6 +492,38 @@ export function contentIntent(
         t: "contentItems",
         seq: msg.seq,
         view: service.itemsView(msg.name),
+        result: r.ok
+          ? { ok: true, text: r.value }
+          : { ok: false, text: r.error, ...(r.problems ? { problems: r.problems } : {}) },
+      };
+    }
+    case "contentMonsters":
+      return { t: "contentMonsters", seq: msg.seq, view: service.monstersView(msg.name) };
+    case "contentMonsterSet": {
+      const r = service.draftMonsterChange(actor, {
+        name: msg.name,
+        op: msg.op,
+        ...(msg.record !== undefined ? { record: msg.record } : {}),
+        ...(msg.data !== undefined ? { data: msg.data } : {}),
+        ...(msg.display !== undefined ? { display: msg.display } : {}),
+        ...(msg.copyFrom !== undefined ? { copyFrom: msg.copyFrom } : {}),
+        ...(msg.expect !== undefined ? { expect: msg.expect } : {}),
+      });
+      return {
+        t: "contentMonsters",
+        seq: msg.seq,
+        view: service.monstersView(msg.name),
+        result: r.ok
+          ? { ok: true, text: r.value }
+          : { ok: false, text: r.error, ...(r.problems ? { problems: r.problems } : {}) },
+      };
+    }
+    case "contentMonsterSpells": {
+      const r = service.draftMonsterSpells(actor, msg.spells, msg.expect);
+      return {
+        t: "contentMonsters",
+        seq: msg.seq,
+        view: service.monstersView(),
         result: r.ok
           ? { ok: true, text: r.value }
           : { ok: false, text: r.error, ...(r.problems ? { problems: r.problems } : {}) },

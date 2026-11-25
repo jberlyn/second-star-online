@@ -215,6 +215,11 @@ export interface ContentPage {
    * art to draw them.
    */
   itemPanels(saved: () => void): ItemPanels | null;
+  /**
+   * The Monsters page's body panel (issue #31): #29's body panel, made once, talking to the server
+   * through this page. Null with no art to draw it.
+   */
+  monsterBody(saved: () => void): MonsterBodyPanel | null;
   /** Unsaved JSON in the row editor. */
   changes(): number;
   discard(): void;
@@ -232,6 +237,16 @@ export interface ItemPanels {
   show(key: string, force?: boolean): void;
   clear(): void;
   /** A picture or frames set up and not yet saved to the draft. */
+  pending(): boolean;
+}
+
+/** #29's body panel for one monster, as the Monsters page shows it (issue #31). */
+export interface MonsterBodyPanel {
+  readonly el: HTMLElement;
+  /** Shows the monster's body (the draft's); one holding unsaved frames is kept unless `force`. */
+  show(monster: string, force?: boolean): void;
+  clear(): void;
+  /** Frames set up and not yet saved to the draft. */
   pending(): boolean;
 }
 
@@ -1268,6 +1283,62 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
     );
     return itemPanelsMade;
   }
+  /** The Monsters page's body panel, once made. */
+  let monsterBodyMade: MonsterBodyPanel | null = null;
+  function monsterBody(saved: () => void): MonsterBodyPanel | null {
+    if (monsterBodyMade || !bodyOptions) {
+      return monsterBodyMade;
+    }
+    let justSaved = false;
+    const panel = createBodyArtPicker(
+      {
+        ...bodyOptions,
+        saved: () => {
+          justSaved = true;
+          saved();
+        },
+      },
+      "monsters-body",
+    );
+    let mine = 0;
+    let shown: string | null = null;
+    monsterBodyMade = {
+      el: panel.el,
+      show(monster, force = false) {
+        const at = ++mine;
+        const other = shown === null || shown.toLowerCase() !== monster.toLowerCase();
+        shown = monster;
+        const keep = !force && !other && !justSaved && panel.pending();
+        justSaved = false;
+        if (keep) {
+          return;
+        }
+        void askBodyArt()
+          .then((view) => {
+            if (at !== mine || shown === null) {
+              return;
+            }
+            if (view.monsters.some((m) => m.name.toLowerCase() === monster.toLowerCase())) {
+              panel.show({ kind: "monster", monster }, view);
+            } else {
+              panel.clear();
+            }
+          })
+          .catch(() => {
+            if (at === mine) {
+              panel.clear();
+            }
+          });
+      },
+      clear() {
+        mine += 1;
+        shown = null;
+        panel.clear();
+      },
+      pending: () => panel.pending(),
+    };
+    return monsterBodyMade;
+  }
   function hidePicker(): void {
     pickerSeq += 1;
     bodySeq += 1;
@@ -1848,6 +1919,7 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
     onShow: refreshAll,
     openRow,
     itemPanels,
+    monsterBody,
     onHide: () => sounds?.stop(),
     receive(msg) {
       switch (msg.t) {

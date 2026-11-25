@@ -100,6 +100,7 @@ import { createImWindows } from "./ui/im.ts";
 import { createItemsPage } from "./ui/items-page.ts";
 import { createMailScreen } from "./ui/mail.ts";
 import { createMenuBar, MENU_BAR_H } from "./ui/menubar.ts";
+import { createMonstersPage } from "./ui/monsters-page.ts";
 import { createNewspaper } from "./ui/newspaper.ts";
 import { createNpcEditor, type NpcEditor } from "./ui/npceditor.ts";
 import { createPaintUi } from "./ui/paint.ts";
@@ -717,6 +718,18 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     openContentRow: (row) => controlPanel.go("content", () => contentPage.openRow(row)),
     panels: (saved) => contentPage.itemPanels(saved),
   });
+  const monstersPage = createMonstersPage({
+    view: (seq, name) =>
+      send({ t: "contentMonsters", seq, ...(name !== undefined ? { name } : {}) }),
+    set: (seq, change) => send({ t: "contentMonsterSet", seq, ...change }),
+    spells: (seq, spells, expect) => send({ t: "contentMonsterSpells", seq, spells, expect }),
+    npcFile: (seq, name) => send({ t: "contentNpcFile", seq, name }),
+    npcFileSet: (seq, name, expect, sections) =>
+      send({ t: "contentNpcFileSet", seq, name, expect, sections }),
+    openContent: () => controlPanel.go("content"),
+    openContentRow: (row) => controlPanel.go("content", () => contentPage.openRow(row)),
+    body: (saved) => contentPage.monsterBody(saved),
+  });
   const controlPanel = createControlPanel({
     pages: [
       {
@@ -774,6 +787,16 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         onShow: () => itemsPage.onShow(),
         changes: () => itemsPage.changes(),
         discard: () => itemsPage.discard(),
+      },
+      {
+        id: "monsters",
+        title: "Monsters",
+        group: "Game",
+        permission: "contentEditor",
+        el: monstersPage.el,
+        onShow: () => monstersPage.onShow(),
+        changes: () => monstersPage.changes(),
+        discard: () => monstersPage.discard(),
       },
     ],
     // The classic editors, until their Control Panel pages arrive (#32, #33).
@@ -1181,6 +1204,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
       contentPage.published();
       balancePage.published();
       itemsPage.published();
+      monstersPage.published();
     },
   });
   // Art published (issue #29): the map's tile layers are drawn once per map, so new tiles redraw
@@ -1196,6 +1220,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     contentPage.published();
     balancePage.published();
     itemsPage.published();
+    monstersPage.published();
   });
   conn.onMessage = (msg: ServerMsg) => contentSync.receive(msg);
   const handleMessage = (msg: ServerMsg) => {
@@ -1351,6 +1376,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
           contentPage.reset();
           balancePage.reset();
           itemsPage.reset();
+          monstersPage.reset();
         }
         if (permissions.has("characterView")) {
           charactersPage.permissionsChanged();
@@ -1391,6 +1417,10 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         return;
       case "contentItems":
         itemsPage.receive(msg);
+        return;
+      case "contentMonsters":
+      case "contentNpcFile":
+        monstersPage.receive(msg);
         return;
       case "content":
         // The content sync fetches and installs the store; nothing else to do here.
@@ -1751,6 +1781,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     contentPage.reset();
     balancePage.reset();
     itemsPage.reset();
+    monstersPage.reset();
     playerSettingsWin.window.close();
     inFlightPrefsId = null;
     ignores = [];

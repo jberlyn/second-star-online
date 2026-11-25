@@ -258,11 +258,11 @@ export type BodyChange =
    */
   | ({ op: "set"; body: number; owner?: string } & BodyFrameSet)
   /** A body under the next free number, given to a monster when one is named. */
-  | ({ op: "new"; monster?: string } & BodyFrameSet)
+  | ({ op: "new"; monster?: string; from?: number } & BodyFrameSet)
   /** Take a body's upload out (a pack's picture of that number comes back). */
   | { op: "remove"; body: number }
   /** Give a monster another body that exists. */
-  | { op: "choose"; monster: string; body: number };
+  | { op: "choose"; monster: string; body: number; from?: number };
 
 /** A monster row as the plan reads and writes it. */
 export interface BodyMonsterRow {
@@ -312,6 +312,13 @@ export function planBody(
     const m = monster(change.monster);
     if (!m) {
       return { ok: false, error: `There is no monster ${change.monster}.` };
+    }
+    // The body the panel showed it with (issue #31): another's change since is not undone.
+    if (change.from !== undefined && m.body !== change.from) {
+      return {
+        ok: false,
+        error: `${m.name} draws body ${m.body} now, not ${change.from}: someone changed it since you opened it. Look at it again.`,
+      };
     }
     if (!isBodyNumber(change.body)) {
       return { ok: false, error: `Body numbers run 1 to ${BODY_NUMBER_MAX}.` };
@@ -380,6 +387,12 @@ export function planBody(
   const m = change.monster === undefined ? undefined : monster(change.monster);
   if (change.monster !== undefined && !m) {
     return { ok: false, error: `There is no monster ${change.monster}.` };
+  }
+  if (m && change.from !== undefined && m.body !== change.from) {
+    return {
+      ok: false,
+      error: `${m.name} draws body ${m.body} now, not ${change.from}: someone changed it since you opened it. Look at it again.`,
+    };
   }
   if (input.nextNumber === null) {
     return { ok: false, error: input.noNumbers };

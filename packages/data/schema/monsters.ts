@@ -115,7 +115,7 @@ export const monsterSpellSchema = z.strictObject({
   tag: z.string().min(1),
   name: z.string().min(1),
   kind: monsterSpellKindSchema,
-  power: int,
+  power: int.min(0).max(1_000_000),
   ladder: z.array(int).length(7),
   aName: z.boolean(),
 });

@@ -221,6 +221,11 @@ describe("Only server systems create items", () => {
       // and undone like any other row.
       contentItems: ["name:string"],
       contentItemSet: ["name:string", "display:string", "copyFrom:string", "expect:string"],
+      // The Monsters page (issue #31): a monster's key, display name and the monster it copies,
+      // each checked by the server like the Items page's.
+      contentMonsters: ["name:string"],
+      contentMonsterSet: ["name:string", "display:string", "copyFrom:string", "expect:string"],
+      contentMonsterSpells: ["expect:string"],
       // A monster's NPC file sections (issue #31): the server checks each loot item and spell tag,
       // and writes the file through the NPC Editor's own check.
       contentNpcFile: ["name:string"],

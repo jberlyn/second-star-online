@@ -552,7 +552,12 @@ export function createBodyArtPicker(opts: BodyArtOptions, idPrefix = "body-art")
         ownBody(view as ContentBodyArtView, target.monster) === null
       ) {
         // A shared body (or a pack's) gets a body of its own for this monster.
-        void commit({ op: "new", monster: target.monster, ...c });
+        void commit({
+          op: "new",
+          monster: target.monster,
+          ...(body !== null ? { from: body } : {}),
+          ...c,
+        });
       } else if (target.kind === "monster") {
         // The monster's own body: the server refuses it if another has started drawing it since.
         void commit({ op: "set", body, owner: target.monster, ...c });
@@ -589,7 +594,12 @@ export function createBodyArtPicker(opts: BodyArtOptions, idPrefix = "body-art")
   choose.setAttribute("aria-label", "Another body for it");
   const chooseBtn = panelButton(`${idPrefix}-use`, "Use this body", () => {
     if (target?.kind === "monster" && choose.value) {
-      void commit({ op: "choose", monster: target.monster, body: Number(choose.value) });
+      void commit({
+        op: "choose",
+        monster: target.monster,
+        body: Number(choose.value),
+        ...(body !== null ? { from: body } : {}),
+      });
     }
   });
   const chooseThumb = document.createElement("canvas");

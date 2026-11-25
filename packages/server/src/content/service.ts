@@ -9,7 +9,15 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { gzipSync } from "node:zlib";
 
-import type { ArtFrameId, AssetIndex, ItemDefinition, RectsData } from "@secondstaronline/data";
+import type {
+  ArtFrameId,
+  AssetIndex,
+  ItemDefinition,
+  Monster,
+  MonsterDefinition,
+  MonsterSpellRule,
+  RectsData,
+} from "@secondstaronline/data";
 import { applyKey, encodePng, GREEN } from "@secondstaronline/data/art";
 import {
   type ArtData,
@@ -34,6 +42,8 @@ import {
   type ContentFxArtView,
   type ContentItemsView,
   type ContentItemView,
+  type ContentMonstersView,
+  type ContentMonsterView,
   type ContentSoundArtView,
   type ContentStore,
   type ContentTileArtView,
@@ -58,8 +68,12 @@ import {
   installContent,
   isEngineFixture,
   isUniqueContainer,
+  lingoContains,
   lingoEq,
+  type MonsterListEntry,
   nextTileCodes,
+  npcFieldOk,
+  npcSections,
   orphanedFxUploads,
   ownLayerPossible,
   type PictureChange,
@@ -178,6 +192,7 @@ import {
 } from "./cleanup.ts";
 import { contractProblems } from "./contract.ts";
 import { itemChoices, itemFingerprint, itemKind, itemProblems, ruleSources } from "./items-page.ts";
+import { monsterChoices, monsterFieldProblems, monsterRuleSources } from "./monsters-page.ts";
 import { type LoadedPack, readPackBlob, readPackDir } from "./packs.ts";
 import {
   applyRows,
@@ -271,6 +286,17 @@ export interface PackNotice extends RowRef {
 /** Whether a row is an item definition (issue #30). */
 /** A new item's name from the Items page: at most 40 characters (an existing key may be 80). */
 const ITEM_NEW_NAME_MAX = 40;
+/** The species record fields the Monsters page's form writes (issue #31). */
+const RECORD_FIELDS = [
+  "hp",
+  "attack",
+  "defense",
+  "xpMelee",
+  "xpSpell",
+  "skillXp",
+  "spawnMinute",
+  "flags",
+] as const;
 /** The tables an item's kind on the Items list is read from (`itemKind`). */
 const KIND_TABLES = [
   "itemRules equip.slots",
@@ -2432,6 +2458,32 @@ export class ContentService {
   }
 
   /**
+   * A monster as the Monsters page (and the Content page's JSON editor) last showed it (issue #31):
+   * what it plays now when it has no definition, its definition and species record, and what the
+   * draft holds for them. A change naming another is refused.
+   */
+  private monsterFingerprintOf(name: string, draft: readonly DraftRow[] = this.draft()): string {
+    const d = this.draftContent(draft);
+    const defRef: RowRef = { dataset: "monsters", part: "definitions", key: name };
+    const recRef: RowRef = { dataset: "monsters", part: "monsters", key: name };
+    const definition = rowValue(d, defRef);
+    const compiled = this.compiledDraft(draft);
+    return rowHash({
+      plays:
+        definition === undefined
+          ? seedMonsterDefinition(name, resolveMonster(name, compiled), compiled.monsters)
+          : null,
+      definition: definition ?? null,
+      record: rowValue(d, recRef) ?? null,
+      pending: [
+        draft.find((r) => sameRow(r, defRef))?.op ?? null,
+        draft.find((r) => sameRow(r, recRef))?.op ?? null,
+      ],
+      edited: contentRows(this.db).some((r) => sameRow(r, defRef)),
+    });
+  }
+
+  /**
    * A row's revision, where a change to it must name one: a balance row (the Balance page's
    * fingerprint, issue #19) or an item definition (the Items page's, issue #30), so neither page
    * nor the Content page's JSON editor writes over a change it has not seen. An item's catalogue
@@ -2460,6 +2512,10 @@ export class ContentService {
       const item = this.draftItem(d, ref.key);
       return this.itemFingerprintOf(item?.name ?? ref.key, draft);
     }
+    // The monster spells: the Monsters page's card and the Content page's JSON editor (issue #31).
+    if (ref.dataset === "monsters" && ref.part === "casting") {
+      return this.monsterSpellsFingerprint(this.draft());
+    }
     if (
       ref.dataset === "monsters" &&
       (ref.part === "definitions" || ref.part === "monsters") &&
@@ -2481,25 +2537,546 @@ export class ContentService {
           ? d.monsters.monsters.find((m) => lingoEq(m.name, ref.key as string))?.name
           : (d.monsters.definitions ?? []).find((m) => lingoEq(m.name, ref.key as string))?.name) ??
         ref.key;
-      const defRef: RowRef = { dataset: "monsters", part: "definitions", key: name };
-      const recRef: RowRef = { dataset: "monsters", part: "monsters", key: name };
-      const definition = rowValue(d, defRef);
-      const compiled = this.compiledDraft(draft);
-      return rowHash({
-        plays:
-          definition === undefined
-            ? seedMonsterDefinition(name, resolveMonster(name, compiled), compiled.monsters)
-            : null,
-        definition: definition ?? null,
-        record: rowValue(d, recRef) ?? null,
-        pending: [
-          draft.find((r) => sameRow(r, defRef))?.op ?? null,
-          draft.find((r) => sameRow(r, recRef))?.op ?? null,
-        ],
-        edited: contentRows(this.db).some((r) => sameRow(r, defRef)),
-      });
+      return this.monsterFingerprintOf(name, draft);
     }
     return null;
+  }
+
+  // ---- the Monsters page (issue #31, stage 4) ----
+
+  /** The monster's species record in `d`, by any case. */
+  private draftMonster(d: ContentData, name: string): Monster | undefined {
+    return d.monsters.monsters.find((m) => lingoEq(m.name, name));
+  }
+
+  /** The Monsters page's view: the list, the monster spells and with `name` that monster's form. */
+  monstersView(name?: string): ContentMonstersView {
+    const draft = this.draft();
+    const d = this.draftContent(draft);
+    const compiled = this.compiledDraft(draft);
+    const packMonsters = new Set(this.packData.monsters.monsters.map((m) => m.name.toLowerCase()));
+    const own = new Set((d.monsters.definitions ?? []).map((x) => x.name.toLowerCase()));
+    const operator = new Set(
+      contentRows(this.db)
+        .filter(
+          (r) => r.dataset === "monsters" && (r.part === "monsters" || r.part === "definitions"),
+        )
+        .map((r) => (r.key ?? "").toLowerCase()),
+    );
+    const monsterRows = draft.filter(
+      (r) => r.dataset === "monsters" && (r.part === "monsters" || r.part === "definitions"),
+    );
+    const pending = new Set(monsterRows.map((r) => (r.key ?? "").toLowerCase()));
+    const files = new Map(
+      withNpcSaves(d, this.npcSaves()).npcFiles.files.map((f) => [
+        f.name.toLowerCase(),
+        npcSections(f.text),
+      ]),
+    );
+    const lists = compiled.monsters.editorLists;
+    // As the cast routine reads it: an SPL| line naming a monster spell's tag, and a never-caster
+    // still casts the one kind it does not stop (aimNoExit).
+    const castsAny = (spells: readonly string[], never: boolean) =>
+      d.monsters.casting.spells.some(
+        (sp) =>
+          spells.some((l) => lingoContains(`SPL|${l}`, `SPL|${sp.tag}`)) &&
+          (!never || sp.kind === "aimNoExit"),
+      );
+    const onList = (names: readonly string[], n: string) => names.some((x) => lingoEq(x, n));
+    const monsters = d.monsters.monsters
+      .map((m): MonsterListEntry => {
+        const k = m.name.toLowerCase();
+        const hits = new Map(resolveMonster(m.name, compiled).map((h) => [h.key, h]));
+        const plays = (t: string) => (hits.get(t)?.deciding.length ?? 0) > 0;
+        const file = files.get(k);
+        return {
+          name: m.name,
+          display: m.display ?? m.name,
+          state: !packMonsters.has(k) ? "yours" : own.has(k) || operator.has(k) ? "edited" : "pack",
+          pending: pending.has(k),
+          hostile: onList(lists.worldEditor.monsters, m.name) || plays("monsters rules.hostile"),
+          sea: plays("monsters rules.sea"),
+          casts: castsAny(file?.spells ?? [], plays("monsters casting.neverCasts")),
+          loot: (file?.loot.length ?? 0) > 0,
+          npc: onList(lists.worldEditor.npcs, m.name) || onList(lists.npcEditor.npcs, m.name),
+        };
+      })
+      .sort((a, b) => a.display.localeCompare(b.display));
+    const castRef: RowRef = { dataset: "monsters", part: "casting", key: null };
+    const monster = name === undefined ? undefined : this.draftMonster(d, name);
+    return {
+      monsters,
+      monster: monster ? this.monsterView(monster.name, draft) : null,
+      spells: {
+        rows: structuredClone(d.monsters.casting.spells),
+        fingerprint: this.monsterSpellsFingerprint(draft),
+        pending: draft.some((r) => sameRow(r, castRef)),
+      },
+      choices: monsterChoices(d, [
+        ...new Set([
+          ...d.spells.spells.map((x) => x.name),
+          ...d.monsters.casting.spells.map((x) => x.name),
+        ]),
+      ]),
+      otherDraft: draft.length - monsterRows.length,
+      monsterDraft: monsterRows.length,
+    };
+  }
+
+  /** The monster spells as the page last showed them. */
+  private monsterSpellsFingerprint(draft: readonly DraftRow[]): string {
+    const castRef: RowRef = { dataset: "monsters", part: "casting", key: null };
+    return rowHash({
+      casting: this.draftContent(draft).monsters.casting,
+      pending: draft.find((r) => sameRow(r, castRef))?.op ?? null,
+    });
+  }
+
+  /** One monster's form on the Monsters page. */
+  private monsterView(name: string, draft: readonly DraftRow[]): ContentMonsterView {
+    const d = this.draftContent(draft);
+    const compiled = this.compiledDraft(draft);
+    const record = this.draftMonster(d, name) as Monster;
+    const defRef: RowRef = { dataset: "monsters", part: "definitions", key: record.name };
+    const recRef: RowRef = { dataset: "monsters", part: "monsters", key: record.name };
+    const own = rowValue(d, defRef) as MonsterDefinition | undefined;
+    const hits = resolveMonster(record.name, compiled);
+    const packRecord = this.packData.monsters.monsters.find((m) => lingoEq(m.name, record.name));
+    const inPack = this.isPackMonster(record.name);
+    const notice = this.notices().find((n) => sameRow(n, defRef));
+    const edited = contentRows(this.db).some((r) => sameRow(r, defRef));
+    return {
+      name: record.name,
+      display: record.display ?? "",
+      inPack: packRecord !== undefined,
+      record: structuredClone(record),
+      form: structuredClone(own ?? seedMonsterDefinition(record.name, hits, compiled.monsters)),
+      defined: own !== undefined,
+      pack: inPack
+        ? {
+            record: packRecord ? structuredClone(packRecord) : null,
+            form: structuredClone(this.packRowValue(defRef)) as MonsterDefinition,
+          }
+        : null,
+      sources: monsterRuleSources(
+        hits,
+        own === undefined
+          ? null
+          : edited ||
+              draft.some((r) => sameRow(r, defRef)) ||
+              rowValue(this.packData, defRef) === undefined
+            ? "yours"
+            : "pack",
+        (t) => {
+          const [dataset, path] = t.split(" ") as [string, string];
+          const part = path.split(".")[0] ?? "";
+          const touches = (r: RowRef) => r.dataset === dataset && r.part === part;
+          return contentRows(this.db).some(touches) || draft.some(touches);
+        },
+      ),
+      edited,
+      pending: {
+        definition: draft.find((r) => sameRow(r, defRef))?.op ?? null,
+        record: draft.find((r) => sameRow(r, recRef))?.op ?? null,
+      },
+      fingerprint: this.monsterFingerprintOf(record.name, draft),
+      notice: notice
+        ? {
+            packName: notice.packName,
+            packVersion: notice.packVersion,
+            note:
+              notice.note ??
+              `${notice.packName} v${notice.packVersion} changed this monster's definition: answer it on the Content page.`,
+          }
+        : null,
+      published: this.draftMonster(this.published, record.name) !== undefined,
+    };
+  }
+
+  /**
+   * Writes rows into the draft as one change, then runs the checks over the monster's rows: when
+   * they refuse it, every row goes back to what the draft held. `name` names the monster in
+   * refusals.
+   */
+  private draftMonsterRows(
+    actor: ContentActor,
+    name: string,
+    label: string,
+    rows: { ref: RowRef; op: DraftRow["op"] | "discard"; data: unknown }[],
+  ): ContentResult<string> {
+    const before = this.draft();
+    const had = new Set(this.check().map((p) => `${p.where}\u0000${p.message}`));
+    const restore = () => {
+      for (const r of rows) {
+        const was = before.find((d) => sameRow(d, r.ref));
+        if (was) {
+          upsertDraftRow(this.db, was);
+        } else {
+          deleteDraftRow(this.db, r.ref.dataset, r.ref.part, r.ref.key);
+        }
+      }
+    };
+    for (const r of rows) {
+      const got =
+        r.op === "discard" ? this.draftDiscard(r.ref) : this.draftSet(actor, r.ref, r.op, r.data);
+      if (!got.ok) {
+        restore();
+        return got.problems
+          ? fail(`${label} was not saved.`, monsterFieldProblems(name, got.problems))
+          : got;
+      }
+    }
+    // Every problem the change brings, wherever it is reported (a trap's flag refused at the
+    // monster's unchanged definition, a name clash reported at the other monster).
+    const id = (p: { where: string; message: string }) => `${p.where}\u0000${p.message}`;
+    const problems = this.check().filter((p) => !had.has(id(p)));
+    if (problems.length > 0) {
+      restore();
+      return fail(`${label} was not saved.`, monsterFieldProblems(name, problems));
+    }
+    return { ok: true, value: "" };
+  }
+
+  /**
+   * One Monsters page change (issue #31, stage 4): `set` the monster's record and definition,
+   * `revert` its definition, `discard` the draft's changes to it, `rename` it or `create` a new
+   * one. Refused when the monster changed since the page showed it (`expect`).
+   */
+  draftMonsterChange(
+    actor: ContentActor,
+    change: {
+      name: string;
+      op: "set" | "revert" | "discard" | "rename" | "create";
+      record?: unknown;
+      data?: unknown;
+      display?: string;
+      copyFrom?: string;
+      expect?: string;
+    },
+  ): ContentResult<string> {
+    const draft = this.draft();
+    const d = this.draftContent(draft);
+    if (change.op === "create") {
+      return this.createMonster(actor, change, draft);
+    }
+    const m = this.draftMonster(d, change.name);
+    if (!m) {
+      return fail(`there is no monster ${change.name}`);
+    }
+    const name = m.name;
+    const label = m.display ?? name;
+    if (this.monsterFingerprintOf(name, draft) !== change.expect) {
+      return fail(`${label} changed since you opened it: look at it again before saving.`);
+    }
+    const defRef: RowRef = { dataset: "monsters", part: "definitions", key: name };
+    const recRef: RowRef = { dataset: "monsters", part: "monsters", key: name };
+    const defDraft = draft.find((r) => sameRow(r, defRef));
+    const recDraft = draft.find((r) => sameRow(r, recRef));
+    const edited = contentRows(this.db).some((r) => sameRow(r, defRef));
+    switch (change.op) {
+      case "discard": {
+        if (!defDraft && !recDraft) {
+          return fail(`${label} has no change in the draft.`);
+        }
+        // A monster only the draft has takes the NPC file its copy made with it.
+        const fileRef = npcFileRef(name);
+        const fileDraft =
+          recDraft && this.draftMonster(this.published, name) === undefined
+            ? draft.find((r) => sameRow(r, fileRef))
+            : undefined;
+        for (const ref of [
+          defDraft ? defRef : null,
+          recDraft ? recRef : null,
+          fileDraft ? fileRef : null,
+        ]) {
+          if (ref) {
+            const r = this.draftDiscard(ref);
+            if (!r.ok) {
+              return r;
+            }
+          }
+        }
+        return { ok: true, value: `${label}: the draft's changes are gone.` };
+      }
+      case "revert": {
+        const rules = this.isPackMonster(name) ? "the pack's rules" : "no rules of its own";
+        if (edited) {
+          const op = rowValue(this.packData, defRef) === undefined ? "remove" : "revert";
+          const r = this.draftSet(actor, defRef, op, null);
+          return r.ok ? { ok: true, value: `${label} plays ${rules} again when published.` } : r;
+        }
+        if (defDraft) {
+          const r = this.draftDiscard(defRef);
+          return r.ok ? { ok: true, value: `${label} plays ${rules} again.` } : r;
+        }
+        return fail(`${label} already plays ${rules}.`);
+      }
+      case "rename": {
+        const display = (change.display ?? "").trim();
+        const row: Record<string, unknown> = { ...m };
+        if (display === "" || display === name) {
+          delete row.display;
+        } else {
+          row.display = display;
+        }
+        if (rowHash(row) === rowHash(m)) {
+          return fail(`${label} already has that name.`);
+        }
+        const clash = d.monsters.monsters.find(
+          (o) =>
+            !lingoEq(o.name, name) &&
+            display !== "" &&
+            (lingoEq(o.name, display) || lingoEq(o.display ?? "", display)),
+        );
+        if (clash) {
+          return fail(`${clash.name} is already called ${display}: pick another name.`);
+        }
+        const r = this.draftMonsterRows(actor, name, label, [
+          { ref: recRef, op: "set", data: row },
+        ]);
+        if (!r.ok) {
+          return r;
+        }
+        return {
+          ok: true,
+          value:
+            display === "" || display === name
+              ? `${name} goes back to its own name in the draft.`
+              : `${name} is called ${display} in the draft.`,
+        };
+      }
+      case "set": {
+        const rows: { ref: RowRef; op: DraftRow["op"] | "discard"; data: unknown }[] = [];
+        // The record: the form's stats and flags over the draft's row; its name, display name and
+        // body stay as the draft has them (the body is the body panel's).
+        if (change.record !== undefined) {
+          const rec = change.record;
+          if (rec === null || typeof rec !== "object" || Array.isArray(rec)) {
+            return fail("a species record is a JSON object");
+          }
+          const next: Record<string, unknown> = { ...m };
+          for (const k of RECORD_FIELDS) {
+            const v = (rec as Record<string, unknown>)[k];
+            if (v === undefined) {
+              delete next[k];
+            } else {
+              next[k] = v;
+            }
+          }
+          const flags = next.flags;
+          if (
+            flags !== undefined &&
+            (flags === null || typeof flags !== "object" || Array.isArray(flags))
+          ) {
+            return fail(`${label} was not saved.`, [
+              { where: "Flags", message: "the flags are a JSON object" },
+            ]);
+          }
+          if (flags !== undefined && Object.keys(flags as object).length === 0) {
+            delete next.flags;
+          }
+          if (rowHash(next) !== rowHash(m)) {
+            // Back to the published row: the draft's change goes rather than staying as a no-op.
+            const published = this.draftMonster(this.published, name);
+            rows.push(
+              recDraft && published && rowHash(published) === rowHash(next)
+                ? { ref: recRef, op: "discard", data: null }
+                : { ref: recRef, op: "set", data: next },
+            );
+          }
+        }
+        if (change.data !== undefined) {
+          const data = change.data;
+          if (data === null || typeof data !== "object" || Array.isArray(data)) {
+            return fail("a definition is a JSON object");
+          }
+          if (
+            String((data as { name?: unknown }).name ?? "").toLowerCase() !== name.toLowerCase()
+          ) {
+            return fail(`the definition's name must be ${name}`);
+          }
+          const def = { ...(data as Record<string, unknown>), name };
+          const own = rowValue(d, defRef);
+          const compiled = this.compiledDraft(draft);
+          const playing =
+            own ?? seedMonsterDefinition(name, resolveMonster(name, compiled), compiled.monsters);
+          if (rowHash(playing) !== rowHash(def)) {
+            const published = rowValue(this.published, defRef);
+            const pub = compileDefinitions(this.published);
+            const plays =
+              published ?? seedMonsterDefinition(name, resolveMonster(name, pub), pub.monsters);
+            rows.push(
+              defDraft && rowHash(plays) === rowHash(def)
+                ? { ref: defRef, op: "discard", data: null }
+                : { ref: defRef, op: "set", data: def },
+            );
+          }
+        }
+        if (rows.length === 0) {
+          return fail(`${label} already plays that: nothing to save.`);
+        }
+        const r = this.draftMonsterRows(actor, name, label, rows);
+        return r.ok ? { ok: true, value: `${label} is in the draft.` } : r;
+      }
+    }
+  }
+
+  /** A new monster from the Monsters page, copying another's record, rules and NPC file. */
+  private createMonster(
+    actor: ContentActor,
+    change: { name: string; display?: string; copyFrom?: string },
+    draft: readonly DraftRow[],
+  ): ContentResult<string> {
+    const d = this.draftContent(draft);
+    const name = change.name.trim();
+    if (name.length > ITEM_NEW_NAME_MAX) {
+      return fail(`A new monster's name is at most ${ITEM_NEW_NAME_MAX} characters.`);
+    }
+    if (this.draftMonster(d, name)) {
+      return fail(`there is already a monster called ${name}`);
+    }
+    const form = badKeyForm(name);
+    if (form) {
+      return fail(`${name} was not made: ${form}.`);
+    }
+    const from = change.copyFrom === undefined ? undefined : this.draftMonster(d, change.copyFrom);
+    if (change.copyFrom !== undefined && !from) {
+      return fail(`there is no monster ${change.copyFrom} to copy`);
+    }
+    const display = (change.display ?? "").trim();
+    const generic = d.monsters.generic;
+    const { display: _d, ...base } = from ?? {
+      name,
+      body: generic.body,
+      bodyInMainChars: true,
+      hp: generic.hp,
+      attack: 1,
+      defense: generic.defense,
+      xpMelee: 1,
+      xpSpell: 1,
+      spawnMinute: null,
+    };
+    const record = {
+      ...base,
+      name,
+      ...(display !== "" && display !== name ? { display } : {}),
+    };
+    const compiled = this.compiledDraft(draft);
+    const def: MonsterDefinition = from
+      ? {
+          ...structuredClone(
+            (rowValue(d, { dataset: "monsters", part: "definitions", key: from.name }) as
+              | MonsterDefinition
+              | undefined) ??
+              seedMonsterDefinition(
+                from.name,
+                resolveMonster(from.name, compiled),
+                compiled.monsters,
+              ),
+          ),
+          name,
+        }
+      : // A monster of its own is on the World Editor's monster list, so it can be placed and
+        // walks toward players.
+        { name, lists: { worldEditorMonsters: true } };
+    const rows: { ref: RowRef; op: DraftRow["op"]; data: unknown }[] = [
+      { ref: { dataset: "monsters", part: "monsters", key: name }, op: "set", data: record },
+      { ref: { dataset: "monsters", part: "definitions", key: name }, op: "set", data: def },
+    ];
+    // Its copy of the NPC file (its drops, spells and flags), as the game reads it now.
+    const file = from
+      ? withNpcSaves(d, this.npcSaves()).npcFiles.files.find((f) => lingoEq(f.name, from.name))
+      : undefined;
+    if (file) {
+      rows.push({ ref: npcFileRef(name), op: "set", data: { name, text: file.text } });
+    }
+    const r = this.draftMonsterRows(actor, name, name, rows);
+    if (!r.ok) {
+      return r;
+    }
+    return {
+      ok: true,
+      value: from
+        ? `${name} is in the draft, a copy of ${from.display ?? from.name}${file ? " with its NPC file" : ""}: change what you like, then publish.`
+        : `${name} is in the draft: give it stats and a body, then publish.`,
+    };
+  }
+
+  /** The Monster spells card's save: every monster spell, in the draft as one row. */
+  draftMonsterSpells(actor: ContentActor, spells: unknown, expect: string): ContentResult<string> {
+    const draft = this.draft();
+    if (this.monsterSpellsFingerprint(draft) !== expect) {
+      return fail("The monster spells changed since you opened them: look at them again.");
+    }
+    const d = this.draftContent(draft);
+    const casting = d.monsters.casting;
+    if (rowHash(casting.spells) === rowHash(spells)) {
+      return fail("The monster spells already hold that: nothing to save.");
+    }
+    if (!Array.isArray(spells)) {
+      return fail("The monster spells are a list.");
+    }
+    // A spell new or changed in what it draws must draw a spell effect that exists: a directional
+    // one its four (L, R, U, D), any other its own. One left as it was is not refused (Classic's
+    // Wind Wave names effects no spell has, as 1.6's did).
+    const fx = new Set(
+      d.spells.spells.flatMap((x) => [
+        x.name.toLowerCase(),
+        ...x.fx.flatMap((f) => [f.member.toLowerCase(), f.effect.toLowerCase()]),
+      ]),
+    );
+    for (const [i, raw] of (spells as unknown[]).entries()) {
+      const tag = (raw as { tag?: unknown } | null)?.tag;
+      if (
+        typeof tag === "string" &&
+        (tag.trim() === "" || tag !== tag.trim() || !npcFieldOk(tag))
+      ) {
+        return fail(
+          `Monster spell ${i + 1}: a tag is one line with no spaces round it, and none of | : \` * ^ (an NPC file's SPL| line names it).`,
+        );
+      }
+    }
+    const before = new Map(casting.spells.map((x) => [x.tag.toLowerCase(), x]));
+    for (const [i, raw] of (spells as unknown[]).entries()) {
+      const sp = raw as Partial<MonsterSpellRule> | null;
+      if (!sp || typeof sp.name !== "string" || typeof sp.kind !== "string") {
+        continue;
+      }
+      const was = typeof sp.tag === "string" ? before.get(sp.tag.toLowerCase()) : undefined;
+      if (was && was.name === sp.name && was.kind === sp.kind) {
+        continue;
+      }
+      const dir = sp.kind === "dirAfterExits" || sp.kind === "dirBeforeExits";
+      const need = dir ? ["L", "R", "U", "D"].map((x) => `${sp.name}${x}`) : [sp.name];
+      const missing = need.filter((n) => !fx.has(String(n).toLowerCase()));
+      if (missing.length > 0) {
+        return fail(
+          `${sp.tag || `Monster spell ${i + 1}`}: no spell effect is called ${listOf(missing)}${dir ? " (an aim in four directions draws the effect with L, R, U and D after its name)" : ""}.`,
+        );
+      }
+    }
+    // A spell an NPC file still casts (its SPL| lines, live saves included) cannot go.
+    const tags = new Set(
+      (spells as Partial<MonsterSpellRule>[]).map((x) => String(x?.tag ?? "").toLowerCase()),
+    );
+    const files = withNpcSaves(d, this.npcSaves()).npcFiles.files;
+    for (const gone of casting.spells.filter((x) => !tags.has(x.tag.toLowerCase()))) {
+      const users = files
+        .filter((f) =>
+          npcSections(f.text).spells.some((l) => lingoContains(`SPL|${l}`, `SPL|${gone.tag}`)),
+        )
+        .map((f) => f.name);
+      if (users.length > 0) {
+        return fail(
+          `${gone.tag} is still cast by ${listOf(users.slice(0, 5))}${users.length > 5 ? ` and ${users.length - 5} more` : ""}: take it out of their spells first.`,
+        );
+      }
+    }
+    const ref: RowRef = { dataset: "monsters", part: "casting", key: null };
+    const r = this.draftMonsterRows(actor, "Monster spells", "The monster spells", [
+      { ref, op: "set", data: { ...casting, spells } },
+    ]);
+    return r.ok ? { ok: true, value: "The monster spells are in the draft." } : r;
   }
 
   /** The Items page's view: the list, and with `name` that item's form. */

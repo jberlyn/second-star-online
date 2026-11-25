@@ -19,6 +19,9 @@ import type {
   Item,
   ItemDefinition,
   ItemRulesData,
+  Monster,
+  MonsterDefinition,
+  MonsterSpellRule,
 } from "@secondstaronline/data";
 
 import type { BodyUse } from "../content/bodies.ts";
@@ -280,6 +283,8 @@ export const contentBodySchema = z.strictObject({
     z.strictObject({
       op: z.literal("new"),
       monster: z.string().min(1).max(80).optional(),
+      /** The monster's body as the panel showed it: refused if it has changed since. */
+      from: bodyNumber.optional(),
       ...bodyFrameSet,
     }),
     z.strictObject({ op: z.literal("remove"), body: bodyNumber }),
@@ -287,6 +292,8 @@ export const contentBodySchema = z.strictObject({
       op: z.literal("choose"),
       monster: z.string().min(1).max(80),
       body: bodyNumber,
+      /** The monster's body as the panel showed it: refused if it has changed since. */
+      from: bodyNumber.optional(),
     }),
   ]),
 });
@@ -454,6 +461,44 @@ export const contentItemSetSchema = z.strictObject({
     .string()
     .regex(/^[0-9a-f]{16}$/)
     .optional(),
+});
+
+/** Asks for the Monsters page's view (issue #31, stage 4), with `name` the monster open. */
+export const contentMonstersSchema = z.strictObject({
+  t: z.literal("contentMonsters"),
+  seq,
+  name: z.string().min(1).max(80).optional(),
+});
+
+/**
+ * One Monsters page change (issue #31, stage 4). `set` writes the monster's species record
+ * (`record`: its stats and flags; its name, display and body stay the draft's) and definition
+ * (`data`); `revert` drops the definition, so the monster plays the pack's rules again; `discard`
+ * drops the draft's changes to the monster; `rename` sets its display name; `create` adds a new
+ * monster `name`, copying `copyFrom`'s record, rules and NPC file if given. `expect` is the monster
+ * as the page last showed it; `create` names none.
+ */
+export const contentMonsterSetSchema = z.strictObject({
+  t: z.literal("contentMonsterSet"),
+  seq,
+  name: z.string().trim().min(1).max(80),
+  op: z.enum(["set", "revert", "discard", "rename", "create"]),
+  record: z.unknown().optional(),
+  data: z.unknown().optional(),
+  display: z.string().max(40).optional(),
+  copyFrom: z.string().min(1).max(80).optional(),
+  expect: z
+    .string()
+    .regex(/^[0-9a-f]{16}$/)
+    .optional(),
+});
+
+/** The Monster spells card's save (issue #31, stage 4): every monster spell, in the draft. */
+export const contentMonsterSpellsSchema = z.strictObject({
+  t: z.literal("contentMonsterSpells"),
+  seq,
+  spells: z.unknown(),
+  expect: z.string().regex(/^[0-9a-f]{16}$/),
 });
 
 /**
@@ -937,7 +982,86 @@ export interface ContentItemView {
   };
 }
 
-/** The Items page's view: the list, and the open item. */
+/** One monster in the Monsters page's list (issue #31, stage 4). */
+export interface MonsterListEntry {
+  name: string;
+  /** The name players see. */
+  display: string;
+  /** `pack`: the pack's, unchanged; `edited`: a pack monster the operator changed; `yours`: added. */
+  state: "pack" | "edited" | "yours";
+  /** The draft changes it. */
+  pending: boolean;
+  /** What it plays now, for the list's filters. */
+  hostile: boolean;
+  sea: boolean;
+  casts: boolean;
+  loot: boolean;
+  /** On an editor's NPC list. */
+  npc: boolean;
+}
+
+/** One monster's form on the Monsters page (issue #31, stage 4). */
+export interface ContentMonsterView {
+  name: string;
+  /** The display name the draft gives it ("" for none). */
+  display: string;
+  /** The installed packs have the species. */
+  inPack: boolean;
+  /** The species record the draft holds (stats, flags, body). */
+  record: Monster;
+  /**
+   * The draft's definition, or (with none) what the monster plays in the draft, as a definition.
+   * Saved unchanged it plays identically.
+   */
+  form: MonsterDefinition;
+  /** The draft holds a definition for it. */
+  defined: boolean;
+  /** What the pack plays for it (its record and its rules as a definition), or null for yours. */
+  pack: { record: Monster | null; form: MonsterDefinition } | null;
+  /** Where each rule comes from in the draft. */
+  sources: ItemRuleSource[];
+  /** A definition of the operator's is published. */
+  edited: boolean;
+  /** The draft's change to its definition, and to its species record. */
+  pending: {
+    definition: "set" | "revert" | "remove" | null;
+    record: "set" | "remove" | "revert" | null;
+  };
+  /** The monster as shown, for `contentMonsterSet`'s `expect`. */
+  fingerprint: string;
+  /** A pack update changed the rules under its definition. */
+  notice: { packName: string; packVersion: string; note: string } | null;
+  /** The species is published (only a published monster's NPC file can be edited live). */
+  published: boolean;
+}
+
+/** The Monsters page's view: the list, the open monster and the monster spells. */
+export interface ContentMonstersView {
+  monsters: MonsterListEntry[];
+  monster: ContentMonsterView | null;
+  /** The global monster spells (`casting.spells`) as the draft holds them. */
+  spells: {
+    rows: MonsterSpellRule[];
+    /** For `contentMonsterSpells`' `expect`. */
+    fingerprint: string;
+    pending: boolean;
+  };
+  /** The values the form's picks offer. */
+  choices: {
+    /** Spell effects a monster can be healed by or resist. */
+    effects: string[];
+    /** Monster spell kinds. */
+    kinds: string[];
+    /** Spell effects a monster spell can draw (FX runs). */
+    fx: string[];
+    /** Item names, for loot and grabs. */
+    items: string[];
+  };
+  /** Draft changes outside these monsters' rows. */
+  otherDraft: number;
+  monsterDraft: number;
+}
+
 /** A monster's NPC file as the Monsters page edits it (issue #31, stage 3). */
 export interface ContentNpcFileView {
   /** The file's name (the store's spelling), or the monster's when it has no file yet. */
@@ -958,6 +1082,7 @@ export interface ContentNpcFileView {
   spellTags: string[];
 }
 
+/** The Items page's view: the list, and the open item. */
 export interface ContentItemsView {
   items: ItemListEntry[];
   item: ContentItemView | null;
@@ -1127,6 +1252,13 @@ export type ContentServerMsg =
       t: "contentItems";
       seq: number;
       view: ContentItemsView;
+      result?: { ok: boolean; text: string; problems?: ContentProblemView[] };
+    }
+  /** The Monsters page's view, after a `contentMonsters` ask or with a change's answer. */
+  | {
+      t: "contentMonsters";
+      seq: number;
+      view: ContentMonstersView;
       result?: { ok: boolean; text: string; problems?: ContentProblemView[] };
     }
   /**

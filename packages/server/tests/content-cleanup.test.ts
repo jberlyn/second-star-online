@@ -19,6 +19,7 @@ import {
   editErrors,
   inGameSchema,
   installContent,
+  rollLoot,
   type ServerMsg,
   storedCopyAs,
   storedCopyOf,
@@ -384,7 +385,9 @@ describe("removing content in use from a running game", () => {
   const wall = Date.UTC(2026, 10, 22, 12, 0, 0);
   let t = 0;
 
-  beforeEach(() => {
+  beforeEach(() => setupGame(NEVER_PUSH));
+  /** A fresh world: its database, content service and game, with the game's rng. */
+  function setupGame(rng: Parameters<typeof createGame>[0]["rng"]) {
     db = openDatabase();
     migrate(db);
     sent = [];
@@ -405,10 +408,10 @@ describe("removing content in use from a running game", () => {
       content: service,
       send: (to, msg) => sent.push({ to, msg }),
       isoNow: () => new Date(wall).toISOString(),
-      rng: NEVER_PUSH,
+      rng,
     });
     live = game;
-  });
+  }
 
   let ips = 0;
   async function make(name: string, role?: string, online = true) {
@@ -1319,6 +1322,101 @@ describe("removing content in use from a running game", () => {
     ).toEqual([{ item: "Mage's Ring", qty: 5 }]);
     game.tick();
     expect(activity("unlogged")).toEqual([]);
+  });
+
+  test("a monster made on the Monsters page spawns, drops its loot and goes on removal (issue #31)", async () => {
+    // Every roll 1: a loot line of 1 in 1 drops, and nothing else moves.
+    setupGame({ random: () => 1 });
+    const god = await make("God", "administrator");
+    const p = game.world.players.get(god.characterId);
+    if (!p) {
+      throw new Error("God is not online");
+    }
+    // Copy Orc as Orc Chief: tougher, and its loot a Long Sword every kill.
+    const made = service.draftMonsterChange(ADMIN(god), {
+      name: "Orc Chief",
+      op: "create",
+      copyFrom: "Orc",
+    });
+    expect(made.ok ? "" : made.error).toBe("");
+    const v = service.monstersView("Orc Chief").monster;
+    if (!v) {
+      throw new Error("Orc Chief");
+    }
+    const set = service.draftMonsterChange(ADMIN(god), {
+      name: "Orc Chief",
+      op: "set",
+      record: { ...v.record, hp: 90 },
+      expect: v.fingerprint,
+    });
+    expect(set.ok ? "" : set.error).toBe("");
+    expect(service.publish(ADMIN(god), service.draftRev(), "", game.contentWorld).ok).toBe(true);
+    // Its loot, saved live through the Monsters page's intent.
+    intent(god.characterId, { t: "controlPanelOpen" });
+    intent(god.characterId, { t: "contentNpcFile", seq: 1, name: "Orc Chief" });
+    const f = last(god.characterId, "contentNpcFile");
+    intent(god.characterId, {
+      t: "contentNpcFileSet",
+      seq: 2,
+      name: "Orc Chief",
+      expect: f?.view?.revision ?? null,
+      sections: { loot: [{ item: "Long Sword", oneIn: 1 }], spells: [], flags: [] },
+    });
+    expect(last(god.characterId, "contentNpcFile")?.result?.ok).toBe(true);
+    // One line, 1 in 1: every kill drops it.
+    expect(rollLoot(game.world.npcs.get("orc chief")?.loot ?? null, { random: () => 1 })).toBe(
+      "Long Sword",
+    );
+    intent(god.characterId, { t: "editClose" });
+    // On a map's roster, it spawns with its own hit points.
+    intent(god.characterId, { t: "chat", text: "/roster 1 Orc Chief" });
+    intent(god.characterId, { t: "chat", text: "/spawn 1" });
+    const slot = p.map.slots[0];
+    expect(slot?.live?.name).toBe("Orc Chief");
+    expect(slot?.live?.hp).toBe(90);
+    // Killed in melee, it drops its loot where it stood.
+    const live = slot?.live;
+    if (!live) {
+      throw new Error("no Orc Chief");
+    }
+    live.x = p.x;
+    live.y = p.y - 1;
+    live.fromX = live.x;
+    live.fromY = live.y;
+    live.hp = 0;
+    p.facing = "N";
+    intent(god.characterId, { t: "mapReady" });
+    intent(god.characterId, { t: "attack", seq: 1, held: true });
+    for (let i = 0; i < 40 && slot?.live; i++) {
+      game.tick();
+    }
+    intent(god.characterId, { t: "attack", seq: 2, held: false });
+    expect(slot?.live ?? null).toBeNull();
+    expect(
+      p.map.ground.some((g) => g.item === "Long Sword" && g.x === p.x && g.y === p.y - 1),
+    ).toBe(true);
+    // Spawned again, for the removal below.
+    intent(god.characterId, { t: "chat", text: "/spawn 1" });
+    expect(slot?.live?.name).toBe("Orc Chief");
+    // Removed with despawn: it goes from the map.
+    const r = service.draftRemoval(
+      ADMIN(god),
+      {
+        kind: "monster",
+        key: "Orc Chief",
+        content: "remove",
+        spawns: "remove",
+        live: "despawn",
+        replacement: null,
+        npcFile: "delete",
+      },
+      game.contentWorld,
+    );
+    expect(r.ok ? "" : r.error).toBe("");
+    const pub = service.publish(ADMIN(god), service.draftRev(), "", game.contentWorld);
+    expect(pub.ok ? "" : JSON.stringify(pub.problems ?? pub.error)).toBe("");
+    expect(slot?.live ?? null).toBeNull();
+    expect(content().monster("Orc Chief")).toBeUndefined();
   });
 
   test("a live NPC file save after the draft was reviewed refuses its publish; a masked row edit is refused (issue #31)", async () => {

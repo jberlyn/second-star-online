@@ -1133,6 +1133,25 @@ body {
 .items-list-row .balance-field {
   flex: 0 1 140px;
 }
+/* The Monsters page (ui/monsters-page.ts): a monster spell's 7-step ladder, and its two cards. */
+.monsters-ladder {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.monsters-ladder input {
+  width: 64px;
+}
+.items-list-row .balance-field:has(.monsters-ladder) {
+  flex: 0 1 auto;
+}
+.monsters-spells {
+  margin: 0 20px;
+}
+.monsters-spells > summary {
+  cursor: pointer;
+  font-weight: bold;
+}
 /* The Content page (ui/content-page.ts): packs, pack updates, the draft, rows and the history. */
 .content-section {
   margin: 0;

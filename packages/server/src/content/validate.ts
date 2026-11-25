@@ -225,6 +225,19 @@ function newMonsterKeyProblems(
  */
 export function monsterProblems(data: ContentData): ContentProblem[] {
   const out: ContentProblem[] = [];
+  // The monster spells: an NPC file names one by its tag, so two may not share one, and each step
+  // of the ladder is a `random(n)` the cast rolls, so it is at least 1.
+  const tags = new Set<string>();
+  data.monsters.casting.spells.forEach((sp, i) => {
+    const at = `monsters/casting/spells/${i}`;
+    if (tags.has(sp.tag.toLowerCase())) {
+      out.push({ where: `${at}/tag`, message: `two monster spells are tagged ${sp.tag}` });
+    }
+    tags.add(sp.tag.toLowerCase());
+    if (sp.ladder.some((n) => n < 1)) {
+      out.push({ where: `${at}/ladder`, message: "each step of the ladder is at least 1" });
+    }
+  });
   const traps = data.monsters.monsters.filter((m) => m.flags?.trap === true);
   if (traps.length === 0) {
     return out;
@@ -973,7 +986,7 @@ export function referenceProblems(next: ContentData, published: ContentData): Co
  */
 function referenceWhere(r: Reference): string {
   return (r.row.dataset === "items" || r.row.dataset === "monsters") &&
-    r.row.part === "definitions" &&
+    (r.row.part === "definitions" || (r.row.dataset === "monsters" && r.row.part === "monsters")) &&
     r.path.length > 0
     ? `${r.where}/${r.path.join("/")}`
     : r.where;
