@@ -52,7 +52,7 @@ import {
 import { type Assets, drawSprite } from "../assets.ts";
 import { drawFog, fogLayer } from "../fog.ts";
 import { action, noAutofill } from "./action.ts";
-import { pageHeading, panelButton } from "./control-panel-kit.ts";
+import { formActions, pageHeading, panelButton, sectionTabs } from "./control-panel-kit.ts";
 
 export interface WorldPageActions {
   /** Asks for the open map (`at`) and, with `list`, every map. */
@@ -102,16 +102,46 @@ export type Tool =
 
 const TOOLS: readonly (readonly [Tool, string])[] = [
   ["pencil", "Pencil"],
-  ["fat", "Fat brush"],
-  ["bucket", "Fill layer"],
-  ["flood", "Flood fill"],
+  ["fat", "Big brush"],
+  ["bucket", "Fill the whole layer"],
+  ["flood", "Fill an area"],
   ["rect", "Rectangle"],
   ["pick", "Eyedropper"],
   ["select", "Select"],
   ["paste", "Paste"],
 ];
 
-const LAYER_NAMES = ["1", "2", "3", "S"] as const;
+/** What each tool does, shown under the toolbar. */
+const TOOL_HELP: Record<Tool, string> = {
+  pencil: "Pencil: click a tile to paint it, or drag to paint a line.",
+  fat: "Big brush: paints five tiles at once, in a plus shape. Drag to keep painting.",
+  bucket: "Fill the whole layer: one click paints every tile of the layer.",
+  flood: "Fill an area: paints the joined tiles that match the one you click.",
+  rect: "Rectangle: drag a box to fill it with the tile.",
+  pick: "Eyedropper: click a tile on the map to paint with it.",
+  select: "Select: drag a box, then Copy, Cut or Clear it.",
+  paste: "Paste: click where the top-left corner of the copy goes.",
+  place: "Click the tile on the map.",
+};
+
+/** The layers by index (1, 2, 3, then S), in words. */
+const LAYER_NAMES = [
+  "Ground (layer 1)",
+  "Objects (layer 2)",
+  "Above characters (layer 3)",
+  "Shadows (layer S)",
+] as const;
+/** The layers in a short form, for the tile under the pointer. */
+const LAYER_SHORT = ["ground", "objects", "above", "shadows"] as const;
+
+/** The fog textures in words. */
+const FOG_TEXT: Record<string, string> = {
+  NoTex: "No fog",
+  Cloudy1: "Cloudy 1",
+  Cloudy2: "Cloudy 2",
+  Cloudy3: "Cloudy 3",
+  Whispy: "Wispy",
+};
 /** The order layers draw in, and how see-through: 1, then S at 178/255, then 2, then 3. */
 const DRAW_ORDER: readonly (readonly [LayerIndex, number])[] = [
   [0, 1],
@@ -135,22 +165,30 @@ function placedItemName(line: string): string {
 
 export function createWorldPage(actions: WorldPageActions, assets: Assets | null): WorldPage {
   const el = document.createElement("div");
-  el.className = "world-page items-page balance-page";
+  el.className = "world-page items-page balance-page plain-editor";
   el.append(
     pageHeading(
       "World",
-      "Every map of the world, one at a time: its tiles on four layers, the four monsters or NPCs it spawns, the items placed on it, its exits, signs, header, flags and fog. Saving applies at once, for everyone on the map, and keeps the map it replaced as a version you can restore. It does not wait for the content draft.",
+      "Pick a map to paint its tiles and choose what is on it: monsters, items, exits, signs and fog. Saving changes the map straight away for everyone on it, and keeps the old one so you can put it back.",
     ),
   );
   let ids = 0;
   const labelled = (label: string, control: HTMLElement, help = "") => {
     const wrap = document.createElement("div");
     wrap.className = "control-panel-field balance-field";
-    const l = document.createElement("label");
+    const isGroup = control.tagName === "DIV";
+    // A group of controls is named by a heading, not a label (a label names one control).
+    const l = document.createElement(isGroup ? "span" : "label");
     l.className = "control-panel-field-label";
     ids += 1;
     control.id ||= `world-field-${ids}`;
-    l.htmlFor = control.id;
+    if (l instanceof HTMLLabelElement) {
+      l.htmlFor = control.id;
+    } else {
+      l.id = `${control.id}-label`;
+      control.setAttribute("role", "group");
+      control.setAttribute("aria-labelledby", l.id);
+    }
     l.textContent = label;
     wrap.append(l, control);
     if (help) {
@@ -165,14 +203,32 @@ export function createWorldPage(actions: WorldPageActions, assets: Assets | null
     p.textContent = text;
     p.className = ok ? "balance-status" : "balance-status balance-status-error";
   };
-  const section = (title: string, ...kids: HTMLElement[]) => {
+  /** A help line under a tab's title: what the tab is for. */
+  const intro = (text: string) => {
+    const p = document.createElement("p");
+    p.className = "items-intro";
+    p.textContent = text;
+    return p;
+  };
+  /** A tab of the side forms: its title, a help line and its fields. */
+  const section = (id: string, title: string, help: string, ...kids: HTMLElement[]) => {
     const s = document.createElement("section");
-    s.className = "balance-row";
+    s.className = "balance-row items-group";
+    s.dataset.group = id;
     const h = document.createElement("h3");
     h.className = "balance-row-title";
     h.textContent = title;
-    s.append(h, ...kids);
+    s.append(h, intro(help), ...kids);
     return s;
+  };
+  /** Fields folded under "More options" (opened when one of them is in use). */
+  const more = (label: string, ...kids: HTMLElement[]) => {
+    const d = document.createElement("details");
+    d.className = "items-more";
+    const s = action(document.createElement("summary"), "world-more-toggle");
+    s.textContent = label;
+    d.append(s, ...kids);
+    return d;
   };
   const numInput = (id: string, value: string, label: string) => {
     const i = noAutofill(action(document.createElement("input"), id));
@@ -183,42 +239,41 @@ export function createWorldPage(actions: WorldPageActions, assets: Assets | null
     return i;
   };
 
-  // ---- the map picker ----
+  // ---- the map list, and going to a map by its position ----
   const mxIn = numInput("world-mx", "1000", "Map X");
   const myIn = numInput("world-my", "992", "Map Y");
   const status = document.createElement("p");
   status.className = "balance-status";
   status.setAttribute("role", "status");
-  const openBtn = panelButton("world-open", "Open", () => {
+  const openBtn = panelButton("world-open", "Go", () => {
     const mx = Number(mxIn.value);
     const my = Number(myIn.value);
     if (!onGrid(mx) || !onGrid(my)) {
-      say(status, `Map X and Y are whole numbers from -${GRID_MAX} to ${GRID_MAX}.`, false);
+      say(goStatus, `Map X and Y are whole numbers from -${GRID_MAX} to ${GRID_MAX}.`, false);
       return;
     }
+    goStatus.textContent = "";
     openMap(mx, my);
   });
-  const arrow = (id: string, label: string, dx: number, dy: number) =>
-    panelButton(id, label, () => {
+  const goStatus = document.createElement("p");
+  goStatus.className = "balance-status";
+  goStatus.setAttribute("role", "status");
+  const arrow = (id: string, label: string, title: string, dx: number, dy: number) => {
+    const b = panelButton(id, label, () => {
       if (loadedAt && onGrid(loadedAt.mx + dx) && onGrid(loadedAt.my + dy)) {
         openMap(loadedAt.mx + dx, loadedAt.my + dy);
       }
     });
-  const picker = document.createElement("div");
-  picker.className = "world-picker content-buttons";
-  picker.append(
-    labelled("Map X", mxIn),
-    labelled("Map Y", myIn),
-    openBtn,
-    arrow("world-west", "← West", -1, 0),
-    arrow("world-north", "↑ North", 0, -1),
-    arrow("world-south", "↓ South", 0, 1),
-    arrow("world-east", "East →", 1, 0),
-  );
+    b.title = title;
+    return b;
+  };
+  const go = document.createElement("div");
+  go.className = "items-filters world-go";
+  go.append(labelled("Map X", mxIn), labelled("Map Y", myIn), openBtn);
   const search = noAutofill(action(document.createElement("input"), "world-search"));
   search.type = "search";
   search.id = "world-search";
-  search.placeholder = "A map, a header, or a monster or item on it";
+  search.placeholder = "Map, name, monster or item";
   const listEl = document.createElement("ul");
   listEl.className = "items-list world-maps";
   listEl.setAttribute("aria-label", "Maps");
@@ -228,29 +283,56 @@ export function createWorldPage(actions: WorldPageActions, assets: Assets | null
   listBox.className = "items-list-box";
   listBox.append(
     labelled(
-      "Find",
+      "Search",
       search,
-      "Matches a map's position, its header, and the monsters, NPCs and items placed on it (where they are used).",
+      "Finds a map by its position, its name, or the monsters, NPCs and items on it.",
     ),
     listCount,
     listEl,
+    more(
+      "Go to a map by its position",
+      go,
+      (() => {
+        const p = document.createElement("p");
+        p.className = "control-panel-field-help";
+        p.textContent =
+          "Every map has an X and a Y on the world grid. A position with no map opens a blank one to build.";
+        return p;
+      })(),
+      goStatus,
+    ),
   );
 
   // ---- the editor ----
   const form = document.createElement("section");
   form.className = "items-form world-form";
   form.hidden = true;
+  const head = document.createElement("div");
+  head.className = "items-form-head";
   const title = document.createElement("h2");
   title.className = "content-section-title";
-  const live = document.createElement("p");
-  live.className = "balance-stale";
-  live.textContent =
-    "Saving applies at once, for everyone on the map: its monsters respawn where placed and its placed items are put back.";
+  const subtitle = document.createElement("p");
+  subtitle.className = "control-panel-field-help items-form-id";
+  const tags = document.createElement("div");
+  tags.className = "balance-tags";
+  const neighbours = document.createElement("div");
+  neighbours.className = "content-buttons world-neighbours";
+  const neighboursLabel = document.createElement("span");
+  neighboursLabel.className = "control-panel-field-help";
+  neighboursLabel.textContent = "Next map:";
+  neighbours.append(
+    neighboursLabel,
+    arrow("world-west", "← West", "Open the map to the west (X − 1)", -1, 0),
+    arrow("world-north", "↑ North", "Open the map to the north (Y − 1)", 0, -1),
+    arrow("world-south", "↓ South", "Open the map to the south (Y + 1)", 0, 1),
+    arrow("world-east", "East →", "Open the map to the east (X + 1)", 1, 0),
+  );
+  head.append(title, subtitle, tags, neighbours);
   const stale = document.createElement("p");
   stale.className = "balance-stale";
   stale.hidden = true;
   stale.textContent =
-    "Someone saved this map since you opened it: saving will be refused. Drop your edit to see theirs.";
+    "Someone changed this map while you were editing it, so saving will be refused. Undo your changes to see theirs.";
 
   // Toolbar.
   const toolSel = action(document.createElement("select"), "world-tool");
@@ -261,12 +343,14 @@ export function createWorldPage(actions: WorldPageActions, assets: Assets | null
     o.textContent = t;
     toolSel.append(o);
   }
+  const toolHelp = document.createElement("p");
+  toolHelp.className = "control-panel-field-help world-tool-help";
   const layerSel = action(document.createElement("select"), "world-layer");
   layerSel.id = "world-layer";
   LAYER_NAMES.forEach((n, i) => {
     const o = document.createElement("option");
     o.value = String(i);
-    o.textContent = `Layer ${n}`;
+    o.textContent = n;
     layerSel.append(o);
   });
   const shown = [true, true, true, true];
@@ -290,7 +374,7 @@ export function createWorldPage(actions: WorldPageActions, assets: Assets | null
   allLayers.className = "items-check";
   const allBox = action(document.createElement("input"), "world-all-layers");
   allBox.type = "checkbox";
-  allLayers.append(allBox, " Select, copy and cut take every layer");
+  allLayers.append(allBox, " Select, Copy, Cut and Delete work on every layer at once");
   const zoomSel = action(document.createElement("select"), "world-zoom");
   zoomSel.id = "world-zoom";
   for (const z of ["1", "1.5", "2"]) {
@@ -299,22 +383,26 @@ export function createWorldPage(actions: WorldPageActions, assets: Assets | null
     o.textContent = `${Number(z) * 100}%`;
     zoomSel.append(o);
   }
-  const undoBtn = panelButton("world-undo", "Undo", () => undo());
+  const undoBtn = panelButton("world-undo", "Undo last step", () => undo());
+  undoBtn.title = "Takes back your last change (Ctrl+Z)";
   const redoBtn = panelButton("world-redo", "Redo", () => redo());
+  redoBtn.title = "Puts back what Undo last step took (Ctrl+Y)";
   const copyBtn = panelButton("world-copy", "Copy", () => copySel(false));
+  copyBtn.title = "Copies the selected box (Ctrl+C)";
   const cutBtn = panelButton("world-cut", "Cut", () => copySel(true));
-  const deleteBtn = panelButton("world-delete", "Delete", () => {
+  cutBtn.title = "Copies the selected box, then clears it (Ctrl+X)";
+  const deleteBtn = panelButton("world-delete", "Clear", () => {
     if (selection && map) {
       change(clearRect(map, selection, selLayers()));
     }
   });
+  deleteBtn.title = "Clears the tiles in the selected box";
   const stampName = noAutofill(action(document.createElement("input"), "world-stamp-name"));
-  stampName.placeholder = "Stamp name";
-  stampName.setAttribute("aria-label", "Stamp name");
+  stampName.placeholder = "A name for it";
   const keepStamp = panelButton("world-stamp-keep", "Keep the copy as a stamp", () => {
     const n = stampName.value.trim();
     if (!clip || n === "") {
-      say(status, clip ? "Name the stamp." : "Copy something first.", false);
+      say(status, clip ? "Give the stamp a name." : "Copy something first.", false);
       return;
     }
     stamps.set(n, structuredClone(clip));
@@ -322,7 +410,6 @@ export function createWorldPage(actions: WorldPageActions, assets: Assets | null
     drawStamps();
   });
   const stampSel = action(document.createElement("select"), "world-stamp");
-  stampSel.setAttribute("aria-label", "Stamp to paste");
   stampSel.addEventListener("change", () => {
     const s = stamps.get(stampSel.value);
     if (s) {
@@ -330,23 +417,43 @@ export function createWorldPage(actions: WorldPageActions, assets: Assets | null
       setTool("paste");
     }
   });
-  const toolbar = document.createElement("div");
-  toolbar.className = "world-toolbar content-buttons";
-  toolbar.append(
+  const currentTile = document.createElement("p");
+  currentTile.className = "control-panel-field-help world-current-tile";
+  const toolRow = document.createElement("div");
+  toolRow.className = "items-filters world-tool-row";
+  toolRow.append(
     labelled("Tool", toolSel),
     labelled("Paint on", layerSel),
-    labelled("Show layers", visBox),
     labelled("Zoom", zoomSel),
-    undoBtn,
-    redoBtn,
-    copyBtn,
-    cutBtn,
-    deleteBtn,
-    allLayers,
-    stampName,
-    keepStamp,
-    labelled("Stamps", stampSel),
   );
+  const stepButtons = document.createElement("div");
+  stepButtons.className = "content-buttons world-steps";
+  stepButtons.append(undoBtn, redoBtn, copyBtn, cutBtn, deleteBtn);
+  const toolMore = more(
+    "More tools: show or hide layers, stamps",
+    labelled(
+      "Show layers",
+      visBox,
+      "Hiding a layer only hides it while you work: it stays on the map.",
+    ),
+    allLayers,
+    labelled(
+      "Stamps",
+      (() => {
+        const row = document.createElement("div");
+        row.className = "content-buttons";
+        stampName.setAttribute("aria-label", "Stamp name");
+        stampSel.setAttribute("aria-label", "Stamp to paste");
+        row.append(stampName, keepStamp, stampSel);
+        return row;
+      })(),
+      "Keep something you copied under a name, to paste it again later while this page is open.",
+    ),
+  );
+  toolMore.classList.add("world-tool-more");
+  const toolbar = document.createElement("div");
+  toolbar.className = "world-toolbar";
+  toolbar.append(toolRow, toolHelp, currentTile, stepButtons, toolMore);
 
   // Canvas.
   const canvas = action(document.createElement("canvas"), "world-canvas");
@@ -359,18 +466,18 @@ export function createWorldPage(actions: WorldPageActions, assets: Assets | null
   const hover = document.createElement("p");
   hover.className = "control-panel-field-help";
   hover.setAttribute("aria-live", "polite");
+  hover.textContent =
+    "Point at a tile to see what is on it. A red corner marks a tile players can't walk onto.";
 
   // Palette.
   const paletteSearch = noAutofill(action(document.createElement("input"), "world-palette-search"));
   paletteSearch.type = "search";
-  paletteSearch.placeholder = "Find a tile by code or name";
+  paletteSearch.placeholder = "Code or name, such as grass or S3";
   const paletteEl = document.createElement("div");
   paletteEl.className = "world-palette";
   paletteEl.setAttribute("aria-label", "Tiles");
   const paletteNote = document.createElement("p");
   paletteNote.className = "control-panel-field-help";
-  const currentTile = document.createElement("p");
-  currentTile.className = "control-panel-field-help";
 
   // Spawns.
   const spawnsEl = document.createElement("div");
@@ -378,7 +485,7 @@ export function createWorldPage(actions: WorldPageActions, assets: Assets | null
   const itemsEl = document.createElement("div");
   const itemsList = document.createElement("datalist");
   itemsList.id = "world-items";
-  const addItemBtn = panelButton("world-item-add", "Add an item", () => {
+  const addItemBtn = panelButton("world-item-add", "+ Add item", () => {
     if (!map || map.items.length >= EDITOR_ITEM_SLOTS) {
       return;
     }
@@ -387,30 +494,42 @@ export function createWorldPage(actions: WorldPageActions, assets: Assets | null
     change(next);
     placing = { kind: "item", index: next.items.length - 1 };
     setTool("place");
+    say(status, "Click the tile the new item goes on.");
   });
+  addItemBtn.classList.add("items-add");
   // Exits, signs, header, flags, fog.
   const exitFields: [HTMLInputElement[], HTMLInputElement[]] = [[], []];
   const exitsEl = document.createElement("div");
   for (const e of [0, 1] as const) {
+    const box = document.createElement("div");
+    box.className = "items-list-editor";
+    box.dataset.list = `exit${e + 1}`;
+    const h = document.createElement("h4");
+    h.className = "items-list-title";
+    h.textContent = `Exit ${e + 1}`;
     const row = document.createElement("div");
     row.className = "items-list-row";
-    const names = ["Map X", "Map Y", "Tile X", "Tile Y"];
+    const names = ["Leads to map X", "Leads to map Y", "Arrive at tile X", "Arrive at tile Y"];
     for (const [i, n] of names.entries()) {
       const inp = noAutofill(action(document.createElement("input"), `world-exit${e + 1}`));
-      inp.setAttribute("aria-label", `Exit ${e + 1} ${n}`);
+      inp.setAttribute("aria-label", `Exit ${e + 1}: ${n}`);
+      inp.placeholder = "None";
       inp.addEventListener("input", () => formEdited());
       exitFields[e][i] = inp;
-      row.append(labelled(`Exit ${e + 1}: ${n}`, inp));
+      row.append(labelled(n, inp));
     }
-    exitsEl.append(row);
+    box.append(h, row);
+    exitsEl.append(box);
   }
   const header = noAutofill(action(document.createElement("input"), "world-header"));
   header.maxLength = 200;
+  header.placeholder = "No name";
   header.addEventListener("input", () => formEdited());
   const signs = [0, 1, 2].map((i) => {
     const t = noAutofill(action(document.createElement("textarea"), `world-sign${i + 1}`));
     t.rows = 2;
     t.maxLength = 1000;
+    t.placeholder = "No sign";
     t.addEventListener("input", () => formEdited());
     return t;
   });
@@ -423,8 +542,8 @@ export function createWorldPage(actions: WorldPageActions, assets: Assets | null
     l.append(b, ` ${label}`);
     return { l, b };
   };
-  const safe = flagBox("Safe area: no fighting", "world-flag-safe");
-  const noPvp = flagBox("No player killing", "world-flag-nopvp");
+  const safe = flagBox("Safe area: no fighting at all", "world-flag-safe");
+  const noPvp = flagBox("No player killing: players can't attack each other", "world-flag-nopvp");
   const indoor = flagBox("Indoors", "world-flag-indoor");
   const factionSel = action(document.createElement("select"), "world-faction");
   factionSel.addEventListener("change", () => formEdited());
@@ -432,7 +551,7 @@ export function createWorldPage(actions: WorldPageActions, assets: Assets | null
   for (const t of FOG_TEXTURES) {
     const o = document.createElement("option");
     o.value = t;
-    o.textContent = t;
+    o.textContent = FOG_TEXT[t] ?? t;
     fogTex.append(o);
   }
   fogTex.addEventListener("change", () => fogEdited());
@@ -440,22 +559,35 @@ export function createWorldPage(actions: WorldPageActions, assets: Assets | null
   for (const b of BLEND_LEVELS) {
     const o = document.createElement("option");
     o.value = String(b);
-    o.textContent = String(b);
+    o.textContent = b === 0 ? "0 (can't be seen)" : b === 255 ? "255 (solid)" : String(b);
     fogBlend.append(o);
   }
   fogBlend.addEventListener("change", () => fogEdited());
   const fogRgb = ["Red", "Green", "Blue"].map((n) => {
-    const i = numInput(`world-fog-${n.toLowerCase()}`, "255", `Fog ${n.toLowerCase()}`);
+    const i = numInput(`world-fog-${n.toLowerCase()}`, "255", `Fog colour: ${n.toLowerCase()}`);
     i.min = "0";
     i.max = "255";
     i.addEventListener("input", () => fogEdited());
     return i;
   });
+  const fogColour = document.createElement("div");
+  fogColour.className = "items-range-pair world-fog-colour";
+  fogRgb.forEach((i, n) => {
+    fogColour.append(["Red", "Green", "Blue"][n] ?? "", i);
+  });
+  const fogMore = more(
+    "More options",
+    labelled(
+      "Fog colour",
+      fogColour,
+      "Red, green and blue, each from 0 to 255. 255, 255, 255 is white (the fog's own colours).",
+    ),
+  );
 
   // Save, history.
   const saveBtn = panelButton(
     "world-save",
-    "Save now",
+    "Save changes",
     () => {
       if (!map || busy || opening) {
         return;
@@ -475,7 +607,7 @@ export function createWorldPage(actions: WorldPageActions, assets: Assets | null
     },
     "primary",
   );
-  const dropBtn = panelButton("world-undo-edit", "Drop my edit", () => {
+  const dropBtn = panelButton("world-undo-edit", "Undo changes", () => {
     if (busy || opening) {
       return;
     }
@@ -483,74 +615,114 @@ export function createWorldPage(actions: WorldPageActions, assets: Assets | null
     status.textContent = "";
     update();
   });
+  dropBtn.title = "Puts the map back as it was when you opened it (or last saved it)";
   const historyEl = document.createElement("ul");
   historyEl.className = "world-history";
   historyEl.setAttribute("aria-label", "Saved versions");
+  const mainButtons = document.createElement("div");
+  mainButtons.className = "content-buttons";
+  mainButtons.append(saveBtn, dropBtn);
+  const liveNote = document.createElement("p");
+  liveNote.className = "control-panel-field-help world-live-note";
+  liveNote.textContent = "Saves go live at once, for everyone on this map.";
   const buttons = document.createElement("div");
-  buttons.className = "content-buttons";
-  buttons.append(saveBtn, dropBtn);
+  buttons.className = "items-actions";
+  buttons.append(mainButtons, liveNote);
 
   const canvasBox = document.createElement("div");
   canvasBox.className = "world-canvas-box";
   canvasBox.append(canvas);
+  const sTiles = section(
+    "tiles",
+    "Tiles",
+    "Pick the tile to paint with, then paint on the map above with the tool you chose.",
+    labelled("Find a tile", paletteSearch),
+    paletteNote,
+    paletteEl,
+  );
+  const sSpawns = section(
+    "spawns",
+    "Monsters & NPCs",
+    "The four monsters or NPCs that appear on this map. Choose one for a spot, then Pick on map and click the tile where it appears.",
+    spawnsEl,
+  );
+  const sItems = section(
+    "items",
+    "Items",
+    `Items lying on this map, put back each time it is saved (up to ${EDITOR_ITEM_SLOTS}). Put a number before an item to place a pile, as in 50 Gold.`,
+    itemsEl,
+    addItemBtn,
+    itemsList,
+  );
+  const sExits = section(
+    "exits",
+    "Exits",
+    "Where walking off this map takes players, and the tile they arrive on. For a house interior, put H1 or H2 before the map X (H1 1000). Leave all four boxes empty for no exit.",
+    exitsEl,
+  );
+  const sText = section(
+    "text",
+    "Name & signs",
+    "The name players see as they enter, and the text of the map's signs.",
+    labelled("Map name", header, "Shown at the top as players enter the map."),
+    ...signs.map((t, i) => labelled(`Sign ${i + 1}`, t)),
+  );
+  const sRules = section(
+    "rules",
+    "Rules",
+    "What players can do on this map.",
+    safe.l,
+    noPvp.l,
+    indoor.l,
+    labelled(
+      "Faction members appear here",
+      factionSel,
+      "Now and then one of the map's monsters is swapped for a member of this faction.",
+    ),
+  );
+  const sFog = section(
+    "fog",
+    "Fog",
+    "A haze drawn over the whole map, as players see it on the map above.",
+    labelled("Fog", fogTex),
+    labelled("Thickness", fogBlend, "From 0 (can't be seen) to 255 (solid)."),
+    fogMore,
+  );
+  const sVersions = section(
+    "versions",
+    "Saved versions",
+    "Every save keeps the map it replaced. Restoring one saves it over the map as it is now, so that can be restored too.",
+    historyEl,
+  );
+  const tabs = sectionTabs(form, "world");
   form.append(
-    title,
-    live,
+    head,
     stale,
     toolbar,
     canvasBox,
     hover,
-    buttons,
-    status,
-    section("Tiles", labelled("Find", paletteSearch), paletteNote, paletteEl, currentTile),
-    section(
-      "Spawns",
-      (() => {
-        const p = document.createElement("p");
-        p.className = "control-panel-field-help";
-        p.textContent =
-          "Four roster slots, each a monster or NPC from the World Editor's lists, placed on a tile. Pick on map, then click the map.";
-        return p;
-      })(),
-      spawnsEl,
-    ),
-    section("Items", itemsEl, addItemBtn, itemsList),
-    section(
-      "Exits",
-      (() => {
-        const p = document.createElement("p");
-        p.className = "control-panel-field-help";
-        p.textContent =
-          "Where walking off this map leads: a map's X and Y (H1 or H2 before them for a house) and the tile you arrive on. All four empty: no exit.";
-        return p;
-      })(),
-      exitsEl,
-    ),
-    section(
-      "Header, signs and flags",
-      labelled("Header", header, "The map's name, shown as you enter it."),
-      ...signs.map((t, i) => labelled(`Sign ${i + 1}`, t)),
-      safe.l,
-      noPvp.l,
-      indoor.l,
-      labelled("Faction spawn", factionSel, "A faction's members take a slot here."),
-    ),
-    section(
-      "Fog",
-      labelled("Texture", fogTex),
-      labelled("Blend", fogBlend),
-      ...fogRgb.map((i) => labelled(i.getAttribute("aria-label") ?? "", i)),
-    ),
-    section("Saved versions", historyEl),
+    tabs.el,
+    sTiles,
+    sSpawns,
+    sItems,
+    sExits,
+    sText,
+    sRules,
+    sFog,
+    sVersions,
+    formActions(buttons, status),
   );
 
   const layout = document.createElement("div");
   layout.className = "items-layout";
-  layout.append(listBox, form);
+  const empty = document.createElement("p");
+  empty.className = "items-empty-form";
+  empty.textContent = "Pick a map on the left (or go to its position) to see and change it.";
+  layout.append(listBox, empty, form);
   const loading = document.createElement("p");
   loading.className = "balance-loading";
   loading.textContent = "Loading…";
-  el.append(picker, loading, layout);
+  el.append(loading, layout);
 
   // ---- state ----
   let seq = 0;
@@ -707,18 +879,22 @@ export function createWorldPage(actions: WorldPageActions, assets: Assets | null
   };
   const copySel = (cut: boolean) => {
     if (!selection || !map) {
-      say(status, "Select a rectangle first (the Select tool).", false);
+      say(status, "Select a box first, with the Select tool.", false);
       return;
     }
     clip = copyRect(map, selection, selLayers());
     if (cut) {
       change(clearRect(map, selection, selLayers()));
     }
-    say(status, `Copied ${clip.w}×${clip.h}: choose Paste, then click where its top-left goes.`);
+    say(
+      status,
+      `Copied ${clip.w}×${clip.h} tiles: choose Paste, then click where its top-left corner goes.`,
+    );
   };
   const setTool = (t: Tool) => {
     tool = t;
     toolSel.value = t === "place" ? "pencil" : t;
+    toolHelp.textContent = TOOL_HELP[t];
     if (t !== "place") {
       placing = null;
     }
@@ -735,6 +911,8 @@ export function createWorldPage(actions: WorldPageActions, assets: Assets | null
   zoomSel.addEventListener("change", () => {
     canvas.style.width = `${MAP_WIDTH * PX * Number(zoomSel.value)}px`;
   });
+
+  toolHelp.textContent = TOOL_HELP.pencil;
 
   // ---- drawing ----
   const loadArt = async () => {
@@ -931,7 +1109,7 @@ export function createWorldPage(actions: WorldPageActions, assets: Assets | null
   };
   const moveTo = (x: number, y: number) => {
     hover.textContent = map
-      ? `Tile ${x}, ${y}: ${LAYER_NAMES.map((n, i) => `${n} ${codeAt(map as EditorMap, i as LayerIndex, x, y)}`).join(" · ")}`
+      ? `Tile ${x}, ${y}: ${LAYER_SHORT.map((n, i) => `${n} ${codeAt(map as EditorMap, i as LayerIndex, x, y) || "none"}`).join(" · ")}${footBlocked(codeAt(map, 0, x, y), codeAt(map, 1, x, y)) ? " · players can't walk here" : ""}`
       : "";
     if (!drag || !map) {
       return;
@@ -1011,7 +1189,7 @@ export function createWorldPage(actions: WorldPageActions, assets: Assets | null
   const setTile = (code: string) => {
     tile = code;
     const t = content().tiles.catalogue.find((c) => c.code === code);
-    currentTile.textContent = `Painting with ${code}${t?.name ? ` (${t.name})` : ""}${tileBlocked(code) ? ", which blocks walkers" : ""}.`;
+    currentTile.textContent = `Painting with ${code}${t?.name ? ` (${t.name})` : ""}${tileBlocked(code) ? ", which players can't walk onto" : ""}. Pick another in the Tiles tab.`;
     for (const b of paletteEl.querySelectorAll<HTMLElement>("[data-tile]")) {
       b.setAttribute("aria-pressed", b.dataset.tile === code ? "true" : "false");
     }
@@ -1029,7 +1207,7 @@ export function createWorldPage(actions: WorldPageActions, assets: Assets | null
     const MAX = 240;
     paletteNote.textContent =
       all.length > MAX
-        ? `${all.length} tiles: the first ${MAX} shown. Narrow them with Find.`
+        ? `${all.length} tiles: the first ${MAX} shown. Search to narrow them.`
         : `${all.length} tiles.`;
     paletteEl.replaceChildren(
       ...all.slice(0, MAX).map((t) => {
@@ -1037,7 +1215,7 @@ export function createWorldPage(actions: WorldPageActions, assets: Assets | null
         b.type = "button";
         b.className = "world-tile";
         b.dataset.tile = t.code;
-        b.title = `${t.code}${t.name ? ` ${t.name}` : ""}${tileBlocked(t.code) ? " (blocks)" : ""}`;
+        b.title = `${t.code}${t.name ? ` ${t.name}` : ""}${tileBlocked(t.code) ? " (players can't walk onto it)" : ""}`;
         b.setAttribute("aria-label", b.title);
         b.setAttribute("aria-pressed", t.code === tile ? "true" : "false");
         const c = document.createElement("canvas");
@@ -1070,7 +1248,7 @@ export function createWorldPage(actions: WorldPageActions, assets: Assets | null
         const sel = action(document.createElement("select"), "world-spawn");
         const none = document.createElement("option");
         none.value = "";
-        none.textContent = "Nothing";
+        none.textContent = "Empty";
         sel.append(none);
         for (const [group, names] of [
           ["Monsters", EDITOR_MONSTERS],
@@ -1105,16 +1283,17 @@ export function createWorldPage(actions: WorldPageActions, assets: Assets | null
         at.className = "control-panel-field-help";
         at.textContent = mob
           ? mob.anywhere
-            ? "spawns anywhere (set by /roster): Pick on map gives it a tile"
-            : `on tile ${mob.x}, ${mob.y}`
+            ? "Appears anywhere on the map (set with /roster). Pick on map to give it a tile."
+            : `At tile ${mob.x}, ${mob.y}`
           : "";
         const pick = panelButton("world-spawn-pick", "Pick on map", () => {
           placing = { kind: "mob", index: i };
           setTool("place");
-          say(status, "Click the tile it spawns on.");
+          say(status, "Click the tile where it appears.");
         });
         pick.disabled = !mob;
-        row.append(labelled(`Slot ${i + 1}`, sel), at, pick);
+        pick.title = "Then click a tile on the map";
+        row.append(labelled(`Spot ${i + 1}`, sel), at, pick);
         return row;
       }),
     );
@@ -1150,9 +1329,9 @@ export function createWorldPage(actions: WorldPageActions, assets: Assets | null
         });
         const at = document.createElement("span");
         at.className = "control-panel-field-help";
-        at.textContent = `on tile ${it.x}, ${it.y}`;
+        at.textContent = `At tile ${it.x}, ${it.y}`;
         row.append(
-          labelled(`Item ${i + 1}`, name, "A count before it places a pile: 50 Gold."),
+          labelled(`Item ${i + 1}`, name),
           at,
           panelButton("world-item-pick", "Pick on map", () => {
             placing = { kind: "item", index: i };
@@ -1265,23 +1444,23 @@ export function createWorldPage(actions: WorldPageActions, assets: Assets | null
       ...(v?.versions ?? []).map((ver) => {
         const li = document.createElement("li");
         const t = document.createElement("span");
-        t.textContent = `${ver.at.replace("T", " ").slice(0, 16)} UTC, saved over by ${ver.by} `;
+        t.textContent = `Replaced on ${ver.at.replace("T", " ").slice(0, 16)} UTC by ${ver.by} `;
         if (ver.blocked) {
           const why = document.createElement("span");
           why.className = "control-panel-field-help";
-          why.textContent = `Cannot be restored as it is: ${ver.blocked}`;
+          why.textContent = `Can't be restored as it is: ${ver.blocked}`;
           li.append(t, why);
           return li;
         }
         li.append(
           t,
-          panelButton("world-restore", "Restore", () => {
+          panelButton("world-restore", "Restore this version", () => {
             if (!v || busy || opening || dirty()) {
               say(
                 status,
                 busy
                   ? "Wait for the save to finish."
-                  : "Save or drop your edit before restoring a version.",
+                  : "Save or undo your changes before restoring a version.",
                 false,
               );
               return;
@@ -1299,7 +1478,7 @@ export function createWorldPage(actions: WorldPageActions, assets: Assets | null
     if ((v?.versions.length ?? 0) === 0) {
       const li = document.createElement("li");
       li.className = "control-panel-field-help";
-      li.textContent = v?.exists ? "No earlier versions." : "A new map: no versions yet.";
+      li.textContent = v?.exists ? "No earlier versions yet." : "A new map: nothing saved yet.";
       historyEl.append(li);
     }
   };
@@ -1313,11 +1492,25 @@ export function createWorldPage(actions: WorldPageActions, assets: Assets | null
     if (!v) {
       return;
     }
-    title.textContent = `Map x${v.map.mx}y${v.map.my}${v.exists ? "" : " (new)"}`;
+    const id = `x${v.map.mx}y${v.map.my}`;
+    const name = header.value.trim();
+    title.textContent = name || `Map ${id}`;
+    subtitle.textContent = name
+      ? `Map ${id} (X ${v.map.mx}, Y ${v.map.my})`
+      : `X ${v.map.mx}, Y ${v.map.my}`;
+    tags.replaceChildren(
+      ...(v.exists ? [] : [["New map: not saved yet", "pending"] as const]).map(([t, kind]) => {
+        const s = document.createElement("span");
+        s.className = `balance-tag items-tag-${kind}`;
+        s.textContent = t;
+        return s;
+      }),
+    );
     const isDirty = dirty();
     stale.hidden = !(isDirty && v.revision !== filledRevision);
     saveBtn.disabled = busy || opening || !(isDirty || !v.exists);
-    saveBtn.textContent = v.exists ? "Save now" : "Make this map now";
+    saveBtn.textContent = v.exists ? "Save changes" : "Create this map";
+    markUsed();
     dropBtn.hidden = !isDirty;
     undoBtn.disabled = !history.canUndo;
     redoBtn.disabled = !history.canRedo;
@@ -1326,12 +1519,42 @@ export function createWorldPage(actions: WorldPageActions, assets: Assets | null
     }
   };
 
+  /** A dot on each tab that holds something (`data-used`). */
+  const markUsed = () => {
+    if (!map) {
+      return;
+    }
+    const m = currentMap();
+    const used: Record<string, boolean> = {
+      spawns: m.mobs.some((x) => x !== null),
+      items: m.items.length > 0,
+      exits: m.exit1 !== null || m.exit2 !== null,
+      text: m.header.trim() !== "" || m.signs.some((x) => x.trim() !== ""),
+      rules:
+        m.flags.canFight === "O" ||
+        m.flags.canPvp === "O" ||
+        m.flags.isIndoors === "O" ||
+        m.flags.fctSpwn !== "",
+      fog: m.fog.tex.toLowerCase() !== NO_FOG.tex.toLowerCase(),
+    };
+    for (const sec of [sSpawns, sItems, sExits, sText, sRules, sFog]) {
+      const u = String(used[sec.dataset.group ?? ""] === true);
+      if (sec.dataset.used !== u) {
+        sec.dataset.used = u;
+      }
+    }
+    // The fog's colour fold opens when the colour is not plain white.
+    if (m.fog.r !== 255 || m.fog.g !== 255 || m.fog.b !== 255) {
+      fogMore.open = true;
+    }
+  };
+
   const drawStamps = () => {
     stampSel.replaceChildren(
       ...["", ...stamps.keys()].map((n) => {
         const o = document.createElement("option");
         o.value = n;
-        o.textContent = n === "" ? "Choose a stamp" : n;
+        o.textContent = n === "" ? "Paste a stamp…" : n;
         return o;
       }),
     );
@@ -1347,8 +1570,10 @@ export function createWorldPage(actions: WorldPageActions, assets: Assets | null
     });
     listCount.textContent =
       rows.length > 400
-        ? `${rows.length} of ${maps.length} maps: the first 400 shown. Narrow them with Find.`
-        : `${rows.length} of ${maps.length} maps`;
+        ? `${rows.length} of ${maps.length} maps: the first 400 shown. Search to narrow them.`
+        : rows.length === maps.length
+          ? `${maps.length} maps`
+          : `${rows.length} of ${maps.length} maps`;
     listEl.replaceChildren(
       ...rows.slice(0, 400).map((m) => {
         const li = document.createElement("li");
@@ -1360,10 +1585,14 @@ export function createWorldPage(actions: WorldPageActions, assets: Assets | null
           b.setAttribute("aria-current", "true");
         }
         const name = document.createElement("span");
-        name.textContent = m.title ? `${m.name} ${m.title}` : m.name;
+        name.className = "items-list-name";
+        // Its name when it has one, with its position; else its position.
+        name.textContent = m.title || m.name;
         const meta = document.createElement("span");
         meta.className = "items-list-meta";
-        meta.textContent = [...m.roster, ...m.items].slice(0, 6).join(" · ");
+        meta.textContent = [...(m.title ? [m.name] : []), ...m.roster, ...m.items]
+          .slice(0, 6)
+          .join(" · ");
         b.append(name, " ", meta);
         b.addEventListener("click", () => openMap(m.mx, m.my));
         li.append(b);
@@ -1379,7 +1608,7 @@ export function createWorldPage(actions: WorldPageActions, assets: Assets | null
         status,
         busy
           ? "Wait for the save to finish."
-          : "This map has unsaved changes: save them or drop your edit first.",
+          : "This map has unsaved changes: save them or undo them first.",
         false,
       );
       return;
@@ -1434,6 +1663,7 @@ export function createWorldPage(actions: WorldPageActions, assets: Assets | null
     view = m;
     opening = false;
     form.hidden = false;
+    empty.hidden = true;
     if (!filled && (first || (!dirty() && !busy))) {
       fill();
       if (first && !tile) {
@@ -1514,6 +1744,8 @@ export function createWorldPage(actions: WorldPageActions, assets: Assets | null
       status.textContent = "";
       listEl.replaceChildren();
       form.hidden = true;
+      empty.hidden = false;
+      goStatus.textContent = "";
       loading.hidden = false;
     },
     open(mx, my) {
@@ -1551,7 +1783,7 @@ export function createWorldPage(actions: WorldPageActions, assets: Assets | null
       if (waiting) {
         say(
           status,
-          "The connection dropped before the answer came: whether it saved is not known. Your edit is kept; if someone's save (yours too) landed, the page says so.",
+          "The connection dropped before the answer came, so it isn't known whether it saved. Your changes are kept; if a save (yours too) landed, the page says so.",
           false,
         );
       }

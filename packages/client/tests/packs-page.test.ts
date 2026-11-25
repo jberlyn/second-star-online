@@ -7,7 +7,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 
 import type { ContentPackPreview, ContentPacksView } from "@secondstaronline/shared";
 
-import { createPacksPage } from "../src/ui/packs-page.ts";
+import { createPacksPage, rowText } from "../src/ui/packs-page.ts";
 
 afterEach(() => document.body.replaceChildren());
 
@@ -89,7 +89,7 @@ describe("the Packs page", () => {
     t.p.onShow();
     const seq = (t.sent[0] as { seq: number }).seq;
     expect(t.p.receive({ t: "contentPacks", seq, view: VIEW })).toBe(true);
-    expect(t.p.el.textContent).toContain("In play from the next start");
+    expect(t.p.el.textContent).toContain("In use once the server restarts");
     expect(t.p.el.querySelectorAll('[data-action="packs-remove"]')).toHaveLength(1);
     expect(t.p.receive({ t: "contentUploadTicket", seq: 3, ticket: "x", maxBytes: 1 })).toBe(false);
   });
@@ -110,5 +110,57 @@ describe("the Packs page", () => {
     expect(install?.disabled).toBe(true);
     t.p.el.querySelector<HTMLButtonElement>('[data-action="packs-merge"]')?.click();
     expect(t.sent.at(-1)).toMatchObject({ t: "apply", importId: PREVIEW.importId, mode: "merge" });
+  });
+
+  test("each pack is a card in plain words: what it is, whether it is in use, and its tags", () => {
+    const t = page();
+    t.p.onShow();
+    t.p.receive({ t: "contentPacks", seq: (t.sent[0] as { seq: number }).seq, view: VIEW });
+    expect(t.p.el.classList.contains("plain-editor")).toBe(true);
+    const cards = [...t.p.el.querySelectorAll<HTMLElement>(".packs-card")];
+    expect(cards.map((c) => c.dataset.pack)).toEqual(["classic", "frost"]);
+    expect(cards[0]?.textContent).toContain("Classic v1.0.14");
+    expect(cards[0]?.textContent).toContain("Comes with the game");
+    expect(cards[0]?.textContent).toContain("In use");
+    // A pack that came with the game can't be removed; an added one can.
+    expect(cards[0]?.querySelector('[data-action="packs-remove"]')).toBeNull();
+    expect(cards[1]?.textContent).toContain("Added by you");
+    expect(cards[1]?.querySelector('[data-action="packs-remove"]')?.textContent).toBe("Remove…");
+  });
+
+  test("a checked file says in words what it would do, and offers the update by version", async () => {
+    const t = page();
+    const input = t.p.el.querySelector<HTMLInputElement>('[data-action="packs-import-file"]');
+    Object.defineProperty(input, "files", {
+      value: [new File(["{}"], "frost-1.1.0.ssopack.json")],
+    });
+    t.p.el.querySelector<HTMLButtonElement>('[data-action="packs-import-check"]')?.click();
+    await new Promise((r) => setTimeout(r, 10));
+    const text = t.p.el.textContent ?? "";
+    expect(text).toContain("It would add 1 thing, change 0, and remove 1");
+    expect(text).toContain("Frost Sword (items)");
+    expect(text).toContain("old (help, topics)");
+    expect(
+      t.p.el.querySelector<HTMLButtonElement>('[data-action="packs-install"]')?.textContent,
+    ).toBe("Update to v1.1.0");
+    t.p.el.querySelector<HTMLButtonElement>('[data-action="packs-cancel"]')?.click();
+    expect(t.sent.at(-1)).toMatchObject({ t: "apply", mode: "cancel" });
+    expect(t.p.el.querySelector<HTMLElement>(".packs-preview")?.hidden).toBe(true);
+    expect(t.p.el.querySelector(".balance-status")?.textContent).toBe("Nothing was added.");
+  });
+
+  test("a row's path reads as words", () => {
+    expect(rowText("items/items/Frost Sword")).toBe("Frost Sword (items)");
+    expect(rowText("monsters/definitions/Orc")).toBe("Orc (monsters, definitions)");
+    expect(rowText("odd")).toBe("odd");
+  });
+
+  test("a message shows next to the button it is about", () => {
+    const t = page();
+    const check = t.p.el.querySelector<HTMLButtonElement>('[data-action="packs-import-check"]');
+    check?.click();
+    const status = t.p.el.querySelector(".balance-status");
+    expect(status?.textContent).toBe("Choose a pack file first.");
+    expect(check?.nextElementSibling).toBe(status);
   });
 });

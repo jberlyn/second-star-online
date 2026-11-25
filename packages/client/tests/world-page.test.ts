@@ -96,7 +96,7 @@ describe("the World page", () => {
     expect(
       t
         .qa(".world-form .balance-stale")
-        .some((e) => !e.hidden && e.textContent?.includes("Someone saved")),
+        .some((e) => !e.hidden && e.textContent?.includes("Someone changed this map")),
     ).toBe(true);
     save.click();
     const sent = t.saves.at(-1);
@@ -231,7 +231,7 @@ describe("the World page", () => {
       ],
     });
     expect(t.qa('[data-action="world-restore"]')).toHaveLength(0);
-    expect(t.q<HTMLElement>(".world-history")?.textContent).toContain("Cannot be restored");
+    expect(t.q<HTMLElement>(".world-history")?.textContent).toContain("Can't be restored");
     (t.qa('[data-action="world-spawn-pick"]')[0] as HTMLButtonElement).click();
     t.press(5, 6);
     t.q<HTMLButtonElement>('[data-action="world-save"]').click();
@@ -271,7 +271,7 @@ describe("the World page", () => {
     expect(t.saves).toHaveLength(0);
   });
 
-  test("Drop my edit puts the map back; Restore sends the version with the revision shown", () => {
+  test("Undo changes puts the map back; Restore this version sends the version with the revision shown", () => {
     const t = page();
     t.open(blankMap(1000, 992), {
       versions: [{ id: "v1", by: "Al", at: "2026-11-25T00:00:00.000Z" }],
@@ -305,5 +305,115 @@ describe("the World page", () => {
     t.p.published();
     expect(painting()).not.toContain("QQ9");
     expect(t.qa('[data-tile][aria-pressed="true"]')).toHaveLength(1);
+  });
+});
+
+describe("the plain-language World page", () => {
+  test("an empty state shows until a map opens; the title is the map's name with its position under it", () => {
+    const t = page();
+    t.p.onShow();
+    t.p.receive({ t: "contentMaps", seq: t.asked[0]?.seq ?? 0, view: view(null) });
+    const empty = t.q<HTMLElement>(".items-empty-form");
+    expect(empty.hidden).toBe(false);
+    const m = blankMap(1000, 992);
+    m.header = "Town";
+    t.open(m);
+    expect(empty.hidden).toBe(true);
+    expect(t.q(".world-form .content-section-title").textContent).toBe("Town");
+    expect(t.q(".world-form .items-form-id").textContent).toContain("x1000y992");
+  });
+
+  test("the list shows a map by its name, with its position beside it", () => {
+    const t = page();
+    t.p.onShow();
+    t.p.receive({ t: "contentMaps", seq: t.asked[0]?.seq ?? 0, view: view(null) });
+    const first = t.q('button[data-map="x1000y992"]');
+    expect(first.querySelector(".items-list-name")?.textContent).toBe("Town");
+    expect(first.querySelector(".items-list-meta")?.textContent).toContain("x1000y992");
+    expect(t.q(".world-page .items-list-box > .control-panel-field-help")?.textContent).toBe(
+      "2 maps",
+    );
+  });
+
+  test("the side forms are tabs; a tab holding something carries a dot", async () => {
+    const t = page();
+    const m = blankMap(1000, 992);
+    m.items = [{ name: "Apple", x: 1, y: 1 }];
+    t.open(m);
+    // The tab strip follows the form a moment later (a mutation observer).
+    await new Promise((r) => setTimeout(r, 0));
+    const tabs = t.qa(".world-form .control-panel-tab").map((b) => b.textContent);
+    expect(tabs).toEqual([
+      "Tiles",
+      "Monsters & NPCs",
+      "Items",
+      "Exits",
+      "Name & signs",
+      "Rules",
+      "Fog",
+      "Saved versions",
+      "All",
+    ]);
+    const group = (id: string) => t.q<HTMLElement>(`section[data-group="${id}"]`);
+    expect(group("items").dataset.used).toBe("true");
+    expect(group("exits").dataset.used).toBe("false");
+    const header = t.q<HTMLInputElement>('[data-action="world-header"]');
+    header.value = "Mine";
+    header.dispatchEvent(new Event("input"));
+    expect(group("text").dataset.used).toBe("true");
+    await new Promise((r) => setTimeout(r, 0));
+    const itemsTab = t.qa(".world-form .control-panel-tab").find((b) => b.textContent === "Items");
+    expect(itemsTab?.classList.contains("control-panel-tab-used")).toBe(true);
+  });
+
+  test("tools and layers are named in words, and the tool says what it does", () => {
+    const t = page();
+    t.open(blankMap(1000, 992));
+    const layers = [...t.q<HTMLSelectElement>("#world-layer").options].map((o) => o.textContent);
+    expect(layers).toEqual([
+      "Ground (layer 1)",
+      "Objects (layer 2)",
+      "Above characters (layer 3)",
+      "Shadows (layer S)",
+    ]);
+    const help = t.q(".world-tool-help");
+    expect(help.textContent).toContain("Pencil");
+    const tool = t.q<HTMLSelectElement>("#world-tool");
+    tool.value = "flood";
+    tool.dispatchEvent(new Event("change"));
+    expect(help.textContent).toContain("joined tiles");
+    expect(t.q('[data-action="world-undo"]').textContent).toBe("Undo last step");
+  });
+
+  test("the Save bar says Save changes and that saves go live; Undo changes shows only after an edit", () => {
+    const t = page();
+    t.open(blankMap(1000, 992));
+    const save = t.q<HTMLButtonElement>('[data-action="world-save"]');
+    const undo = t.q<HTMLButtonElement>('[data-action="world-undo-edit"]');
+    expect(save.textContent).toBe("Save changes");
+    expect(undo.hidden).toBe(true);
+    expect(t.q(".world-live-note").textContent).toContain("go live at once");
+    const header = t.q<HTMLInputElement>('[data-action="world-header"]');
+    header.value = "Mine";
+    header.dispatchEvent(new Event("input"));
+    expect(undo.hidden).toBe(false);
+    // A position with no map: the button makes it.
+    const n = page();
+    n.open(blankMap(5, 5), { exists: false });
+    expect(n.q('[data-action="world-save"]').textContent).toBe("Create this map");
+    expect(n.q(".world-form .balance-tags").textContent).toContain("New map");
+  });
+
+  test("fog is named in words, and its colour fold opens when the colour is not white", () => {
+    const t = page();
+    const m = blankMap(1000, 992);
+    m.fog = { tex: "Cloudy1", blend: 100, r: 200, g: 255, b: 255 };
+    t.open(m);
+    const tex = t.q<HTMLSelectElement>('[data-action="world-fog-tex"]');
+    expect(tex.options[0]?.textContent).toBe("No fog");
+    expect(tex.selectedOptions[0]?.textContent).toBe("Cloudy 1");
+    expect(t.q<HTMLDetailsElement>('section[data-group="fog"] .items-more').open).toBe(true);
+    expect(t.q<HTMLElement>('section[data-group="fog"]').dataset.used).toBe("true");
+    t.q<HTMLButtonElement>('[data-action="world-save"]').click();
   });
 });

@@ -1427,6 +1427,79 @@ body {
 .balance-page.plain-editor .balance-row .items-actions {
   margin-top: 8px;
 }
+/* The Packs page (ui/packs-page.ts): its three parts with room around them, a card per pack, and
+   fields no wider than a form's. */
+.packs-page.plain-editor > .balance-row {
+  padding: 16px 20px;
+}
+.packs-page.plain-editor > .balance-status {
+  margin: 8px 20px 0;
+}
+.packs-page.plain-editor .control-panel-field {
+  max-width: 560px;
+}
+.packs-page.plain-editor .packs-card {
+  margin: 10px 0;
+}
+.packs-page.plain-editor .packs-choice {
+  margin: 12px 0;
+}
+.packs-page.plain-editor .packs-preview {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid #2f2f2f;
+  border-radius: 4px;
+}
+/* The Content page (ui/content-page.ts): its tabs, with publishing first, and the picker of
+   which pictures or sounds to show. */
+.content-page.plain-editor .control-panel-tabs.content-tabs {
+  margin: 8px 20px 0;
+  padding: 6px 0 0;
+}
+.content-page.plain-editor .content-art-pick {
+  padding-bottom: 0;
+}
+.content-page.plain-editor .content-art-pick .control-panel-field {
+  max-width: 420px;
+}
+/* The World page in plain words (ui/world-page.ts): the toolbar in rows above the map, the next-map
+   arrows under the title, the side forms behind tabs, and the "saves go live" note in the Save bar. */
+.world-page.plain-editor .world-toolbar {
+  margin: 8px 0 4px;
+}
+.world-page.plain-editor .world-tool-row .balance-field {
+  max-width: 260px;
+}
+.world-page.plain-editor .world-tool-help,
+.world-page.plain-editor .world-current-tile {
+  margin: 2px 0;
+}
+.world-page.plain-editor .world-steps {
+  margin: 6px 0;
+}
+.world-page.plain-editor .world-tool-more {
+  margin: 6px 0;
+}
+.world-page.plain-editor .world-neighbours {
+  align-items: center;
+  margin: 6px 0 0;
+}
+.world-page.plain-editor .world-go .balance-field {
+  max-width: 110px;
+}
+.world-page.plain-editor .world-go > .control-panel-btn {
+  align-self: flex-end;
+}
+.world-page.plain-editor [data-list^="exit"] .balance-field {
+  flex: 1 1 120px;
+}
+.world-page.plain-editor .world-fog-colour > input {
+  width: 5em;
+}
+.world-page.plain-editor .world-live-note {
+  align-self: center;
+  margin: 0;
+}
 /* Editor forms (control-panel-kit.ts): one section at a time behind tabs, where the rules came
    from folded away, and the Save bar kept in view at the bottom. */
 .control-panel-tabs {

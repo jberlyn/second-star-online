@@ -16,7 +16,13 @@ import type {
 } from "@secondstaronline/shared";
 
 import type { Assets } from "../src/assets.ts";
-import { createContentPage, lineDiff, makeItemPanels, refLabel } from "../src/ui/content-page.ts";
+import {
+  createContentPage,
+  lineDiff,
+  makeItemPanels,
+  refLabel,
+  rowName,
+} from "../src/ui/content-page.ts";
 import { removalHeadline } from "../src/ui/content-usage.ts";
 
 const overview = (over: Partial<ContentOverview> = {}): ContentOverview => ({
@@ -530,7 +536,7 @@ describe("the Content page", () => {
       }),
     });
     expect(p.el.textContent).toContain(
-      "Classic v1.3.0 changed casino/slots, which you have customised.",
+      "Classic v1.3.0 changed Casino › slots, which you had changed.",
     );
     expect(p.el.querySelector(".content-diff-add")?.textContent).toContain("12");
     (p.el.querySelector('[data-action="content-notice-dismiss"]') as HTMLButtonElement).click();
@@ -1599,5 +1605,119 @@ describe("the Items page's picture panels (#30)", () => {
     panels.show("Stick");
     await new Promise((r) => setTimeout(r, 0));
     expect(pic.shows).toEqual(["Stick", "Stick"]);
+  });
+});
+
+describe("the plain-language page", () => {
+  const draftOf = (n: number) =>
+    Array.from({ length: n }, (_, i) => ({
+      dataset: "items",
+      part: "items",
+      key: `Ale ${i + 1}`,
+      op: "set" as const,
+      author: "Other",
+      updatedAt: "2026-11-22T01:02:03.000Z",
+    }));
+  const tabs = (p: ReturnType<typeof page>["p"]) => [
+    ...p.el.querySelectorAll<HTMLButtonElement>('[data-action="content-tab"]'),
+  ];
+  const shown = (p: ReturnType<typeof page>["p"], title: string) => {
+    const sec = [...p.el.querySelectorAll<HTMLElement>(".content-section")].find(
+      (s) => s.querySelector("h2")?.textContent === title,
+    );
+    return sec !== undefined && !sec.classList.contains("control-panel-tab-hidden");
+  };
+
+  test("rows are named in words, as the editor pages name them", () => {
+    expect(rowName({ dataset: "items", part: "items", key: "Ale" })).toBe("Item: Ale");
+    expect(rowName({ dataset: "monsters", part: "definitions", key: "Orc" })).toBe(
+      "Monster rules: Orc",
+    );
+    expect(rowName({ dataset: "balance", part: "spellEffects", key: "Firebolt" })).toBe(
+      "Balance › spell effects › Firebolt",
+    );
+    expect(rowName({ dataset: "casino", part: "slots", key: null })).toBe("Casino › slots");
+    expect(rowName({ dataset: "newThing", part: "newThing", key: null })).toBe("newThing");
+  });
+
+  test("the page opens on the unpublished changes; each tab shows its own part", () => {
+    const { p } = page();
+    expect(tabs(p).map((b) => b.textContent)).toEqual([
+      "Unpublished changes",
+      "Pictures and sounds",
+      "History",
+      "Packs",
+      "Find problems",
+      "Edit as JSON (advanced)",
+    ]);
+    expect(tabs(p)[0]?.getAttribute("aria-selected")).toBe("true");
+    expect(shown(p, "Unpublished changes")).toBe(true);
+    expect(shown(p, "Publish history")).toBe(false);
+    expect(shown(p, "Edit as JSON (advanced)")).toBe(false);
+    tabs(p)[2]?.click();
+    expect(shown(p, "Publish history")).toBe(true);
+    expect(shown(p, "Unpublished changes")).toBe(false);
+  });
+
+  test("the first tab counts what waits to be published and carries a mark", () => {
+    const { p, last } = page();
+    p.onShow();
+    p.receive({
+      t: "contentOverview",
+      seq: last("overview")?.seq ?? 0,
+      overview: overview({ draft: draftOf(3) }),
+    });
+    const first = tabs(p)[0] as HTMLButtonElement;
+    expect(first.textContent).toBe("Unpublished changes (3)");
+    expect(first.classList.contains("control-panel-tab-used")).toBe(true);
+    expect(
+      (p.el.querySelector('[data-action="content-publish"]') as HTMLButtonElement).textContent,
+    ).toBe("Publish 3 changes");
+    // Each change is named in words, its path kept as a hint.
+    const cell = [...p.el.querySelectorAll("span")].find((s) => s.textContent === "Item: Ale 1");
+    expect(cell?.title).toBe("items/items/Ale 1");
+    expect(p.el.textContent).toContain("Cancel this change");
+    p.receive({ t: "contentOverview", seq: last("overview")?.seq ?? 0, overview: overview() });
+    expect(first.textContent).toBe("Unpublished changes");
+    expect(first.classList.contains("control-panel-tab-used")).toBe(false);
+  });
+
+  test("opening a row (from a change, or another page's link) shows the JSON tab", () => {
+    const { p, last } = page();
+    p.openRow({ dataset: "items", part: "items", key: "Ale" });
+    expect(tabs(p)[5]?.getAttribute("aria-selected")).toBe("true");
+    expect(shown(p, "Edit as JSON (advanced)")).toBe(true);
+    p.receive({ t: "contentRow", seq: last("row")?.seq ?? 0, row: ale });
+    expect(p.el.querySelector(".content-editor-title")?.textContent).toBe("Item: Ale");
+    expect(p.el.querySelector(".content-editor-state")?.textContent).toBe("Original");
+    expect(p.el.querySelector('[data-action="content-remove"]')?.textContent).toBe(
+      "Remove or retire this item…",
+    );
+  });
+
+  test("the history names what each publish changed in words", () => {
+    const { p, last } = page();
+    p.onShow();
+    p.receive({
+      t: "contentOverview",
+      seq: last("overview")?.seq ?? 0,
+      overview: overview({
+        history: [
+          {
+            id: "p1",
+            at: "2026-11-22T01:02:03.000Z",
+            actorName: "Other",
+            summary: "Cheaper ale",
+            rows: ["items/items/Ale", "casino/slots"],
+            undoOf: null,
+            undoneBy: null,
+            cleanup: [],
+            loggedOut: null,
+          },
+        ],
+      }),
+    });
+    expect(p.el.textContent).toContain("Item: Ale, Casino › slots");
+    expect(p.el.textContent).toContain("Undo this publish");
   });
 });

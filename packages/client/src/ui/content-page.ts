@@ -361,17 +361,80 @@ export function refLabel(r: ContentRowRef): string {
 }
 
 const OP_TEXT: Record<ContentDraftView["op"], string> = {
-  set: "Change",
-  remove: "Remove",
-  revert: "Back to the pack's version",
+  set: "Changed",
+  remove: "Removed",
+  revert: "Back to the original",
 };
 
 const STATUS_TEXT: Record<ContentRowStatus, string> = {
-  pack: "As the pack has it",
-  changed: "Changed",
-  added: "Added",
+  pack: "Original",
+  changed: "Changed by you",
+  added: "Added by you",
   removed: "Removed",
 };
+
+/** What each dataset holds, in words. */
+const DATASET_TEXT: Record<string, string> = {
+  attPower: "Attack power",
+  bindings: "Game bindings",
+  casino: "Casino",
+  classes: "Classes and skills",
+  craft: "Crafting",
+  gather: "Gathering",
+  help: "Help",
+  houses: "Houses and vehicles",
+  itemRules: "Item rule tables",
+  items: "Items",
+  monsters: "Monsters",
+  quests: "Quests",
+  social: "Social",
+  spells: "Spells",
+  tiles: "Tiles",
+  npcFiles: "NPC files",
+  rects: "Picture positions",
+  art: "Pictures and sounds",
+  balance: "Balance",
+};
+
+/** The rows most often met, named as the editor pages name them ("Item: Ale"). */
+const ROW_TEXT: Record<string, string> = {
+  "items/items": "Item",
+  "items/definitions": "Item rules",
+  "monsters/monsters": "Monster",
+  "monsters/definitions": "Monster rules",
+  "spells/spells": "Spell",
+  "npcFiles/files": "NPC file",
+  "classes/skills": "Skill",
+  "houses/vehicles": "Vehicle",
+  "houses/deeds": "Deed",
+  "art/items": "Item picture",
+  "art/paperdoll": "Worn picture",
+  "art/bodies": "Monster body",
+  "art/fx": "Spell effect",
+  "art/tiles": "Tile picture",
+  "art/sounds": "Sound",
+  "tiles/catalogue": "Tile",
+};
+
+/** `spellEffects` → `spell effects`. */
+const words = (id: string) => id.replace(/([a-z0-9])([A-Z])/g, "$1 $2").toLowerCase();
+
+/** A row in words: "Item: Ale", "Balance › spell effects › Firebolt". */
+export function rowName(r: ContentRowRef): string {
+  const named = ROW_TEXT[`${r.dataset}/${r.part}`];
+  if (named && r.key !== null) {
+    return `${named}: ${r.key}`;
+  }
+  const area = DATASET_TEXT[r.dataset] ?? r.dataset;
+  const part = r.part === r.dataset ? "" : ` › ${words(r.part)}`;
+  return `${area}${part}${r.key === null ? "" : ` › ${r.key}`}`;
+}
+
+/** `items/items/Ale` back to its row (a history line names rows by their path). */
+function refFromLabel(label: string): ContentRowRef {
+  const [dataset = "", part = "", ...rest] = label.split("/");
+  return { dataset, part, key: rest.length > 0 ? rest.join("/") : null };
+}
 
 /** The item, monster or vehicle a row is, or null for any other row. */
 export function entryOf(
@@ -494,11 +557,11 @@ function problemList(problems: readonly ContentProblemView[]): HTMLElement {
 
 export function createContentPage(actions: ContentPageActions, assets?: Assets): ContentPage {
   const root = document.createElement("section");
-  root.className = "content-page";
+  root.className = "content-page plain-editor";
   root.append(
     pageHeading(
       "Content",
-      "The game's items, monsters, NPCs, rules and texts: the installed packs plus your changes. Changes collect in one draft shared by every admin, and go live for everyone when published, without a restart.",
+      "Review the changes made on the editor pages and publish them to players. Changes from every admin wait here, unpublished, until someone publishes them: players get them at once, with no restart. The other tabs hold pictures and sounds, the publish history, and an advanced editor for anything the other pages don't cover.",
     ),
   );
 
@@ -536,7 +599,7 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
   // ---- installed packs ------------------------------------------------------------------------
   const packs = section(
     "Installed packs",
-    "Packs are read-only layers loaded in this order. Your changes sit on top and are never overwritten by a pack update.",
+    "The content your world is built from, in the order it loads. Your own changes sit on top: a pack update never overwrites them.",
   );
   const packTable = createTable<ContentOverview["packs"][number]>({
     label: "Installed packs",
@@ -551,7 +614,8 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
       },
       {
         label: "",
-        cell: (p) => (p.updatedFrom ? `Updated from v${p.updatedFrom} at the last start` : ""),
+        cell: (p) =>
+          p.updatedFrom ? `Updated from v${p.updatedFrom} when the server last started` : "",
       },
     ],
   });
@@ -559,8 +623,8 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
 
   // ---- pack updates ---------------------------------------------------------------------------
   const notices = section(
-    "Pack updates",
-    "A newer pack version changed these rows after you customised them. Your version stays live until you choose.",
+    "Pack updates waiting for you",
+    "A pack update changed something you had already changed. Players keep your version until you choose which to keep.",
   );
   const noticeList = document.createElement("div");
   notices.body.append(noticeList);
@@ -572,7 +636,8 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
         box.className = "content-notice";
         box.dataset.row = refLabel(n);
         const p = document.createElement("p");
-        p.textContent = `${n.packName} v${n.packVersion} changed ${refLabel(n)}, which you have ${n.yoursOp === "remove" ? "removed" : "customised"}.`;
+        p.textContent = `${n.packName} v${n.packVersion} changed ${rowName(n)}, which you had ${n.yoursOp === "remove" ? "removed" : "changed"}.`;
+        p.title = refLabel(n);
         const diffs = document.createElement("div");
         diffs.className = "content-diffs";
         diffs.append(
@@ -584,7 +649,7 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
         buttons.append(
           panelButton("content-notice-accept", `Use ${n.packName}'s version`, () => {
             void confirmBox(root, {
-              text: `Replace your version of ${refLabel(n)} with ${n.packName}'s? It goes live at once (you can undo it from the history).`,
+              text: `Replace your version of ${rowName(n)} with ${n.packName}'s? Players get it at once (you can undo it from the History tab).`,
               confirm: `Use ${n.packName}'s version`,
               cancel: "Keep mine",
             }).then((yes) => {
@@ -618,23 +683,32 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
 
   // ---- the draft ------------------------------------------------------------------------------
   const draft = section(
-    "Draft",
-    "Pending changes, shared by every admin. They are checked before publishing: the schemas first, then the key and name rules and the references between rows.",
+    "Unpublished changes",
+    "Changes made on the editor pages by every admin wait here until someone publishes them. They are checked first: anything that would break the game is listed below and must be fixed before you can publish.",
   );
   const draftTable = createTable<ContentDraftView>({
     label: "Draft changes",
-    empty: "The draft is empty: open a row below to change it.",
+    empty:
+      "Nothing to publish: there are no unpublished changes. Make changes on the Items, Monsters or other editor pages.",
     key: refLabel,
     open: { id: "content-draft-open", run: (d) => openRow(d) },
     columns: [
-      { label: "Row", cell: refLabel },
+      {
+        label: "What",
+        cell: (d) => {
+          const s = document.createElement("span");
+          s.textContent = rowName(d);
+          s.title = refLabel(d);
+          return s;
+        },
+      },
       { label: "Change", cell: (d) => OP_TEXT[d.op] },
       { label: "By", cell: (d) => d.author },
       { label: "When (UTC)", cell: (d) => when(d.updatedAt) },
       {
         label: "",
         cell: (d) =>
-          panelButton("content-draft-discard", "Discard", () => {
+          panelButton("content-draft-discard", "Cancel this change", () => {
             resultSeq = next();
             resultInEditor = false;
             afterResult = refreshAll;
@@ -648,7 +722,7 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
   const summary = gameInput("content-summary");
   summary.type = "text";
   summary.maxLength = 200;
-  summary.placeholder = "What this publish changes";
+  summary.placeholder = "Cheaper ale, stronger orcs…";
   const publishBtn = panelButton(
     "content-publish",
     "Publish",
@@ -689,42 +763,52 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
   );
   const publishRow = document.createElement("div");
   publishRow.className = "content-publish";
-  publishRow.append(formField("Summary", summary, "Shown in the publish history."), publishBtn);
+  publishRow.append(
+    formField(
+      "Note for the history (optional)",
+      summary,
+      "What this publish changes, shown in the History tab.",
+    ),
+    publishBtn,
+  );
   let removals = drawRemovals([]);
   draft.body.append(draftTable.el, checks, removals, publishRow);
 
   // ---- rows -----------------------------------------------------------------------------------
   const rows = section(
-    "Rows",
-    "Every row of a dataset field: one entry of a keyed list (an item, a monster), or the whole field (a text table, a rule list).",
+    "Edit as JSON (advanced)",
+    "Everything the game stores, as raw data. The editor pages are the easy way to change items, monsters, skills, gathering, NPCs and balance; use this for anything they don't cover. Saving puts the change with the other unpublished changes.",
   );
   const datasetSel = action(document.createElement("select"), "content-dataset");
   const partSel = action(document.createElement("select"), "content-part");
   const filter = gameInput("content-filter");
   filter.type = "search";
-  filter.placeholder = "Filter";
+  filter.placeholder = "Search this part";
   const pickers = document.createElement("div");
   pickers.className = "content-pickers";
-  const addBtn = panelButton("content-add", "Add a row", () => addRow());
+  const addBtn = panelButton("content-add", "+ Add a row", () => addRow());
   pickers.append(
-    formField("Dataset", datasetSel),
-    formField("Field", partSel),
-    formField("Find", filter),
+    formField("Area", datasetSel),
+    formField("Part", partSel),
+    formField("Search", filter),
     addBtn,
   );
   let listing: ContentListing | null = null;
   const rowTable = createTable<ContentListing["rows"][number]>({
     label: "Rows",
-    empty: "No rows.",
+    empty: "Nothing here matches.",
     key: (r) => r.key ?? "",
     open: {
       id: "content-row-open",
       run: (r) => listing && openRow({ dataset: listing.dataset, part: listing.part, key: r.key }),
     },
     columns: [
-      { label: "Row", cell: (r) => r.key ?? (listing ? `${listing.dataset}/${listing.part}` : "") },
+      {
+        label: "Row",
+        cell: (r) => r.key ?? (listing ? rowName({ ...listing, key: null }) : ""),
+      },
       { label: "State", cell: (r) => STATUS_TEXT[r.status] },
-      { label: "Draft", cell: (r) => (r.draft ? OP_TEXT[r.draft] : "") },
+      { label: "Unpublished", cell: (r) => (r.draft ? OP_TEXT[r.draft] : "") },
     ],
   });
   rows.body.append(pickers, rowTable.el);
@@ -745,7 +829,7 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
       ...(ds?.parts ?? []).map((p) => {
         const o = document.createElement("option");
         o.value = p.part;
-        o.textContent = p.keyed ? `${p.part} (${p.rows} rows)` : p.part;
+        o.textContent = p.keyed ? `${words(p.part)} (${p.rows} rows)` : words(p.part);
         return o;
       }),
     );
@@ -1385,7 +1469,7 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
   const packView = document.createElement("details");
   packView.className = "content-editor-pack";
   const packSummary = document.createElement("summary");
-  packSummary.textContent = "The pack's version";
+  packSummary.textContent = "Show the original (the pack's version)";
   const packPre = document.createElement("pre");
   packView.append(packSummary, packPre);
   const json = action(document.createElement("textarea"), "content-json");
@@ -1395,10 +1479,10 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
   const editorError = document.createElement("div");
   editorError.className = "content-editor-error";
   editorError.setAttribute("role", "alert");
-  const saveBtn = panelButton("content-save", "Save to draft", () => saveRow(), "primary");
-  const removeBtn = panelButton("content-remove", "Remove", () => removeRow(), "danger");
-  const revertBtn = panelButton("content-revert", "Back to the pack's version", () => revertRow());
-  const discardBtn = panelButton("content-discard", "Discard the draft change", () => {
+  const saveBtn = panelButton("content-save", "Save changes", () => saveRow(), "primary");
+  const removeBtn = panelButton("content-remove", "Remove…", () => removeRow(), "danger");
+  const revertBtn = panelButton("content-revert", "Restore the original", () => revertRow());
+  const discardBtn = panelButton("content-discard", "Cancel unpublished change", () => {
     if (editing) {
       resultSeq = next();
       resultInEditor = true;
@@ -1424,11 +1508,7 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
     wornPicker?.el ?? document.createElement("div"),
     bodyPicker?.el ?? document.createElement("div"),
     fxPicker?.el ?? document.createElement("div"),
-    formField(
-      "JSON",
-      json,
-      'One row\'s JSON. The key field never changes: to rename, set "display".',
-    ),
+    formField("Its data (JSON)", json, 'Its ID never changes: to rename it, set "display".'),
     editorError,
     editorButtons,
   );
@@ -1468,6 +1548,9 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
 
   function openRow(r: ContentRowRef): void {
     const ref = refOf(r);
+    // The row editor is on its own tab: opening a row (from a link on another page, the
+    // unpublished changes or the history) shows it.
+    showTab("rows");
     // A usage report still on its way belongs to the row being left.
     usageSeq = -1;
     usage = null;
@@ -1478,7 +1561,8 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
     editingRevision = undefined;
     hidePicker();
     editor.hidden = false;
-    editorTitle.textContent = refLabel(ref);
+    editorTitle.textContent = rowName(ref);
+    editorTitle.title = refLabel(ref);
     editorState.textContent = "Loading…";
     json.value = "";
     loaded = "";
@@ -1503,8 +1587,8 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
     editor.hidden = false;
     json.readOnly = false;
     saveBtn.hidden = false;
-    editorTitle.textContent = `New row in ${listing.dataset}/${listing.part}`;
-    editorState.textContent = `Its "${listing.keyField}" is its key, which never changes.`;
+    editorTitle.textContent = `New row in ${rowName({ ...listing, key: null })}`;
+    editorState.textContent = `Its "${listing.keyField}" is its ID, which never changes.`;
     packView.hidden = true;
     json.value = `{\n  "${listing.keyField}": ""\n}`;
     loaded = json.value;
@@ -1518,13 +1602,14 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
   function showRow(d: ContentRowDetail): void {
     editingKeyField = d.keyField;
     editingRevision = d.revision;
-    editorTitle.textContent = refLabel(d);
+    editorTitle.textContent = rowName(d);
+    editorTitle.title = refLabel(d);
     const parts = [d.status ? STATUS_TEXT[d.status] : "Not published yet"];
     if (d.draft) {
-      parts.push(`in the draft (${OP_TEXT[d.draft.op]}, by ${d.draft.author})`);
+      parts.push(`unpublished change (${OP_TEXT[d.draft.op].toLowerCase()}, by ${d.draft.author})`);
     }
     if (d.readOnly) {
-      parts.push("built from the art: it cannot be changed here");
+      parts.push("built from the pictures: it can't be changed here");
     }
     if (d.note) {
       parts.push(d.note);
@@ -1538,6 +1623,16 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
     loaded = json.value;
     saveBtn.hidden = d.readOnly;
     removeBtn.hidden = d.readOnly || d.keyField === null || d.published === null;
+    // Worded as the editor pages word it.
+    const kind = entryOf(d)?.kind;
+    removeBtn.textContent =
+      kind === "item"
+        ? "Remove or retire this item…"
+        : kind === "monster"
+          ? "Remove this monster…"
+          : kind === "vehicle"
+            ? "Remove this vehicle…"
+            : "Remove…";
     if (d.published !== null && entryOf(d)) {
       askUsage(d);
     }
@@ -1628,7 +1723,7 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
     // An item, a monster or a vehicle is removed with its cleanup, once its usage report is in.
     if (entryOf(ref)) {
       if (!usage) {
-        showError("Wait for the usage report before removing it.");
+        showError("Wait a moment: the list of where it is used is still loading.");
         return;
       }
       const u = usage;
@@ -1650,7 +1745,7 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
       return;
     }
     void confirmBox(root, {
-      text: `Add the removal of ${refLabel(ref)} to the draft?`,
+      text: `Remove ${rowName(ref)}? It goes with the other unpublished changes, and players lose it once you publish.`,
       confirm: "Remove",
       cancel: "Keep it",
       danger: true,
@@ -1684,15 +1779,15 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
   // ---- publish history ------------------------------------------------------------------------
   // ---- art and sounds (issue #29) -------------------------------------------------------------
   const artSection = section(
-    "Art and sounds",
-    "Upload PNG pictures and WAV, MP3 or OGG sounds. Each file is checked and stored on the server under the hash of its bytes, and goes live when an art row in the draft names it (under art: items, paperdoll, bodies, fx, tiles or sounds) and the draft is published.",
+    "Upload files",
+    "Upload PNG pictures and WAV, MP3 or OGG sounds to use later. A file does nothing on its own: players see or hear it once something uses it (an item's picture, a sound) and that change is published.",
   );
   const uploader = createArtUploader({ ticket });
   artSection.body.append(uploader.el);
 
   const picturesSection = section(
     "Item pictures",
-    "Upload many item pictures at once, and see which items have none. Open an item's row to upload, choose or adjust its picture with a preview.",
+    "See which items have no picture, and upload many at once (each file named after its item). To change one item's picture, use its Picture tab on the Items page.",
   );
   const pictures = artOptions
     ? createItemPictures({
@@ -1709,8 +1804,8 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
     picturesSection.el.hidden = true;
   }
   const wornSection = section(
-    "Worn layers",
-    "Every worn (paperdoll) layer the content draws, with its frames. Open one to upload, check and preview its frames, or upload many layers' frames and sheets at once. An item's own row shows the layer it draws when worn.",
+    "Worn pictures",
+    "How each worn item looks on a character, frame by frame. Open one to upload, check and preview its frames, or upload many at once.",
   );
   const wornLayers = wornOptions ? createWornLayers(wornOptions) : null;
   if (wornLayers) {
@@ -1719,8 +1814,8 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
     wornSection.el.hidden = true;
   }
   const bodiesSection = section(
-    "Bodies",
-    "Every monster and Morph body the content draws, with its frames. Open one to upload, check and preview its frames, make a new body, or upload many bodies at once. A monster's own row shows its body and can give it a new one.",
+    "Monster bodies",
+    "How each monster (and each Morph shape) looks walking and attacking. Open one to upload, check and preview its frames, make a new body, or upload many at once.",
   );
   const bodies = bodyOptions ? createBodies(bodyOptions) : null;
   if (bodies) {
@@ -1730,7 +1825,7 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
   }
   const effectsSection = section(
     "Spell effects",
-    "Every effect run the content and the engine draw, with its frames. Open one to upload, check and play its frames, make a new run, or upload many runs at once. A spell's own row shows its runs and can make it play every frame.",
+    "The animations spells play. Open one to upload, check and play its frames, make a new one, or upload many at once.",
   );
   const effects = fxOptions ? createSpellEffects(fxOptions) : null;
   if (effects) {
@@ -1740,7 +1835,7 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
   }
   const tilesSection = section(
     "Tiles",
-    "Every map tile in the catalogue, with its picture. Open one to change its picture, its name, whether it is walkable and its flags, or add many tiles at once from tilesets.",
+    "Every map tile, with its picture. Open one to change its picture, its name and whether players can walk on it, or add many tiles at once from tilesets.",
   );
   const tiles = tileOptions ? createTiles(tileOptions) : null;
   if (tiles) {
@@ -1750,7 +1845,7 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
   }
   const soundsSection = section(
     "Sounds",
-    "Every sound the content and the engine play, with where it comes from and who plays it. Open one to hear it, replace its file or take its upload out; add new sounds one at a time or many at once.",
+    "Every sound the game plays, and what plays it. Open one to hear it or replace its file; add new sounds one at a time or many at once.",
   );
   const sounds = soundOptions ? createSounds(soundOptions) : null;
   if (sounds) {
@@ -1791,7 +1886,10 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
     }
   };
 
-  const history = section("Publish history", "Newest first. Undo takes a whole publish back.");
+  const history = section(
+    "Publish history",
+    "Every publish, newest first. Undo this publish puts everything it changed back as it was before.",
+  );
   const historyTable = createTable<ContentPublishView>({
     label: "Publish history",
     empty: "Nothing has been published yet.",
@@ -1800,7 +1898,7 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
       { label: "When (UTC)", cell: (p) => when(p.at) },
       { label: "By", cell: (p) => p.actorName },
       {
-        label: "Summary",
+        label: "Note",
         cell: (p) => {
           if (p.cleanup.length === 0 && p.loggedOut === null) {
             return p.summary;
@@ -1827,16 +1925,24 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
           return cell;
         },
       },
-      { label: "Rows", cell: (p) => p.rows.join(", ") },
+      {
+        label: "What it changed",
+        cell: (p) => {
+          const s = document.createElement("span");
+          s.textContent = p.rows.map((r) => rowName(refFromLabel(r))).join(", ");
+          s.title = p.rows.join(", ");
+          return s;
+        },
+      },
       {
         label: "",
         cell: (p) => {
           if (p.undoneBy) {
             return "Undone";
           }
-          return panelButton("content-undo", "Undo", () => {
+          return panelButton("content-undo", "Undo this publish", () => {
             void confirmBox(root, {
-              text: `Undo "${p.summary}"? Every row it changed goes back as it was before, live at once.${p.cleanup.length > 0 ? " What it did to the world (deleted, replaced or despawned) is not undone." : ""}`,
+              text: `Undo "${p.summary}"? Everything it changed goes back as it was before, and players get that at once.${p.cleanup.length > 0 ? " What it did to the world (deleted, replaced or despawned) is not undone." : ""}`,
               confirm: "Undo",
               cancel: "Keep it",
               danger: true,
@@ -1857,13 +1963,13 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
 
   // ---- problems -------------------------------------------------------------------------------
   const problemsSection = section(
-    "Problems",
-    "References nothing resolves. They never stop the game: an unknown item shows by its name with no picture, and an unknown monster spawns as a stand-in. Content's own are as the packs shipped them, or left by a change.",
+    "Find problems",
+    "Things that name something that doesn't exist, such as a shop selling an item that was removed. They never stop the game: an unknown item shows by its name with no picture, and an unknown monster appears as a stand-in.",
   );
   const problemsBody = document.createElement("div");
   problemsBody.className = "content-problems-body";
   problemsSection.body.append(
-    panelButton("content-problems-check", "Look for problems", () => {
+    panelButton("content-problems-check", "Check for problems", () => {
       problemsSeq = next();
       problemsBody.replaceChildren("Looking…");
       actions.problems(problemsSeq);
@@ -1889,11 +1995,138 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
     );
   };
 
+  // ---- tabs: one job at a time, publishing first ---------------------------------------------
+  type Tab = "publish" | "art" | "history" | "packs" | "problems" | "rows";
+  const TABS: readonly (readonly [Tab, string, HTMLElement[]])[] = [
+    ["publish", "Unpublished changes", [notices.el, draft.el]],
+    [
+      "art",
+      "Pictures and sounds",
+      [
+        picturesSection.el,
+        wornSection.el,
+        bodiesSection.el,
+        effectsSection.el,
+        tilesSection.el,
+        soundsSection.el,
+        artSection.el,
+      ],
+    ],
+    ["history", "History", [history.el]],
+    ["packs", "Packs", [packs.el]],
+    ["problems", "Find problems", [problemsSection.el]],
+    ["rows", "Edit as JSON (advanced)", [rows.el]],
+  ];
+  let tab: Tab = "publish";
+  const strip = document.createElement("div");
+  strip.className = "control-panel-tabs content-tabs";
+  strip.setAttribute("role", "tablist");
+  strip.setAttribute("aria-label", "Content");
+  const tabButtons = TABS.map(([id, label]) => {
+    const b = action(document.createElement("button"), "content-tab");
+    b.type = "button";
+    b.className = "control-panel-tab";
+    b.setAttribute("role", "tab");
+    b.dataset.tab = id;
+    b.textContent = label;
+    b.addEventListener("click", () => showTab(id));
+    return b;
+  });
+  strip.append(...tabButtons);
+  // Arrow keys, Home and End move between tabs, choosing as they go.
+  strip.addEventListener("keydown", (e) => {
+    const i = TABS.findIndex(([id]) => id === tab);
+    const n = TABS.length;
+    const to =
+      e.key === "ArrowRight"
+        ? (i + 1) % n
+        : e.key === "ArrowLeft"
+          ? (i - 1 + n) % n
+          : e.key === "Home"
+            ? 0
+            : e.key === "End"
+              ? n - 1
+              : -1;
+    if (to < 0) {
+      return;
+    }
+    e.preventDefault();
+    showTab(TABS[to]?.[0] ?? tab);
+    tabButtons[to]?.focus();
+  });
+
+  // Pictures and sounds: one kind at a time, picked from a list.
+  const artParts: readonly (readonly [string, HTMLElement])[] = [
+    ["Item pictures", picturesSection.el],
+    ["Worn pictures", wornSection.el],
+    ["Monster bodies", bodiesSection.el],
+    ["Spell effects", effectsSection.el],
+    ["Tiles", tilesSection.el],
+    ["Sounds", soundsSection.el],
+    ["Upload files", artSection.el],
+  ];
+  const artSel = action(document.createElement("select"), "content-art-kind");
+  for (const [label, el] of artParts) {
+    // A part with nothing to draw (no art in this build) has no entry.
+    if (el.hidden) {
+      continue;
+    }
+    const o = document.createElement("option");
+    o.value = label;
+    o.textContent = label;
+    artSel.append(o);
+  }
+  const artPick = document.createElement("div");
+  artPick.className = "content-section content-art-pick";
+  artPick.append(
+    formField(
+      "Show",
+      artSel,
+      "To change one item's or monster's picture, the Items and Monsters pages are easier.",
+    ),
+  );
+  artSel.addEventListener("change", () => showTab("art"));
+
+  /** Shows one tab's sections (and, on Pictures and sounds, the kind picked). */
+  function showTab(id: Tab): void {
+    tab = id;
+    for (const [t, , els] of TABS) {
+      for (const sec of els) {
+        let on = t === id;
+        if (on && t === "art") {
+          on = artParts.some(([label, el]) => el === sec && label === artSel.value);
+        }
+        sec.classList.toggle("control-panel-tab-hidden", !on);
+      }
+    }
+    artPick.classList.toggle("control-panel-tab-hidden", id !== "art");
+    for (const b of tabButtons) {
+      const on = b.dataset.tab === id;
+      b.setAttribute("aria-selected", String(on));
+      b.tabIndex = on ? 0 : -1;
+    }
+  }
+
+  /** Marks the Unpublished changes tab while it has something waiting, with its count. */
+  function markTabs(o: ContentOverview): void {
+    const b = tabButtons[0] as HTMLButtonElement;
+    const waiting = o.draft.length + o.notices.length;
+    b.textContent =
+      o.draft.length > 0 ? `Unpublished changes (${o.draft.length})` : "Unpublished changes";
+    b.classList.toggle("control-panel-tab-used", waiting > 0);
+    if (waiting > 0) {
+      b.title =
+        o.notices.length > 0 ? "A pack update is waiting for you" : "Waiting to be published";
+    } else {
+      b.removeAttribute("title");
+    }
+  }
+
   root.append(
-    packs.el,
+    strip,
     notices.el,
     draft.el,
-    rows.el,
+    artPick,
     picturesSection.el,
     wornSection.el,
     bodiesSection.el,
@@ -1902,8 +2135,11 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
     soundsSection.el,
     artSection.el,
     history.el,
+    packs.el,
     problemsSection.el,
+    rows.el,
   );
+  showTab("publish");
 
   function refreshAll(): void {
     overviewSeq = next();
@@ -1914,6 +2150,7 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
 
   function drawOverview(o: ContentOverview): void {
     overview = o;
+    markTabs(o);
     packTable.setRows(o.packs);
     drawNotices(o.notices);
     draftTable.setRows(o.draft);
@@ -1934,16 +2171,22 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
     removals.replaceWith(nextRemovals);
     removals = nextRemovals;
     publishBtn.disabled = o.draft.length === 0 || o.problems.length > 0;
+    publishBtn.textContent = o.draft.length > 1 ? `Publish ${o.draft.length} changes` : "Publish";
     historyTable.setRows(o.history);
     if (datasetSel.options.length === 0) {
       datasetSel.replaceChildren(
         ...o.datasets.map((d) => {
           const opt = document.createElement("option");
           opt.value = d.id;
-          opt.textContent = d.readOnly ? `${d.id} (read-only)` : d.id;
+          const name = DATASET_TEXT[d.id] ?? d.id;
+          opt.textContent = d.readOnly ? `${name} (read-only)` : name;
           return opt;
         }),
       );
+      // Items is where most people start.
+      if (o.datasets.some((d) => d.id === "items")) {
+        datasetSel.value = "items";
+      }
       fillParts();
       askList();
     }

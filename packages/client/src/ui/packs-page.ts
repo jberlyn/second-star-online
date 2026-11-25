@@ -3,6 +3,10 @@
  * published changes as a pack file, and importing one: checked and reviewed first, then merged
  * into the draft or installed as a pack (in play from the next start). Files go over HTTP with an
  * upload ticket (`/upload/pack`, `PACK_DOWNLOAD_PATH`); the rest over the socket.
+ *
+ * In plain words (the editor pages' `.plain-editor` look): each pack is a card saying what it is
+ * and whether it is in use, and a checked file says what it would add, change and remove before
+ * anything does.
  */
 import {
   type ContentPackPreview,
@@ -13,13 +17,7 @@ import {
 } from "@secondstaronline/shared";
 
 import { action, noAutofill } from "./action.ts";
-import {
-  confirmBox,
-  createTable,
-  formField,
-  pageHeading,
-  panelButton,
-} from "./control-panel-kit.ts";
+import { confirmBox, formField, pageHeading, panelButton } from "./control-panel-kit.ts";
 
 export interface PacksPageActions {
   view(seq: number): void;
@@ -49,39 +47,66 @@ export interface PacksPage {
 const SEQ_BASE = 1_000_000_000;
 
 const STATE_TEXT: Record<ContentPacksView["packs"][number]["state"], string> = {
-  loaded: "In play",
-  "next start": "In play from the next start",
-  "removed at next start": "Leaves at the next start",
-  "left out": "Left out at start",
+  loaded: "In use",
+  "next start": "In use once the server restarts",
+  "removed at next start": "Removed when the server restarts",
+  "left out": "Not in use: it stopped the server starting",
 };
+
+/** A row's path (`items/items/Frost Sword`) as words: "Frost Sword (items)". */
+export function rowText(path: string): string {
+  const parts = path.split("/");
+  if (parts.length < 3) {
+    return path;
+  }
+  const [dataset, part, ...key] = parts;
+  const where = part === dataset ? dataset : `${dataset}, ${part}`;
+  return `${key.join("/")} (${where})`;
+}
+
+const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 export function createPacksPage(
   actions: PacksPageActions,
   fetchImpl: (input: string, init?: RequestInit) => Promise<Response> = (i, n) => fetch(i, n),
 ): PacksPage {
   const el = document.createElement("div");
-  el.className = "packs-page balance-page";
+  el.className = "packs-page balance-page plain-editor";
   el.append(
     pageHeading(
       "Packs",
-      "The content packs this server runs, in the order they lay over each other, with your own changes on top. Export your published changes as a pack file to keep or share; import one from another server, into your draft or as a pack of its own.",
+      "A pack is a bundle of game content: items, monsters, NPCs, spells, art and sounds. Your world runs the packs below, with your own changes on top. Save your changes as a pack file to keep or share, or add a pack from a file.",
     ),
   );
   const status = document.createElement("p");
   status.className = "balance-status";
   status.setAttribute("role", "status");
-  const say = (text: string, ok = true) => {
+  /** Shows a message, next to the part of the page it is about (`near`) when given. */
+  const say = (text: string, ok = true, near?: HTMLElement) => {
+    near?.after(status);
     status.textContent = text;
     status.className = ok ? "balance-status" : "balance-status balance-status-error";
   };
-  const section = (title: string, ...kids: HTMLElement[]) => {
+  const section = (title: string, intro: string, ...kids: HTMLElement[]) => {
     const s = document.createElement("section");
     s.className = "balance-row";
     const h = document.createElement("h2");
     h.className = "content-section-title";
     h.textContent = title;
-    s.append(h, ...kids);
+    const p = document.createElement("p");
+    p.className = "items-intro";
+    p.textContent = intro;
+    s.append(h, p, ...kids);
     return s;
+  };
+  /** Details folded under a summary line. */
+  const fold = (title: string, ...kids: HTMLElement[]) => {
+    const d = document.createElement("details");
+    d.className = "items-more";
+    const s = action(document.createElement("summary"), "packs-more-toggle");
+    s.textContent = title;
+    d.append(s, ...kids);
+    return d;
   };
   const help = (text: string) => {
     const p = document.createElement("p");
@@ -95,26 +120,60 @@ export function createPacksPage(
   leftOut.className = "balance-stale";
   leftOut.hidden = true;
   type Row = ContentPacksView["packs"][number];
-  const table = createTable<Row>({
-    label: "Installed packs",
-    empty: "No packs.",
-    key: (p) => p.id,
-    columns: [
-      { label: "Pack", cell: (p) => p.name },
-      { label: "Version", cell: (p) => p.version },
-      { label: "From", cell: (p) => (p.source === "release" ? "This release" : "Imported") },
-      { label: "Made for", cell: (p) => (p.sso ? `SSO ${p.sso}` : "") },
-      { label: "State", cell: (p) => STATE_TEXT[p.state] },
-      {
-        label: "",
-        cell: (p) => {
-          if (p.source !== "imported" || p.state === "removed at next start") {
-            return "";
-          }
-          return panelButton("packs-remove", "Remove", async () => {
+  const cards = document.createElement("div");
+  cards.className = "packs-list";
+  cards.setAttribute("role", "list");
+  cards.setAttribute("aria-label", "Installed packs");
+  /** What a pack is, in a sentence. */
+  const describe = (p: Row) =>
+    p.source === "release"
+      ? p.id === "classic"
+        ? "First Star Online 1.6's world, remade. It comes with every release and can't be removed."
+        : "It comes with every release and can't be removed."
+      : "Added from a pack file. Remove it to stop using it.";
+  const card = (p: Row) => {
+    const box = document.createElement("div");
+    box.className = "items-list-editor packs-card";
+    box.setAttribute("role", "listitem");
+    box.dataset.pack = p.id;
+    const head = document.createElement("h3");
+    head.className = "items-list-title";
+    head.textContent = `${p.name} v${p.version}`;
+    const tags = document.createElement("div");
+    tags.className = "balance-tags";
+    const tag = (text: string, kind: string) => {
+      const t = document.createElement("span");
+      t.className = `balance-tag items-tag-${kind}`;
+      t.textContent = text;
+      return t;
+    };
+    tags.append(
+      tag(STATE_TEXT[p.state], p.state === "loaded" ? "original" : "pending"),
+      tag(
+        p.source === "release" ? "Comes with the game" : "Added by you",
+        p.source === "release" ? "original" : "changed",
+      ),
+    );
+    box.append(head, tags, help(describe(p)));
+    box.append(
+      fold(
+        "More details",
+        help(
+          [`Pack ID: ${p.id}`, p.sso ? `made for Second Star Online ${p.sso}` : ""]
+            .filter(Boolean)
+            .join(" · "),
+        ),
+      ),
+    );
+    if (p.source === "imported" && p.state !== "removed at next start") {
+      box.append(
+        panelButton(
+          "packs-remove",
+          "Remove…",
+          async () => {
             const yes = await confirmBox(el, {
-              text: `Remove ${p.name}? It leaves play when the server next starts. Your own changes stay; a change you made to one of its rows stays as your change.`,
-              confirm: "Remove",
+              text: `Remove ${p.name}? It stops being used when the server next restarts. Your own changes stay, including any change you made to something from this pack.`,
+              confirm: "Remove it",
               cancel: "Keep it",
               danger: true,
             });
@@ -122,11 +181,26 @@ export function createPacksPage(
               seq += 1;
               actions.remove(seq, p.id);
             }
-          });
-        },
-      },
-    ],
-  });
+          },
+          "danger",
+        ),
+      );
+    }
+    return box;
+  };
+  const table = {
+    el: cards,
+    setRows(rows: readonly Row[]) {
+      if (rows.length === 0) {
+        const none = document.createElement("p");
+        none.className = "items-empty-form";
+        none.textContent = "No packs yet.";
+        cards.replaceChildren(none);
+        return;
+      }
+      cards.replaceChildren(...rows.map(card));
+    },
+  };
   const release = help("");
 
   // ---- export ----
@@ -139,7 +213,7 @@ export function createPacksPage(
   versionIn.value = "1.0.0";
   const exportBtn = panelButton(
     "packs-export",
-    "Download the pack file",
+    "Download my changes as a pack",
     () => void download(),
     "primary",
   );
@@ -148,37 +222,47 @@ export function createPacksPage(
   const fileIn = action(document.createElement("input"), "packs-import-file");
   fileIn.type = "file";
   fileIn.accept = ".json,application/json";
-  const checkBtn = panelButton("packs-import-check", "Check the file", () => void check());
+  const checkBtn = panelButton(
+    "packs-import-check",
+    "Check this file",
+    () => void check(),
+    "primary",
+  );
   const preview = document.createElement("div");
   preview.className = "packs-preview";
   preview.hidden = true;
 
   el.append(
     status,
-    section("Installed", leftOut, table.el, release),
     section(
-      "Export",
-      help(
-        "Your published changes (not the draft) as one file: every edit, addition and removal, the NPCs page's saves, and the art and sounds you uploaded for them. It records the packs it was built on and this server's release. Maps, settings and characters are not in it.",
-      ),
-      formField(
-        "Pack id",
-        idIn,
-        "Lower-case letters, digits and dashes. Keep it the same for every version of this pack.",
-      ),
-      formField("Name", nameIn),
+      "Packs in this world",
+      "In the order they are applied: a pack can change what the packs before it set, and your own changes come last, on top of them all. Adding or removing a pack takes effect when the server restarts.",
+      leftOut,
+      table.el,
+      release,
+    ),
+    section(
+      "Save your changes as a pack",
+      "Puts every published change you've made (not unpublished ones) into one file: edits, additions and removals, NPC changes, and the art and sounds you uploaded. Use it as a backup, or to share your content with another server. Maps, server settings and characters aren't included.",
+      formField("Name", nameIn, "What the pack is called when someone adds it."),
       formField(
         "Version",
         versionIn,
-        "Three numbers. Another version of the same id, installed over this one, updates it.",
+        "Three numbers, such as 1.0.0. Raise it each time you save a new version: adding a newer version updates the old one.",
+      ),
+      fold(
+        "More options",
+        formField(
+          "Pack ID",
+          idIn,
+          "Lower-case letters, digits and dashes. Keep it the same for every version of this pack, so a newer one replaces the older.",
+        ),
       ),
       exportBtn,
     ),
     section(
-      "Import",
-      help(
-        "A pack file from another server, or a backup of this one. It is checked and shown to you first; nothing changes until you choose.",
-      ),
+      "Add a pack from a file",
+      "A pack file from another server, or a backup of this one. It's checked and you see what it would change first: nothing changes until you choose.",
       formField("Pack file", fileIn),
       checkBtn,
       preview,
@@ -221,7 +305,7 @@ export function createPacksPage(
       return;
     }
     setBusy(true);
-    say("Making the pack file…");
+    say("Making the pack file…", true, exportBtn);
     try {
       const t = await ticket();
       const q = new URLSearchParams({
@@ -246,7 +330,7 @@ export function createPacksPage(
       a.download = name;
       a.click();
       setTimeout(() => URL.revokeObjectURL(a.href), 60_000);
-      say(`Downloaded ${name}.`);
+      say(`Downloaded ${name}.`, true, exportBtn);
     } catch (e) {
       say(e instanceof Error ? e.message : String(e), false);
     } finally {
@@ -254,15 +338,16 @@ export function createPacksPage(
     }
   };
 
-  const list = (title: string, rows: readonly string[], more = 0) => {
+  const list = (title: string, rows: readonly string[], words = (r: string) => r) => {
     const d = document.createElement("details");
-    const s = document.createElement("summary");
-    s.textContent = `${title} (${rows.length + more})`;
+    d.className = "items-more";
+    const s = action(document.createElement("summary"), "packs-more-toggle");
+    s.textContent = `${title} (${rows.length})`;
     const ul = document.createElement("ul");
     ul.append(
       ...rows.map((r) => {
         const li = document.createElement("li");
-        li.textContent = r;
+        li.textContent = words(r);
         return li;
       }),
     );
@@ -280,70 +365,103 @@ export function createPacksPage(
     const m = p.manifest;
     const head = document.createElement("h3");
     head.className = "balance-row-title";
-    head.textContent = `${m.name} v${m.version} (${m.id})`;
+    head.textContent = `${m.name} v${m.version}`;
+    const summary = help(
+      p.added.length + p.changed.length + p.removed.length === 0
+        ? "It wouldn't change anything: your world already has everything in it."
+        : `It would add ${plural(p.added.length, "thing")}, change ${p.changed.length}, and remove ${p.removed.length}${p.files > 0 ? `, with ${plural(p.files, "picture or sound", "pictures and sounds")}` : ""}.`,
+    );
     const facts = help(
       [
-        `Made for SSO ${m.sso}`,
-        m.exportedAt ? `exported ${m.exportedAt.replace("T", " ").slice(0, 16)} UTC` : "",
+        `Pack ID: ${m.id}`,
+        `made for Second Star Online ${m.sso}`,
+        m.exportedAt ? `saved ${m.exportedAt.replace("T", " ").slice(0, 16)} UTC` : "",
         m.builtOn.length > 0
           ? `built on ${m.builtOn.map((b) => `${b.id} v${b.version}`).join(", ")}`
           : "",
-        `${p.files} art and sound file${p.files === 1 ? "" : "s"}`,
       ]
         .filter(Boolean)
         .join(" · "),
     );
-    const kids: HTMLElement[] = [
-      head,
-      facts,
-      list("Adds", p.added),
-      list("Changes", p.changed),
-      list("Removes", p.removed),
-      help(`${p.unchanged} row${p.unchanged === 1 ? "" : "s"} already as the pack has them.`),
-    ];
+    const kids: HTMLElement[] = [head, summary];
+    if (p.added.length > 0) {
+      kids.push(list("What it adds", p.added, rowText));
+    }
+    if (p.changed.length > 0) {
+      kids.push(list("What it changes", p.changed, rowText));
+    }
+    if (p.removed.length > 0) {
+      kids.push(list("What it removes", p.removed, rowText));
+    }
     if (p.overYourChanges.length > 0) {
       kids.push(
         list(
-          "Rows you have changed too: installed, your change stays on top; merged, the pack's replaces it in the draft",
+          "Things you've changed yourself: if you install it, your change stays; if you add it to your changes, the pack's replaces yours",
           p.overYourChanges,
+          rowText,
         ),
       );
     }
     if (p.overTheDraft.length > 0) {
-      kids.push(list("Rows in the draft now: a merge replaces them", p.overTheDraft));
+      kids.push(
+        list(
+          "Things with unpublished changes now: adding it to your changes replaces them",
+          p.overTheDraft,
+          rowText,
+        ),
+      );
     }
+    kids.push(fold("More details", facts));
     const install = document.createElement("div");
     install.className = "packs-choice";
+    const installHead = document.createElement("h4");
+    installHead.className = "items-list-title";
+    installHead.textContent = p.install.updates
+      ? `Update ${m.name} to v${m.version}`
+      : "Install it as a pack";
     install.append(
+      installHead,
       help(
         p.install.ok
-          ? `Install as a pack: it lays over the installed packs (your changes stay on top) and comes into play when the server next starts.${p.install.updates ? ` It updates v${p.install.updates}.` : ""}`
-          : "It cannot be installed as a pack:",
+          ? `${p.install.updates ? `Replaces v${p.install.updates}. ` : ""}It becomes one of this world's packs, under your own changes, and is used once the server restarts. Best for content someone else keeps updating.`
+          : "It can't be installed as a pack:",
       ),
     );
     if (!p.install.ok) {
-      install.append(list("Why", p.install.errors));
+      install.append(list("Why not", p.install.errors));
     }
     const merge = document.createElement("div");
     merge.className = "packs-choice";
+    const mergeHead = document.createElement("h4");
+    mergeHead.className = "items-list-title";
+    mergeHead.textContent = "Add it to my unpublished changes";
     merge.append(
+      mergeHead,
       help(
-        "Merge into the draft: its rows and removals become your own changes, to review, see where they are used and publish on the Content page.",
+        "Everything in it becomes your own change, to look over and publish on the Content page like any other change. Best for a backup of this server, or content you'll keep editing.",
       ),
     );
     if (p.merge.problems.length > 0) {
-      merge.append(
-        list("Problems the draft would then have (the publish names them)", p.merge.problems),
-      );
+      merge.append(list("Problems to fix before you can publish", p.merge.problems));
     }
     const buttons = document.createElement("div");
-    buttons.className = "content-buttons";
-    const installBtn = panelButton("packs-install", "Install as a pack", () => apply("install"));
+    buttons.className = "items-actions";
+    const left = document.createElement("div");
+    left.className = "content-buttons";
+    const right = document.createElement("div");
+    right.className = "content-buttons";
+    const installBtn = panelButton(
+      "packs-install",
+      p.install.updates ? `Update to v${m.version}` : "Install as a pack",
+      () => apply("install"),
+    );
     installBtn.disabled = !p.install.ok;
-    buttons.append(
-      panelButton("packs-merge", "Merge into the draft", () => apply("merge"), "primary"),
+    left.append(
+      panelButton("packs-merge", "Add to my unpublished changes", () => apply("merge"), "primary"),
       installBtn,
-      panelButton("packs-cancel", "Cancel", () => {
+    );
+    right.append(
+      panelButton("packs-cancel", "Don't add it", () => {
         // The server lets the file go too (it holds it for a while otherwise).
         if (pending) {
           seq += 1;
@@ -351,9 +469,10 @@ export function createPacksPage(
         }
         pending = null;
         drawPreview();
-        say("");
+        say("Nothing was added.", true, checkBtn);
       }),
     );
+    buttons.append(left, right);
     preview.replaceChildren(...kids, install, merge, buttons);
   };
 
@@ -361,14 +480,14 @@ export function createPacksPage(
     const file = fileIn.files?.[0];
     if (busy || !file) {
       if (!file) {
-        say("Choose a pack file first.", false);
+        say("Choose a pack file first.", false, checkBtn);
       }
       return;
     }
     setBusy(true);
     pending = null;
     drawPreview();
-    say("Checking the file…");
+    say("Checking the file…", true, checkBtn);
     try {
       const t = await ticket();
       const res = await fetchImpl(`${UPLOAD_PATH}pack`, {
@@ -383,11 +502,11 @@ export function createPacksPage(
       if (!body) {
         say(`The server answered ${res.status}.`, false);
       } else if (!body.ok) {
-        say(`The file was refused: ${body.error}`, false);
+        say(`That file can't be used: ${body.error}`, false, checkBtn);
       } else {
         pending = body.preview;
         drawPreview();
-        say("Checked. Nothing has changed yet: choose below.");
+        say("Checked. Nothing has changed yet: choose what to do below.", true, checkBtn);
       }
     } catch (e) {
       say(e instanceof Error ? e.message : String(e), false);
@@ -404,14 +523,14 @@ export function createPacksPage(
     seq += 1;
     applySeq = seq;
     actions.apply(seq, pending.importId, mode);
-    say(mode === "merge" ? "Merging…" : "Installing…");
+    say(mode === "merge" ? "Adding it to your changes…" : "Installing…", true, preview);
   };
 
   const show = (v: ContentPacksView) => {
     table.setRows(v.packs);
     leftOut.hidden = v.leftOut === null;
     leftOut.textContent = v.leftOut ?? "";
-    release.textContent = `This server runs SSO ${v.release}; an export records it.`;
+    release.textContent = `This server runs Second Star Online ${v.release}.`;
   };
 
   return {
@@ -432,7 +551,7 @@ export function createPacksPage(
       }
       show(msg.view);
       if (msg.result) {
-        say(msg.result.text, msg.result.ok);
+        say(msg.result.text, msg.result.ok, msg.seq === applySeq ? preview : table.el);
         if (msg.seq === applySeq) {
           setBusy(false);
         }
