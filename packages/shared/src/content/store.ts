@@ -75,9 +75,10 @@ export type DatasetId = keyof ContentData;
 
 /**
  * The format of the store file the server sends clients (`/content/<hash>.json`). A client built
- * for another format reloads to get the matching client.
+ * for another format reloads to get the matching client. 10: vehicles are `houses.vehicles` rows
+ * (issue #44), and `bindings.bodies.riders` is gone.
  */
-export const CONTENT_FORMAT = 9;
+export const CONTENT_FORMAT = 10;
 
 /** The datasets only the server reads. */
 export const SERVER_ONLY_DATASETS = [

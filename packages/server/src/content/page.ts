@@ -347,7 +347,10 @@ export const CONTENT_INTENTS = [
   "contentNpcFileSet",
 ] as const;
 
-/** A removal intent as the service's removal, with the defaults (retire, clear, despawn, delete). */
+/**
+ * A removal intent as the service's removal, with the defaults (retire, clear, despawn, delete,
+ * land).
+ */
 export function removalOf(msg: Extract<InGameMsg, { t: "contentRemove" }>): Removal {
   const replacement = msg.replacement?.trim() || null;
   return msg.kind === "item"
@@ -359,15 +362,23 @@ export function removalOf(msg: Extract<InGameMsg, { t: "contentRemove" }>): Remo
         replacement,
         refundGold: msg.refundGold ?? 0,
       }
-    : {
-        kind: "monster",
-        key: msg.key,
-        content: msg.content,
-        spawns: msg.spawns ?? "remove",
-        live: msg.live ?? "despawn",
-        npcFile: msg.npcRow ?? "delete",
-        replacement,
-      };
+    : msg.kind === "monster"
+      ? {
+          kind: "monster",
+          key: msg.key,
+          content: msg.content,
+          spawns: msg.spawns ?? "remove",
+          live: msg.live ?? "despawn",
+          npcFile: msg.npcRow ?? "delete",
+          replacement,
+        }
+      : {
+          kind: "vehicle",
+          key: msg.key,
+          content: msg.content,
+          riders: msg.riders ?? "land",
+          replacement,
+        };
 }
 
 /**

@@ -18,7 +18,7 @@ These guides describe the game in play and where its current implementation live
   Each skill has its own page in the [skill guides](skills/README.md).
 - [Social](social.md): guilds, factions and presence.
 - [Spells](spells.md): casting, effects and learning.
-- [Vehicles](vehicles.md): Airship, Boat and Battleship building, travel, parking and hulls.
+- [Vehicles](vehicles.md): vehicles as content rows (Classic's Airship, Boat and Battleship): building, travel, parking, hulls and removal.
 - [World](world.md): rooms, simulation ticks and state.
 - [Client](client.md): input, rendering, audio and screens.
 

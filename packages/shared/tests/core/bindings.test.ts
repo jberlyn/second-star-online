@@ -256,7 +256,10 @@ describe("the special bodies", () => {
   test("a world's own rider bodies say which vehicle a rider is on", () => {
     withBindings(
       (d) => {
-        d.bindings.bodies.riders = { Boat: 155, Battleship: 156, Airship: 157 };
+        // A rider's body is its vehicle row's (issue #44).
+        for (const v of d.houses.vehicles ?? []) {
+          v.rider += 100;
+        }
       },
       () => {
         expect(VEHICLE_BODY).toEqual({ Boat: 155, Battleship: 156, Airship: 157 });

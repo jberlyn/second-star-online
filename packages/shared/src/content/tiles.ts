@@ -71,6 +71,15 @@ export interface TileContent {
       template: { layers: readonly (readonly string[])[] };
     }[];
     placement: { terrain: { layer1Codes: readonly string[] } };
+    /** The vehicles' tile sets (issue #44). */
+    vehicles?: readonly {
+      name: string;
+      moves: {
+        over: "any" | { codes?: readonly string[] };
+        except?: { codes?: readonly string[] };
+      };
+      lands?: { codes?: readonly string[] };
+    }[];
   };
 }
 
@@ -134,6 +143,16 @@ export function tileRefs(data: TileContent): Map<string, string[]> {
   }
   for (const c of data.houses.placement.terrain.layer1Codes) {
     note(c, "house placement");
+  }
+  for (const v of data.houses.vehicles ?? []) {
+    const { over, except } = v.moves;
+    for (const c of [
+      ...(over === "any" ? [] : (over.codes ?? [])),
+      ...(except?.codes ?? []),
+      ...(v.lands?.codes ?? []),
+    ]) {
+      note(c, `the ${v.name}`);
+    }
   }
   note(data.social?.newspaper?.standTile.text, "the newspaper stand");
   return out;

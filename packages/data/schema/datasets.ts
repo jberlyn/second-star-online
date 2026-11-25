@@ -98,18 +98,15 @@ export {
   BALANCE_HEAL_EFFECTS,
   BALANCE_LIMITS,
   BALANCE_SPELL_EFFECTS,
-  BALANCE_VEHICLES,
   type BalanceCombat,
   type BalanceData,
   type BalanceDrops,
   type BalanceMonsters,
   type BalanceSpellEffect,
   type BalanceTimings,
-  type BalanceVehicle,
   balanceDataSchema,
   type CannonBalance,
   type FlatAmount,
-  type HullRow,
   ROSTER_SLOTS,
   type SpellAmountOverride,
   type SpellEffectRow,
@@ -117,6 +114,12 @@ export {
 } from "./balance.ts";
 export { toolCanSchema } from "./common.ts";
 export { gatherDataSchema, harvestNodeSchema, yieldTableSchema } from "./gather.ts";
+export {
+  LEGACY_DEED_VEHICLES,
+  tileSetSchema,
+  VEHICLE_HULL_LIMITS,
+  vehicleSchema,
+} from "./houses.ts";
 export {
   equipSlotSchema,
   itemBehaviourSchema,

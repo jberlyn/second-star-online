@@ -17,8 +17,8 @@ import {
 import { keyField, type RowRef, rowLabel, rowValue, sameRow } from "./rows.ts";
 import { type JsonPath, type Reference, referencesOf } from "./validate.ts";
 
-/** What can be removed with cleanup: an item or a monster (NPCs are monsters). */
-export type EntryKind = "item" | "monster";
+/** What can be removed with cleanup: an item, a monster (NPCs are monsters) or a vehicle. */
+export type EntryKind = "item" | "monster" | "vehicle";
 
 /** What happens to the references content holds to a removed entry. */
 export type ContentCleanup = "remove" | "replace" | "leave";
@@ -33,7 +33,7 @@ const ITEM_KINDS = new Set<Reference["kind"]>(["item", "itemOrFixture", "shopIte
  * Stored copies are matched by these.
  */
 export function spellingsOf(data: ContentData, kind: EntryKind, key: string): string[] {
-  if (kind === "monster") {
+  if (kind !== "item") {
     return [key];
   }
   const item = data.items.items.find((i) => lingoEq(i.name, key));
@@ -63,7 +63,11 @@ export function usesOf(
 ): Reference[] {
   return referencesOf(data).filter(
     (r) =>
-      ((kind === "item" ? ITEM_KINDS.has(r.kind) : r.kind === "monster" || r.kind === "npc") &&
+      ((kind === "item"
+        ? ITEM_KINDS.has(r.kind)
+        : kind === "vehicle"
+          ? r.kind === "vehicle"
+          : r.kind === "monster" || r.kind === "npc") &&
         names(r, spellings)) ||
       (kind === "item" && r.kind === "itemPattern" && lastMatch(data, r.name, spellings)),
   );
@@ -170,8 +174,15 @@ export function cleanUses(
       continue;
     }
     // A reference whose drop is the whole row (a deed: the row is the item's) removes the row, in
-    // either mode: writing another item into it would change the row's own key.
-    if (rowUses.some((u) => u.drop?.length === 0)) {
+    // either mode when it is the row's key: writing another item into it would change the row's
+    // own key. Another field (the vehicle a deed builds) is replaced in place.
+    if (
+      rowUses.some(
+        (u) =>
+          u.drop?.length === 0 &&
+          (mode === "remove" || u.path[0] === keyField(ref.dataset, ref.part)),
+      )
+    ) {
       if (keyField(ref.dataset, ref.part) !== null) {
         rows.push({ ref, op: "remove", data: null });
       } else {
@@ -189,6 +200,11 @@ export function cleanUses(
         } else {
           setAt(value, u.path, replacement);
         }
+      }
+      // A deed with an older `use` (`boat`) that now names another vehicle says so in full.
+      if (rowUses.some((u) => u.kind === "vehicle")) {
+        const deed = value as { use?: string };
+        deed.use = "vehicle";
       }
       // A shop that already sold the replacement keeps one line for it.
       if (rowUses.some((u) => u.npcLine)) {

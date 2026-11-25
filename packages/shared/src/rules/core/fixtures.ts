@@ -1,12 +1,14 @@
 /**
  * The engine's fixtures (issue #37): the ground items whose names the engine builds or reads
  * itself. A house's door, mailbox and vault, a guild's board and vault and a parked vehicle carry
- * their owner's name (`Bob's Door`, `The Hawks's Guild Vault`, `Bob's Airship`); the exits, the
+ * their owner's name (`Bob's Door`, `The Hawks's Guild Vault`, `Bob's Airship`: a parked vehicle is
+ * named by its `houses.vehicles` row); the exits, the
  * signs and the Street Lamp keep fixed names. A pack supplies their art, not their names, so no
  * content item may take one of these names, and no item behaviour applies to them: each is known
  * by its kind, never by a word in its owner's name (a guild called "Crate Club" has a board, not a
  * crate).
  */
+import { vehicleOfItem } from "../vehicles/rows.ts";
 import { lingoEq } from "./lingo.ts";
 
 export type EngineFixtureKind =
@@ -16,9 +18,8 @@ export type EngineFixtureKind =
   | "board"
   | "houseVault"
   | "guildVault"
-  | "airship"
-  | "boat"
-  | "battleship"
+  /** A parked vehicle, `<owner>'s <vehicle>` for any `houses.vehicles` row (issue #44). */
+  | "vehicle"
   | "exit"
   | "sign"
   | "streetLamp";
@@ -31,9 +32,6 @@ export const OWNER_FIXTURE_ENDINGS: readonly (readonly [string, EngineFixtureKin
   ["'s Board", "board"],
   ["'s House Vault", "houseVault"],
   ["'s Guild Vault", "guildVault"],
-  ["'s Airship", "airship"],
-  ["'s Boat", "boat"],
-  ["'s Battleship", "battleship"],
 ];
 
 /** The fixtures with fixed names, and their kinds. */
@@ -65,7 +63,11 @@ export function engineFixtureKind(name: string): EngineFixtureKind | null {
   const owned = OWNER_FIXTURE_ENDINGS.find(
     ([e]) => lower.length > e.length && lower.endsWith(e.toLowerCase()),
   );
-  return owned ? owned[1] : null;
+  if (owned) {
+    return owned[1];
+  }
+  // A parked vehicle carries its vehicle's name (`Bob's Boat`): a vehicle no row has is not one.
+  return vehicleOfItem(name) !== null ? "vehicle" : null;
 }
 
 /** Whether a name is one of the engine's fixtures. */

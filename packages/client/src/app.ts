@@ -29,7 +29,6 @@ import {
   primaryKeyLabel,
   type RestoreTarget,
   type ServerMsg,
-  shipWalkGrid,
   TICK_MS,
   tileAt,
   tileName,
@@ -1312,7 +1311,6 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
       if (model.map) {
         model.walk = footWalkGrid(model.map.layers[0], model.map.layers[1]);
         model.walkAir = airshipWalkGrid(model.map.layers[1]);
-        model.walkShip = shipWalkGrid(model.map.layers[0]);
       }
     },
     // Every publish, undo and accepted pack notice, a balance-only one too (its store's hash stays

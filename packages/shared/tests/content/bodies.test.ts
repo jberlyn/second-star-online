@@ -52,7 +52,7 @@ describe("who draws a body", () => {
     const uses = bodyUses(classicData);
     const first = classicData.monsters.monsters[0] as { name: string; body: number };
     expect(uses.get(first.body)?.monsters).toContain(first.name);
-    const boat = classicData.bindings.bodies?.riders?.Boat as number;
+    const boat = classicData.houses.vehicles?.find((v) => v.name === "Boat")?.rider as number;
     expect(uses.get(boat)?.users).toContain("the Boat");
     for (const row of classicData.bindings.bodies?.morph ?? []) {
       expect(uses.get(row.body)?.users).toContain("the Morph bodies");

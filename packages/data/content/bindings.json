@@ -55,12 +55,7 @@
       }
     ],
     "tree": 80,
-    "smoke": 100,
-    "riders": {
-      "Boat": 55,
-      "Battleship": 56,
-      "Airship": 57
-    }
+    "smoke": 100
   },
   "skills": {
     "parry": "Parry",

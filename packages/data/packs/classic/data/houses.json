@@ -61,6 +61,59 @@
       "text": null
     }
   ],
+  "vehicles": [
+    {
+      "name": "Boat",
+      "picture": "BoatPic",
+      "rider": 55,
+      "hull": 60,
+      "moves": {
+        "over": {
+          "flags": [
+            "sea"
+          ]
+        }
+      },
+      "boards": "shore",
+      "bobs": true
+    },
+    {
+      "name": "Battleship",
+      "picture": "BattleshipPic",
+      "rider": 56,
+      "hull": 150,
+      "moves": {
+        "over": {
+          "flags": [
+            "sea"
+          ]
+        }
+      },
+      "boards": "shore",
+      "cannon": true,
+      "bobs": true
+    },
+    {
+      "name": "Airship",
+      "picture": "AirshipPic",
+      "rider": 57,
+      "hull": 80,
+      "moves": {
+        "over": "any",
+        "except": {
+          "flags": [
+            "airshipBlock"
+          ]
+        }
+      },
+      "boards": "pad",
+      "lands": {
+        "flags": [
+          "dock"
+        ]
+      }
+    }
+  ],
   "types": [
     {
       "house": "Small House",

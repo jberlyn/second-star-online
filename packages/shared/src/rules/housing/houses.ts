@@ -10,6 +10,7 @@ import { lingoEq } from "../core/lingo.ts";
 import { houseMapName } from "../core/maps.ts";
 import { TILE_DEFAULTS } from "../core/tiles.ts";
 import type { Vehicle } from "../movement/movement.ts";
+import { vehicleRow } from "../vehicles/rows.ts";
 
 export type { HouseType };
 
@@ -20,20 +21,40 @@ export type DeedUse =
   | { kind: "vehicle"; vehicle: Vehicle }
   | { kind: "place"; type: HouseType };
 
+/** The Classic rows a deed's older `use` names (the houses schema's `LEGACY_DEED_VEHICLES`). */
+const LEGACY_DEED_VEHICLES = {
+  boat: "Boat",
+  airship: "Airship",
+  battleship: "Battleship",
+} as const;
+
+/**
+ * The vehicle a deed row builds: its `vehicle` for `use: "vehicle"`, or the Classic row an older
+ * `boat`, `airship` or `battleship` names (issue #44); null for any other deed.
+ */
+export function deedVehicle(d: { use: string; vehicle?: string }): Vehicle | null {
+  if (d.use === "vehicle") {
+    return d.vehicle ?? null;
+  }
+  return d.use in LEGACY_DEED_VEHICLES
+    ? LEGACY_DEED_VEHICLES[d.use as keyof typeof LEGACY_DEED_VEHICLES]
+    : null;
+}
+
 /**
  * What a deed's Use does: build a vehicle, place a house, or nothing. A deed that builds nothing
- * (`use` "nothing": a building with no art or template yet) says why and is kept.
+ * (`use` "nothing": a building with no art or template yet) says why and is kept. A deed naming a
+ * vehicle no row has builds nothing, silently.
  */
 export function deedUse(item: string): DeedUse | null {
   const d = content().houses.deeds.find((x) => lingoEq(x.deed, item));
   if (!d) {
     return null;
   }
-  if (d.use === "airship" || d.use === "boat" || d.use === "battleship") {
-    const vehicle = ({ airship: "Airship", boat: "Boat", battleship: "Battleship" } as const)[
-      d.use
-    ];
-    return { kind: "vehicle", vehicle };
+  const named = deedVehicle(d);
+  if (named !== null) {
+    const row = vehicleRow(named);
+    return row ? { kind: "vehicle", vehicle: row.name } : { kind: "nothing", text: null };
   }
   const type = d.use === "place" ? houseType(d.house ?? "") : null;
   return type ? { kind: "place", type } : { kind: "nothing", text: d.text };

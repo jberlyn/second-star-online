@@ -57,28 +57,18 @@ export function contractProblems(data: ContentData): ContentProblem[] {
   }
   // A body tells peers what a player is: a rider's body must say which vehicle, and no spell may
   // put a rider's body on a player who is not riding.
-  const { riders, morph, tree, smoke } = data.bindings.bodies;
+  const { morph, tree, smoke } = data.bindings.bodies;
   const riderOf = new Map<number, string>();
-  // Vehicles are engine kinds drawn as their rider bodies: a world without riders has none.
-  if (!riders) {
-    data.houses.deeds.forEach((d) => {
-      if (d.use === "airship" || d.use === "boat" || d.use === "battleship") {
-        out.push({
-          where: "bindings/bodies",
-          message: `${d.deed} makes a vehicle, so the world needs rider bodies (bodies.riders)`,
-        });
-      }
-    });
-  }
-  for (const [vehicle, body] of Object.entries(riders ?? {})) {
-    const other = riderOf.get(body);
+  // Every peer knows a vehicle by its rider's body (issue #44): no two vehicles share one.
+  for (const v of data.houses.vehicles ?? []) {
+    const other = riderOf.get(v.rider);
     if (other) {
       out.push({
-        where: "bindings/bodies",
-        message: `the ${other} and the ${vehicle} riders need different bodies (both are ${body})`,
+        where: `houses/vehicles/${v.name}`,
+        message: `the ${other} and the ${v.name} riders need different bodies (both are ${v.rider})`,
       });
     }
-    riderOf.set(body, vehicle);
+    riderOf.set(v.rider, v.name);
   }
   const spellBodies: [string, number | undefined][] = [
     ["tree", tree],

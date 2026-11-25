@@ -56,24 +56,19 @@ describe("the balance dataset and its defaults", () => {
       monsters: BALANCE_DEFAULTS.monsters,
       vehicles: BALANCE_DEFAULTS.vehicles,
       cannon: BALANCE_DEFAULTS.cannon,
-      hulls: BALANCE_DEFAULTS.hulls,
     });
   });
 
   test("a world that leaves the dataset or a part out plays the defaults for it", () => {
     const d = structuredClone(classicData) as ContentData;
-    d.balance = { hulls: [{ vehicle: "Airship", hull: 999 }] };
+    d.balance = { cannon: { damage: { flat: 20, randomN: 0 }, reloadFrames: 40 } };
     const store = buildContentStore(d);
-    expect(store.balance.hulls).toEqual([
-      { vehicle: "Boat", hull: 60 },
-      { vehicle: "Airship", hull: 999 },
-      { vehicle: "Battleship", hull: 150 },
-    ]);
+    expect(store.balance.cannon).toEqual({ damage: { flat: 20, randomN: 0 }, reloadFrames: 40 });
     expect(store.balance.vehicles).toEqual(BALANCE_DEFAULTS.vehicles);
-    expect(store.balance.cannon).toEqual(BALANCE_DEFAULTS.cannon);
+    expect(store.balance.regen).toEqual(BALANCE_DEFAULTS.regen);
   });
 
-  test("values outside their limits, and a vehicle given two hulls, are refused by the schema", () => {
+  test("values outside their limits, and hull rows (now each vehicle's own), are refused by the schema", () => {
     const bad = [
       { vehicles: { hullHit: -1, repairPerMinute: 1 } },
       { vehicles: { hullHit: 2, repairPerMinute: 100_001 } },
@@ -81,14 +76,8 @@ describe("the balance dataset and its defaults", () => {
       { cannon: { damage: { flat: 13, randomN: 1001 }, reloadFrames: 100 } },
       { cannon: { damage: { flat: 13, randomN: 3 }, reloadFrames: 0 } },
       { cannon: { damage: { flat: 13, randomN: 3 }, reloadFrames: 72_001 } },
-      { hulls: [{ vehicle: "Boat", hull: 0 }] },
-      { hulls: [{ vehicle: "Car", hull: 10 }] },
-      {
-        hulls: [
-          { vehicle: "Boat", hull: 10 },
-          { vehicle: "Boat", hull: 20 },
-        ],
-      },
+      // A vehicle's full hull is its `houses.vehicles` row's (issue #44).
+      { hulls: [{ vehicle: "Boat", hull: 60 }] },
       { vehicles: { hullHit: 2.5, repairPerMinute: 1 } },
       { other: 1 },
     ];
@@ -103,8 +92,13 @@ describe("the balance dataset and its defaults", () => {
     d.balance = {
       vehicles: { hullHit: 7, repairPerMinute: 4 },
       cannon: { damage: { flat: 20, randomN: 0 }, reloadFrames: 40 },
-      hulls: [{ vehicle: "Boat", hull: 33 }],
     };
+    // The full hull is the vehicle row's (issue #44).
+    for (const v of d.houses.vehicles ?? []) {
+      if (v.name === "Boat") {
+        v.hull = 33;
+      }
+    }
     try {
       installContent(buildContentStore(d));
       expect(hullMax("Boat")).toBe(33);
@@ -142,54 +136,53 @@ describe("a pack update to balance rows (issue #19)", () => {
       });
     const dir = mkdtempSync(join(tmpdir(), "sso-balance-pack-"));
     try {
-      // Pack 1.0 (today's Classic): the operator overrides the Boat and Airship hulls.
+      // Pack 1.0 (today's Classic): the operator overrides the cannon and the hull wear.
       const s1 = service(RELEASE_PACK_DIRS);
-      for (const [vehicle, hull] of [
-        ["Boat", 70],
-        ["Airship", 90],
-      ] as const) {
-        expect(
-          s1.draftSet(ADMIN, { dataset: "balance", part: "hulls", key: vehicle }, "set", {
-            vehicle,
-            hull,
-          }).ok,
-        ).toBe(true);
-      }
+      expect(
+        s1.draftSet(ADMIN, { dataset: "balance", part: "cannon", key: null }, "set", {
+          damage: { flat: 13, randomN: 3 },
+          reloadFrames: 70,
+        }).ok,
+      ).toBe(true);
+      expect(
+        s1.draftSet(ADMIN, { dataset: "balance", part: "vehicles", key: null }, "set", {
+          hullHit: 9,
+          repairPerMinute: 1,
+        }).ok,
+      ).toBe(true);
       expect(s1.publish(ADMIN, s1.draftRev(), "").ok).toBe(true);
       expect(s1.notices()).toEqual([]);
-      // The next pack version changes only the Boat's hull (60 → 65).
+      // The next pack version changes only the cannon's reload (100 → 65).
       cpSync(RELEASE_PACK_DIRS.classic as string, dir, { recursive: true });
       const file = join(dir, "data", "balance.json");
       const balance = JSON.parse(readFileSync(file, "utf8"));
-      balance.hulls = balance.hulls.map((h: { vehicle: string; hull: number }) =>
-        h.vehicle === "Boat" ? { ...h, hull: 65 } : h,
-      );
+      balance.cannon = { ...balance.cannon, reloadFrames: 65 };
       writeFileSync(file, JSON.stringify(balance));
       const m = JSON.parse(readFileSync(join(dir, "manifest.json"), "utf8"));
       writeFileSync(join(dir, "manifest.json"), JSON.stringify({ ...m, version: "9.9.9" }));
       const s2 = service({ ...RELEASE_PACK_DIRS, classic: dir });
-      // Only the Boat's row: the Airship's pack value did not change.
+      // Only the cannon's row: the hull wear's pack value did not change.
       expect(s2.notices().map((n) => [n.dataset, n.part, n.key, n.packVersion])).toEqual([
-        ["balance", "hulls", "Boat", "9.9.9"],
+        ["balance", "cannon", null, "9.9.9"],
       ]);
-      expect(s2.notices()[0]?.now).toEqual({ vehicle: "Boat", hull: 65 });
+      expect(s2.notices()[0]?.now).toEqual({ damage: { flat: 13, randomN: 3 }, reloadFrames: 65 });
       // The operator's values still play until answered.
-      expect(hullMax("Boat")).toBe(70);
-      expect(hullMax("Airship")).toBe(90);
+      expect(cannonReloadFrames()).toBe(70);
+      expect(hullHitDamage()).toBe(9);
       // Accept: the pack's new value plays at once; undo brings the operator's back.
-      const boat = { dataset: "balance" as const, part: "hulls", key: "Boat" };
-      const accepted = s2.acceptNotice(ADMIN, boat);
+      const cannon = { dataset: "balance" as const, part: "cannon", key: null };
+      const accepted = s2.acceptNotice(ADMIN, cannon);
       expect(accepted.ok).toBe(true);
-      expect(hullMax("Boat")).toBe(65);
-      expect(hullMax("Airship")).toBe(90);
+      expect(cannonReloadFrames()).toBe(65);
+      expect(hullHitDamage()).toBe(9);
       expect(s2.notices()).toEqual([]);
       expect(s2.undo(ADMIN, accepted.ok ? accepted.value.id : "").ok).toBe(true);
-      expect(hullMax("Boat")).toBe(70);
+      expect(cannonReloadFrames()).toBe(70);
       // Back to waiting; dismiss keeps the operator's value and the notice goes.
-      expect(s2.notices().map((n) => n.key)).toEqual(["Boat"]);
-      expect(s2.dismissNotice(ADMIN, boat).ok).toBe(true);
+      expect(s2.notices().map((n) => n.part)).toEqual(["cannon"]);
+      expect(s2.dismissNotice(ADMIN, cannon).ok).toBe(true);
       expect(s2.notices()).toEqual([]);
-      expect(hullMax("Boat")).toBe(70);
+      expect(cannonReloadFrames()).toBe(70);
     } finally {
       rmSync(dir, { recursive: true, force: true });
       installContent(buildContentStore(classicData as ContentData));
@@ -265,20 +258,35 @@ describe("the Balance page on a running server", () => {
       ]);
       expect(
         view.groups.find((g) => g.id === "vehicles")?.rows.map((r) => `${r.part}/${r.key ?? ""}`),
-      ).toEqual(["hulls/Boat", "hulls/Airship", "hulls/Battleship", "vehicles/", "cannon/"]);
-      const boat = row(server, "hulls", "Boat");
-      expect(boat).toMatchObject({
-        engine: { vehicle: "Boat", hull: 60 },
-        pack: { vehicle: "Boat", hull: 60 },
-        published: { vehicle: "Boat", hull: 60 },
-        draft: { vehicle: "Boat", hull: 60 },
+      ).toEqual(["vehicles/", "cannon/"]);
+      // Each vehicle's full hull is its own row's, named on the card (issue #44).
+      expect(view.groups.find((g) => g.id === "vehicles")?.elsewhere).toEqual([
+        {
+          label: "Boat hull",
+          row: { dataset: "houses", part: "vehicles", key: "Boat" },
+          now: "full hull 60",
+        },
+        {
+          label: "Battleship hull",
+          row: { dataset: "houses", part: "vehicles", key: "Battleship" },
+          now: "full hull 150",
+        },
+        {
+          label: "Airship hull",
+          row: { dataset: "houses", part: "vehicles", key: "Airship" },
+          now: "full hull 80",
+        },
+      ]);
+      const cannon = row(server, "cannon");
+      expect(cannon).toMatchObject({
+        engine: BALANCE_DEFAULTS.cannon,
+        pack: BALANCE_DEFAULTS.cannon,
+        published: BALANCE_DEFAULTS.cannon,
+        draft: BALANCE_DEFAULTS.cannon,
         edited: false,
         pending: null,
         notice: null,
       });
-      expect(boat.fields).toEqual([
-        expect.objectContaining({ path: ["hull"], min: 1, max: 100_000 }),
-      ]);
       expect(row(server, "cannon").fields.map((f) => f.path.join("."))).toEqual([
         "damage.flat",
         "damage.randomN",
@@ -292,32 +300,32 @@ describe("the Balance page on a running server", () => {
   test("a change goes into the shared draft, and a publish makes it play at once", async () => {
     const server = start();
     try {
-      const boat = row(server, "hulls", "Boat");
+      const cannon = row(server, "cannon");
       const r = server.content.draftBalance(ADMIN, {
-        part: "hulls",
-        key: "Boat",
+        part: "cannon",
+        key: null,
         op: "set",
-        data: { vehicle: "Boat", hull: 90 },
-        expect: boat.fingerprint,
+        data: { damage: { flat: 13, randomN: 3 }, reloadFrames: 90 },
+        expect: cannon.fingerprint,
       });
-      expect(r).toEqual({ ok: true, value: "Boat hull is in the draft." });
-      expect(row(server, "hulls", "Boat")).toMatchObject({
-        published: { hull: 60 },
-        draft: { hull: 90 },
+      expect(r).toEqual({ ok: true, value: "Cannon is in the draft." });
+      expect(row(server, "cannon")).toMatchObject({
+        published: { reloadFrames: 100 },
+        draft: { reloadFrames: 90 },
         pending: "set",
       });
       // The draft is the content store's: the Content page lists it and publishes it.
       expect(server.content.draft().map((d) => `${d.dataset}/${d.part}/${d.key}`)).toEqual([
-        "balance/hulls/Boat",
+        "balance/cannon/null",
       ]);
-      expect(hullMax("Boat")).toBe(60);
-      expect(server.content.publish(ADMIN, server.content.draftRev(), "Tougher boats").ok).toBe(
+      expect(cannonReloadFrames()).toBe(100);
+      expect(server.content.publish(ADMIN, server.content.draftRev(), "Faster cannons").ok).toBe(
         true,
       );
-      expect(hullMax("Boat")).toBe(90);
-      expect(content().balance.hulls[0]).toEqual({ vehicle: "Boat", hull: 90 });
-      expect(row(server, "hulls", "Boat")).toMatchObject({
-        published: { hull: 90 },
+      expect(cannonReloadFrames()).toBe(90);
+      expect(content().balance.cannon.reloadFrames).toBe(90);
+      expect(row(server, "cannon")).toMatchObject({
+        published: { reloadFrames: 90 },
         edited: true,
         pending: null,
       });
@@ -381,50 +389,50 @@ describe("the Balance page on a running server", () => {
   test("reset brings the pack's value back (on publish), and discard drops a draft change", async () => {
     const server = start();
     try {
-      const set = (hull: number) =>
+      const set = (reloadFrames: number) =>
         server.content.draftBalance(ADMIN, {
-          part: "hulls",
-          key: "Airship",
+          part: "cannon",
+          key: null,
           op: "set",
-          data: { vehicle: "Airship", hull },
-          expect: row(server, "hulls", "Airship").fingerprint,
+          data: { damage: { flat: 13, randomN: 3 }, reloadFrames },
+          expect: row(server, "cannon").fingerprint,
         });
       expect(set(10).ok).toBe(true);
       // Discard: the draft's change goes.
       expect(
         server.content.draftBalance(ADMIN, {
-          part: "hulls",
-          key: "Airship",
+          part: "cannon",
+          key: null,
           op: "discard",
           data: null,
-          expect: row(server, "hulls", "Airship").fingerprint,
+          expect: row(server, "cannon").fingerprint,
         }),
-      ).toEqual({ ok: true, value: "Airship hull: the draft's change is gone." });
+      ).toEqual({ ok: true, value: "Cannon: the draft's change is gone." });
       expect(server.content.draft()).toEqual([]);
       // Published, then reset: the revert waits in the draft until it is published.
       expect(set(10).ok).toBe(true);
       expect(server.content.publish(ADMIN, server.content.draftRev(), "").ok).toBe(true);
-      expect(hullMax("Airship")).toBe(10);
+      expect(cannonReloadFrames()).toBe(10);
       expect(
         server.content.draftBalance(ADMIN, {
-          part: "hulls",
-          key: "Airship",
+          part: "cannon",
+          key: null,
           op: "revert",
           data: null,
-          expect: row(server, "hulls", "Airship").fingerprint,
+          expect: row(server, "cannon").fingerprint,
         }),
-      ).toEqual({ ok: true, value: "Airship hull goes back to the pack's value when published." });
-      expect(row(server, "hulls", "Airship")).toMatchObject({
+      ).toEqual({ ok: true, value: "Cannon goes back to the pack's value when published." });
+      expect(row(server, "cannon")).toMatchObject({
         pending: "revert",
-        draft: { hull: 80 },
+        draft: { reloadFrames: 100 },
       });
       expect(server.content.publish(ADMIN, server.content.draftRev(), "").ok).toBe(true);
-      expect(hullMax("Airship")).toBe(80);
-      expect(row(server, "hulls", "Airship").edited).toBe(false);
+      expect(cannonReloadFrames()).toBe(100);
+      expect(row(server, "cannon").edited).toBe(false);
       // Undo brings the change back, as for any content publish.
       const last = server.content.history()[0];
       expect(last && server.content.undo(ADMIN, last.id).ok).toBe(true);
-      expect(hullMax("Airship")).toBe(10);
+      expect(cannonReloadFrames()).toBe(10);
     } finally {
       await server.stop();
     }
@@ -457,7 +465,7 @@ describe("the Balance page on a running server", () => {
         }),
       ).toEqual({
         ok: true,
-        value: "Battleship cannon goes back to the engine's default when published.",
+        value: "Cannon goes back to the engine's default when published.",
       });
     } finally {
       await server.stop();
@@ -491,23 +499,23 @@ describe("the Balance page on a running server", () => {
   test("saving a row back to what plays drops its draft change instead of staging an override", async () => {
     const server = start();
     try {
-      const set = (hull: number) =>
+      const set = (reloadFrames: number) =>
         server.content.draftBalance(ADMIN, {
-          part: "hulls",
-          key: "Boat",
+          part: "cannon",
+          key: null,
           op: "set",
-          data: { hull, vehicle: "Boat" },
-          expect: row(server, "hulls", "Boat").fingerprint,
+          data: { reloadFrames, damage: { randomN: 3, flat: 13 } },
+          expect: row(server, "cannon").fingerprint,
         });
       expect(set(70).ok).toBe(true);
-      expect(row(server, "hulls", "Boat").pending).toBe("set");
-      // Back to the 60 that plays (written in another key order): the draft change goes.
-      expect(set(60)).toEqual({ ok: true, value: "Boat hull is back to what plays now." });
+      expect(row(server, "cannon").pending).toBe("set");
+      // Back to the 100 that plays (written in another key order): the draft change goes.
+      expect(set(100)).toEqual({ ok: true, value: "Cannon is back to what plays now." });
       expect(server.content.draft()).toEqual([]);
       // With nothing in the draft, the same value is refused as no change.
-      expect(set(60)).toMatchObject({ ok: false, error: "Boat hull already plays that value." });
+      expect(set(100)).toMatchObject({ ok: false, error: "Cannon already plays that value." });
       // No operator row came of it, so a pack update has nothing to notice.
-      expect(row(server, "hulls", "Boat").edited).toBe(false);
+      expect(row(server, "cannon").edited).toBe(false);
       // A Minimal-style row the pack does not set compares with the engine's default.
       expect(
         server.content.draftBalance(ADMIN, {
@@ -526,19 +534,19 @@ describe("the Balance page on a running server", () => {
   test("the Content page's JSON editor names the balance row's revision, so it cannot write over a Balance page save", async () => {
     const server = start();
     try {
-      const ref = { dataset: "balance", part: "hulls", key: "Boat" };
-      // The first operator opens the Boat row on the Content page.
+      const ref = { dataset: "balance", part: "cannon", key: null };
+      // The first operator opens the cannon row on the Content page.
       const opened = contentIntent(server.content, ADMIN, { t: "contentRow", seq: 1, ...ref });
       const revision = (opened as { row: { revision?: string } }).row.revision;
-      expect(revision).toBe(row(server, "hulls", "Boat").fingerprint);
+      expect(revision).toBe(row(server, "cannon").fingerprint);
       // Another saves it from the Balance page meanwhile.
       expect(
         server.content.draftBalance(OTHER, {
-          part: "hulls",
-          key: "Boat",
+          part: "cannon",
+          key: null,
           op: "set",
-          data: { vehicle: "Boat", hull: 80 },
-          expect: row(server, "hulls", "Boat").fingerprint,
+          data: { damage: { flat: 13, randomN: 3 }, reloadFrames: 80 },
+          expect: row(server, "cannon").fingerprint,
         }).ok,
       ).toBe(true);
       // The first one's stale save, discard and revert are refused; so is one naming no revision.
@@ -548,7 +556,7 @@ describe("the Balance page on a running server", () => {
           seq,
           ...ref,
           op: "set",
-          data: { vehicle: "Boat", hull: 70 },
+          data: { damage: { flat: 13, randomN: 3 }, reloadFrames: 70 },
           ...(expect ? { expect } : {}),
         });
       for (const r of [
@@ -574,7 +582,10 @@ describe("the Balance page on a running server", () => {
           text: expect.stringContaining("changed since you opened it"),
         });
       }
-      expect(row(server, "hulls", "Boat").draft).toEqual({ vehicle: "Boat", hull: 80 });
+      expect(row(server, "cannon").draft).toEqual({
+        damage: { flat: 13, randomN: 3 },
+        reloadFrames: 80,
+      });
       // Opened again, it saves; the draft list carries the revision its Discard sends.
       const again = contentIntent(server.content, ADMIN, { t: "contentRow", seq: 6, ...ref }) as {
         row: { revision?: string };
@@ -582,13 +593,13 @@ describe("the Balance page on a running server", () => {
       expect(draft(7, again.row.revision)).toMatchObject({ ok: true });
       const listed = server.content.balanceRevision({
         dataset: "balance",
-        part: "hulls",
-        key: "Boat",
+        part: "cannon",
+        key: null,
       });
       const overview = contentIntent(server.content, ADMIN, { t: "contentOverview", seq: 8 }) as {
         overview: { draft: { part: string; key: string | null; revision?: string }[] };
       };
-      expect(overview.overview.draft.find((d) => d.key === "Boat")?.revision).toBe(listed ?? "");
+      expect(overview.overview.draft.find((d) => d.part === "cannon")?.revision).toBe(listed ?? "");
       expect(
         contentIntent(server.content, ADMIN, {
           t: "contentDiscard",
@@ -617,23 +628,23 @@ describe("the Balance page on a running server", () => {
     try {
       expect(
         server.content.draftBalance(ADMIN, {
-          part: "hulls",
-          key: "Boat",
+          part: "cannon",
+          key: null,
           op: "set",
-          data: { vehicle: "Boat", hull: 70 },
-          expect: row(server, "hulls", "Boat").fingerprint,
+          data: { damage: { flat: 13, randomN: 3 }, reloadFrames: 70 },
+          expect: row(server, "cannon").fingerprint,
         }).ok,
       ).toBe(true);
       expect(server.content.publish(ADMIN, server.content.draftRev(), "").ok).toBe(true);
-      // The operator row was based on the pack's 60; pretend the pack has since shipped 65.
+      // The operator row was based on the pack's 100; pretend the pack has since shipped another.
       server.db
         .query(
-          "UPDATE content_rows SET base_hash = 'ffffffffffffffff' WHERE dataset = 'balance' AND part = 'hulls'",
+          "UPDATE content_rows SET base_hash = 'ffffffffffffffff' WHERE dataset = 'balance' AND part = 'cannon'",
         )
         .run();
-      expect(row(server, "hulls", "Boat").notice).toMatchObject({
+      expect(row(server, "cannon").notice).toMatchObject({
         packName: "Classic",
-        now: { vehicle: "Boat", hull: 60 },
+        now: BALANCE_DEFAULTS.cannon,
       });
     } finally {
       await server.stop();

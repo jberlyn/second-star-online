@@ -17,7 +17,6 @@ import {
   type DeltaEvent,
   DIR_DELTA,
   type Dir,
-  isShip,
   isTrap,
   isWalkable,
   type MoveOutcome,
@@ -25,6 +24,9 @@ import {
   type ServerMsg,
   type StepMsg,
   stepLengthFor,
+  vehicleCrossesAt,
+  vehicleFlies,
+  vehicleRow,
   type WalkWorld,
   WEB_TEXT,
 } from "@secondstaronline/shared";
@@ -120,28 +122,31 @@ function refuseHead(p: Player): void {
 }
 
 export function walkWorld(room: Room, self: Player): WalkWorld {
-  if (isShip(self.vehicle)) {
-    // A ship sails only on water and blocks like a walker, as 1.6 wrote it (only the Airship set
-    // "block nothing"): players, other ships, monsters and fixtures such as a parked ship stop it.
-    // Webs are ignored aboard.
+  const row = vehicleRow(self.vehicle);
+  const crosses = (x: number, y: number) =>
+    row !== null && vehicleCrossesAt(row, room.map.layers[0], room.map.layers[1], x, y);
+  if (row?.boards === "shore") {
+    // A ship sails only on the tiles its row crosses and blocks like a walker, as 1.6 wrote it
+    // (only the Airship set "block nothing"): players, other ships, monsters and fixtures such as
+    // a parked ship stop it. Flying riders never do. Webs are ignored aboard.
     return {
-      walkable: (x, y) => isWalkable(room.map.walkShip, x, y),
+      walkable: crosses,
       pcBlocked: (x, y) =>
         blockPCCheck(
           x,
           y,
-          room.players.filter((o) => o !== self && o.vehicle !== "Airship"),
+          room.players.filter((o) => o !== self && !vehicleFlies(o.vehicle)),
           slotsFor(room, self),
         ),
       itemBlocks: (x, y) => groundBlocks(room, self, x, y),
       webAt: () => false,
     };
   }
-  if (self.vehicle) {
-    // An Airship has its own grid and 1.6's "block nothing" flag: fixtures, players and monsters
-    // never block it, and there is no push roll.
+  if (row) {
+    // A flying vehicle (the Airship) crosses its own row's tiles with 1.6's "block nothing" flag:
+    // fixtures, players and monsters never block it, and there is no push roll.
     return {
-      walkable: (x, y) => isWalkable(room.map.walkAir, x, y),
+      walkable: crosses,
       pcBlocked: () => false,
       itemBlocks: () => false,
       // Webs are ignored aboard (the web test only runs with no vehicle).
@@ -157,7 +162,9 @@ export function walkWorld(room: Room, self: Player): WalkWorld {
       blockPCCheck(
         x,
         y,
-        room.players.filter((o) => o !== self && !o.vehicle),
+        // A ship's rider stands in the way like a walker; a flying rider never does (issue #44:
+        // a `shore` vehicle may cross tiles a walker can, such as sand).
+        room.players.filter((o) => o !== self && !vehicleFlies(o.vehicle)),
         slotsFor(room, self),
       ),
     // Fixtures on the ground block too; loot never does.

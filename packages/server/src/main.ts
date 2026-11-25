@@ -200,6 +200,7 @@ export function startServer(options: ServerOptions): RunningServer {
       live?.contentPublished(store.hash, restoring, assets?.index().hash);
     },
     points: () => live?.contractPointProblems() ?? [],
+    vehiclesInUse: () => live?.vehiclesInUse() ?? new Map(),
     art,
     // A ticket stops working once its holder's role loses the Content page.
     mayUpload: (accountId) => {

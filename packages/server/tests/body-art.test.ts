@@ -74,7 +74,8 @@ describe("what draws a body", () => {
     const used = usedArt(classicData).sprites.bodies;
     const first = classicData.monsters.monsters[0];
     expect(used.get(String(first?.body))).toContain("monster ");
-    expect(used.get(String(classicData.bindings.bodies?.riders?.Boat))).toBeDefined();
+    const boat = classicData.houses.vehicles?.find((v) => v.name === "Boat")?.rider;
+    expect(used.get(String(boat))).toBe("the Boat");
   });
 
   test("the shared limit matches the data schema's", () => {

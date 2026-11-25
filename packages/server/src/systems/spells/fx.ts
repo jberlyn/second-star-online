@@ -122,7 +122,7 @@ export function placeQueued(room: Room, rng: Rng): PlaceResult {
   return res;
 }
 
-/** A tile a cannonball shot cannot pass: one an Airship cannot cross. */
+/** A tile a cannonball shot cannot pass: an `airshipBlock` tile (one Classic's Airship cannot cross). */
 export function shotBlocked(room: Room): (t: { x: number; y: number }) => boolean {
   return (t) => !isWalkable(room.map.walkAir, t.x, t.y);
 }

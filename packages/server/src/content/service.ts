@@ -61,6 +61,7 @@ import {
   DATASET_IDS,
   type DatasetId,
   DEFINITION_TABLES,
+  deedVehicle,
   definesBehaviours,
   editorLines,
   type FxChange,
@@ -159,6 +160,7 @@ import {
   ArtLibrary,
   type BuiltArt,
   checkUpload,
+  emptyKeys,
   keysOf,
   nullRecord,
   SPRITE_MAX_SIDE,
@@ -168,6 +170,7 @@ import {
   soundFormatOf,
   UPLOAD_MAX_BYTES,
   type UploadKind,
+  unionKeys,
   withArtRects,
 } from "./art.ts";
 import {
@@ -177,6 +180,7 @@ import {
   newItemArtGaps,
   newSoundProblems,
   newTileGaps,
+  newVehicleArtGaps,
   tileRefProblems,
   usedArt,
   wornSetProblems,
@@ -371,11 +375,13 @@ export interface ContentProblems {
   world: ContentProblem[];
 }
 
-/** The row an item or a monster is. */
+/** The row an item, a monster or a vehicle is. */
 export const entryRef = (kind: EntryKind, key: string): RowRef =>
   kind === "item"
     ? { dataset: "items", part: "items", key }
-    : { dataset: "monsters", part: "monsters", key };
+    : kind === "monster"
+      ? { dataset: "monsters", part: "monsters", key }
+      : { dataset: "houses", part: "vehicles", key };
 
 const npcFileRef = (key: string): RowRef => ({ dataset: "npcFiles", part: "files", key });
 
@@ -402,6 +408,10 @@ function placeText(p: UsagePlace): string {
       return `${plural(p.count, "live one", "live ones")} on ${plural(p.holderCount, "map")}`;
     case "shop":
       return `${plural(p.count, "copy", "copies")} on sale in ${plural(p.holderCount, "player shop")}`;
+    case "aboard":
+      return `${plural(p.count, "character")} aboard`;
+    case "parked":
+      return `${plural(p.count, "parked one", "parked ones")} on ${plural(p.holderCount, "map")}`;
   }
 }
 
@@ -437,6 +447,23 @@ export function actionLines(a: WorldAction, places: readonly UsagePlace[]): stri
     }
     if (copies.length === 0 && a.copies === "retire") {
       out.push("Nobody holds a copy, so it is removed rather than retired");
+    }
+  } else if (a.kind === "vehicle") {
+    for (const p of of(["aboard"])) {
+      out.push(
+        a.riders === "switch"
+          ? `${placeText(p)} ${v(p, "rides", "ride")} ${a.replacement} instead`
+          : `${placeText(p)} ${v(p, "lands", "land")} where ${v(p, "it is", "they are")}`,
+      );
+    }
+    for (const p of of(["parked"])) {
+      out.push(
+        a.riders === "switch"
+          ? `${placeText(p)} ${v(p, "becomes", "become")} ${a.replacement}`
+          : a.deed
+            ? `${placeText(p)} ${v(p, "becomes", "become")} ${a.deed} where ${v(p, "it stands", "they stand")}`
+            : `${placeText(p)} ${v(p, "is", "are")} deleted (no deed builds it)`,
+      );
     }
   } else {
     for (const p of of(["spawn"])) {
@@ -590,6 +617,11 @@ export interface ContentServiceOptions {
    */
   points?: () => ContentProblem[];
   /**
+   * The vehicles in use, by the installed content's names (game.ts `vehiclesInUse`, issue #44): a
+   * write that takes one of their rows out is refused unless its removal's cleanup is waiting.
+   */
+  vehiclesInUse?: () => ReadonlyMap<string, { aboard: number; parked: number }>;
+  /**
    * The uploaded art's library (issue #29): checks the `art` rows at publish and builds their hit
    * rects into the store. Without it (tests of the store alone) art rows are taken as they are.
    */
@@ -698,6 +730,7 @@ export class ContentService {
   private readonly onPublish: (store: ContentStore, restoring: boolean) => void;
   private readonly log: (line: string) => void;
   private readonly points: () => ContentProblem[];
+  private readonly vehiclesInUse: () => ReadonlyMap<string, { aboard: number; parked: number }>;
   private readonly art: ArtLibrary | null;
   private readonly mayUpload: (accountId: string) => boolean;
   /** The sprites and sounds the installed packs' own atlases and art rows supply. */
@@ -752,6 +785,7 @@ export class ContentService {
     this.onPublish = opts.onPublish ?? (() => {});
     this.log = opts.log ?? (() => {});
     this.points = opts.points ?? (() => []);
+    this.vehiclesInUse = opts.vehiclesInUse ?? (() => new Map());
     this.art = opts.art ?? null;
     this.mayUpload = opts.mayUpload ?? (() => true);
     this.releasePacks = opts.releasePacks;
@@ -1445,6 +1479,35 @@ export class ContentService {
     return out;
   }
 
+  /** What a pack's art rows draw, built from the files it brings (and those already kept). */
+  private packArtKeys(pack: LoadedPack, files: readonly PackFileEntry[]): ArtKeys | undefined {
+    if (!pack.data.art) {
+      return undefined;
+    }
+    try {
+      return keysOf(this.packLibrary(files).build(this.packArtData(pack)).index);
+    } catch {
+      return undefined; // its art is refused on its own (`packArtProblems`)
+    }
+  }
+
+  private packArtData(pack: LoadedPack): ArtData {
+    return { ...structuredClone(EMPTY_ART), ...pack.data.art } as ArtData;
+  }
+
+  private packLibrary(files: readonly PackFileEntry[]): ArtLibrary {
+    const store = memoryArtFiles();
+    for (const f of files) {
+      store.put(f.kind, f.ext, f.bytes);
+    }
+    const library = new ArtLibrary(store);
+    // Files the server already keeps (an upload, another pack's) count too.
+    if (this.art) {
+      library.addReader((kind, hash, ext) => this.art?.files.read(kind, hash, ext) ?? null);
+    }
+    return library;
+  }
+
   /** Why a pack's art rows would draw nothing, checked against the files the pack brings. */
   private packArtProblems(pack: LoadedPack, files: readonly PackFileEntry[]): ContentProblem[] {
     if (!pack.data.art) {
@@ -1459,7 +1522,7 @@ export class ContentService {
     if (this.art) {
       library.addReader((kind, hash, ext) => this.art?.files.read(kind, hash, ext) ?? null);
     }
-    const art = { ...structuredClone(EMPTY_ART), ...pack.data.art } as ArtData;
+    const art = this.packArtData(pack);
     return library
       .problems(art)
       .map((p) => ({ where: `pack ${pack.manifest.id}: ${p.where}`, message: p.message }));
@@ -1499,7 +1562,10 @@ export class ContentService {
       const problems =
         shaped.length > 0
           ? shaped
-          : [...this.fullProblems(published), ...this.packArtProblems(pack, files)];
+          : [
+              ...this.fullProblems(published, [], this.packArtKeys(pack, files)),
+              ...this.packArtProblems(pack, files),
+            ];
       return problems.map((p) => `${p.where}: ${p.message}`);
     } catch (e) {
       return [(e as Error).message];
@@ -1914,13 +1980,17 @@ export class ContentService {
    * The art problems of `next`: rows whose files are missing or misshapen, and art taken away
    * while content still draws or plays it.
    */
-  private artProblems(next: ContentData): ContentProblem[] {
+  private artProblems(next: ContentData, incoming?: ArtKeys): ContentProblem[] {
     // A spell run that hides before the frame its effect acts on (issue #29, stage 5).
     const triggers = fxTriggerProblems(next, this.published);
     // A tile the draft takes out of the catalogue that content still names (issue #29, stage 6).
     const tileRefs = tileRefProblems(next, this.published);
+    // A vehicle's art (issue #44): the packs' (an incoming pack's included) and the uploads'.
+    const packs = incoming ? unionKeys(this.packArt, incoming) : this.packArt;
+    const uploads = this.art ? keysOf(this.art.build(next.art).index) : emptyKeys();
+    const vehicles = newVehicleArtGaps(next, this.published, packs, uploads);
     if (!this.art) {
-      return [...triggers, ...tileRefs];
+      return [...triggers, ...tileRefs, ...vehicles];
     }
     const before = keysOf(this.art.build(this.published.art).index);
     const after = keysOf(this.art.build(next.art).index);
@@ -1942,6 +2012,7 @@ export class ContentService {
       ...tileRefs,
       ...wornSetProblems(next, this.published),
       ...newItemArtGaps(next, this.published, this.packArt, after, before),
+      ...vehicles,
     ];
   }
 
@@ -2022,6 +2093,9 @@ export class ContentService {
           if ((a.npcFile ?? "delete") === "delete" && f.npc.toLowerCase() === a.key.toLowerCase()) {
             text = null;
           }
+          continue;
+        }
+        if (a.kind !== "item") {
           continue;
         }
         const mode = a.content ?? "remove";
@@ -4423,7 +4497,34 @@ export class ContentService {
     }
   }
 
-  private fullProblems(next: ContentData, actions: readonly WorldAction[] = []): ContentProblem[] {
+  /**
+   * Vehicles in use that `next` takes out without their removal's cleanup (issue #44): their riders
+   * would be left half aboard and their parked ones in the way. Remove on the row lands or switches
+   * them; any other way (a pack import or update, an undo, a hand-made removal) is refused.
+   */
+  private vehicleUseProblems(next: ContentData, actions: readonly WorldAction[]): ContentProblem[] {
+    const kept = new Set((next.houses.vehicles ?? []).map((v) => v.name.toLowerCase()));
+    const cleaned = new Set(
+      actions.filter((a) => a.kind === "vehicle").map((a) => a.key.toLowerCase()),
+    );
+    const out: ContentProblem[] = [];
+    for (const [name, n] of this.vehiclesInUse()) {
+      if (kept.has(name.toLowerCase()) || cleaned.has(name.toLowerCase())) {
+        continue;
+      }
+      out.push({
+        where: `houses/vehicles/${name}`,
+        message: `the ${name} is in use (${n.aboard} aboard, ${n.parked} parked): take it out with Remove on its row, which lands or switches them`,
+      });
+    }
+    return out;
+  }
+
+  private fullProblems(
+    next: ContentData,
+    actions: readonly WorldAction[] = [],
+    incoming?: ArtKeys,
+  ): ContentProblem[] {
     this.shareCompileInputs(next);
     const problems = [
       ...checkStore(
@@ -4434,12 +4535,15 @@ export class ContentService {
           f.text === null ? [] : [{ npc: f.npc, text: f.text }],
         ),
       ),
-      ...(schemaProblems(next).length > 0 ? [] : this.artProblems(next)),
+      ...(schemaProblems(next).length > 0 ? [] : this.artProblems(next, incoming)),
     ];
     // Content that does not match its schemas is named by them alone. Otherwise the contract is
     // named first, beside any broken references: a world with no currency also breaks every
     // `300 Gold` that named the old one.
-    const contract = schemaProblems(next).length > 0 ? [] : contractProblems(next);
+    const contract =
+      schemaProblems(next).length > 0
+        ? []
+        : [...contractProblems(next), ...this.vehicleUseProblems(next, actions)];
     if (problems.length > 0 || contract.length > 0) {
       return [...contract, ...problems];
     }
@@ -5159,13 +5263,23 @@ export class ContentService {
     const named = (text: string) =>
       (removal.kind === "item"
         ? baseStore.itemNamed(text)
-        : (baseStore.monster(text) ??
-          base.monsters.monsters.find((m) => m.display?.toLowerCase() === text.toLowerCase()))) as
+        : removal.kind === "vehicle"
+          ? (base.houses.vehicles ?? []).find(
+              (v) =>
+                v.name.toLowerCase() === text.toLowerCase() ||
+                v.display?.toLowerCase() === text.toLowerCase(),
+            )
+          : (baseStore.monster(text) ??
+            base.monsters.monsters.find((m) => m.display?.toLowerCase() === text.toLowerCase()))) as
         | { name: string; retired?: true }
         | undefined;
     const wantsReplacement =
       removal.content === "replace" ||
-      (removal.kind === "item" ? removal.copies === "replace" : removal.spawns === "replace");
+      (removal.kind === "item"
+        ? removal.copies === "replace"
+        : removal.kind === "vehicle"
+          ? removal.riders === "switch"
+          : removal.spawns === "replace");
     if (wantsReplacement) {
       if (!replacement) {
         return fail(`Name the ${removal.kind} to replace ${key} with.`);
@@ -5204,6 +5318,10 @@ export class ContentService {
     const spellings = this.spellings(removal.kind, key);
     const ownFile =
       removal.kind === "monster" && removal.npcFile === "delete" ? [npcFileRef(key)] : [];
+    // The deed a parked one becomes: the first that builds it, before the cleanup changes it.
+    const deed =
+      base.houses.deeds.find((d) => deedVehicle(d)?.toLowerCase() === key.toLowerCase())?.deed ??
+      null;
     const cleaned = cleanUses(
       base,
       usesOf(base, removal.kind, key, spellings),
@@ -5262,6 +5380,15 @@ export class ContentService {
         refundGold: removal.copies === "purge" ? Math.floor(removal.refundGold) : 0,
         content: removal.content,
         contentReplacement: removal.content === "replace" ? replaceWith : null,
+      };
+    } else if (removal.kind === "vehicle") {
+      own.push({ ref, op: "remove", data: null });
+      action = {
+        kind: "vehicle",
+        key,
+        riders: removal.riders,
+        replacement: removal.riders === "switch" ? replaceWith : null,
+        deed,
       };
     } else {
       own.push({ ref, op: "remove", data: null });
@@ -5408,11 +5535,27 @@ export class ContentService {
     const store = buildContentStore(next);
     const out: ContentProblem[] = [];
     for (const a of this.liveActions(draft)) {
+      // A vehicle's parked ones become its deed: the deed item must still be there (issue #44).
+      if (a.kind === "vehicle" && a.riders === "land" && a.deed) {
+        const deed = store.item(a.deed) as { retired?: true } | undefined;
+        if (!deed || deed.retired) {
+          out.push({
+            where: rowLabel(entryRef(a.kind, a.key)),
+            message: `its parked ones become ${a.deed}, which ${deed ? "is retired" : "the draft no longer has"}`,
+          });
+        }
+      }
       if (!a.replacement) {
         continue;
       }
       const other = (
-        a.kind === "item" ? store.item(a.replacement) : store.monster(a.replacement)
+        a.kind === "item"
+          ? store.item(a.replacement)
+          : a.kind === "vehicle"
+            ? (next.houses.vehicles ?? []).find(
+                (v) => v.name.toLowerCase() === a.replacement?.toLowerCase(),
+              )
+            : store.monster(a.replacement)
       ) as { retired?: true } | undefined;
       if (!other || other.retired) {
         out.push({
@@ -5442,7 +5585,9 @@ export class ContentService {
           ? "item"
           : d.dataset === "monsters" && d.part === "monsters"
             ? "monster"
-            : null;
+            : d.dataset === "houses" && d.part === "vehicles"
+              ? "vehicle"
+              : null;
       if (kind === null || d.key === null) {
         continue;
       }

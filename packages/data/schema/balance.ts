@@ -5,8 +5,9 @@
  * the defaults. The Classic pack writes 1.6's values out.
  *
  * Small groups are one row each (`spellHits`, `buffs`, `castPower`, `regen`, `hunger`, `death`,
- * `vehicles`, `cannon`, `drops`, `timings`, `combat`, `monsters`); lists of like things are keyed rows (`spellEffects` by effect, `hulls` by
- * vehicle), so a pack update that changes one value notices only its row.
+ * `vehicles`, `cannon`, `drops`, `timings`, `combat`, `monsters`); lists of like things are keyed
+ * rows (`spellEffects` by effect), so a pack update that changes one value notices only its row.
+ * Each vehicle's full hull is its `houses.vehicles` row's (issue #44).
  *
  * Every value is bounded, so a typo can never stall or break the game; the server refuses a value
  * outside its limits when it is saved, published, undone or taken from a pack update.
@@ -276,15 +277,6 @@ export const monstersBalanceSchema = z.strictObject({
     }),
 });
 
-/** The vehicles a hull belongs to (the engine's vehicle kinds). */
-export const BALANCE_VEHICLES = ["Boat", "Airship", "Battleship"] as const;
-
-/** A vehicle's full hull (issue #2, an SSO addition: 1.6 had no hulls). */
-export const hullRowSchema = z.strictObject({
-  vehicle: z.enum(BALANCE_VEHICLES),
-  hull: bounded(BALANCE_LIMITS.hull),
-});
-
 /** How hits wear a hull and how a parked vehicle mends. */
 export const vehicleBalanceSchema = z.strictObject({
   /** What one arrow or harmful spell takes off a rider's hull. */
@@ -382,12 +374,6 @@ export const balanceDataSchema = z.strictObject({
   timings: timingsSchema.optional(),
   combat: combatSchema.optional(),
   monsters: monstersBalanceSchema.optional(),
-  hulls: z
-    .array(hullRowSchema)
-    .refine((rows) => new Set(rows.map((r) => r.vehicle)).size === rows.length, {
-      message: "each vehicle has one hull row",
-    })
-    .optional(),
 });
 
 export type FlatAmount = z.infer<typeof flatAmountSchema>;
@@ -395,8 +381,6 @@ export type Amount = z.infer<typeof amountSchema>;
 export type BalanceSpellEffect = (typeof BALANCE_SPELL_EFFECTS)[number];
 export type SpellEffectRow = z.infer<typeof spellEffectRowSchema>;
 export type SpellAmountOverride = z.infer<typeof spellAmountOverrideSchema>;
-export type HullRow = z.infer<typeof hullRowSchema>;
-export type BalanceVehicle = (typeof BALANCE_VEHICLES)[number];
 export type VehicleBalance = z.infer<typeof vehicleBalanceSchema>;
 export type CannonBalance = z.infer<typeof cannonBalanceSchema>;
 export type BalanceDrops = z.infer<typeof dropsSchema>;

@@ -443,11 +443,45 @@ These files have no worked example here; their schemas in [packages/data/schema/
 
 - **`gather.json`:** `gathering` (the hit table, mining strikes, fishing, farming, regrowth and treasure), and `harvest` and `yields` (see [Tools and gathering](#tools-and-gathering)). How the gathering and crafting skills rise is each skill's [progression](#progression).
 - **`craft.json`:** `stations`: what each crafting station makes, from what, and at what skill.
-- **`houses.json`:** house deeds and types, placement and building, doors, keys and switches, containers, resting regeneration and monthly decay.
+- **`houses.json`:** house deeds and types, [vehicles](#vehicles-housesjson-vehicles), placement and building, doors, keys and switches, containers, resting regeneration and monthly decay.
 - **`social.json`:** [factions](#factions-socialjson) and their rules, murder, the Assassin's Game, high scores, guilds, chat rooms, buddies, Bios, medals, mail, boards, art tools and the newspaper.
 - **`casino.json`:** the Slot Machine, Blackjack and Checkers games, including their sounds. Which items play them is the `slotMachine`, `blackjackTable` and `checkersTable` [behaviours](#item-behaviours). Classic no longer sets each game's `item`; a pack made before the behaviours that still sets it keeps that item playing.
 - **`quests.json`:** the quest lines that seed a fresh database's `quests` table (`current`) and the pools a replacement quest is drawn from (`pools`).
 - **`help.json`:** the help topics `/help <topic>` shows, with their lines. The `Help` topic is also the greeting a character gets on logging in; a world without one sends none.
+
+### Vehicles (`houses.json` `vehicles`)
+
+A vehicle is a row of `houses.json` `vehicles` (issue #44), keyed by `name`: what a character rides and what a parked one is called (`Bob's Boat`). A deed builds one with `"use": "vehicle", "vehicle": "<name>"`; the older `"use": "boat"`, `"airship"` and `"battleship"` still read, as the Classic rows of those names. The engine keeps the mechanics (crossing tiles, boarding, parking, the hull, sinking and the cannon's shot); a row picks the options:
+
+| Field | What it is | Classic's Boat / Battleship / Airship |
+|---|---|---|
+| `name` | Its key: no `'` or `#`, no leading count (`5 Skiff`), not an owner fixture's word (`Door`, `Mailbox`, `Board`, …), and not the end of an item's name (`Bob's Skiff`) | `Boat`, `Battleship`, `Airship` |
+| `display` | What its lines call it (optional; default `name`); no two vehicles show the same name | (none) |
+| `picture` | The item picture a parked one shows (an `art.items` name) | `BoatPic`, `BattleshipPic`, `AirshipPic` |
+| `rider` | The body a rider shows; every peer knows the vehicle by it, so no two vehicles share one. It needs its four walking frames (`F1`-`F4`) in each direction | 55, 56, 57 |
+| `hull` | The full hull (1 to 100,000); hits wear it, never the rider, and at 0 the vehicle is lost | 60, 150, 80 |
+| `moves` | The tiles it crosses: `over` (`"any"`, or `flags` and/or `codes`) less `except` (`flags` and/or `codes`) | over `sea`; over `sea`; over `"any"` except `airshipBlock` |
+| `boards` | `shore`: it sails. It is built on a tile it crosses, boarded from the tile beside it, left onto a walkable tile beside it, steps at walking pace, is blocked by players, monsters and fixtures and blocks walkers (monsters pass riders, as before), and rides the swell. `pad`: it flies. It is built on, boarded beside and left on one of its `lands` tiles, steps twice as fast, and flies over players, monsters and items, blocking no one. Every rider passes over exits, cannot swing, cast or drop anything, and is never meleed | `shore`, `shore`, `pad` |
+| `lands` | The pads a `pad` vehicle is built and left on (`flags` and/or `codes`; only for `pad`) | -, -, `dock` |
+| `cannon` | `true`: the attack key fires the cannon, spending `bindings.json` `cannon.ammo`. Its rider shows its body's `fire1`-`fire3` frames while it fires, or its standing frame when the body has none (an uploaded body holds only walking frames) | -, `true`, - |
+| `bobs` | `true`: a parked one (a `shore` vehicle) bobs at its mooring, drawn as its rider's frame on the swell, facing the way it was left; without it a parked one shows `picture` | `true`, `true`, - |
+
+A flag is read on the layer its tiles live on (`sea` and `dock` on layer 1, `airshipBlock` on layer 2); a code matches on layer 1 or layer 2. A Sand Skiff that crosses sand and is boarded from the shore:
+
+```json
+{
+  "name": "Sand Skiff",
+  "picture": "SandSkiffPic",
+  "rider": 1001,
+  "hull": 40,
+  "moves": { "over": { "codes": ["8R"] } },
+  "boards": "shore"
+}
+```
+
+(`8R` standing for the world's sand tiles) with a deed `{ "deed": "Sand Skiff Deed", "use": "vehicle", "vehicle": "Sand Skiff", "house": null, "text": null }`. Rows are edited on the Content page. The publish check refuses a tile code the catalogue lacks, a flag no tile carries, a vehicle with no way to board (judged as play judges it: a `shore` vehicle that crosses no tile once `except` is taken off `over`, a `pad` one with no tile it can fly onto and land on), a parked picture or walking frames neither a pack (one being installed included) nor an upload draws, two vehicles with one rider body or one display name, and an item named like a parked one (`Bob's Sand Skiff`). A new kind of movement (swimming, digging) still needs code.
+
+Characters and parked vehicles store the vehicle's name. **Remove** on a vehicle's row lists where it is used (the deeds that build it, the characters riding it, the parked ones) and, when the draft is published, lands its riders where they are and turns each parked one into its deed where it stands, or switches both to another vehicle; the deeds are removed with it or build the other one. Taking out a vehicle that is ridden or parked any other way (by hand, an undo, a pack import or update) is refused until Remove's cleanup is in the draft. A vehicle no row has (a release pack that dropped it, a database edit) rides and parks as nothing: its riders are listed on the Content problems page and land where they are (logged), at once if online and when they next log in otherwise, and a parked one is an ordinary item.
 
 ### Balance (`balance.json`)
 
@@ -462,8 +496,7 @@ These files have no worked example here; their schemas in [packages/data/schema/
 | `regen` | One row | `periodFrames`: what the regeneration counter counts up to, less a faction's regeneration perk, at least 1 (149): the counter starts at 1 and starts again once it acts, so regeneration acts every `periodFrames` − 1 frames (148, 1.6's cadence); `regenerate` and `starve`: HP and SP each gains or loses a tick (1, 1; starving stops at 1) |
 | `hunger` | One row | `loseOneIn`: hunger falls by 1 each frame with a chance of 1 in this (3); `regenAbove` (500) and `starveBelow` (50); `stuffed`: food and potions refused from here (35000); `afterDeath` (40000). `starveBelow` < `regenAbove` ≤ `stuffed`, else refused |
 | `death` | One row | `hp` (1, at least 1) and `sp` (1) after a death, each at most the player's full; `pauseFrames`: no monster rolls against you for this long (90) |
-| `hulls` | One per vehicle, keyed by `vehicle` (`Boat`, `Airship`, `Battleship`) | `hull`: the full hull (60, 80, 150; 1 to 100,000) |
-| `vehicles` | One row | `hullHit`: hull one arrow or harmful spell takes off a rider (2); `repairPerMinute`: hull a parked vehicle mends each whole minute (1) |
+| `vehicles` | One row | `hullHit`: hull one arrow or harmful spell takes off a rider (2); `repairPerMinute`: hull a parked vehicle mends each whole minute (1). Each vehicle's full hull is its own [vehicle row](#vehicles-housesjson-vehicles)'s `hull`, which the Balance page names and links to |
 | `cannon` | One row | `damage`: `{ "flat": 13, "randomN": 3 }`, the flat amount plus `random(randomN)` (1 to n; 0 rolls nothing); `reloadFrames`: frames between shots, 20 a second (100) |
 | `drops` | One row | `who`: whose deaths drop gold or an item, `off`, `wanted`, `pvp` or `everyone` (`wanted`; 1.6 dropped on every death); `kind`: `either` (1.6's coin toss), `gold` or `items` (`either`); `goldCap`: the most gold a death drops unless wanted, 0 for no cap (200); `minLevel`: nothing drops below this level unless wanted (0); `lootDecaySeconds`: how long monster loot lasts on the ground, 60 to 604800 (1800). Server Settings before issue #19 |
 | `timings` | One row, frames (20 a second) | `flickerFrames`: a hit player's flicker, in which no other hit lands (40; counted down twice a frame, so about 1 s); `castDelayFrames`: after a cast, at least 1 (20; also counted down twice a frame, about 0.5 s); `swingBaseFrames`: a swing's cooldown with no gear that sets one, at least 1 (14); `killCreditFrames`: a hit counts as the kill this long, at least 1 (40; at 1 the fatal hit of any kind still counts, and no later hit lands on a downed player, even with a flicker of 0); `pigGrabFrames`: between pig grabs (500); `giveGrabFrames`: before a give is picked up (60); `npcSpellBlockFrames`: between monster spells hitting the same players (30) |
@@ -497,6 +530,7 @@ Only a spell cast from a spellbook takes its own amounts: a free fireball, a mon
 | `social.json` `questReplies.oraku` | No NPC takes Oraku's orb |
 | `social.json` `factions`, `medals.awards`, `bios.titles` (empty) | No factions, no medals, no Bio titles beyond `firstTitle` |
 | `houses.json` `deeds`, `types` and the other lists (empty) | No houses or vehicles from deeds, no coloured keys, no relocking doors, no quest chest refills |
+| `houses.json` `vehicles` | No vehicles: a deed that names one builds nothing (and is refused at publish) |
 | `help.json` `topics` (empty) | `/help` finds no topic |
 | `bindings.json` `cannon`, `bodies`, `skills` entries | See [Bindings](#bindings-bindingsjson) |
 
@@ -715,15 +749,15 @@ Each top-level field is one row on the Content page:
 |---|---|---|---|
 | `currency` | `item`: the item a character carries as their purse ("gold" in the engine's words). A pile on the ground is named with its amount and the item's key, `15 Gold` (only that form: with a currency named `Coin`, an item named `Silver Coin` stays an item), and the purse, trades, shops, drops, `/drop 50 Gold`, NPC drop lines (`INV|50 Gold`) and treasure rows all read it | `Gold` | refused at publish |
 | `start` | `hp`, `sp`: a new character's full vitals; `bag`: its first bag lines (`item`, `qty`), at most 15 | 20 and 20; 2 Apple, 1 Knife | required (the bag may be empty) |
-| `cannon` | `ammo`: the item each Battleship cannon shot spends | `Cannonball` | the cannon never fires ("You have no cannonballs!") |
-| `bodies` | the `Chars` body numbers the engine puts on a player: `morph` (Morph's table), `tree` (Nature Shift), `smoke` (Smoke Bomb, drawn as nothing to others), `riders` (one per vehicle: `Boat`, `Battleship`, `Airship`) | 30-41; 80; 100; 55, 56, 57 | `morph`, `tree`, `smoke`: that spell does nothing. `riders`: the world has no vehicles, and a deed that makes one is refused (vehicles are engine kinds, each drawn as its rider body) |
+| `cannon` | `ammo`: the item each cannon shot spends (a [vehicle](#vehicles-housesjson-vehicles) with `cannon`: Classic's Battleship) | `Cannonball` | the cannon never fires ("You have no cannonballs!") |
+| `bodies` | the `Chars` body numbers the engine puts on a player: `morph` (Morph's table), `tree` (Nature Shift), `smoke` (Smoke Bomb, drawn as nothing to others). A rider shows its [vehicle row](#vehicles-housesjson-vehicles)'s `rider` | 30-41; 80; 100 | that spell does nothing |
 | `skills` | the skills the engine reads, below | 1.6's skills | that mechanic is off |
 
 Notes on the single bindings:
 
 - **Changing the currency strands old piles.** Piles already on the ground, and NPC drop lines, treasure rows and Assassin prizes written as `<n> Gold`, keep the old name, which is then an ordinary item name that does not exist. The publish check names every content line that breaks; fix those in the same draft. The three pile pictures (`SmallGold`, `MediumGold`, `LargeGold`) are the engine's, whatever the currency is called.
 - **Morph's table** is a list of `{ "above": n, "body": b }` rows. The spell rolls the [`balance.json`](#balance-balancejson) `buffs.morph` amount (Classic's `3 + power + random(5)`), and the last row whose `above` the roll is over picks the body.
-- **A body is what peers see.** Each rider needs its own body, and no spell body may be a rider's, or clients would draw a player as riding. The publish check refuses both, and a smoke body equal to the tree body.
+- **A body is what peers see.** Each vehicle's rider needs its own body, and no spell body may be a rider's, or clients would draw a player as riding. The publish check refuses both, and a smoke body equal to the tree body.
 - **Items named here are references.** Removing Apple, Knife, Cannonball or Gold on the Content page lists these rows among its uses: a start bag line or the cannon's ammo can be dropped by the cleanup, and the currency can only be replaced.
 
 `skills` binds the skills the engine reads, by skill key:
@@ -755,7 +789,7 @@ A world must have:
 | A start class | `classes.json` `startClasses` | at least one |
 | A skill | `classes.json` `skills` | at least one |
 | Start, fallback and jail points | Server Settings: Starting map, Fallback map, Jail | each on a map that exists, on a tile walkable on foot with nothing in a new character's way (no item from `item-rules.json` `ground.blocks`, and no skill or level platform from `ground.platforms`); and the start and fallback never on the jail's map (any spelling of it: `x00y0` is `x0y0`) |
-| Vehicles drawn | `bindings.json` `bodies.riders` | rider bodies, when a deed in `houses.json` makes a Boat, Battleship or Airship, or while any character is aboard a vehicle or one stands parked (a world without rider bodies boards no one) |
+| Riders told apart | `houses.json` `vehicles` | each vehicle's `rider` body is its own, and none is the tree's, the smoke's or a Morph row's |
 
 The points are judged with the content being published, so a draft that takes a tile off `tiles.json` `walkable` is refused if a point stands on it. The jail's map holds whoever stands on it (no edges, exits or Portal, and anyone not serving a sentence is moved off), so a start there would put every new character in jail, and a fallback there would send released prisoners back in: a settings save that moves a start or fallback point onto the jail's map, or the jail onto theirs, is refused under the setting it changed. Every other binding and setting is optional, and so are the 1.6-shaped tables ([What a world may leave out](#what-a-world-may-leave-out)). The church bell's map is the **Church bell map** setting (`bellMap`; empty means no bell), which Classic servers start at x999y999.
 

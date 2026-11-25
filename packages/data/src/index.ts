@@ -26,10 +26,8 @@ export type {
   Amount,
   BalanceData,
   BalanceSpellEffect,
-  BalanceVehicle,
   CannonBalance,
   FlatAmount,
-  HullRow,
   SpellAmountOverride,
   SpellEffectRow,
   VehicleBalance,
@@ -49,7 +47,7 @@ export type {
 export type { CraftData } from "../schema/craft.ts";
 export type { GatherData, HarvestNode, YieldTable } from "../schema/gather.ts";
 export type { HelpData, HelpTopic } from "../schema/help.ts";
-export type { HouseData, HouseType } from "../schema/houses.ts";
+export type { Deed, HouseData, HouseType, TileSet, VehicleRow } from "../schema/houses.ts";
 export type { EquipSlot, ItemBehaviour, ItemRulesData } from "../schema/item-rules.ts";
 export type { Item, ItemDefinition, ItemsData } from "../schema/items.ts";
 export type { JailMapData } from "../schema/jail-map.ts";

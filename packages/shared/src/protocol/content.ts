@@ -126,9 +126,12 @@ export const contentNoticeSchema = z.strictObject({
   accept: z.boolean(),
 });
 
-/** An item or a monster (NPCs are monsters), by key, for where-used and removal (issue #28). */
+/**
+ * An item, a monster (NPCs are monsters) or a vehicle (issue #44), by key, for where-used and
+ * removal (issue #28).
+ */
 const entry = {
-  kind: z.enum(["item", "monster"]),
+  kind: z.enum(["item", "monster", "vehicle"]),
   key: z.string().min(1).max(80),
 };
 
@@ -142,7 +145,8 @@ const replacement = z.string().max(80).nullable();
  * references content holds (`content`), and, published, to the world. An item: the copies players
  * hold are retired, purged (with an optional gold refund for each) or replaced. A monster: its
  * roster slots are cleared or replaced, live ones despawn or stay until they die, and its own NPC
- * file goes with it or stays.
+ * file goes with it or stays. A vehicle: its riders land and its parked ones become their deed
+ * where they are, or both switch to another vehicle.
  */
 export const contentRemoveSchema = z.strictObject({
   t: z.literal("contentRemove"),
@@ -160,6 +164,8 @@ export const contentRemoveSchema = z.strictObject({
   live: z.enum(["despawn", "leave"]).optional(),
   /** A monster's own NPC file row (default: delete). */
   npcRow: z.enum(["delete", "keep"]).optional(),
+  /** A vehicle's riders and parked ones (default: land). */
+  riders: z.enum(["land", "switch"]).optional(),
 });
 
 /** The references nothing resolves: the Content problems list. */
@@ -956,7 +962,11 @@ export type ContentPlaceKind =
   | "spawn"
   | "live"
   /** Stock on sale in player shops. */
-  | "shop";
+  | "shop"
+  /** Characters riding a vehicle. */
+  | "aboard"
+  /** A vehicle parked on the ground. */
+  | "parked";
 
 /** One kind of place, with how many and who or where holds them (the first few). */
 export interface ContentPlaceView {
@@ -976,7 +986,7 @@ export interface ContentUseView {
 }
 
 export interface ContentUsageView {
-  kind: "item" | "monster";
+  kind: "item" | "monster" | "vehicle";
   key: string;
   name: string;
   retired: boolean;
@@ -992,7 +1002,7 @@ export interface ContentUsageView {
 
 /** A removal in the draft and what publishing it will do. */
 export interface ContentRemovalView {
-  kind: "item" | "monster";
+  kind: "item" | "monster" | "vehicle";
   key: string;
   lines: string[];
   /** Places it is still used that the publish leaves (references, retired copies). */

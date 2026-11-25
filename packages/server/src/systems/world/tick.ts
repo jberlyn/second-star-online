@@ -34,7 +34,6 @@ import {
   EDGE_BLOCKED_TEXT,
   exitTarget,
   isJailMap,
-  isWalkable,
   lingoEq,
   lootDecaySeconds,
   MODERATION_TEXT,
@@ -117,7 +116,7 @@ import {
   vitalsView,
   type World,
   type WorldMap,
-  walkGridFor,
+  walkableFor,
 } from "./world.ts";
 
 export interface TickDeps {
@@ -913,7 +912,7 @@ export function crossMapEdge(world: World, deps: TickDeps, c: EdgeCrossing): Out
   // The wrapped tile must be walkable on the next map, on foot or aboard. The client only turned
   // for an edge and waits for the snapshot, so a refusal needs no correction; the player reads
   // why once a press (SSO's own line).
-  if (!next || !isWalkable(walkGridFor(next, p.vehicle), o.toX, o.toY)) {
+  if (!next || !walkableFor(next, p.vehicle)(o.toX, o.toY)) {
     return refuseTravel(p);
   }
   return warp(world, p, next, o.toX, o.toY, deps.casino, "edge");

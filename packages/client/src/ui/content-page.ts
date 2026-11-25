@@ -11,7 +11,8 @@
  *   Publish. A publish another admin's change would overwrite is refused.
  * - **Rows**: every row of a dataset field (an item, a text table) with its state, and an editor
  *   for one row's JSON that saves to the draft.
- * - **Where it is used** and **Remove** for an item or a monster (issue #28, content-usage.ts):
+ * - **Where it is used** and **Remove** for an item, a monster or a vehicle (issues #28 and #44,
+ *   content-usage.ts):
  *   the rows and the world's places that hold it, and a removal with its cleanup.
  * - **Item pictures** (issue #29, item-art.ts): a picture panel in an item row's editor, and a bulk
  *   upload that attaches PNGs named after items.
@@ -105,7 +106,7 @@ export interface ContentPageActions {
   undo(seq: number, id: string): void;
   notice(seq: number, ref: ContentRowRef, accept: boolean): void;
   /** Where an item or a monster is used. */
-  usage(seq: number, kind: "item" | "monster", key: string): void;
+  usage(seq: number, kind: "item" | "monster" | "vehicle", key: string): void;
   /** Puts a removal with its cleanup in the draft. */
   remove(seq: number, plan: RemovalPlan): void;
   /** The references nothing resolves. */
@@ -372,8 +373,10 @@ const STATUS_TEXT: Record<ContentRowStatus, string> = {
   removed: "Removed",
 };
 
-/** The item or monster a row is, or null for any other row. */
-export function entryOf(r: ContentRowRef): { kind: "item" | "monster"; key: string } | null {
+/** The item, monster or vehicle a row is, or null for any other row. */
+export function entryOf(
+  r: ContentRowRef,
+): { kind: "item" | "monster" | "vehicle"; key: string } | null {
   if (r.key === null) {
     return null;
   }
@@ -382,6 +385,9 @@ export function entryOf(r: ContentRowRef): { kind: "item" | "monster"; key: stri
   }
   if (r.dataset === "monsters" && r.part === "monsters") {
     return { kind: "monster", key: r.key };
+  }
+  if (r.dataset === "houses" && r.part === "vehicles") {
+    return { kind: "vehicle", key: r.key };
   }
   return null;
 }
@@ -1619,7 +1625,7 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
     if (!ref || ref.key === null) {
       return;
     }
-    // An item or a monster is removed with its cleanup, once its usage report is in.
+    // An item, a monster or a vehicle is removed with its cleanup, once its usage report is in.
     if (entryOf(ref)) {
       if (!usage) {
         showError("Wait for the usage report before removing it.");

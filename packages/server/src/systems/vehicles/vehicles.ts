@@ -1,7 +1,8 @@
 /**
- * The vehicles: the Airship, the Boat and the Battleship. Building one from a deed (an Airship on a
- * landing pad, a ship on open water), boarding, getting off and losing it at death. The checks are
- * pure (shared/rules/vehicles/vehicles.ts); this applies them.
+ * The vehicles (issue #2; content rows since issue #44: Classic's Airship, Boat and Battleship).
+ * Building one from a deed (a `pad` vehicle on one of its landing pads, a `shore` vehicle on a tile
+ * it crosses), boarding, getting off and losing it at death. The checks are pure
+ * (shared/rules/vehicles/vehicles.ts); this applies them.
  *
  * Every change to the ground goes through `addGround`/`removeGround`, so it lands in
  * `world.groundLog`, and sets `invDirty` and `vehicleDirty`, so `persistItems` writes the ground
@@ -15,20 +16,23 @@ import {
   FACING_DELTA,
   hullMax,
   invDelSlot,
-  isShip,
   isWalkable,
   lingoEq,
   ownerName,
-  ridersBound,
+  padTextOf,
   SHIP_TEXT,
+  seaGoing,
   shipDeedCheck,
   shipNoun,
   shipUnboardCheck,
   unboardCheck,
-  VEHICLE_BODY,
-  VEHICLE_TEXT,
   type Vehicle,
+  vehicleBody,
+  vehicleCrossesAt,
+  vehicleLandsAt,
   vehicleOfItem,
+  vehicleRow,
+  vehicleSails,
 } from "@secondstaronline/shared";
 
 import { logActivity } from "../admin/activity.ts";
@@ -72,9 +76,9 @@ const itemAt = (room: Room, x: number, y: number) =>
   room.map.ground.some((g) => g.x === x && g.y === y);
 
 /**
- * From Use on a vehicle deed. An Airship is built on the faced `J2` pad; a Boat or Battleship on
- * the faced water tile (1.6's boat-drop routine, which its deed handler never called). One deed is
- * consumed. 1.6 refused either build when 20 items were already on the ground; SSO has no such cap
+ * From Use on a vehicle deed. A `pad` vehicle is built on the faced landing pad (Classic's Airship:
+ * a `J2` dock); a `shore` vehicle on a faced tile it crosses (Classic's Boat and Battleship: water,
+ * 1.6's boat-drop routine, which its deed handler never called). One deed is consumed. 1.6 refused either build when 20 items were already on the ground; SSO has no such cap
  * (a divergence).
  */
 export function vehicleDeed(
@@ -85,22 +89,31 @@ export function vehicleDeed(
   vehicle: Vehicle,
 ): Outgoing[] {
   const io = new ItemOut(room);
+  const row = vehicleRow(vehicle);
+  if (!row) {
+    return io.out;
+  }
   const faced = facedTile(p);
-  const r = isShip(vehicle)
-    ? shipDeedCheck({
-        noun: shipNoun(vehicle),
-        stepFrames: p.stepFrames,
-        faced,
-        shipWalkable: isWalkable(room.map.walkShip, faced.x, faced.y),
-        itemOnFaced: itemAt(room, faced.x, faced.y),
-        playerOnFaced: room.players.some((o) => o.x === faced.x && o.y === faced.y),
-      })
-    : deedCheck({
-        stepFrames: p.stepFrames,
-        faced,
-        layer1: room.map.layers[0],
-        itemOnFaced: itemAt(room, faced.x, faced.y),
-      });
+  const [l1, l2] = room.map.layers;
+  const r =
+    row.boards === "shore"
+      ? shipDeedCheck({
+          noun: shipNoun(vehicle),
+          stepFrames: p.stepFrames,
+          faced,
+          shipWalkable: vehicleCrossesAt(row, l1, l2, faced.x, faced.y),
+          itemOnFaced: itemAt(room, faced.x, faced.y),
+          playerOnFaced: room.players.some((o) => o.x === faced.x && o.y === faced.y),
+          notSea: !seaGoing(vehicle),
+        })
+      : deedCheck({
+          stepFrames: p.stepFrames,
+          faced,
+          layer1: l1,
+          itemOnFaced: itemAt(room, faced.x, faced.y),
+          onPad: (x, y) => vehicleLandsAt(row, l1, l2, x, y),
+          text: padTextOf(vehicle),
+        });
   if (r.kind === "silent") {
     return io.out;
   }
@@ -116,7 +129,7 @@ export function vehicleDeed(
     expiresAt: null,
     ownerId: p.id,
     // A new ship faces out to sea, the way its builder looks.
-    ...(isShip(vehicle) ? { facing: p.facing } : {}),
+    ...(row.boards === "shore" ? { facing: p.facing } : {}),
   });
   logActivity(ctx.world, p, "use", {
     item: p.char.bag[slot - 1]?.item,
@@ -137,9 +150,9 @@ export function vehicleDeed(
  */
 export function vehicleClick(ctx: ItemCtx, room: Room, p: Player, g: GroundItem): Outgoing[] {
   const io = new ItemOut(room);
+  // A parked vehicle no row has (since removed) is not one: it cannot be boarded.
   const vehicle = vehicleOfItem(g.item);
-  // A world without rider bodies has no vehicles: one left on the ground cannot be boarded.
-  if (!vehicle || !ridersBound()) {
+  if (!vehicle) {
     return io.out;
   }
   const isOwner = g.ownerId ? g.ownerId === p.id : lingoEq(ownerName(g.item), p.name);
@@ -151,14 +164,15 @@ export function vehicleClick(ctx: ItemCtx, room: Room, p: Player, g: GroundItem)
     item: { x: g.x, y: g.y },
     isOwner,
   });
-  const ship = isShip(vehicle) ? shipNoun(vehicle) : null;
+  const ship = vehicleSails(vehicle) ? shipNoun(vehicle) : null;
+  const pad = padTextOf(vehicle);
   if (r === "notYours") {
-    io.tell(p, ship ? SHIP_TEXT.notYours(ship) : VEHICLE_TEXT.notYours);
+    io.tell(p, ship ? SHIP_TEXT.notYours(ship) : pad.notYours);
     return io.out;
   }
   if (r === "see") {
     const owner = ownerName(g.item);
-    io.tell(p, ship ? SHIP_TEXT.see(owner, ship) : VEHICLE_TEXT.see(owner));
+    io.tell(p, ship ? SHIP_TEXT.see(owner, ship) : pad.see(owner));
     return io.out;
   }
   // Board: the vehicle leaves the ground, the rider hops onto its tile with no step.
@@ -175,38 +189,42 @@ export function vehicleClick(ctx: ItemCtx, room: Room, p: Player, g: GroundItem)
   p.y = g.y;
   p.stepFrames = 0;
   // Aboard a ship you face the way it was moored, so boarding moves no pixel of it.
-  if (isShip(vehicle)) {
+  if (ship) {
     p.facing = g.facing ?? "E";
   }
-  const body = VEHICLE_BODY[vehicle];
+  const body = vehicleBody(vehicle);
   p.spell.body = body;
   io.all({ e: "body", id: p.id, body });
   replace(room, io, p);
   p.forceYou = true;
   p.vehicleDirty = true;
   p.invDirty = true;
-  io.tell(p, ship ? SHIP_TEXT.board(ship) : VEHICLE_TEXT.board);
+  io.tell(p, ship ? SHIP_TEXT.board(ship) : pad.board);
   return io.out;
 }
 
 /**
- * From Ctrl aboard. An Airship parks on my own tile, which must be a `J2` pad with nothing on it,
- * and I stay there; 1.6 prints nothing. A ship parks on my own water tile and I step ashore onto
- * the faced tile, which a walker must be able to stand on (1.6's UnboardBoat).
+ * From Ctrl aboard. A `pad` vehicle (the Airship) parks on my own tile, which must be one of its
+ * landing pads with nothing on it, and I stay there; 1.6 prints nothing. A `shore` vehicle (a
+ * ship) parks on my own tile and I step ashore onto the faced tile, which a walker must be able to
+ * stand on (1.6's UnboardBoat). A vehicle no row has rides as nothing: there is nothing to park.
  */
 export function unboardVehicle(ctx: ItemCtx, room: Room, p: Player): Outgoing[] {
   const io = new ItemOut(room);
   const vehicle = p.vehicle;
-  if (!vehicle) {
+  const row = vehicleRow(vehicle);
+  if (!vehicle || !row) {
     return io.out;
   }
+  const ship = row.boards === "shore";
   const faced = facedTile(p);
   const taken = arenaTileTaken(room, p);
   const exitAt = (x: number, y: number) =>
     room.map.ground.some(
       (g) => g.x === x && g.y === y && (lingoEq(g.item, "Exit") || lingoEq(g.item, "Exit2")),
     );
-  const r = isShip(vehicle)
+  const [l1, l2] = room.map.layers;
+  const r = ship
     ? shipUnboardCheck({
         noun: shipNoun(vehicle),
         stepFrames: p.stepFrames,
@@ -218,8 +236,10 @@ export function unboardVehicle(ctx: ItemCtx, room: Room, p: Player): Outgoing[] 
     : unboardCheck({
         stepFrames: p.stepFrames,
         me: { x: p.x, y: p.y },
-        layer1: room.map.layers[0],
+        layer1: l1,
         itemOnMine: itemAt(room, p.x, p.y),
+        onPad: (x, y) => vehicleLandsAt(row, l1, l2, x, y),
+        text: padTextOf(vehicle),
       });
   if (r.kind === "text") {
     io.tell(p, r.text);
@@ -235,14 +255,14 @@ export function unboardVehicle(ctx: ItemCtx, room: Room, p: Player): Outgoing[] 
     hull: p.hull,
     parkedAt: ctx.now,
     // A ship stays facing the way it was left.
-    ...(isShip(vehicle) ? { facing: p.facing } : {}),
+    ...(ship ? { facing: p.facing } : {}),
   });
   p.vehicle = null;
   p.hull = null;
   p.vitalsDirty = true;
   p.spell.body = null;
   io.all({ e: "body", id: p.id, body: null });
-  if (isShip(vehicle)) {
+  if (ship) {
     // Ashore: the rider hops onto the faced tile with no step.
     p.x = faced.x;
     p.y = faced.y;

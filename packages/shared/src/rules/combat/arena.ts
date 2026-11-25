@@ -9,7 +9,8 @@ import type { Rng } from "../core/lingo.ts";
 import { tileHas } from "../core/tiles.ts";
 import { isWalkable } from "../core/walk.ts";
 import type { Vehicle } from "../movement/movement.ts";
-import { layer1Tile, shipNoun } from "../vehicles/vehicles.ts";
+import { vehicleFlies, vehicleNoun } from "../vehicles/rows.ts";
+import { layer1Tile } from "../vehicles/vehicles.ts";
 
 /** Every arena text. */
 export const ARENA_TEXT = {
@@ -21,9 +22,9 @@ export const ARENA_TEXT = {
   held: "You cannot do that while you are held.",
   /** SSO's own lines: a rider cannot challenge, named by the vehicle. */
   landFirst: (vehicle: Vehicle) =>
-    vehicle === "Airship"
-      ? "You must land your airship before making a challenge."
-      : `You must leave your ${shipNoun(vehicle)} before making a challenge.`,
+    vehicleFlies(vehicle)
+      ? `You must land your ${vehicleNoun(vehicle)} before making a challenge.`
+      : `You must leave your ${vehicleNoun(vehicle)} before making a challenge.`,
   entered: (name: string) => `${name} has entered the arena!`,
   stopped: (name: string) => `${name} has stopped fighting.`,
   defeated: (name: string, killer: string) => `${name} was defeated by ${killer}.`,

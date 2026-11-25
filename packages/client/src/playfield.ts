@@ -35,7 +35,6 @@ import {
   groundPicture,
   groundPictureTopLeft,
   groundTipName,
-  isShip,
   MAP_HEIGHT,
   MAP_WIDTH,
   type MapView,
@@ -49,9 +48,10 @@ import {
   smokeBody,
   stationInUse,
   trailFrames,
-  VEHICLE_BODY,
   vehicleOfBody,
   vehicleOfItem,
+  vehicleRow,
+  vehicleSails,
   walkFrame,
 } from "@secondstaronline/shared";
 
@@ -103,10 +103,11 @@ export type Pick =
   | { kind: "player"; id: string; name: string };
 
 /**
- * The frame a body shows. A Boat or Battleship rides a slow swell, F1 to F4, each held
- * `SHIP_SWELL_TICKS` on the client's own counter, standing or sailing. A standing Airship rider
- * cycles F2, F3, F1 a tick (its propeller); everyone else, and an Airship mid-step, shows the walk
- * frame for their step length (an 8-frame step shows F1, F2, F3, F2).
+ * The frame a body shows. A ship (a `shore` vehicle: the Boat or Battleship) rides a slow swell,
+ * F1 to F4, each held `SHIP_SWELL_TICKS` on the client's own counter, standing or sailing. A
+ * standing flying rider (a `pad` vehicle: the Airship) cycles F2, F3, F1 a tick (its propeller);
+ * everyone else, and a flyer mid-step, shows the walk frame for their step length (an 8-frame step
+ * shows F1, F2, F3, F2).
  */
 const RIDER_FRAMES = ["F2", "F3", "F1"] as const;
 const SWELL_FRAMES = ["F1", "F2", "F3", "F4"] as const;
@@ -117,8 +118,8 @@ export function swellFrame(tick: number): BodyFrame {
   return SWELL_FRAMES[Math.floor(tick / SHIP_SWELL_TICKS) % 4] ?? "F1";
 }
 /**
- * A parked Boat or Battleship bobs at its mooring: it draws as its rider's frame on the swell,
- * facing the way it was left (east, the docked picture on the same pixels, when unknown;
+ * A parked ship (a `shore` vehicle whose row `bobs`) bobs at its mooring: it draws as its rider's
+ * frame on the swell, facing the way it was left (east, the docked picture on the same pixels, when unknown;
  * `packages/data/build/art/ships.ts`).
  */
 export function mooredShipMember(
@@ -126,12 +127,17 @@ export function mooredShipMember(
   facing: "N" | "S" | "E" | "W" | undefined,
   tick: number,
 ): string | null {
+  // Only a row that `bobs` (Classic's ships, whose rider art is cut from their pictures); any other
+  // parked vehicle shows its `picture`.
   const vehicle = vehicleOfItem(name);
-  return isShip(vehicle) ? `${VEHICLE_BODY[vehicle]}-${swellFrame(tick)}-${facing ?? "E"}` : null;
+  const row = vehicleRow(vehicle);
+  return row?.boards === "shore" && row.bobs
+    ? `${row.rider}-${swellFrame(tick)}-${facing ?? "E"}`
+    : null;
 }
 export function bodyFrame(model: Model, body: number | null, frames: number): BodyFrame {
   const vehicle = vehicleOfBody(body);
-  if (isShip(vehicle)) {
+  if (vehicleSails(vehicle)) {
     return swellFrame(model.tick);
   }
   if (vehicle !== null && frames <= 0) {
@@ -140,11 +146,29 @@ export function bodyFrame(model: Model, body: number | null, frames: number): Bo
   return walkFrame(frames, lenOf(body));
 }
 
-/** A Battleship rider's firing frame, `56-fire<n>-<dir>`. */
+/**
+ * A body frame's member, `<body>-<frame>-<dir>`. A cannon's rider whose art has no firing frames
+ * (an uploaded body holds only the four walking frames) shows its standing frame while it fires
+ * (issue #44).
+ */
+export function bodyMember(
+  model: Model,
+  assets: { sprite(group: "bodies", name: string): unknown },
+  body: number,
+  frame: string,
+  facing: string,
+): string {
+  const name = `${body}-${frame}-${facing}`;
+  return frame.startsWith("fire") && !assets.sprite("bodies", name)
+    ? `${body}-${bodyFrame(model, body, 0)}-${facing}`
+    : name;
+}
+
+/** A cannon's rider's firing frame (the Battleship's `56-fire<n>-<dir>`). */
 type FireFrame = `fire${1 | 2 | 3}`;
 
 /**
- * The frame a character shows: a Battleship rider's firing frames while its shot's animation runs,
+ * The frame a character shows: a cannon's rider's firing frames while its shot's animation runs,
  * the attack frame while anyone else swings or casts, otherwise its body frame.
  */
 export function shownFrame(
@@ -155,7 +179,7 @@ export function shownFrame(
   spellAnim: number,
   frames: number,
 ): BodyFrame | FireFrame {
-  if (vehicleOfBody(body) === "Battleship") {
+  if (vehicleRow(vehicleOfBody(body))?.cannon) {
     return spellAnim > 0 ? `fire${cannonFireFrame(spellAnim)}` : bodyFrame(model, body, frames);
   }
   return atkAnim > 0 || spellAnim > 0 ? attackFrame(facing) : bodyFrame(model, body, frames);
@@ -365,7 +389,14 @@ export function createPlayfield(assets: Assets): Playfield {
       ) =>
         body === null
           ? drawCharacter(ctx, head, equip, frame as BodyFrame, facing, px, py)
-          : drawSprite(ctx, assets, "bodies", `${body}-${frame}-${facing}`, px, py);
+          : drawSprite(
+              ctx,
+              assets,
+              "bodies",
+              bodyMember(model, assets, body, frame, facing),
+              px,
+              py,
+            );
       const self = model.self;
       if (self) {
         const len = lenOf(self.body);

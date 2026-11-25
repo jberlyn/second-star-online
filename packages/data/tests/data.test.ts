@@ -752,7 +752,14 @@ describe("monsters, NPCs and tiles", () => {
       ],
     });
     expect(b.cannon).toEqual({ ammo: "Cannonball" });
-    expect(b.bodies.riders).toEqual({ Boat: 55, Battleship: 56, Airship: 57 });
+    // The riders are the vehicles' own (issue #44: `houses.vehicles`).
+    expect(
+      classicData.houses.vehicles?.map((v) => [v.name, v.rider, v.hull, v.picture, v.boards]),
+    ).toEqual([
+      ["Boat", 55, 60, "BoatPic", "shore"],
+      ["Battleship", 56, 150, "BattleshipPic", "shore"],
+      ["Airship", 57, 80, "AirshipPic", "pad"],
+    ]);
     expect([b.bodies.tree, b.bodies.smoke]).toEqual([80, 100]);
     expect(b.bodies.morph?.map((r) => [r.above, r.body])).toEqual([
       [0, 30],
@@ -766,14 +773,13 @@ describe("monsters, NPCs and tiles", () => {
     ]);
   });
 
-  test("the optional bindings may be left out, the riders included; the start may not", () => {
+  test("the optional bindings may be left out; the start may not; riders are no binding", () => {
     const b = classicData.bindings;
     const ok = (v: unknown) => bindingsDataSchema.safeParse(v).success;
-    expect(ok({ ...b, currency: {}, cannon: {}, bodies: { riders: b.bodies.riders } })).toBe(true);
+    expect(ok({ ...b, currency: {}, cannon: {}, bodies: {} })).toBe(true);
     expect(ok({ ...b, start: { ...b.start, bag: [] } })).toBe(true);
-    const { riders: _riders, ...noRiders } = b.bodies;
-    // No riders: the world has no vehicles (the content contract refuses a deed that makes one).
-    expect(ok({ ...b, bodies: noRiders })).toBe(true);
+    // A rider's body is its vehicle row's (issue #44): `bodies.riders` is no longer read.
+    expect(ok({ ...b, bodies: { riders: { Boat: 55, Battleship: 56, Airship: 57 } } })).toBe(false);
     const { start: _start, ...noStart } = b;
     expect(ok(noStart)).toBe(false);
     const line = { item: "Apple", qty: 1 };

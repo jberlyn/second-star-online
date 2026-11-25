@@ -499,10 +499,10 @@ describe("the move of the death-drop and loot settings, at its edges", () => {
       );
     });
     // The gap is real: an ordinary publish over it is refused, naming the sound.
-    const hull = { vehicle: "Boat", hull: 61 };
-    const boat = { dataset: "balance", part: "hulls", key: "Boat" } as const;
-    expect(server.content.draftSet(ADMIN, boat, "set", hull).ok).toBe(true);
-    const refused = server.content.publish(ADMIN, server.content.draftRev(), "hull");
+    const cannon = { damage: { flat: 13, randomN: 3 }, reloadFrames: 61 };
+    const ref = { dataset: "balance", part: "cannon", key: null } as const;
+    expect(server.content.draftSet(ADMIN, ref, "set", cannon).ok).toBe(true);
+    const refused = server.content.publish(ADMIN, server.content.draftRev(), "cannon");
     expect(refused.ok).toBe(false);
     expect(content().balance.drops.who).toBe("off");
     expect(moves(server)).toHaveLength(1);

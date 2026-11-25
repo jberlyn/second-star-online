@@ -4,12 +4,14 @@ import { join } from "node:path";
 
 import { z } from "zod";
 
+import { tileHas } from "../../src/rules/core/tiles.ts";
 import {
   airshipWalkGrid,
   footBlocked,
   footWalkGrid,
   isWhitelisted,
 } from "../../src/rules/core/walk.ts";
+import { type VehicleRow, vehicleRow, vehicleWalkGrid } from "../../src/rules/vehicles/rows.ts";
 
 const layer = z.array(z.string().refine((row) => row.trim().split(/\s+/).length === 17)).length(12);
 const grid = z.array(z.string().regex(/^[.#]{17}$/)).length(12);
@@ -79,5 +81,42 @@ describe("Airship walk grid", () => {
     const row = `${["d8", "G1", "J8", "W1"].join(" ")} ${Array(13).fill("G1").join(" ")}`;
     const grid = airshipWalkGrid([row]);
     expect(grid[0]?.slice(0, 4)).toEqual([false, true, false, true]);
+  });
+});
+
+describe("Classic's vehicle rows cross what the engine's kinds did (issue #44)", () => {
+  const draw = (g: boolean[][]) => g.map((row) => row.map((ok) => (ok ? "." : "#")).join(""));
+  test(`the Airship row's grid is the recorded airship grid on all ${maps.length} original maps`, () => {
+    const airship = vehicleRow("Airship") as VehicleRow;
+    for (const map of maps) {
+      expect({
+        id: map.id,
+        grid: draw(vehicleWalkGrid(airship, map.layers["1"], map.layers["2"])),
+      }).toEqual({
+        id: map.id,
+        grid: map.walk.playerAirship,
+      });
+    }
+  });
+  test("the Boat and Battleship rows cross layer-1 sea only, whatever layer 2 holds", () => {
+    for (const name of ["Boat", "Battleship"]) {
+      const row = vehicleRow(name) as VehicleRow;
+      for (const map of maps) {
+        const was = map.layers["1"].map((line) =>
+          line
+            .trim()
+            .split(/\s+/)
+            .map((c) => (tileHas(c, "sea") ? "." : "#"))
+            .join(""),
+        );
+        expect({
+          id: map.id,
+          grid: draw(vehicleWalkGrid(row, map.layers["1"], map.layers["2"])),
+        }).toEqual({
+          id: map.id,
+          grid: was,
+        });
+      }
+    }
   });
 });

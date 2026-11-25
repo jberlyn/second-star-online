@@ -72,12 +72,18 @@ describe("the content contract", () => {
   });
 
   test("each rider has its own body, and no spell puts a rider's body on a player", () => {
+    // A rider's body is its vehicle row's (issue #44).
     expect(
       messages(
-        changed((d) => (d.bindings.bodies.riders = { Boat: 55, Battleship: 55, Airship: 57 })),
+        changed((d) => {
+          const battleship = d.houses.vehicles?.find((v) => v.name === "Battleship");
+          if (battleship) {
+            battleship.rider = 55;
+          }
+        }),
       ),
     ).toEqual([
-      "bindings/bodies: the Boat and the Battleship riders need different bodies (both are 55)",
+      "houses/vehicles/Battleship: the Boat and the Battleship riders need different bodies (both are 55)",
     ]);
     expect(
       messages(
@@ -110,22 +116,12 @@ describe("the content contract", () => {
     ]);
   });
 
-  test("a world without rider bodies has no vehicles: no deed may make one", () => {
-    const noRiders = (d: ContentData) => {
-      const { riders: _riders, ...rest } = d.bindings.bodies;
-      d.bindings.bodies = rest;
-    };
-    expect(messages(changed(noRiders))).toEqual([
-      "bindings/bodies: Boat Deed makes a vehicle, so the world needs rider bodies (bodies.riders)",
-      "bindings/bodies: Airship Deed makes a vehicle, so the world needs rider bodies (bodies.riders)",
-      "bindings/bodies: Battleship Deed makes a vehicle, so the world needs rider bodies (bodies.riders)",
-    ]);
-    // Without the vehicle deeds, a world needs no riders.
+  test("a world with no vehicle rows has no vehicles, and no rider body to clash with", () => {
     expect(
       messages(
         changed((d) => {
-          noRiders(d);
-          d.houses.deeds = d.houses.deeds.filter((x) => x.use === "place" || x.use === "nothing");
+          d.houses.vehicles = [];
+          d.bindings.bodies.tree = 57;
         }),
       ),
     ).toEqual([]);

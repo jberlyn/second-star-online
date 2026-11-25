@@ -19,7 +19,6 @@ import {
   cannonDamage,
   cannonReloadFrames,
   castDelay,
-  content,
   deathHunger,
   deathPauseFrames,
   deathVitals,
@@ -46,6 +45,7 @@ import {
   swingCooldowns,
   tileLoc,
   type Vitals,
+  vehicleRows,
 } from "@secondstaronline/shared";
 
 import { giveGrabFrames } from "../src/systems/inventory/items.ts";
@@ -356,11 +356,11 @@ describe("issue #19: Classic's balance numbers", () => {
     expect(now).toEqual(JSON.parse(readFileSync(GOLDEN, "utf8")));
   });
 
-  test("Classic's balance rows are the engine's defaults", () => {
-    expect(content().balance.hulls.map((h) => [h.vehicle, h.hull])).toEqual([
+  test("Classic's vehicles keep the hulls they had as balance rows (issue #44)", () => {
+    expect(vehicleRows().map((v) => [v.name, v.hull])).toEqual([
       ["Boat", 60],
-      ["Airship", 80],
       ["Battleship", 150],
+      ["Airship", 80],
     ]);
   });
 });

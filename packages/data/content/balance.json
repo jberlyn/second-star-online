@@ -102,10 +102,5 @@
     "slotOneIn": 5,
     "factionSlotRandomN": 35,
     "npcSpawn": { "randomN": 60, "passAtMost": 2 }
-  },
-  "hulls": [
-    { "vehicle": "Boat", "hull": 60 },
-    { "vehicle": "Airship", "hull": 80 },
-    { "vehicle": "Battleship", "hull": 150 }
-  ]
+  }
 }

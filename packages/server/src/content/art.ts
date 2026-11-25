@@ -736,6 +736,22 @@ export function withArtRects<T extends { rects: RectsData }>(data: T, rects: Bui
 }
 
 /** The sprites and sounds an index supplies. */
+/** No art at all: what a server without an upload library has uploaded. */
+export function emptyKeys(): ArtKeys {
+  return { sprites: NO_GROUPS(), sounds: new Set() };
+}
+
+/** Two sets of art keys together. */
+export function unionKeys(a: ArtKeys, b: ArtKeys): ArtKeys {
+  const sprites = NO_GROUPS();
+  for (const g of Object.keys(sprites) as AtlasGroup[]) {
+    for (const k of [...a.sprites[g], ...b.sprites[g]]) {
+      sprites[g].add(k);
+    }
+  }
+  return { sprites, sounds: new Set([...a.sounds, ...b.sounds]) };
+}
+
 export function keysOf(index: Pick<PackArtIndex, "atlases" | "sounds">): ArtKeys {
   const sprites = NO_GROUPS();
   for (const g of Object.keys(sprites) as AtlasGroup[]) {

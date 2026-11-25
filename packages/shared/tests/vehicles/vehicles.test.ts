@@ -1,6 +1,5 @@
 import { describe, expect, test } from "bun:test";
 
-import { shipWalkGrid } from "../../src/rules/core/walk.ts";
 import {
   boardCheck,
   boardingHull,
@@ -16,8 +15,11 @@ import {
   unboardCheck,
   VEHICLE_BODY,
   VEHICLE_TEXT,
+  type VehicleRow,
   vehicleOfBody,
   vehicleOfItem,
+  vehicleRow,
+  vehicleWalkGrid,
 } from "../../src/rules/vehicles/vehicles.ts";
 
 const row = (code: string, at: number) =>
@@ -178,7 +180,9 @@ describe("ships", () => {
     Array.from({ length: 17 }, (_, i) => sea(i + 1)).join(" "),
   );
   test("SSO: a ship sails on sea tiles, shoreline art on layer 2 included", () => {
-    const g = shipWalkGrid(l1);
+    // Shoreline art (Q6) on layer 2 over the water does not stop the Boat (issue #44: its row).
+    const l2 = l1.map(() => Array.from({ length: 17 }, () => "Q6").join(" "));
+    const g = vehicleWalkGrid(vehicleRow("Boat") as VehicleRow, l1, l2);
     expect([g[4]?.[7], g[4]?.[6], g[0]?.[9]]).toEqual([true, false, true]);
   });
   test("bodies 55 and 56 are the Boat and the Battleship", () => {

@@ -72,6 +72,10 @@ export function usedArt(raw: ContentData): {
     // NOTHING, or an item never worn).
     note(sprites.paperdoll, wornLayerOf(data.itemRules, item.name)?.layer, `item ${item.name}`);
   }
+  // A parked vehicle's picture (issue #44).
+  for (const v of data.houses.vehicles ?? []) {
+    note(sprites.items, v.picture, `the ${v.name}`);
+  }
   // The engine's currency piles, drawn for a pile of the currency whatever it is called.
   for (const pile of CURRENCY_PILES) {
     note(sprites.items, pile.name, "the currency's piles");
@@ -208,6 +212,47 @@ export function newBodyGaps(
       where: "art/bodies",
       message: `body ${use.body} has no picture, so ${bodyUsersText(use)} would draw nothing`,
     });
+  }
+  return out;
+}
+
+const DIRS = ["n", "e", "s", "w"] as const;
+
+/**
+ * Vehicles the change adds or redraws that nothing will draw (issue #44): a parked picture no pack
+ * or upload has, or a rider body without its four walking frames in each direction. A cannon's
+ * firing frames are optional (an uploaded body holds only walking frames): a rider with none
+ * shows its standing frame while it fires. A vehicle the published content already drew as it is
+ * now is left alone. `packs` is every pack's art, an incoming pack's included; `after` the
+ * uploads (empty with no upload library).
+ */
+export function newVehicleArtGaps(
+  next: ContentData,
+  published: ContentData,
+  packs: ArtKeys,
+  after: ArtKeys,
+): ContentProblem[] {
+  const has = (group: AtlasGroup, key: string) =>
+    packs.sprites[group].has(key) || after.sprites[group].has(key);
+  const out: ContentProblem[] = [];
+  for (const v of next.houses.vehicles ?? []) {
+    const was = (published.houses.vehicles ?? []).find(
+      (w) => w.name.toLowerCase() === v.name.toLowerCase(),
+    );
+    const where = `houses/vehicles/${v.name}`;
+    if ((!was || was.picture !== v.picture) && !has("items", v.picture.toLowerCase())) {
+      out.push({ where, message: `the parked picture ${v.picture} has no art` });
+    }
+    if (!was || was.rider !== v.rider) {
+      const frames = [1, 2, 3, 4].flatMap((f) => DIRS.map((d) => `f${f}-${d}`));
+      const missing = frames.filter((f) => !has("bodies", `${v.rider}-${f}`));
+      if (missing.length > 0) {
+        out.push({
+          where,
+          message: `the rider body ${v.rider} is missing ${missing.slice(0, 6).join(", ")}${missing.length > 6 ? ` and ${missing.length - 6} more` : ""} (a rider walks in four directions)`,
+        });
+      }
+    }
   }
   return out;
 }

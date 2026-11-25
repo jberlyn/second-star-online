@@ -2178,7 +2178,15 @@ describe("migrations (real SQL on in-memory SQLite)", () => {
           data: {
             gather: oldGather,
             "item-rules": oldRules,
-            bindings: { ...classicData.bindings, skills: packSkills },
+            // Bound as Classic was before issue #44 (its riders, which migration 73 moves).
+            bindings: {
+              ...classicData.bindings,
+              bodies: {
+                ...classicData.bindings.bodies,
+                riders: { Boat: 55, Battleship: 56, Airship: 57 },
+              },
+              skills: packSkills,
+            },
           },
         }),
       ],
@@ -2605,5 +2613,158 @@ describe("migrations (real SQL on in-memory SQLite)", () => {
       { code: 1, label: "Male", heads: [1, 3, 4, 5, 6, 9, 10] },
       { code: 2, label: "Female", heads: [2, 7, 8, 11] },
     ]);
+  });
+
+  test("vehicles_as_content moves riders and hulls into vehicle rows, layer by layer (issue #44)", () => {
+    const db = openDatabase();
+    const all = loadMigrations(MIGRATIONS_DIR);
+    runMigrations(
+      db,
+      all.filter((m) => m.name < "20261125_73"),
+    );
+    const manifest = (id: string) => ({
+      id,
+      name: id,
+      version: "1.0.0",
+      format: 2,
+      sso: "1.10",
+      contentHash: "0".repeat(16),
+    });
+    const pack = (id: string, position: number, blob: unknown) =>
+      db.run(
+        "INSERT INTO content_packs (id, name, version, position, source, data, installed_at) VALUES (?, ?, '1.0.0', ?, 'imported', ?, 'now')",
+        [id, id, position, JSON.stringify(blob)],
+      );
+    // An export holding only a hull row and a hull removal, then one holding only riders.
+    pack("hulls", 1, {
+      manifest: manifest("hulls"),
+      data: { balance: { hulls: [{ vehicle: "Boat", hull: 90 }] } },
+      removals: [{ dataset: "balance", part: "hulls", key: "Airship" }],
+    });
+    pack("riders", 2, {
+      manifest: manifest("riders"),
+      data: {
+        bindings: {
+          bodies: { tree: 80, smoke: 100, riders: { Boat: 55, Battleship: 56, Airship: 157 } },
+        },
+      },
+    });
+    // The operator raised the Battleship's hull in a publish; the draft raises it again and gives
+    // the Airship's riders yet another body.
+    const hullRow = (hull: number) => ({ vehicle: "Battleship", hull });
+    db.run(
+      "INSERT INTO content_rows (dataset, part, row_key, op, data, base_hash, base_data, seq, updated_by, updated_at) VALUES ('balance', 'hulls', 'Battleship', 'set', ?, 'aaaaaaaaaaaaaaaa', ?, 1, 'acc', 'then')",
+      [JSON.stringify(hullRow(120)), JSON.stringify(hullRow(150))],
+    );
+    db.run(
+      "INSERT INTO content_publishes (id, created_at, actor_account_id, actor_name, summary, changes, hash) VALUES ('p1', '2026-11-20T00:00:00.000Z', 'acc', 'A', 'hull', ?, 'h')",
+      [
+        JSON.stringify([
+          {
+            dataset: "balance",
+            part: "hulls",
+            key: "Battleship",
+            before: null,
+            after: {
+              op: "set",
+              data: hullRow(120),
+              baseHash: "aaaaaaaaaaaaaaaa",
+              baseData: hullRow(150),
+            },
+          },
+        ]),
+      ],
+    );
+    const draft = (dataset: string, part: string, key: string, data: unknown) =>
+      db.run(
+        "INSERT INTO content_draft (dataset, part, row_key, op, data, author_account_id, author, updated_at) VALUES (?, ?, ?, 'set', ?, 'acc', 'A', 'then')",
+        [dataset, part, key, JSON.stringify(data)],
+      );
+    draft("balance", "hulls", "Battleship", hullRow(130));
+    draft("bindings", "bodies", "", {
+      tree: 80,
+      smoke: 100,
+      riders: { Boat: 55, Battleship: 56, Airship: 257 },
+    });
+    runMigrations(db, all);
+
+    const classic = (name: string) =>
+      classicData.houses.vehicles?.find((v) => v.name === name) as Record<string, unknown>;
+    const blob = (id: string) =>
+      JSON.parse(
+        (db.query("SELECT data FROM content_packs WHERE id = ?").get(id) as { data: string }).data,
+      );
+    // Each pack holds what it changed, as vehicle rows, and nothing the new schema refuses.
+    expect(blob("hulls").data).toEqual({
+      balance: {},
+      houses: { vehicles: [{ ...classic("Boat"), hull: 90 }] },
+    });
+    expect(blob("hulls").removals).toEqual([]);
+    expect(blob("riders").data).toEqual({
+      bindings: { bodies: { tree: 80, smoke: 100 } },
+      houses: { vehicles: [{ ...classic("Airship"), rider: 157 }] },
+    });
+    for (const id of ["hulls", "riders"]) {
+      expect(() => readPackBlob(JSON.stringify(blob(id)))).not.toThrow();
+    }
+    // The operator's hull is their row for the Battleship; the old rows are gone.
+    const rows = db
+      .query<{ dataset: string; part: string; row_key: string; data: string }, []>(
+        "SELECT dataset, part, row_key, data FROM content_rows ORDER BY dataset, part, row_key",
+      )
+      .all();
+    expect(rows.map((r) => [r.dataset, r.part, r.row_key])).toEqual([
+      ["houses", "vehicles", "Battleship"],
+    ]);
+    expect(JSON.parse(rows[0]?.data ?? "")).toEqual({ ...classic("Battleship"), hull: 120 });
+    // The draft keeps both changes, as changes to the vehicle rows.
+    const drafts = db
+      .query<{ dataset: string; part: string; row_key: string; op: string; data: string }, []>(
+        "SELECT dataset, part, row_key, op, data FROM content_draft ORDER BY dataset, part, row_key",
+      )
+      .all();
+    expect(drafts.map((d) => [d.dataset, d.part, d.row_key, d.op, JSON.parse(d.data)])).toEqual([
+      ["bindings", "bodies", "", "set", { tree: 80, smoke: 100 }],
+      ["houses", "vehicles", "Airship", "set", { ...classic("Airship"), rider: 257 }],
+      ["houses", "vehicles", "Battleship", "set", { ...classic("Battleship"), hull: 130 }],
+    ]);
+
+    // The packs load, and the world plays what it did before.
+    let t = 0;
+    const service = new ContentService({
+      db,
+      now: () => new Date(Date.UTC(2026, 10, 25, 0, 0, t++)).toISOString(),
+      releasePacks: RELEASE_PACK_DIRS,
+    });
+    const playing = (name: string) =>
+      service.publishedContent().houses.vehicles?.find((v) => v.name === name);
+    expect(service.installedPacks().map((p) => p.id)).toEqual(["classic", "hulls", "riders"]);
+    expect([playing("Boat")?.hull, playing("Airship")?.rider, playing("Battleship")?.hull]).toEqual(
+      [90, 157, 120],
+    );
+    // The publish that raised the hull still undoes: the pack's hull plays again.
+    const undone = service.undo({ accountId: "acc", name: "A" }, "p1");
+    expect(undone.ok ? "ok" : undone.error).toBe("ok");
+    expect(playing("Battleship")?.hull).toBe(150);
+
+    // Characters may ride any vehicle row now, but not one with an empty name.
+    const id = db.query<{ id: string }, []>("SELECT id FROM characters LIMIT 1").get()?.id;
+    if (id) {
+      db.run("UPDATE characters SET vehicle = 'Sand Skiff' WHERE id = ?", [id]);
+      expect(() => db.run("UPDATE characters SET vehicle = '' WHERE id = ?", [id])).toThrow();
+    }
+    expect(
+      (
+        db
+          .query<{ sql: string }, []>(
+            "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'characters'",
+          )
+          .get() as { sql: string }
+      ).sql,
+    ).not.toContain("'Airship', 'Boat', 'Battleship'");
+    // The draft actions table takes a vehicle's removal.
+    db.run(
+      "INSERT INTO content_draft_actions (kind, entry_key, action, author_account_id, author, updated_at) VALUES ('vehicle', 'Boat', '{}', 'acc', 'A', 'now')",
+    );
   });
 });

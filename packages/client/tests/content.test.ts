@@ -75,6 +75,13 @@ describe("the client's content", () => {
     expect(() => storeFromFile(fileWith(7, "abc", CONTENT_FORMAT + 1))).toThrow();
   });
 
+  test("format 10 (issue #44): a store from before vehicle rows asks for a reload", () => {
+    // A format-9 store bound riders in `bindings.bodies.riders`, which this client no longer
+    // reads: it would take every rider for a walker.
+    expect(CONTENT_FORMAT).toBe(10);
+    expect(() => storeFromFile(fileWith(7, "abc", 9))).toThrow();
+  });
+
   test("a publish swaps the store in, and the rules see it", async () => {
     const { fetchImpl } = server({ pub1: fileWith(5, "pub1") }, "pub1");
     const handled: string[] = [];

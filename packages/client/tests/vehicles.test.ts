@@ -3,8 +3,15 @@
  */
 import { describe, expect, test } from "bun:test";
 
-import type { MapView, PlayerView, SelfState } from "@secondstaronline/shared";
-import { NO_EQUIPMENT, NO_FOG } from "@secondstaronline/shared";
+import { classicData } from "@secondstaronline/data/classic";
+import type { ContentData, MapView, PlayerView, SelfState } from "@secondstaronline/shared";
+import {
+  buildContentStore,
+  groundPicture,
+  installContent,
+  NO_EQUIPMENT,
+  NO_FOG,
+} from "@secondstaronline/shared";
 
 import {
   applyDelta,
@@ -148,6 +155,26 @@ describe("the rider's frames", () => {
     expect(mooredShipMember("Ann's Boat", "W", 0)).toBe("55-F1-W");
     expect(mooredShipMember("Ann's Airship", "N", 0)).toBeNull();
     expect(mooredShipMember("Apple", undefined, 0)).toBeNull();
+  });
+  test("issue #44: a parked shore vehicle that does not bob shows its own picture", () => {
+    const d = structuredClone(classicData) as ContentData;
+    d.houses.vehicles?.push({
+      name: "Canoe",
+      picture: "Crate",
+      rider: 59,
+      hull: 20,
+      moves: { over: { flags: ["sea"] } },
+      boards: "shore",
+    });
+    installContent(buildContentStore(d));
+    try {
+      expect(mooredShipMember("Ann's Canoe", "E", 0)).toBeNull();
+      expect(groundPicture("Ann's Canoe")).toBe("Crate");
+      // Classic's ships still bob.
+      expect(mooredShipMember("Ann's Boat", "E", 0)).toBe("55-F1-E");
+    } finally {
+      installContent(buildContentStore(classicData as ContentData));
+    }
   });
   test("SSO: a ship rides a slow swell, F1 to F4 every 0.4 s, standing or sailing", () => {
     const { m } = setup(55);

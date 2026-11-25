@@ -21,7 +21,7 @@ export const KEYED_LISTS: Partial<Record<DatasetId, Record<string, string>>> = {
   classes: { classes: "code", skills: "skill", startClasses: "code" },
   help: { topics: "file" },
   npcFiles: { files: "name" },
-  houses: { deeds: "deed", types: "house" },
+  houses: { deeds: "deed", vehicles: "name", types: "house" },
   social: { factions: "key" },
   art: {
     items: "name",
@@ -31,7 +31,7 @@ export const KEYED_LISTS: Partial<Record<DatasetId, Record<string, string>>> = {
     tiles: "code",
     sounds: "name",
   },
-  balance: { spellEffects: "effect", hulls: "vehicle" },
+  balance: { spellEffects: "effect" },
 };
 
 /**

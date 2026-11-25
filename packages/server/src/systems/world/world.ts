@@ -34,6 +34,7 @@ import {
   hullMax,
   type InventoryView,
   isJailMap,
+  isWalkable,
   itemSprite,
   type MapExit,
   type MapFog,
@@ -54,11 +55,12 @@ import {
   type RoomKey,
   type SelfState,
   type ServerMsg,
-  shipWalkGrid,
   tileAt,
   type Vehicle,
   type Vitals,
   type VitalsView,
+  vehicleCrossesAt,
+  vehicleRow,
   withTile,
 } from "@secondstaronline/shared";
 
@@ -88,10 +90,11 @@ export interface WorldMap {
    * on-foot grid for everyone, whatever anyone rides.
    */
   walk: boolean[][];
-  /** The Airship's grid: blocked only by layer-2 D8 I8 E8 J8 K8 L8. */
+  /**
+   * The `airshipBlock` grid: blocked only by layer-2 D8 I8 E8 J8 K8 L8. A cannon shot stops where
+   * it is blocked. Each vehicle crosses its own row's tiles (`walkableFor`).
+   */
   walkAir: boolean[][];
-  /** The Boat's and Battleship's grid: layer-1 sea water. */
-  walkShip: boolean[][];
   /** Map field 12 (persistence/maps.ts `MapFlags`). */
   flags: MapFlags;
   /** The four roster slots and their live monsters, kept while the server runs. */
@@ -164,16 +167,7 @@ export const DEFAULT_FLAGS: MapFlags = { canFight: "X", fctSpwn: "", isIndoors: 
 export function toWorldMap(
   m: Omit<
     WorldMap,
-    | "walk"
-    | "walkAir"
-    | "walkShip"
-    | "flags"
-    | "slots"
-    | "ground"
-    | "exit1"
-    | "exit2"
-    | "signs"
-    | "fog"
+    "walk" | "walkAir" | "flags" | "slots" | "ground" | "exit1" | "exit2" | "signs" | "fog"
   > & {
     flags?: MapFlags;
     slots?: MonsterSlot[];
@@ -198,7 +192,6 @@ export function toWorldMap(
     fog: m.fog ?? { ...NO_FOG },
     walk: footWalkGrid(m.layers[0], m.layers[1]),
     walkAir: airshipWalkGrid(m.layers[1]),
-    walkShip: shipWalkGrid(m.layers[0]),
   };
 }
 
@@ -227,7 +220,6 @@ export function setTile(
   if (layer <= 2) {
     m.walk = footWalkGrid(m.layers[0], m.layers[1]);
     m.walkAir = airshipWalkGrid(m.layers[1]);
-    m.walkShip = shipWalkGrid(m.layers[0]);
   }
   world.tileLog.add(m);
   return { e: "tile", layer, x, y, code };
@@ -1339,13 +1331,17 @@ export function removePlayer(world: World, id: string): { player: Player; out: O
   return { player: p, out: leaveRoom(world, p) };
 }
 
-/** The grid a player moves on: on foot, aboard an Airship, or aboard a ship. */
-export function walkGridFor(
-  map: Pick<WorldMap, "walk" | "walkAir" | "walkShip">,
+/**
+ * Whether a player may move onto map tile (x, y): on foot the walk grid, aboard a vehicle the
+ * tiles its row crosses (issue #44). A vehicle no row has rides as nothing: on foot.
+ */
+export function walkableFor(
+  map: Pick<WorldMap, "walk" | "layers">,
   vehicle: Vehicle | null,
-): boolean[][] {
-  if (vehicle === "Airship") {
-    return map.walkAir;
+): (x: number, y: number) => boolean {
+  const row = vehicleRow(vehicle);
+  if (!row) {
+    return (x, y) => isWalkable(map.walk, x, y);
   }
-  return vehicle ? map.walkShip : map.walk;
+  return (x, y) => vehicleCrossesAt(row, map.layers[0], map.layers[1], x, y);
 }

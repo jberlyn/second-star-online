@@ -200,6 +200,52 @@ export function contentWorldStore(db: Db) {
         }));
     },
 
+    /** Characters not in `skip` riding `vehicle` (case ignored), or any vehicle (null): #44. */
+    riders(
+      vehicle: string | null,
+      skip: readonly string[],
+    ): { id: string; accountId: string; name: string; vehicle: string; hull: number | null }[] {
+      return db
+        .query<
+          { id: string; account_id: string; name: string; vehicle: string; hull: number | null },
+          string[]
+        >(
+          `SELECT id, account_id, name, vehicle, hull FROM characters
+           WHERE ${vehicle === null ? "vehicle IS NOT NULL" : "vehicle = ? COLLATE NOCASE"}${notIn("id", skip)}`,
+        )
+        .all(...(vehicle === null ? [] : [vehicle]), ...skip)
+        .map((r) => ({
+          id: r.id,
+          accountId: r.account_id,
+          name: r.name,
+          vehicle: r.vehicle,
+          hull: r.hull,
+        }));
+    },
+
+    /** Puts a character aboard another vehicle, or on foot (null), where they are. */
+    setRider(id: string, vehicle: string | null, hull: number | null): void {
+      db.query("UPDATE characters SET vehicle = ?, hull = ? WHERE id = ?").run(
+        vehicle,
+        vehicle ? hull : null,
+        id,
+      );
+    },
+
+    /**
+     * A parked vehicle become another (issue #44): its new name, and what no longer applies taken
+     * off: a deed has no owner, hull, parking time or mooring; a flying vehicle no mooring.
+     */
+    reparkGround(
+      id: string,
+      item: string,
+      clear: { owner: boolean; hull: boolean; facing: boolean },
+    ): void {
+      db.query(
+        `UPDATE ground_items SET item = ?, qty = 1${clear.owner ? ", owner_id = NULL" : ""}${clear.hull ? ", hull = NULL, parked_at = NULL" : ""}${clear.facing ? ", facing = NULL" : ""} WHERE id = ?`,
+      ).run(item, id);
+    },
+
     deleteGround(id: string): void {
       db.query("DELETE FROM ground_items WHERE id = ?").run(id);
     },

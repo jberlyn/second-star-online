@@ -3,16 +3,15 @@
  * balance, a world's `balance` dataset with every part it leaves out filled from the defaults.
  *
  * The defaults are the numbers the engine played before they became content: 1.6's where 1.6 had
- * them, SSO's own for its additions (vehicle hulls and the cannon, issue #2). The Classic pack
+ * them, SSO's own for its additions (hull wear and the cannon, issue #2; each vehicle's full hull is its
+ * `houses.vehicles` row's, issue #44). The Classic pack
  * writes the same values out; a pack that leaves a part out (Minimal leaves them all) plays these.
  */
 import type {
   Amount,
   BalanceData,
   BalanceSpellEffect,
-  BalanceVehicle,
   FlatAmount,
-  HullRow,
   SpellAmountOverride,
   SpellEffectRow,
 } from "@secondstaronline/data";
@@ -36,12 +35,7 @@ export interface Balance {
   timings: NonNullable<BalanceData["timings"]>;
   combat: NonNullable<BalanceData["combat"]>;
   monsters: NonNullable<BalanceData["monsters"]>;
-  /** One row for each vehicle, in `BALANCE_VEHICLE_ORDER`. */
-  hulls: HullRow[];
 }
-
-/** The engine's vehicle kinds, in the order the Balance page lists them. */
-export const BALANCE_VEHICLE_ORDER: readonly BalanceVehicle[] = ["Boat", "Airship", "Battleship"];
 
 /** The spell effects with amounts, in the order the Balance page lists them. */
 export const BALANCE_SPELL_EFFECT_ORDER: readonly BalanceSpellEffect[] = [
@@ -140,25 +134,14 @@ export const BALANCE_DEFAULTS: Readonly<Balance> = {
     factionSlotRandomN: 35,
     npcSpawn: { randomN: 60, passAtMost: 2 },
   },
-  hulls: [
-    { vehicle: "Boat", hull: 60 },
-    { vehicle: "Airship", hull: 80 },
-    { vehicle: "Battleship", hull: 150 },
-  ],
 };
 
 /**
- * A world's full balance: each part it sets, else the default; hull rows for every vehicle (a
- * vehicle the rows leave out keeps its default). Pure; nothing is shared with `data`.
+ * A world's full balance: each part it sets, else the default. Pure; nothing is shared with
+ * `data`.
  */
 export function fullBalance(data: BalanceData | undefined): Balance {
   const d = data ?? {};
-  const hulls = BALANCE_VEHICLE_ORDER.map((vehicle) => {
-    const row =
-      d.hulls?.find((h) => h.vehicle === vehicle) ??
-      BALANCE_DEFAULTS.hulls.find((h) => h.vehicle === vehicle);
-    return { vehicle, hull: row?.hull ?? 1 };
-  });
   const spellEffects = BALANCE_SPELL_EFFECT_ORDER.map((effect) =>
     structuredClone(
       (d.spellEffects?.find((r) => r.effect === effect) ??
@@ -181,7 +164,6 @@ export function fullBalance(data: BalanceData | undefined): Balance {
     timings: part("timings"),
     combat: part("combat"),
     monsters: part("monsters"),
-    hulls,
   };
 }
 

@@ -16,7 +16,9 @@ import {
   compileDefinitions,
   DATASET_IDS,
   type DatasetId,
+  deedVehicle,
   definesBehaviours,
+  FLAG_LAYER,
   isEngineFixture,
   lastMatch,
   lingoContains,
@@ -25,6 +27,7 @@ import {
   npcShopItemOk,
   resolveMonster,
   ruleMatches,
+  type TileFlag,
 } from "@secondstaronline/shared";
 
 import { type RowRef, rowLabel } from "./rows.ts";
@@ -405,7 +408,9 @@ export type ReferenceKind =
   | "definedMonster"
   | "skill"
   | "shopItem"
-  | "lootItem";
+  | "lootItem"
+  /** A vehicle a deed builds (issue #44): a `houses.vehicles` row. */
+  | "vehicle";
 
 /** One reference from a row to a name another list must hold. */
 export interface Reference {
@@ -715,7 +720,13 @@ export function referencesOf(data: ContentData): Reference[] {
   }
   // A deed is an item: its row goes with it.
   for (const d of data.houses.deeds) {
-    add({ dataset: "houses", part: "deeds", key: d.deed }, ["deed"], "item", d.deed, []);
+    const row: RowRef = { dataset: "houses", part: "deeds", key: d.deed };
+    add(row, ["deed"], "item", d.deed, []);
+    // The vehicle it builds (issue #44): the deed goes with it, or names another.
+    const vehicle = deedVehicle(d);
+    if (vehicle !== null) {
+      add(row, ["vehicle"], "vehicle", vehicle, []);
+    }
   }
   // NPC files: what a shop sells or buys, and what a monster drops, as the NPC Editor checks them.
   for (const f of data.npcFiles.files) {
@@ -923,6 +934,7 @@ export function unresolved(data: ContentData): (r: Reference) => boolean {
   const fixtures = new Set(data.items.fixtures.map((f) => f.toLowerCase()));
   const monsters = new Set(data.monsters.monsters.map((m) => m.name.toLowerCase()));
   const skills = new Set(data.classes.skills.map((s) => skillNorm(s.skill)));
+  const vehicles = new Set((data.houses.vehicles ?? []).map((v) => v.name.toLowerCase()));
   const store = buildContentStore(live);
   return (r) => {
     const n = r.name.toLowerCase();
@@ -955,6 +967,8 @@ export function unresolved(data: ContentData): (r: Reference) => boolean {
       case "npc":
         // 1.6's quest lines name NPCs by their spoken name, which need not be a monster ("Girl").
         return false;
+      case "vehicle":
+        return !vehicles.has(n);
     }
     return false;
   };
@@ -1020,6 +1034,8 @@ export function referenceMessage(r: Reference): string {
       return `is the definition of an item that does not exist: ${name}`;
     case "definedMonster":
       return `is the definition of a monster that does not exist (no species, editor list entry or NPC file): ${name}`;
+    case "vehicle":
+      return `builds a vehicle that does not exist: ${name}`;
     default:
       return `names an item that does not exist (or is retired): ${name}`;
   }
@@ -1207,6 +1223,138 @@ export function definitionProblems(data: ContentData): ContentProblem[] {
   return out;
 }
 
+type TileSetLike = { flags?: readonly TileFlag[]; codes?: readonly string[] };
+
+/**
+ * Whether a vehicle has somewhere to be built and boarded, by the runtime's rules
+ * (`vehicleCrosses`: a flag read on its own layer, a code on either; `over` less `except`): some
+ * pair of catalogue tiles (or an empty word) on layers 1 and 2 it crosses, and for a `pad` vehicle
+ * one it also lands on.
+ */
+function canBoard(
+  data: ContentData,
+  v: {
+    moves: { over: "any" | TileSetLike; except?: TileSetLike };
+    boards: "shore" | "pad";
+    lands?: TileSetLike;
+  },
+): boolean {
+  const tiles: { code: string; flags: readonly TileFlag[] }[] = [
+    ...data.tiles.catalogue.map((t) => ({ code: t.code.toLowerCase(), flags: t.flags ?? [] })),
+    { code: "", flags: [] },
+  ];
+  /** Whether a tile matches a set when it is on `layer`. */
+  const on = (set: TileSetLike | undefined, layer: 1 | 2, t: (typeof tiles)[number]) =>
+    set !== undefined &&
+    ((set.flags ?? []).some((f) => FLAG_LAYER[f] === layer && t.flags.includes(f)) ||
+      (set.codes ?? []).some((c) => c.toLowerCase() === t.code && t.code !== ""));
+  const { over, except } = v.moves;
+  const a = tiles.filter((t) => !on(except, 1, t));
+  const b = tiles.filter((t) => !on(except, 2, t));
+  if (a.length === 0 || b.length === 0) {
+    return false;
+  }
+  const overSet = over === "any" ? undefined : over;
+  const o1 = (t: (typeof tiles)[number]) => over === "any" || on(overSet, 1, t);
+  const o2 = (t: (typeof tiles)[number]) => over === "any" || on(overSet, 2, t);
+  if (v.boards === "shore") {
+    return a.some(o1) || b.some(o2);
+  }
+  const l1 = (t: (typeof tiles)[number]) => on(v.lands, 1, t);
+  const l2 = (t: (typeof tiles)[number]) => on(v.lands, 2, t);
+  // A pair crosses (layer 1 or layer 2 is over) and lands (layer 1 or layer 2 is a pad).
+  return (
+    a.some((t) => o1(t) && l1(t)) ||
+    (a.some(o1) && b.some(l2)) ||
+    (b.some(o2) && a.some(l1)) ||
+    b.some((t) => o2(t) && l2(t))
+  );
+}
+
+/** The owner fixtures' endings a vehicle's name may not take (`Bob's Door` is a door). */
+const FIXTURE_WORDS = [
+  "door",
+  "opened door",
+  "mailbox",
+  "board",
+  "house vault",
+  "guild vault",
+  "newspaper",
+];
+
+/**
+ * The vehicles' own checks (issue #44), beyond their schema: a name no owner fixture has, tile
+ * codes the catalogue has, flags some tile carries, and a way to board: a `shore` vehicle crosses
+ * some tile, and a `pad` vehicle has some tile to land on.
+ */
+export function vehicleProblems(data: ContentData): ContentProblem[] {
+  const out: ContentProblem[] = [];
+  const codes = new Set(data.tiles.catalogue.map((t) => t.code.toLowerCase()));
+  const flagged = new Set(data.tiles.catalogue.flatMap((t) => t.flags ?? []));
+  type Set_ = { flags?: readonly string[]; codes?: readonly string[] };
+  const shown = new Map<string, string>();
+  for (const v of data.houses.vehicles ?? []) {
+    const where = `houses/vehicles/${v.name}`;
+    // A name is stored as the end of a parked one's (`Bob's Skiff`), so it takes a key's form.
+    const form = badKeyForm(v.name);
+    if (form) {
+      out.push({ where, message: form });
+    }
+    const title = (v.display ?? v.name).toLowerCase();
+    const other = shown.get(title);
+    if (other) {
+      out.push({
+        where,
+        message: `the ${other} and the ${v.name} show the same name (${v.display ?? v.name}): give one another display`,
+      });
+    }
+    shown.set(title, v.name);
+    const ending = `'s ${v.name.toLowerCase()}`;
+    for (const i of data.items.items) {
+      const n = i.name.toLowerCase();
+      if (n.length > ending.length && n.endsWith(ending)) {
+        out.push({
+          where: `items/items/${i.name}`,
+          message: `${i.name} is named like a parked ${v.name}: name the item another way`,
+        });
+      }
+    }
+    if (FIXTURE_WORDS.includes(v.name.toLowerCase())) {
+      out.push({
+        where,
+        message: `${v.name} is the name of an engine fixture: name it another way`,
+      });
+    }
+    const sets: [string, Set_ | undefined][] = [
+      ["moves.over", v.moves.over === "any" ? undefined : v.moves.over],
+      ["moves.except", v.moves.except],
+      ["lands", v.lands],
+    ];
+    for (const [field, set] of sets) {
+      for (const c of set?.codes ?? []) {
+        if (!codes.has(c.toLowerCase())) {
+          out.push({ where, message: `${field} names a tile that does not exist: ${c}` });
+        }
+      }
+      for (const f of set?.flags ?? []) {
+        if (!flagged.has(f as never)) {
+          out.push({ where, message: `${field} names the flag ${f}, which no tile has` });
+        }
+      }
+    }
+    if (!canBoard(data, v)) {
+      out.push({
+        where,
+        message:
+          v.boards === "pad"
+            ? "it has no tile it can fly onto and land on, so it can never be built or boarded"
+            : "it crosses no tile, so it can never be built or boarded",
+      });
+    }
+  }
+  return out;
+}
+
 export function checkStore(
   next: ContentData,
   published: ContentData,
@@ -1223,6 +1371,7 @@ export function checkStore(
     ...monsterProblems(next),
     ...skillProblems(next, published),
     ...progressionProblems(next),
+    ...vehicleProblems(next),
     ...referenceProblems(withNpcSaves(next, npcSaves), withNpcSaves(published, npcSaves)),
   ];
 }

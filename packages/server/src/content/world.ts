@@ -28,7 +28,11 @@ export type UsagePlaceKind =
   | "spawn"
   | "live"
   /** Stock on sale in player shops (their shopkeepers). */
-  | "shop";
+  | "shop"
+  /** Characters riding a vehicle (issue #44). */
+  | "aboard"
+  /** A vehicle parked on the ground (issue #44). */
+  | "parked";
 
 /** One kind of place, with how many copies and who or where holds them. */
 export interface UsagePlace {
@@ -70,6 +74,16 @@ export type WorldAction =
       replacement: string | null;
       /** Its NPC Editor save goes with it (as its NPC file row did); absent: delete. */
       npcFile?: "delete" | "keep";
+    }
+  | {
+      kind: "vehicle";
+      key: string;
+      /** Riders land where they are and parked ones become `deed` there, or both switch. */
+      riders: "land" | "switch";
+      /** The vehicle they switch to, or null. */
+      replacement: string | null;
+      /** The deed a parked one becomes (the first that built it), or null: it goes. */
+      deed: string | null;
     };
 
 /** An operator's removal of an item, with its cleanup. */
@@ -94,7 +108,17 @@ export interface MonsterRemoval {
   replacement: string | null;
 }
 
-export type Removal = ItemRemoval | MonsterRemoval;
+/** An operator's removal of a vehicle, with its cleanup (issue #44). */
+export interface VehicleRemoval {
+  kind: "vehicle";
+  key: string;
+  /** What the deeds that build it get. */
+  content: "remove" | "replace" | "leave";
+  riders: "land" | "switch";
+  replacement: string | null;
+}
+
+export type Removal = ItemRemoval | MonsterRemoval | VehicleRemoval;
 
 export interface ContentWorld {
   /** Where the world holds an item (any of its spellings) or a monster. */

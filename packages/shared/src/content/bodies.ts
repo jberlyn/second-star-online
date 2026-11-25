@@ -43,9 +43,10 @@ export interface BodyContent {
     bodies?: {
       morph?: readonly { body: number }[];
       tree?: number;
-      riders?: Readonly<Record<string, number>>;
     };
   };
+  /** The vehicles' rider bodies (issue #44). */
+  houses?: { vehicles?: readonly { name: string; rider: number }[] };
 }
 
 /** Every body the content draws, by number, in the order first named. */
@@ -76,8 +77,8 @@ export function bodyUses(data: BodyContent): Map<number, BodyUse> {
     note(row.body, "the Morph bodies");
   }
   note(b?.tree, "the tree body");
-  for (const [vehicle, body] of Object.entries(b?.riders ?? {})) {
-    note(body, `the ${vehicle}`);
+  for (const v of data.houses?.vehicles ?? []) {
+    note(v.rider, `the ${v.name}`);
   }
   return out;
 }

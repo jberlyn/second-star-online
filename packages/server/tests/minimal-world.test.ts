@@ -340,46 +340,86 @@ describe("a world created with the Minimal pack", () => {
     }
   });
 
-  test("rider bodies cannot be taken out while anyone is aboard a vehicle", async () => {
+  test("a vehicle row in use is taken out only with its cleanup; a rider of a vehicle no row has lands at login (issue #44)", async () => {
     const { server } = start(undefined);
     try {
       const g = server.game;
-      await g.create({
-        t: "create",
-        name: "Sailor",
-        password: "pw",
-        sex: 1,
-        head: 1,
-        classCode: 1,
-        str: 11,
-        sta: 11,
-        int: 11,
-        wis: 11,
-        dex: 11,
-      });
-      server.db.run("UPDATE characters SET vehicle = 'Boat' WHERE name = 'Sailor'");
-      const svc = server.content;
-      const d = svc.publishedContent();
-      const { riders: _riders, ...noRiders } = d.bindings.bodies;
-      expect(
-        svc.draftSet(ADMIN, { dataset: "bindings", part: "bodies", key: null }, "set", noRiders).ok,
-      ).toBe(true);
-      for (const deed of ["Boat Deed", "Airship Deed", "Battleship Deed"]) {
-        expect(
-          svc.draftSet(ADMIN, { dataset: "houses", part: "deeds", key: deed }, "remove", null).ok,
-        ).toBe(true);
+      for (const name of ["Sailor", "Rafter"]) {
+        await g.create({
+          t: "create",
+          name,
+          password: "pw",
+          sex: 1,
+          head: 1,
+          classCode: 1,
+          str: 11,
+          sta: 11,
+          int: 11,
+          wis: 11,
+          dex: 11,
+        });
       }
-      expect(svc.check().map((p) => p.message)).toEqual([
-        "the world has vehicles in use (1 aboard, 0 parked), so it keeps its rider bodies (bodies.riders)",
-      ]);
-      expect(svc.publish(ADMIN, svc.draftRev(), "No ships", server.game.contentWorld).ok).toBe(
-        false,
+      server.db.run("UPDATE characters SET vehicle = 'Boat', hull = 40 WHERE name = 'Sailor'");
+      const svc = server.content;
+      // Taken out by hand, not with Remove's cleanup: refused while someone rides it.
+      for (const ref of [
+        { dataset: "houses", part: "vehicles", key: "Boat" },
+        { dataset: "houses", part: "deeds", key: "Boat Deed" },
+      ] as const) {
+        expect(svc.draftSet(ADMIN, ref, "remove", null).ok).toBe(true);
+      }
+      const refused = svc.publish(ADMIN, svc.draftRev(), "No boats", g.contentWorld);
+      expect(refused.ok).toBe(false);
+      expect(refused.ok ? [] : (refused.problems ?? []).map((p) => p.message)).toContain(
+        "the Boat is in use (1 aboard, 0 parked): take it out with Remove on its row, which lands or switches them",
       );
-      // Ashore, the same draft publishes.
-      server.db.run("UPDATE characters SET vehicle = NULL WHERE name = 'Sailor'");
-      const done = svc.publish(ADMIN, svc.draftRev(), "No ships", server.game.contentWorld);
+      // With Remove's cleanup, the same removal publishes and lands the rider.
+      for (const ref of [
+        { dataset: "houses", part: "vehicles", key: "Boat" },
+        { dataset: "houses", part: "deeds", key: "Boat Deed" },
+      ] as const) {
+        expect(svc.draftDiscard(ref).ok).toBe(true);
+      }
+      const removal = svc.draftRemoval(
+        ADMIN,
+        { kind: "vehicle", key: "Boat", content: "remove", riders: "land", replacement: null },
+        g.contentWorld,
+      );
+      expect(removal.ok).toBe(true);
+      const done = svc.publish(ADMIN, svc.draftRev(), "No boats", g.contentWorld);
       expect(done.ok ? "ok" : done.error).toBe("ok");
-      expect(svc.publishedContent().bindings.bodies.riders).toBeUndefined();
+      expect(server.db.query("SELECT vehicle FROM characters WHERE name = 'Sailor'").get()).toEqual(
+        { vehicle: null },
+      );
+      // A vehicle no row has (a release pack that dropped it, a database edit): listed, and its
+      // rider lands where they are at their next login, logged.
+      server.db.run("UPDATE characters SET vehicle = 'Raft', hull = 9 WHERE name = 'Rafter'");
+      expect(g.contentWorld.problems().filter((p) => p.where === "world/riders")).toEqual([
+        {
+          where: "world/riders",
+          message:
+            '"Raft" is not a vehicle: ridden by Rafter. They ride as nothing and land where they are when they next log in.',
+        },
+      ]);
+      const l = await g.login("Rafter", "pw", "10.0.0.1");
+      if (!l.ok) {
+        throw new Error(l.text);
+      }
+      g.enter(l.characterId, false, "10.0.0.1");
+      const rafter = g.world.players.get(l.characterId);
+      expect([rafter?.vehicle, rafter?.hull, rafter?.spell.body]).toEqual([null, null, null]);
+      g.tick();
+      expect(
+        server.db
+          .query(
+            "SELECT item, qty, details FROM activity_log WHERE character = 'Rafter' AND type = 'admin'",
+          )
+          .get(),
+      ).toEqual({
+        item: "Raft",
+        qty: 0,
+        details: JSON.stringify({ placed: -1, landed: "no such vehicle" }),
+      });
     } finally {
       await server.stop();
     }

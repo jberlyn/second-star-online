@@ -1358,7 +1358,10 @@ describe("bans, settings and the logs in the game (real SQLite)", () => {
       c.spell.body = 100; // Smoke Bomb's smoke, with time left
       c.spell.smokeBomb = 10;
       const first = publish((d) => {
-        d.bindings.bodies.riders = { Boat: 155, Battleship: 156, Airship: 157 };
+        // A rider's body is its vehicle row's (issue #44).
+        for (const v of d.houses.vehicles ?? []) {
+          v.rider += 100;
+        }
         delete d.bindings.bodies.tree;
         delete d.bindings.bodies.smoke;
       });
@@ -1377,7 +1380,10 @@ describe("bans, settings and the logs in the game (real SQLite)", () => {
       expect(a.spell.body).toBe(55);
       c.spell.body = 30;
       const second = publish((d) => {
-        d.bindings.bodies.riders = { Boat: 55, Battleship: 30, Airship: 57 };
+        const battleship = d.houses.vehicles?.find((v) => v.name === "Battleship");
+        if (battleship) {
+          battleship.rider = 30;
+        }
         d.bindings.bodies.morph = d.bindings.bodies.morph?.filter((r) => r.body !== 30);
       });
       expect(c.spell.body).toBeNull();
@@ -1696,7 +1702,12 @@ describe("bans, settings and the logs in the game (real SQLite)", () => {
     a.hull = 120;
     try {
       const d = structuredClone(classicData) as ContentData;
-      d.balance = { hulls: [{ vehicle: "Battleship", hull: 90 }] };
+      // The full hull is the vehicle row's (issue #44).
+      for (const v of d.houses.vehicles ?? []) {
+        if (v.name === "Battleship") {
+          v.hull = 90;
+        }
+      }
       installContent(buildContentStore(d));
       sent.length = 0;
       game.contentPublished("next");
@@ -1721,7 +1732,12 @@ describe("bans, settings and the logs in the game (real SQLite)", () => {
     expect([...game.world.rooms.values()].some((r) => r.players.includes(a))).toBe(false);
     try {
       const d = structuredClone(classicData) as ContentData;
-      d.balance = { hulls: [{ vehicle: "Battleship", hull: 90 }] };
+      // The full hull is the vehicle row's (issue #44).
+      for (const v of d.houses.vehicles ?? []) {
+        if (v.name === "Battleship") {
+          v.hull = 90;
+        }
+      }
       installContent(buildContentStore(d));
       sent.length = 0;
       game.contentPublished("next");
@@ -1743,7 +1759,12 @@ describe("bans, settings and the logs in the game (real SQLite)", () => {
     try {
       for (const full of [200, 130]) {
         const d = structuredClone(classicData) as ContentData;
-        d.balance = { hulls: [{ vehicle: "Battleship", hull: full }] };
+        // The full hull is the vehicle row's (issue #44).
+        for (const v of d.houses.vehicles ?? []) {
+          if (v.name === "Battleship") {
+            v.hull = full;
+          }
+        }
         installContent(buildContentStore(d));
         sent.length = 0;
         game.contentPublished(`next-${full}`);
@@ -1766,7 +1787,12 @@ describe("bans, settings and the logs in the game (real SQLite)", () => {
     a.hull = 120;
     try {
       const d = structuredClone(classicData) as ContentData;
-      d.balance = { hulls: [{ vehicle: "Battleship", hull: 90 }] };
+      // The full hull is the vehicle row's (issue #44).
+      for (const v of d.houses.vehicles ?? []) {
+        if (v.name === "Battleship") {
+          v.hull = 90;
+        }
+      }
       sent.length = 0;
       // The publish opens, the new store lowers the hull, then the publish fails and rolls back.
       game.contentWorld.begin();
@@ -1792,7 +1818,12 @@ describe("bans, settings and the logs in the game (real SQLite)", () => {
     game.leave(ann.characterId);
     try {
       const d = structuredClone(classicData) as ContentData;
-      d.balance = { hulls: [{ vehicle: "Battleship", hull: 90 }] };
+      // The full hull is the vehicle row's (issue #44).
+      for (const v of d.houses.vehicles ?? []) {
+        if (v.name === "Battleship") {
+          v.hull = 90;
+        }
+      }
       installContent(buildContentStore(d));
       const l = await game.login("Ann", "pw", "10.0.0.1");
       if (!l.ok) {

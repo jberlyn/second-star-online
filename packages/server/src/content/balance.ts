@@ -17,7 +17,6 @@ import {
 import {
   BALANCE_DEFAULTS,
   BALANCE_SPELL_EFFECT_ORDER,
-  BALANCE_VEHICLE_ORDER,
   type BalanceFieldView,
   type BalanceGroupView,
   type BalanceRowView,
@@ -40,7 +39,16 @@ export interface BalanceGroupDef {
   help: string;
   rows: BalanceRowDef[];
   /** Values of the same kind kept in another dataset: the card names them and links there. */
-  elsewhere?: { label: string; row: RowRef; describe(value: unknown): string }[];
+  elsewhere?: ElsewhereDef[];
+  /** More such values, from the published content (one a row: each vehicle's hull). */
+  elsewhereOf?: (published: Partial<ContentData>) => ElsewhereDef[];
+}
+
+/** A value kept in another dataset's row, named on a Balance card. */
+export interface ElsewhereDef {
+  label: string;
+  row: RowRef;
+  describe(value: unknown): string;
 }
 
 const field = (
@@ -592,22 +600,18 @@ export const BALANCE_GROUPS: readonly BalanceGroupDef[] = [
   {
     id: "vehicles",
     title: "Vehicles",
-    help: "Hulls, hull wear and repair, and the Battleship's cannon (SSO additions: 1.6 had no hulls and never fired its cannon).",
-    rows: [
-      ...BALANCE_VEHICLE_ORDER.map((vehicle) => ({
-        part: "hulls",
-        key: vehicle,
-        label: `${vehicle} hull`,
-        fields: [
-          field(
-            ["hull"],
-            "Full hull",
-            "count",
-            BALANCE_LIMITS.hull,
-            "Hits on a rider wear the hull, never the rider. At 0 the vehicle is lost and the rider dies.",
-          ),
-        ],
+    help: "Hull wear and repair, and the cannon (SSO additions: 1.6 had no hulls and never fired its cannon). Each vehicle's full hull is its own row, edited on the Content page.",
+    // Each vehicle's full hull is its `houses.vehicles` row's (issue #44).
+    elsewhereOf: (published) =>
+      (published.houses?.vehicles ?? []).map((v) => ({
+        label: `${v.display ?? v.name} hull`,
+        row: { dataset: "houses", part: "vehicles", key: v.name },
+        describe: (value) => {
+          const hull = (value as { hull?: number } | undefined)?.hull;
+          return hull === undefined ? "none: no such vehicle" : `full hull ${hull}`;
+        },
       })),
+    rows: [
       {
         part: "vehicles",
         key: null,
@@ -632,7 +636,7 @@ export const BALANCE_GROUPS: readonly BalanceGroupDef[] = [
       {
         part: "cannon",
         key: null,
-        label: "Battleship cannon",
+        label: "Cannon",
         fields: [
           field(["damage", "flat"], "Damage", "count", BALANCE_LIMITS.flat),
           field(
@@ -733,9 +737,9 @@ export function balanceView(l: BalanceLayers): { groups: BalanceGroupView[]; oth
     id: g.id,
     title: g.title,
     help: g.help,
-    ...(g.elsewhere
+    ...(g.elsewhere || g.elsewhereOf
       ? {
-          elsewhere: g.elsewhere.map((e) => ({
+          elsewhere: [...(g.elsewhere ?? []), ...(g.elsewhereOf?.(l.published) ?? [])].map((e) => ({
             label: e.label,
             row: e.row,
             now: e.describe(rowValue(l.published, e.row)),

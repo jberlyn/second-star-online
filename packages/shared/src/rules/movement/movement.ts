@@ -6,13 +6,14 @@
  * priority L > R > U > D), the step animation (16 calls × 2 px and the walk frames) and player and
  * monster blocking (`blockPCCheck`).
  *
- * The web check is the `web` outcome of `attemptMove`. The Airship's 8-frame step is
+ * The web check is the `web` outcome of `attemptMove`. A flying vehicle's 8-frame step is
  * `stepLengthFor`.
  */
 
 import { MAP_HEIGHT, MAP_WIDTH, TILE_PX } from "../../constants.ts";
 import { content } from "../../content/store.ts";
 import { anyMatch } from "../core/patterns.ts";
+import { type Vehicle, vehicleFlies } from "../vehicles/rows.ts";
 
 /** An arrow key: Left, Right, Up, Down. */
 export type Dir = "L" | "R" | "U" | "D";
@@ -122,23 +123,19 @@ export const FACINGS: readonly Facing[] = ["N", "S", "E", "W"];
 export const STEP_FRAMES = 16;
 
 /**
- * The vehicles a player can ride. Only the Airship was ever reachable in 1.6; its Boat and
- * Battleship were written but never switched on (SSO builds them, issue #2).
+ * The vehicle a player rides, by its `vehicles` row's name (issue #44). Only the Airship was ever
+ * reachable in 1.6; its Boat and Battleship were written but never switched on (SSO builds them,
+ * issue #2).
  */
-export type Vehicle = "Airship" | "Boat" | "Battleship";
-
-/** A vehicle that sails on water: the Boat or the Battleship. */
-export function isShip(vehicle: Vehicle | null): vehicle is "Boat" | "Battleship" {
-  return vehicle === "Boat" || vehicle === "Battleship";
-}
+export type { Vehicle };
 
 /**
- * `stepFrame` calls in one step for a walker: 16 on foot, 8 aboard an Airship (the step counter starts at 8
- * against 16). 4 frames aboard. A ship steps at walking pace, as 1.6 wrote it (only the Airship
- * set the shorter step).
+ * `stepFrame` calls in one step for a walker: 16 on foot, 8 aboard a flying (`pad`) vehicle such
+ * as the Airship (the step counter starts at 8 against 16). 4 frames aboard. A ship steps at
+ * walking pace, as 1.6 wrote it (only the Airship set the shorter step).
  */
 export function stepLengthFor(vehicle: Vehicle | null): number {
-  return vehicle === "Airship" ? STEP_FRAMES / 2 : STEP_FRAMES;
+  return vehicleFlies(vehicle) ? STEP_FRAMES / 2 : STEP_FRAMES;
 }
 
 /**

@@ -8,8 +8,10 @@
  *   characters who hold it (each opens their hub).
  * - **Remove**: what happens to the references content holds (removed with the entries that hold
  *   them, replaced, or left for the operator), to the copies players hold (retired, purged with an
- *   optional refund, or replaced), and to a monster's spawns, live ones and NPC file. It goes into
- *   the draft with the removal; the world's part runs when the draft is published.
+ *   optional refund, or replaced), to a monster's spawns, live ones and NPC file, and to a
+ *   vehicle's riders and parked ones (issue #44: landed and turned back into their deed, or switched
+ *   to another vehicle). It goes into the draft with the removal; the world's part runs when the
+ *   draft is published.
  */
 import type {
   ContentPlaceView,
@@ -23,7 +25,7 @@ import { confirmBox, formField, panelButton } from "./control-panel-kit.ts";
 
 /** A removal as the `contentRemove` intent carries it (without its `t` and `seq`). */
 export interface RemovalPlan {
-  kind: "item" | "monster";
+  kind: "item" | "monster" | "vehicle";
   key: string;
   content: "remove" | "replace" | "leave";
   replacement: string | null;
@@ -33,6 +35,8 @@ export interface RemovalPlan {
   live?: "despawn" | "leave";
   /** The monster's own NPC file row. */
   npcRow?: "delete" | "keep";
+  /** A vehicle's riders and parked ones. */
+  riders?: "land" | "switch";
 }
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
@@ -74,6 +78,17 @@ export function usageSummary(u: ContentUsageView): string {
     if (quests) {
       parts.push(`wanted or given by ${plural(quests.count, "quest")}`);
     }
+  } else if (u.kind === "vehicle") {
+    const aboard = u.world.find((p) => p.place === "aboard");
+    if (aboard) {
+      parts.push(`ridden by ${plural(aboard.count, "character")}`);
+    }
+    const parked = u.world.find((p) => p.place === "parked");
+    if (parked) {
+      parts.push(
+        `${plural(parked.count, "parked one", "parked ones")} on ${plural(parked.holderCount, "map")}`,
+      );
+    }
   } else {
     const spawn = u.world.find((p) => p.place === "spawn");
     if (spawn) {
@@ -103,6 +118,8 @@ const PLACE_TEXT: Record<ContentPlaceView["place"], (p: ContentPlaceView) => str
   spawn: (p) => `Roster slots: ${p.count}`,
   live: (p) => `Alive now: ${p.count}`,
   shop: (p) => `On sale in player shops: ${plural(p.count, "copy", "copies")}`,
+  aboard: (p) => `Aboard: ${plural(p.count, "character")}`,
+  parked: (p) => `Parked: ${p.count}`,
 };
 
 /** The usage report: the summary, the rows that name it and the world's places. */
@@ -134,7 +151,8 @@ export function drawUsage(
       li.append(`${PLACE_TEXT[p.place](p)}`);
       if (p.holders.length > 0) {
         li.append(" — ");
-        const people = p.place === "bag" || p.place === "worn" || p.place === "vault";
+        const people =
+          p.place === "bag" || p.place === "worn" || p.place === "vault" || p.place === "aboard";
         p.holders.forEach((h, i) => {
           if (i > 0) {
             li.append(", ");
@@ -298,11 +316,33 @@ export function removalForm(
       box.append(formField("Its NPC file", fileSel));
     }
   }
+  const ridersSel = choice(
+    "content-removal-riders",
+    [
+      ["land", "Land them where they are (parked ones become their deed)"],
+      ["switch", "Switch them to another vehicle"],
+    ],
+    "land",
+  );
+  const inUse = u.world.some((p) => p.place === "aboard" || p.place === "parked");
+  if (u.kind === "vehicle" && inUse) {
+    box.append(
+      formField(
+        "Riders and parked ones",
+        ridersSel,
+        "Landed riders stand where they were; a parked one becomes the deed that builds it, or goes if none does.",
+      ),
+    );
+  }
   const replacement = gameInput("content-removal-replacement");
   replacement.type = "text";
   replacement.maxLength = 80;
   const replaceRow = formField(
-    u.kind === "item" ? "Replace with item" : "Replace with monster",
+    u.kind === "item"
+      ? "Replace with item"
+      : u.kind === "vehicle"
+        ? "Replace with vehicle"
+        : "Replace with monster",
     replacement,
     "Its key or the name players see.",
   );
@@ -317,10 +357,11 @@ export function removalForm(
       (u.kind === "item" && copies > 0 && copiesSel.value === "replace") ||
       (u.kind === "monster" &&
         u.world.some((p) => p.place === "spawn") &&
-        spawnsSel.value === "replace")
+        spawnsSel.value === "replace") ||
+      (u.kind === "vehicle" && inUse && ridersSel.value === "switch")
     );
   };
-  for (const el of [contentSel, copiesSel, spawnsSel]) {
+  for (const el of [contentSel, copiesSel, spawnsSel, ridersSel]) {
     el.addEventListener("change", sync);
   }
   sync();
@@ -344,6 +385,12 @@ export function removalForm(
       }
       const c = (copies > 0 ? copiesSel.value : "retire") as NonNullable<RemovalPlan["copies"]>;
       return { ...base, copies: c, refundGold: c === "purge" ? gold : 0 };
+    }
+    if (u.kind === "vehicle") {
+      return {
+        ...base,
+        riders: (inUse ? ridersSel.value : "land") as NonNullable<RemovalPlan["riders"]>,
+      };
     }
     return {
       ...base,
@@ -395,10 +442,12 @@ export function removalHeadline(removals: readonly ContentRemovalView[]): string
     return "";
   }
   const items = removals.filter((r) => r.kind === "item").length;
-  const monsters = removals.length - items;
+  const vehicles = removals.filter((r) => r.kind === "vehicle").length;
+  const monsters = removals.length - items - vehicles;
   const what = [
     items > 0 ? plural(items, "item") : "",
     monsters > 0 ? plural(monsters, "monster") : "",
+    vehicles > 0 ? plural(vehicles, "vehicle") : "",
   ]
     .filter(Boolean)
     .join(" and ");
@@ -423,7 +472,7 @@ export function drawRemovals(removals: readonly ContentRemovalView[]): HTMLEleme
   for (const r of removals) {
     const h = document.createElement("p");
     h.className = "content-removals-entry";
-    h.textContent = `${r.kind === "item" ? "Item" : "Monster"} ${r.key}:`;
+    h.textContent = `${r.kind === "item" ? "Item" : r.kind === "vehicle" ? "Vehicle" : "Monster"} ${r.key}:`;
     const ul = document.createElement("ul");
     ul.className = "content-usage-list";
     for (const line of r.lines.length > 0 ? r.lines : ["Not used anywhere in the world."]) {

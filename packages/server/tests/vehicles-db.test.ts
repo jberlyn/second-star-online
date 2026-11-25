@@ -82,9 +82,10 @@ describe("migration 22 (vehicles)", () => {
       now,
     );
     expect(loadGround(db, seedMapId(), now)).toMatchObject([{ ownerId: id }]);
-    expect(() =>
-      db.query("UPDATE characters SET vehicle = 'Canoe' WHERE id = ?").run(id),
-    ).toThrow();
+    // Since migration 73 (issue #44) any vehicle row's name, but never an empty one.
+    db.query("UPDATE characters SET vehicle = 'Canoe' WHERE id = ?").run(id);
+    expect(findCharacterById(db, id)?.vehicle).toBe("Canoe");
+    expect(() => db.query("UPDATE characters SET vehicle = '' WHERE id = ?").run(id)).toThrow();
   });
 });
 
@@ -205,16 +206,17 @@ describe("migration 43 (vehicle hulls)", () => {
 });
 
 describe("migration 44 (ship vehicles)", () => {
-  test("a character can ride a Boat or Battleship, and nothing else new", async () => {
+  test("a character can ride a Boat or Battleship, and since migration 73 any vehicle row", async () => {
     const g = game();
     const id = await makeChar(g, "Alice");
     for (const v of ["Boat", "Battleship", "Airship"]) {
       db.query("UPDATE characters SET vehicle = ?, hull = 10 WHERE id = ?").run(v, id);
       expect(findCharacterById(db, id)).toMatchObject({ vehicle: v, hull: 10, name: "Alice" });
     }
-    expect(() =>
-      db.query("UPDATE characters SET vehicle = 'Canoe' WHERE id = ?").run(id),
-    ).toThrow();
+    // Since migration 73 (issue #44) any vehicle row's name, but never an empty one.
+    db.query("UPDATE characters SET vehicle = 'Canoe' WHERE id = ?").run(id);
+    expect(findCharacterById(db, id)?.vehicle).toBe("Canoe");
+    expect(() => db.query("UPDATE characters SET vehicle = '' WHERE id = ?").run(id)).toThrow();
   });
 });
 

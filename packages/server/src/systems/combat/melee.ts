@@ -48,6 +48,7 @@ import {
   startSwing,
   swingBlocked,
   train,
+  vehicleRow,
   weaponSkillList,
   xpGained,
 } from "@secondstaronline/shared";
@@ -144,7 +145,8 @@ export function pollAttack(room: Room, p: Player, ctx: MeleeCtx): SwingEvents {
   if (p.spell.hold > 0) {
     return ev;
   }
-  if (p.vehicle === "Battleship") {
+  // A vehicle with a cannon (Classic's Battleship) fires it instead of swinging (issue #44).
+  if (vehicleRow(p.vehicle)?.cannon) {
     pollCannon(room, p, ctx, ev);
     return ev;
   }

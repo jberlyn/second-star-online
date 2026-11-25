@@ -497,7 +497,7 @@ export function houseSnapshot(
             signs: [...m.signs] as [string, string, string],
             // `setTile` replaces the layer and the walk grids, so the old ones are kept as they are.
             layer2: m.layers[1],
-            walk: [m.walk, m.walkAir, m.walkShip] as const,
+            walk: [m.walk, m.walkAir] as const,
           },
         ]
       : [],
@@ -553,7 +553,7 @@ export function houseSnapshot(
       k.m.title = k.title;
       k.m.signs = k.signs;
       k.m.layers[1] = k.layer2;
-      [k.m.walk, k.m.walkAir, k.m.walkShip] = k.walk;
+      [k.m.walk, k.m.walkAir] = k.walk;
     }
     world.containersDirty.clear();
     for (const v of dirtyBoxes) {

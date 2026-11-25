@@ -46,7 +46,6 @@ import {
   type SelfState,
   STEP_FRAMES,
   STEPFRAMES_PER_FRAME,
-  shipWalkGrid,
   stepFx,
   stepLengthFor,
   stepOffsetPx,
@@ -55,7 +54,10 @@ import {
   tickAttackTimers,
   tickSpriteTimers,
   type VitalsView,
+  vehicleCrossesAt,
+  vehicleFlies,
   vehicleOfBody,
+  vehicleRow,
   type WalkWorld,
   withTile,
 } from "@secondstaronline/shared";
@@ -164,10 +166,11 @@ export interface Self {
 export interface Model {
   map: MapView | null;
   walk: boolean[][];
-  /** The Airship's grid: the walk grid of a rider (body 57). */
+  /**
+   * The `airshipBlock` grid: where a cannon shot stops (and Classic's Airship cannot fly). A
+   * rider moves over the tiles its vehicle row crosses (issue #44).
+   */
   walkAir: boolean[][];
-  /** The ships' grid: the walk grid of a Boat or Battleship rider (body 55 or 56). */
-  walkShip: boolean[][];
   self: Self | null;
   peers: Map<string, Peer>;
   tick: number;
@@ -237,7 +240,6 @@ export function createModel(): Model {
     map: null,
     walk: [],
     walkAir: [],
-    walkShip: [],
     self: null,
     peers: new Map(),
     tick: 0,
@@ -325,7 +327,6 @@ export function applySnapshot(
   m.map = snap.map;
   m.walk = footWalkGrid(snap.map.layers[0], snap.map.layers[1]);
   m.walkAir = airshipWalkGrid(snap.map.layers[1]);
-  m.walkShip = shipWalkGrid(snap.map.layers[0]);
   m.self = {
     id: snap.you.id,
     name: snap.you.name,
@@ -494,7 +495,6 @@ export function applyDelta(m: Model, events: readonly DeltaEvent[]): void {
           if (layer < 2) {
             m.walk = footWalkGrid(m.map.layers[0], m.map.layers[1]);
             m.walkAir = airshipWalkGrid(m.map.layers[1]);
-            m.walkShip = shipWalkGrid(m.map.layers[0]);
           }
           m.tileChanges.push({ x: ev.x, y: ev.y });
         }
@@ -710,28 +710,33 @@ function groundBlocks(m: Model, x: number, y: number): boolean {
 }
 
 /**
- * A step's length (in `stepFrame` calls) for a walker with this body: half of 16 aboard an
- * Airship, which peers know by body 57 as 1.6's did.
+ * A step's length (in `stepFrame` calls) for a walker with this body: half of 16 aboard a flying
+ * vehicle (Classic's Airship, which peers know by body 57 as 1.6's did).
  */
 export function lenOf(body: number | null | undefined): number {
   return stepLengthFor(vehicleOfBody(body));
 }
 
 function walkWorld(m: Model): WalkWorld {
-  const vehicle = vehicleOfBody(m.self?.body);
-  if (vehicle === "Airship") {
-    // An Airship rider: its own grid, nothing blocks it.
+  const row = vehicleRow(vehicleOfBody(m.self?.body));
+  const layers = m.map?.layers;
+  const crosses = (x: number, y: number) =>
+    row !== null &&
+    layers !== undefined &&
+    vehicleCrossesAt(row, layers[0] ?? [], layers[1] ?? [], x, y);
+  if (row?.boards === "pad") {
+    // A flying rider (the Airship): its own tiles, nothing blocks it.
     return {
-      walkable: (x, y) => isWalkable(m.walkAir, x, y),
+      walkable: crosses,
       pcBlocked: () => false,
       itemBlocks: () => false,
       webAt: () => false,
     };
   }
-  // A ship blocks like a walker on its own grid, Airship riders aside (the server's rule).
-  const ship = vehicle !== null;
+  // A ship blocks like a walker on its own tiles, flying riders aside (the server's rule).
+  const ship = row !== null;
   return {
-    walkable: (x, y) => isWalkable(ship ? m.walkShip : m.walk, x, y),
+    walkable: (x, y) => (ship ? crosses(x, y) : isWalkable(m.walk, x, y)),
     itemBlocks: (x, y) => groundBlocks(m, x, y),
     // A Web exactly on my own tile; the server prints the line.
     webAt: (x, y) =>
@@ -745,8 +750,9 @@ function walkWorld(m: Model): WalkWorld {
       blockPCCheck(
         x,
         y,
-        [...m.peers.values()].filter((p) =>
-          ship ? vehicleOfBody(p.body) !== "Airship" : vehicleOfBody(p.body) === null,
+        [...m.peers.values()].filter(
+          // Every rider but a flying one blocks, as on the server.
+          (p) => !vehicleFlies(vehicleOfBody(p.body)),
         ),
         m.slotNames.map((name, i) => {
           const mon = m.monsters.get(i + 1);

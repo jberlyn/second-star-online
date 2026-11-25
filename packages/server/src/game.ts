@@ -79,15 +79,16 @@ import {
   SKILL_KEYS,
   type SkillValues,
   savedSpellbook,
-  shipWalkGrid,
   skillsFromKeys,
   sortFaction,
   startingCharacter,
   startingPowers,
   TEXT,
   TIMED_HUB_ACTIONS,
-  VEHICLE_BODY,
+  vehicleBody,
   vehicleOfItem,
+  vehicleRow,
+  vehicleRows,
 } from "@secondstaronline/shared";
 
 import { DEFAULT_SERVER_CONFIG, type ServerConfig } from "./config.ts";
@@ -563,10 +564,15 @@ export interface Game {
   readonly contentWorld: ContentWorld;
   /**
    * The content contract's checks that read the world, judged with the content installed now
-   * (issue #37): the point settings (start, fallback, jail) that cannot hold a player, and rider
-   * bodies a world takes out while vehicles are in use.
+   * (issue #37): the point settings (start, fallback, jail) that cannot hold a player.
    */
   contractPointProblems(): ContentProblem[];
+  /**
+   * The vehicles in use (issue #44), by the installed content's row names: how many characters
+   * ride each (online or saved) and how many are parked (loaded maps from memory, the rest from
+   * the database).
+   */
+  vehiclesInUse(): Map<string, { aboard: number; parked: number }>;
 }
 
 /**
@@ -2221,50 +2227,38 @@ export function createGame(deps: GameDeps): Game {
   };
 
   /** Server Settings window SAVE: the `settings` permission only; every changed value audited. */
+
   /**
-   * With no rider bodies the world has no vehicles: content may take them out only while nobody is
-   * aboard one (online or saved) and none stands parked, or those players would be drawn on foot
-   * while moving as a vehicle.
+   * Online riders of a vehicle no row has (issue #44: a release pack that dropped it, a database
+   * edit; a content write that takes out a ridden vehicle needs its removal's cleanup) land where
+   * they are, at the start of the tick after the change, so a publish's cleanup has run first.
+   * Logged as placed, as a removal's landing is, and saved with the vehicle write.
    */
-  const vehicleProblems = (): ContentProblem[] => {
-    if (content().bindings.bodies.riders !== undefined) {
-      return [];
-    }
-    const aboard = new Set(
-      db
-        .query<{ id: string }, []>("SELECT id FROM characters WHERE vehicle IS NOT NULL")
-        .all()
-        .map((r) => r.id),
-    );
+  const landStranded = () => {
     for (const o of world.players.values()) {
-      if (o.vehicle) {
-        aboard.add(o.id);
-      } else {
-        aboard.delete(o.id);
+      if (!o.vehicle || vehicleRow(o.vehicle)) {
+        continue;
       }
+      logActivity(world, o, "admin", {
+        item: o.vehicle,
+        details: { placed: -1, landed: "no such vehicle" },
+      });
+      o.vehicle = null;
+      o.hull = null;
+      o.spell.body = null;
+      o.vitalsDirty = true;
+      o.vehicleDirty = true;
+      o.invDirty = true;
+      o.forceYou = true;
+      const room = world.rooms.get(o.map.name);
+      deliver([
+        ...(room?.players ?? []).map((x) => ({
+          to: x.id,
+          msg: { t: "delta" as const, events: [{ e: "body" as const, id: o.id, body: null }] },
+        })),
+        { to: o.id, msg: { t: "vitals", vitals: vitalsView(o) } },
+      ]);
     }
-    const parked = new Set(
-      db
-        .query<{ id: string; item: string }, []>("SELECT id, item FROM ground_items")
-        .all()
-        .filter((g) => vehicleOfItem(g.item) !== null)
-        .map((g) => g.id),
-    );
-    for (const room of world.rooms.values()) {
-      for (const g of room.map.ground) {
-        if (vehicleOfItem(g.item) !== null) {
-          parked.add(g.id);
-        }
-      }
-    }
-    return aboard.size + parked.size === 0
-      ? []
-      : [
-          {
-            where: "bindings/bodies",
-            message: `the world has vehicles in use (${aboard.size} aboard, ${parked.size} parked), so it keeps its rider bodies (bodies.riders)`,
-          },
-        ];
   };
 
   const settingsSave = (p: Player, values: Record<string, unknown>) => {
@@ -3163,7 +3157,62 @@ export function createGame(deps: GameDeps): Game {
     },
     config,
     contentWorld,
-    contractPointProblems: () => [...pointProblems(settings, peekMap), ...vehicleProblems()],
+    contractPointProblems: () => pointProblems(settings, peekMap),
+    vehiclesInUse: () => {
+      const out = new Map<string, { aboard: number; parked: number }>();
+      const at = (name: string) => {
+        const row = vehicleRow(name);
+        if (!row) {
+          return null;
+        }
+        const e = out.get(row.name) ?? { aboard: 0, parked: 0 };
+        out.set(row.name, e);
+        return e;
+      };
+      const online = new Set(world.players.keys());
+      for (const r of db
+        .query<{ id: string; vehicle: string }, []>(
+          "SELECT id, vehicle FROM characters WHERE vehicle IS NOT NULL",
+        )
+        .all()) {
+        if (!online.has(r.id)) {
+          const e = at(r.vehicle);
+          if (e) {
+            e.aboard += 1;
+          }
+        }
+      }
+      for (const o of world.players.values()) {
+        const e = o.vehicle ? at(o.vehicle) : null;
+        if (e) {
+          e.aboard += 1;
+        }
+      }
+      const loaded = [...mapCache.values()].filter((m): m is WorldMap => !!m);
+      const loadedIds = new Set(loaded.map((m) => m.id));
+      const parked = (item: string) => {
+        const v = vehicleOfItem(item);
+        const e = v ? at(v) : null;
+        if (e) {
+          e.parked += 1;
+        }
+      };
+      for (const g of db
+        .query<{ map_id: string; item: string }, []>(
+          "SELECT map_id, item FROM ground_items WHERE item LIKE '%''s %'",
+        )
+        .all()) {
+        if (!loadedIds.has(g.map_id)) {
+          parked(g.item);
+        }
+      }
+      for (const m of loaded) {
+        for (const g of m.ground) {
+          parked(g.item);
+        }
+      }
+      return out;
+    },
 
     async login(name, password, ip = "") {
       if (publishLock) {
@@ -3376,6 +3425,9 @@ export function createGame(deps: GameDeps): Game {
           ({ map, x, y } = to);
         }
       }
+      // A vehicle no row has (since removed) rides as nothing: the rider comes back on foot where
+      // they were (issue #44).
+      const vehicle = vehicleRow(c.vehicle) ? c.vehicle : null;
       const p: Player = {
         id: c.id,
         accountId: c.accountId,
@@ -3389,10 +3441,10 @@ export function createGame(deps: GameDeps): Game {
         // new and loaded characters alike. A resumed session keeps its facing.
         facing: resumed ? c.position.facing : "S",
         stepFrames: 0,
-        vehicle: c.vehicle,
-        // A saved hull above the vehicle's full hull (lowered on the Balance page while the rider
-        // was away) comes back at the full hull (issue #19).
-        hull: c.vehicle ? Math.min(c.hull ?? hullMax(c.vehicle), hullMax(c.vehicle)) : null,
+        vehicle,
+        // A saved hull above the vehicle's full hull (lowered while the rider was away) comes back
+        // at the full hull (issue #19).
+        hull: vehicle ? Math.min(c.hull ?? hullMax(vehicle), hullMax(vehicle)) : null,
         held: null,
         heldTurn: false,
         pending: null,
@@ -3430,7 +3482,7 @@ export function createGame(deps: GameDeps): Game {
         ip,
         spell: {
           ...newSpellState(loadSpellbook(db, c.id)),
-          body: c.vehicle ? VEHICLE_BODY[c.vehicle] : null,
+          body: vehicle ? vehicleBody(vehicle) : null,
         },
       };
       // XP held to the current content (a curve change, a model switch while offline).
@@ -3438,6 +3490,16 @@ export function createGame(deps: GameDeps): Game {
       p.jailUntil = jailUntil;
       p.muteUntil = muteUntil;
       p.ignore = loadIgnores(db, c.accountId);
+      if (c.vehicle && !vehicle) {
+        // Landed where they were: the vehicle is gone with its row, logged as an admin change
+        // (placed, so the carried-items ledger is untouched) and saved with the next write.
+        logActivity(world, p, "admin", {
+          item: c.vehicle,
+          details: { placed: -1, landed: "no such vehicle" },
+        });
+        p.vehicleDirty = true;
+        p.invDirty = true;
+      }
       p.buddies = loadBuddies(db, c.accountId);
       const prefRec = loadAccountPreferencesRecord(db, c.accountId);
       p.prefs = prefRec.prefs;
@@ -4170,6 +4232,7 @@ export function createGame(deps: GameDeps): Game {
     },
 
     tick() {
+      landStranded();
       const r = tick(world, tickDeps);
       deliver(r.out);
       // A new minute turns everyone's placed Clocks.
@@ -4262,7 +4325,7 @@ export function createGame(deps: GameDeps): Game {
       const bodiesWere = boundBodies;
       boundBodies = content().bindings.bodies;
       const special = new Set([
-        ...Object.values(boundBodies.riders ?? {}),
+        ...vehicleRows().map((v) => v.rider),
         ...(boundBodies.tree === undefined ? [] : [boundBodies.tree]),
         ...(boundBodies.smoke === undefined ? [] : [boundBodies.smoke]),
       ]);
@@ -4271,7 +4334,8 @@ export function createGame(deps: GameDeps): Game {
         const body = o.spell.body;
         let next = body;
         if (o.vehicle) {
-          next = VEHICLE_BODY[o.vehicle];
+          // A vehicle no row has rides as nothing: its rider shows their own body.
+          next = vehicleRow(o.vehicle) ? vehicleBody(o.vehicle) : null;
         } else if (body !== null && body === bodiesWere.tree) {
           next = boundBodies.tree ?? null;
         } else if (body !== null && body === bodiesWere.smoke) {
@@ -4299,7 +4363,6 @@ export function createGame(deps: GameDeps): Game {
         }
         m.walk = footWalkGrid(m.layers[0], m.layers[1]);
         m.walkAir = airshipWalkGrid(m.layers[1]);
-        m.walkShip = shipWalkGrid(m.layers[0]);
       }
       // Every client is told the new store, then gets its inventory and the ground items around it
       // again (their art may have changed); the client holds them until the new store is in. During
@@ -4336,7 +4399,9 @@ export function createGame(deps: GameDeps): Game {
         // out of any room, included): a lowered full hull takes the hull down with it, and the
         // hull bar is sent again whatever changed, so it shows the new full hull too. The
         // publish's snapshot keeps the hull, so a publish that rolls back puts it back (issue #19).
-        if (o.vehicle && o.hull !== null) {
+        // A vehicle no row has (one this publish removes, which its cleanup lands or switches)
+        // keeps its hull.
+        if (o.vehicle && o.hull !== null && vehicleRow(o.vehicle)) {
           o.hull = Math.min(o.hull, hullMax(o.vehicle));
           out.push({ to: o.id, msg: { t: "vitals", vitals: vitalsView(o) } });
         }

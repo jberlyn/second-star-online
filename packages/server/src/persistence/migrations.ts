@@ -7,6 +7,7 @@ import { join } from "node:path";
 import type { Db } from "./database.ts";
 import { churchMapSql, jailMapSql, seedMapSql } from "./seed-map.ts";
 import { splitSqlStatements } from "./sql-split.ts";
+import { moveVehicleContent } from "./vehicle-content.ts";
 
 /** `YYYYMMDD_NN_<name>.sql` */
 export const MIGRATION_FILE_PATTERN = /^\d{8}_\d{2}_[\w-]+\.sql$/;
@@ -20,6 +21,8 @@ export const MIGRATIONS_DIR = join(import.meta.dir, "..", "..", "migrations");
 export interface Migration {
   name: string;
   sql: string;
+  /** Code that runs after the SQL, in the same transaction (a move SQL cannot express). */
+  code?: (db: Db) => void;
 }
 
 export interface MigrationResult {
@@ -44,6 +47,9 @@ export function loadMigrations(dir: string = MIGRATIONS_DIR): Migration[] {
       }
       if (dir === MIGRATIONS_DIR && name === "20261115_28_church_map.sql") {
         return { name, sql: `${sql}\n${churchMapSql()}\n` };
+      }
+      if (dir === MIGRATIONS_DIR && name === "20261125_73_vehicles_as_content.sql") {
+        return { name, sql, code: moveVehicleContent };
       }
       return { name, sql: seed ? `${sql}\n${seedMapSql()}\n` : sql };
     });
@@ -97,6 +103,7 @@ export function runMigrations(db: Db, migrations: readonly Migration[]): Migrati
             );
           }
         }
+        m.code?.(db);
         if (rebuild) {
           const broken = [...violations()].filter((v) => !before.has(v));
           if (broken.length > 0) {

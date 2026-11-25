@@ -10,7 +10,8 @@
  * - Layer 2, on foot (no boat or airship flag): the same test. The do-not-block list
  *   (M5 Q5 … Q7) only changes the overlay; both branches block alike.
  *
- * The Airship grid is `airshipWalkGrid` and the ships' is `shipWalkGrid`. Not yet ported (later
+ * The `airshipBlock` grid is `airshipWalkGrid`; each vehicle's own is `vehicleWalkGrid`
+ * (rules/vehicles/rows.ts, issue #44). Not yet ported (later
  * slices): the minute-dependent skull swap 9C-9F → Sk11-Sk24, and the monster and sea-creature
  * grids.
  */
@@ -83,8 +84,9 @@ onContent(() => {
 });
 
 /**
- * Walk grid for a player aboard an Airship: blocked only where the map data row, layer 2, holds one
- * of `AIRSHIP_BLOCK`. Water, walls and trees do not stop it. Same shape as `footWalkGrid`.
+ * The `airshipBlock` grid: blocked only where the map data row, layer 2, holds one of
+ * `AIRSHIP_BLOCK`. Water, walls and trees do not stop it. Classic's Airship crosses exactly this
+ * grid, and a cannon shot stops where it is blocked. Same shape as `footWalkGrid`.
  */
 export function airshipWalkGrid(layer2: readonly string[]): boolean[][] {
   const grid: boolean[][] = [];
@@ -94,26 +96,6 @@ export function airshipWalkGrid(layer2: readonly string[]): boolean[][] {
     for (let x = 1; x <= MAP_WIDTH; x++) {
       const code = lingoWord(line, x);
       row.push(!tileHas(code, "airshipBlock"));
-    }
-    grid.push(row);
-  }
-  return grid;
-}
-
-/**
- * Walk grid for a player aboard a Boat or Battleship: layer 1 must be sea water (W1 N1 D2 I2 V2,
- * the tiles flagged `sea`). Layer 2 is not read, as for sea monsters and 1.6's boat build check: the
- * shoreline art (Q6, T7, P7, B7 and the like) is drawn on layer 2 over the water beside the land,
- * and a ship must be able to sail there to reach the shore. 1.6 named a water grid but never built
- * it, so its ships would have sailed over land (an SSO addition). Same shape as `footWalkGrid`.
- */
-export function shipWalkGrid(layer1: readonly string[]): boolean[][] {
-  const grid: boolean[][] = [];
-  for (let y = 1; y <= MAP_HEIGHT; y++) {
-    const row: boolean[] = [];
-    const line1 = layer1[y - 1] ?? "";
-    for (let x = 1; x <= MAP_WIDTH; x++) {
-      row.push(tileHas(lingoWord(line1, x), "sea"));
     }
     grid.push(row);
   }

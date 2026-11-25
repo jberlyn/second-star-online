@@ -17,6 +17,18 @@ const _flagCheck: Record<DataTileFlag, TileFlag> = {
 } satisfies Record<TileFlag, DataTileFlag>;
 void _flagCheck;
 
+/**
+ * The layer each flag's tiles live on (`tiles.ts` schema): a vehicle's tile sets read a flag there
+ * (issue #44).
+ */
+export const FLAG_LAYER: Readonly<Record<TileFlag, 1 | 2>> = {
+  sea: 1,
+  airshipBlock: 2,
+  dock: 1,
+  arena: 1,
+  grave: 2,
+};
+
 const noFlags = <T>(make: () => T): Record<TileFlag, T> => ({
   sea: make(),
   airshipBlock: make(),

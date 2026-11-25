@@ -14,6 +14,7 @@ import {
   crystalPile,
   displayName,
   findNewQuest,
+  hullMax,
   isCrystal,
   isGoldName,
   isUniqueContainer,
@@ -26,7 +27,10 @@ import {
   storedCopyAs,
   storedCopyOf,
   storedCount,
+  vehicleBody,
   vehicleOfItem,
+  vehicleRow,
+  vehicleSails,
 } from "@secondstaronline/shared";
 
 import { type EntryKind, npcTextCleaned, shopStockOf } from "../../content/cleanup.ts";
@@ -41,6 +45,7 @@ import {
   groundView,
   type Outgoing,
   type Player,
+  vitalsView,
   type World,
   type WorldMap,
 } from "../world/world.ts";
@@ -78,6 +83,19 @@ export interface ContentWorldStore {
     skip: readonly string[],
   ): { id: string; item: string; qty: number; map: string }[];
   deleteGround(id: string): void;
+  /** A parked vehicle become another or its deed, with what no longer applies cleared (#44). */
+  reparkGround(
+    id: string,
+    item: string,
+    clear: { owner: boolean; hull: boolean; facing: boolean },
+  ): void;
+  /** Characters not in `skip` riding a vehicle, or any vehicle (null): issue #44. */
+  riders(
+    vehicle: string | null,
+    skip: readonly string[],
+  ): { id: string; accountId: string; name: string; vehicle: string; hull: number | null }[];
+  /** Puts a character aboard another vehicle, or on foot (null), where they are. */
+  setRider(id: string, vehicle: string | null, hull: number | null): void;
   renameGround(id: string, item: string, qty: number): void;
   rosterSlots(
     skip: readonly string[],
@@ -112,6 +130,12 @@ export interface ContentWorldDeps {
   /** An NPC's shop ledger: in memory, or loaded from the database (null: its file's state). */
   ledgerOf(npc: string): ShopLedger | null;
 }
+
+/** A ground item gone, for one client. */
+const gdel = (to: string, id: string): Outgoing => ({
+  to,
+  msg: { t: "delta", events: [{ e: "gdel", id }] },
+});
 
 /** A tally of one kind of place: copies and who holds them. */
 class Tally {
@@ -238,8 +262,11 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
       // wear it.
       body: p.spell.body,
       smokeBomb: p.spell.smokeBomb,
-      // A publish that lowers a vehicle's full hull takes riders' hulls down with it.
+      // A publish that lowers a vehicle's full hull takes riders' hulls down with it, and a
+      // vehicle's removal lands its riders or switches them (issue #44).
       hull: p.hull,
+      vehicle: p.vehicle,
+      vehicleDirty: p.vehicleDirty,
     }));
     // Writing the touched players flushes every pending save; a rollback undoes those writes, so
     // what was pending is pending again.
@@ -291,6 +318,8 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
         s.p.spell.body = s.body;
         s.p.spell.smokeBomb = s.smokeBomb;
         s.p.hull = s.hull;
+        s.p.vehicle = s.vehicle;
+        s.p.vehicleDirty = s.vehicleDirty;
         s.p.invDirty = true;
         s.p.lookDirty = true;
       }
@@ -879,6 +908,183 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
     return lines;
   }
 
+  /** Whether a ground name is a parked `key` (`<owner>'s <key>`, case ignored). */
+  const parkedAs = (key: string) => {
+    const end = `'s ${key}`.toLowerCase();
+    return (item: string) => {
+      const l = item.toLowerCase();
+      return l.length > end.length && l.endsWith(end);
+    };
+  };
+
+  /** Where a vehicle is ridden and parked (issue #44). */
+  function vehicleUsage(key: string): UsagePlace[] {
+    const aboard = new Tally();
+    const parked = new Tally();
+    const is = parkedAs(key);
+    for (const p of world.players.values()) {
+      if (p.vehicle && lingoEq(p.vehicle, key)) {
+        aboard.add(p.name, 1);
+      }
+    }
+    for (const r of store.riders(key, online())) {
+      aboard.add(r.name, 1);
+    }
+    for (const m of deps.loadedMaps()) {
+      for (const g of m.ground) {
+        if (is(g.item)) {
+          parked.add(m.name, 1);
+        }
+      }
+    }
+    for (const g of store.groundItems([`'s ${key}`], loaded())) {
+      if (is(g.item)) {
+        parked.add(g.map, 1);
+      }
+    }
+    return [aboard.place("aboard"), parked.place("parked")].filter(
+      (p): p is UsagePlace => p !== null,
+    );
+  }
+
+  /**
+   * A vehicle's removal (issue #44): riders land where they are (on foot, the vehicle gone) and
+   * parked ones become their deed where they stand, or both switch to another vehicle. Each is
+   * logged as an admin change, so the item reconciliation (issue #35) sees no unlogged difference.
+   */
+  function applyVehicle(
+    a: Extract<WorldAction, { kind: "vehicle" }>,
+    actor: ContentActor,
+    publishId: string,
+  ): string[] {
+    const details = { content: a.riders, publish: publishId, by: actor.name };
+    const to = a.riders === "switch" ? a.replacement : null;
+    const is = parkedAs(a.key);
+    let riders = 0;
+    for (const p of world.players.values()) {
+      if (!p.vehicle || !lingoEq(p.vehicle, a.key)) {
+        continue;
+      }
+      riders += 1;
+      // A vehicle is not carried: it is logged as placed (-1 gone, +1 made), so the rider's
+      // carried-items ledger is not moved and their holdings check finds nothing unlogged.
+      logActivity(world, p, "admin", { item: a.key, details: { ...details, placed: -1 } });
+      p.vehicle = to;
+      if (to) {
+        logActivity(world, p, "admin", { item: to, details: { ...details, placed: 1 } });
+        p.hull = Math.min(p.hull ?? hullMax(to), hullMax(to));
+        p.spell.body = vehicleBody(to);
+      } else {
+        p.hull = null;
+        p.spell.body = null;
+      }
+      const room = world.rooms.get(p.map.name);
+      send(
+        (room?.players ?? []).map((o) => ({
+          to: o.id,
+          msg: {
+            t: "delta" as const,
+            events: [{ e: "body" as const, id: p.id, body: p.spell.body }],
+          },
+        })),
+      );
+      send([{ to: p.id, msg: { t: "vitals", vitals: vitalsView(p) } }]);
+      p.vitalsDirty = true;
+      p.vehicleDirty = true;
+      p.invDirty = true;
+      p.forceYou = true;
+      touchedAll.add(p);
+    }
+    for (const r of store.riders(a.key, online())) {
+      riders += 1;
+      const who = { id: r.id, accountId: r.accountId, name: r.name };
+      logActivity(world, who, "admin", { item: a.key, details: { ...details, placed: -1 } });
+      store.setRider(r.id, to, to ? Math.min(r.hull ?? hullMax(to), hullMax(to)) : null);
+      if (to) {
+        logActivity(world, who, "admin", { item: to, details: { ...details, placed: 1 } });
+      }
+    }
+    /** What a parked one becomes: the replacement parked, its deed, or nothing. */
+    const next = (item: string): string | null =>
+      to ? `${item.slice(0, item.length - a.key.length)}${to}` : a.deed;
+    let parked = 0;
+    for (const m of deps.loadedMaps()) {
+      const room = world.rooms.get(m.name);
+      const out: Outgoing[] = [];
+      for (const g of [...m.ground]) {
+        if (!is(g.item)) {
+          continue;
+        }
+        parked += 1;
+        const at = { map: m.name, x: g.x, y: g.y };
+        logWorld(world, "admin", a.key, -1, { at, details });
+        const item = next(g.item);
+        if (item === null) {
+          m.ground.splice(m.ground.indexOf(g), 1);
+          world.groundLog.push({ mapId: m.id, del: g.id });
+          out.push(...(room?.players ?? []).map((o) => gdel(o.id, g.id)));
+          continue;
+        }
+        logWorld(world, "admin", to ?? item, 1, { at, details });
+        g.item = item;
+        if (!to) {
+          // A deed is an ordinary item on the ground: no owner, hull or mooring.
+          delete g.ownerId;
+          delete g.hull;
+          delete g.parkedAt;
+          delete g.facing;
+        } else if (!vehicleSails(to)) {
+          // Only a ship keeps a mooring.
+          delete g.facing;
+        }
+        world.groundLog.push({ mapId: m.id, del: g.id }, { mapId: m.id, add: g });
+        for (const o of room?.players ?? []) {
+          out.push(gdel(o.id, g.id), {
+            to: o.id,
+            msg: { t: "delta", events: [{ e: "gadd", item: groundView(g) }] },
+          });
+        }
+      }
+      send(out);
+    }
+    for (const g of store.groundItems([`'s ${a.key}`], loaded())) {
+      if (!is(g.item)) {
+        continue;
+      }
+      parked += 1;
+      logWorld(world, "admin", a.key, -1, { details });
+      const item = next(g.item);
+      if (item === null) {
+        store.deleteGround(g.id);
+      } else {
+        logWorld(world, "admin", to ?? item, 1, { details });
+        store.reparkGround(g.id, item, {
+          owner: !to,
+          hull: !to,
+          facing: !to || !vehicleSails(to),
+        });
+      }
+    }
+    const lines: string[] = [];
+    if (riders > 0) {
+      lines.push(
+        to
+          ? `${riders} ${riders === 1 ? "rider rides" : "riders ride"} ${to} instead of ${a.key}`
+          : `${riders} ${riders === 1 ? "rider" : "riders"} of ${a.key} landed where they were`,
+      );
+    }
+    if (parked > 0) {
+      lines.push(
+        to
+          ? `${parked} parked ${a.key} became ${to}`
+          : a.deed
+            ? `${parked} parked ${a.key} became ${a.deed}`
+            : `${parked} parked ${a.key} deleted`,
+      );
+    }
+    return lines;
+  }
+
   function applyMonster(a: Extract<WorldAction, { kind: "monster" }>): string[] {
     let spawns = 0;
     let gone = 0;
@@ -1022,6 +1228,28 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
         message: `"${e.name}" is not an item: held by ${holders.slice(0, 5).join(", ")}${holders.length > 5 ? ` and ${holders.length - 5} more` : ""}. It shows by its name with no picture, and does nothing.`,
       });
     }
+    // Riders of a vehicle no row has (since removed): they ride as nothing, and land at their
+    // next login (issue #44).
+    const stranded = new Map<string, string[]>();
+    const strand = (vehicle: string, who: string) => {
+      if (!vehicleRow(vehicle)) {
+        stranded.set(vehicle, [...(stranded.get(vehicle) ?? []), who]);
+      }
+    };
+    for (const p of world.players.values()) {
+      if (p.vehicle) {
+        strand(p.vehicle, p.name);
+      }
+    }
+    for (const r of store.riders(null, online())) {
+      strand(r.vehicle, r.name);
+    }
+    for (const [vehicle, who] of stranded) {
+      out.push({
+        where: "world/riders",
+        message: `"${vehicle}" is not a vehicle: ridden by ${who.slice(0, 5).join(", ")}${who.length > 5 ? ` and ${who.length - 5} more` : ""}. They ride as nothing and land where they are when they next log in.`,
+      });
+    }
     // Player shops selling or buying something no catalogue has (left by a database edit).
     for (const ps of world.playerShops.values()) {
       const f = shopText(ps.npc);
@@ -1091,7 +1319,11 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
       return out;
     },
     usage(kind: EntryKind, spellings: readonly string[]) {
-      return kind === "item" ? itemUsage(spellings) : monsterUsage(spellings[0] ?? "");
+      return kind === "item"
+        ? itemUsage(spellings)
+        : kind === "vehicle"
+          ? vehicleUsage(spellings[0] ?? "")
+          : monsterUsage(spellings[0] ?? "");
     },
     holders(spellings: readonly string[]) {
       return itemPlaces(spellings).characters;
@@ -1114,7 +1346,13 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
       touchedAll = new Set();
       const lines: string[] = [];
       for (const a of actions) {
-        lines.push(...(a.kind === "item" ? applyItem(a, actor, publishId) : applyMonster(a)));
+        lines.push(
+          ...(a.kind === "item"
+            ? applyItem(a, actor, publishId)
+            : a.kind === "vehicle"
+              ? applyVehicle(a, actor, publishId)
+              : applyMonster(a)),
+        );
       }
       // Written with the publish, so a crash before the next save cannot leave the new content
       // with the old copies.

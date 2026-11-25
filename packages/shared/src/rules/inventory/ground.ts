@@ -15,6 +15,7 @@ import { switchState } from "../housing/doors.ts";
 import { isFurniture } from "../housing/houses.ts";
 import { isNewspaperStand } from "../mail/newspaper.ts";
 import { FACING_DELTA, type Facing } from "../movement/movement.ts";
+import { vehicleOfItem, vehicleRow } from "../vehicles/rows.ts";
 import { hasBehaviour, isCabinet } from "./behaviours.ts";
 import {
   crystalColour,
@@ -58,7 +59,8 @@ export function blocksPlayer(
   who: { level: number; skills: readonly number[] },
 ): boolean {
   const base = groundName(name);
-  if (anyMatch(G.blocks, base)) {
+  // A parked vehicle stands in the way, whatever `ground.blocks` says (issue #44).
+  if (anyMatch(G.blocks, base) || vehicleOfItem(base) !== null) {
     return true;
   }
   return G.platforms.some(
@@ -73,7 +75,8 @@ export function blocksPlayer(
  * newspapers stop monsters too (1.6 left those two off the monsters' list).
  */
 export function blocksMonster(name: string): boolean {
-  return anyMatch(G.blocks, groundName(name));
+  const base = groundName(name);
+  return anyMatch(G.blocks, base) || vehicleOfItem(base) !== null;
 }
 
 /**
@@ -114,9 +117,6 @@ const PICTURES: readonly [string | ((name: string) => boolean), string][] = [
   ["'s House Vault", "HouseVaultPic"],
   ["'s Guild Vault", "GuildVaultPic"],
   ["'s Board", "MessageBoardPic"],
-  ["'s Boat", "BoatPic"],
-  ["'s Airship", "AirshipPic"],
-  ["'s Battleship", "BattleshipPic"],
 ];
 
 /**
@@ -191,6 +191,12 @@ export function groundPicture(name: string): string {
     if (typeof part === "string" ? lingoContains(name, part) : part(name)) {
       pic = picture;
     }
+  }
+  // A parked vehicle shows its row's picture (issue #44; Classic's BoatPic, AirshipPic,
+  // BattleshipPic).
+  const parked = vehicleRow(vehicleOfItem(name));
+  if (parked) {
+    pic = parked.picture;
   }
   // A crystal, or a pile of them (`5 Blue Crystal`), by its whole name.
   const colour = crystalColour(crystalPile(name)?.item ?? name);
@@ -368,9 +374,7 @@ function fixtureGate(name: string): PickupGate | null {
     case "houseVault":
     case "guildVault":
       return { kind: "open" };
-    case "airship":
-    case "boat":
-    case "battleship":
+    case "vehicle":
       return { kind: "vehicle" };
     default:
       return null;
