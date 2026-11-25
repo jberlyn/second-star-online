@@ -9,6 +9,7 @@
 import {
   CHAT_COLOR,
   chatRefusal,
+  lingoEq,
   MAIL_TEXT,
   type MailOpen,
   mailOpenCheck,
@@ -78,6 +79,7 @@ export function mailOpen(
   p.keyLock = true;
   p.mailList = true;
   p.mailUi = true;
+  p.mailBox = { map: p.map.name, x: box.x, y: box.y };
   return [chat(p, MAIL_TEXT.checking), listFor(p, store, true)];
 }
 
@@ -95,6 +97,7 @@ export function mailUiIntent(p: Player, act: "close" | "reply" | "composeClose")
   if (act === "close") {
     p.mailList = false;
     p.mailUi = false;
+    p.mailBox = null;
   }
   p.keyLock = p.mailList;
 }
@@ -159,4 +162,28 @@ export function mailSend(
 /** DELETE: the player's own message; another's id matches nothing. */
 export function mailDelete(p: Player, id: number, store: MailStore): void {
   store.remove(p.id, id);
+}
+
+/** Ends `p`'s mailbox session: the server refuses SEND again and the client's mail screen closes. */
+export function closeMail(p: Player): Outgoing[] {
+  p.mailUi = false;
+  p.mailList = false;
+  p.mailBox = null;
+  p.keyLock = false;
+  return [{ to: p.id, msg: { t: "mailClosed" } }];
+}
+
+/**
+ * The mailbox sessions opened at `box` on `map` (a demolished or transferred house's mailbox)
+ * end.
+ */
+export function closeMailAt(world: World, map: string, box: { x: number; y: number }): Outgoing[] {
+  const out: Outgoing[] = [];
+  for (const p of world.players.values()) {
+    const at = p.mailBox;
+    if (p.mailUi && at && lingoEq(at.map, map) && at.x === box.x && at.y === box.y) {
+      out.push(...closeMail(p));
+    }
+  }
+  return out;
 }

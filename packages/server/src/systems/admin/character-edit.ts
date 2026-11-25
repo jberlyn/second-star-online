@@ -18,6 +18,7 @@
  * I/O goes through `EditDeps`, wired in game.ts.
  */
 import {
+  type CharacterEditKind,
   deriveEdit,
   diffEdit,
   EDIT_FIELDS,
@@ -268,7 +269,12 @@ export function prepareUndo(
   world: World,
   req: {
     name: string;
-    edit: { characterId: string; changes: EditChange[]; undoneBy: string | null } | null;
+    edit: {
+      characterId: string;
+      changes: EditChange[];
+      undoneBy: string | null;
+      kind?: CharacterEditKind;
+    } | null;
   },
   deps: EditDeps,
 ): Prepared {
@@ -276,6 +282,10 @@ export function prepareUndo(
   const e = req.edit;
   if (!target || !e || e.characterId !== target.characterId) {
     return { ok: false, text: EDIT_TEXT.noEdit };
+  }
+  // A house revoke or transfer (issue #36) is in the same log but is never undone from it.
+  if (e.kind !== undefined && e.kind !== "edit") {
+    return { ok: false, text: EDIT_TEXT.noUndoHouse };
   }
   if (e.undoneBy !== null) {
     return { ok: false, text: EDIT_TEXT.alreadyUndone };

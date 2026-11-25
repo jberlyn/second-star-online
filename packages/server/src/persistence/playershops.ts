@@ -42,3 +42,8 @@ export function deletePlayerShops(db: Db, interior: string): string[] {
   }
   return names;
 }
+
+/** A shop handed to a new owner with its house (issue #36): its stock and till stay its own. */
+export function setPlayerShopOwner(db: Db, npc: string, ownerId: string): void {
+  db.query("UPDATE player_shops SET owner_id = ? WHERE npc = ?").run(ownerId, npc);
+}

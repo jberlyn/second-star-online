@@ -37,6 +37,8 @@ import {
   findSkillIndex,
   footWalkGrid,
   goldPileName,
+  HOUSE_ADMIN_TEXT,
+  type HousePreview,
   HUB_EDITS,
   HUB_TEXT,
   hubArgs,
@@ -197,6 +199,7 @@ import {
   saveMapExits,
   saveMapLayers,
   saveMapTitle,
+  saveMapTitleAndSigns,
 } from "./persistence/maps.ts";
 import {
   accountAddresses,
@@ -220,7 +223,12 @@ import {
 import { loadSlots, saveSlots } from "./persistence/monsters.ts";
 import { loadNewspaper, saveNewspaper } from "./persistence/newspapers.ts";
 import { insertNpcFileVersion, loadNpcFiles, saveNpcFile } from "./persistence/npcfiles.ts";
-import { deletePlayerShops, insertPlayerShop, loadPlayerShops } from "./persistence/playershops.ts";
+import {
+  deletePlayerShops,
+  insertPlayerShop,
+  loadPlayerShops,
+  setPlayerShopOwner,
+} from "./persistence/playershops.ts";
 import { loadAccountPreferencesRecord, saveAccountPreferences } from "./persistence/preferences.ts";
 import {
   activityFlows,
@@ -289,6 +297,16 @@ import {
 import { createContentWorld } from "./systems/admin/content-world.ts";
 import { openControlPanel } from "./systems/admin/control-panel.ts";
 import {
+  type HouseAdminDeps,
+  housePreview,
+  houseSnapshot,
+  hubHouses,
+  moveOut,
+  ownedHouse,
+  previewSummary,
+  transferHouse,
+} from "./systems/admin/house-admin.ts";
+import {
   allowCreate,
   allowLoginFromIp,
   allowLoginToAccount,
@@ -316,6 +334,7 @@ import {
   bjHit,
   bjLeave,
   bjStand,
+  closeTablesOn,
   refundHolds,
   savedGold,
   tablePlayers,
@@ -351,6 +370,7 @@ import { withdrawVault } from "./systems/economy/vault.ts";
 import {
   demolish,
   type HouseDeps,
+  houseVaultOf,
   monthCheck,
   placeCancel,
   placeHouseIntent,
@@ -570,6 +590,9 @@ const EDITOR_INTENTS = new Set([
   "characterModerate",
   "characterEdit",
   "characterUndo",
+  "characterHousePreview",
+  "characterHouseRevoke",
+  "characterHouseTransfer",
   ...CONTENT_INTENTS,
   // The NPCs page (issue #32).
   "contentNpcs",
@@ -624,6 +647,10 @@ const ADMIN_INTENTS: Readonly<Record<string, { permission: Permission; reason: s
   characterModerate: { permission: "characterView", reason: "Attempted Admin Access" },
   characterEdit: { permission: "characterEditor", reason: "Attempted Admin Access" },
   characterUndo: { permission: "characterEditor", reason: "Attempted Admin Access" },
+  // The hub's houses (issue #36): the preview is a read, the changes the editor's.
+  characterHousePreview: { permission: "characterView", reason: "Attempted Admin Access" },
+  characterHouseRevoke: { permission: "characterEditor", reason: "Attempted Admin Access" },
+  characterHouseTransfer: { permission: "characterEditor", reason: "Attempted Admin Access" },
   // The Content page (issue #27).
   ...Object.fromEntries(
     CONTENT_INTENTS.map((t) => [
@@ -802,6 +829,13 @@ export function createGame(deps: GameDeps): Game {
     }
   };
   /** The transaction that wrote them committed: they leave the buffers. */
+  /**
+   * What an intent holds back until its transaction commits (a house revoke or transfer, issue
+   * #36): sent after the commit, dropped with a rollback.
+   */
+  const afterCommit: Outgoing[] = [];
+  /** What puts an intent's memory changes back if its transaction rolls back (`houseChange`). */
+  const rollbacks: (() => void)[] = [];
   const commitLogs = () => {
     world.chatLog.splice(0, chatWritten);
     world.activity.splice(0, activityWritten);
@@ -1592,6 +1626,12 @@ export function createGame(deps: GameDeps): Game {
   chatDeps.admin = adminDeps;
 
   // ---- the player hub (issue #26) ----------------------------------------------------------------
+  const houseAdminDeps: HouseAdminDeps = {
+    loadMap,
+    shopLedger: (npc) => shopLedger(npc),
+    guildOf: (id) => world.players.get(id)?.guild ?? loadCharacterGuild(db, id),
+    casino: casinoDeps,
+  };
   const hubDeps: HubDeps = {
     findCharacter: adminDeps.findCharacter,
     search: (query) => searchCharacters(db, query, CHARACTER_SEARCH_LIMIT),
@@ -1610,6 +1650,7 @@ export function createGame(deps: GameDeps): Game {
     addresses: (accountId) => accountAddresses(db, accountId),
     ipBan: (key) => ipBan(db, key),
     mapName: (id) => findMapById(db, id)?.name ?? id,
+    houses: (id) => hubHouses(world, id, houseAdminDeps),
     now: isoNow,
   };
 
@@ -1859,6 +1900,324 @@ export function createGame(deps: GameDeps): Game {
     }
     applyEdit(p, r.edit, reason, msg.id);
     result(true, EDIT_TEXT.undone(r.edit.target.name));
+  };
+
+  // ---- the hub's houses (issue #36) --------------------------------------------------------------
+  /** A hub house intent's character and (for a transfer) the new owner, or why there is none. */
+  const houseParties = (
+    name: string,
+    to: string | null,
+  ):
+    | {
+        ok: true;
+        owner: { characterId: string; name: string };
+        to: { characterId: string; name: string } | null;
+      }
+    | { ok: false; text: string } => {
+    const o = adminDeps.findCharacter(name.trim());
+    if (!o) {
+      return { ok: false, text: HUB_TEXT.notFound(name.trim()) };
+    }
+    const owner = { characterId: o.characterId, name: o.name };
+    if (to === null) {
+      return { ok: true, owner, to: null };
+    }
+    const t = adminDeps.findCharacter(to.trim());
+    return t
+      ? { ok: true, owner, to: { characterId: t.characterId, name: t.name } }
+      : { ok: false, text: HOUSE_ADMIN_TEXT.noTarget(to.trim()) };
+  };
+
+  const characterHousePreview = (
+    p: Player,
+    msg: Extract<InGameMsg, { t: "characterHousePreview" }>,
+  ) => {
+    const answer = (preview: HousePreview | null, error?: string) =>
+      send(p.id, {
+        t: "characterHousePreview",
+        seq: msg.seq,
+        preview,
+        ...(error === undefined ? {} : { error }),
+      });
+    const who = houseParties(msg.name, msg.action === "transfer" ? msg.to : null);
+    if (!who.ok) {
+      answer(null, who.text);
+      return;
+    }
+    const r = housePreview(world, who.owner, msg.interior, msg.action, who.to, houseAdminDeps);
+    if (r.ok) {
+      answer(r.preview);
+    } else {
+      answer(null, r.text);
+    }
+  };
+
+  /**
+   * Runs a house revoke or transfer's changes (issue #36). What it sends waits for the intent's
+   * transaction to commit (`afterCommit`). If the intent fails, from a write here or anything after
+   * it, the memory it changed is put back (`houseSnapshot`) and anyone it moved is taken off the map
+   * to reload from the database, as a failed edit's target is.
+   */
+  const houseChange = (
+    snapshot: () => void,
+    moved: () => readonly Player[],
+    change: (later: (out: readonly Outgoing[]) => void) => void,
+  ) => {
+    const mark = world.activity.length;
+    // Run by the intent's catch, so a failure after this returns (the activity flush, the
+    // commit) puts memory back too.
+    rollbacks.push(() => {
+      snapshot();
+      for (const o of moved()) {
+        dropActivity(o.id, mark);
+        deps.kick?.(o.id, TEXT.serverError);
+        if (world.players.has(o.id)) {
+          evict(o.id);
+        }
+      }
+    });
+    change((out) => afterCommit.push(...out));
+  };
+
+  /** A line in chat for a character, when they are online. */
+  const chatTo = (characterId: string, text: string): Outgoing[] =>
+    world.players.has(characterId) ? [{ to: characterId, msg: { t: "chat", text, color: 0 } }] : [];
+
+  /**
+   * Revoke: the preview the admin confirmed must still hold; then everyone inside goes out to the
+   * door and the house is demolished as decay demolishes one, its interior deleted at once. Those
+   * moved out are saved where they now stand, with their purses (a blackjack hand they leave is
+   * settled), so a restart keeps them there. Logged in the owner's edit log (irreversible) and the
+   * audit log; what it destroyed is logged as `demolish` world events by `demolish` and
+   * `deleteInterior`.
+   */
+  const characterHouseRevoke = (
+    p: Player,
+    msg: Extract<InGameMsg, { t: "characterHouseRevoke" }>,
+  ) => {
+    const result = (ok: boolean, text: string) =>
+      send(p.id, { t: "characterResult", seq: msg.seq, ok, text });
+    const reason = msg.reason.trim().split(/\s+/).join(" ");
+    if (reason === "") {
+      result(false, EDIT_TEXT.needReason);
+      return;
+    }
+    const who = houseParties(msg.name, null);
+    if (!who.ok) {
+      result(false, who.text);
+      return;
+    }
+    const r = housePreview(world, who.owner, msg.interior, "revoke", null, houseAdminDeps);
+    if (!r.ok) {
+      result(false, r.text);
+      return;
+    }
+    const rec = ownedHouse(world, who.owner.characterId, msg.interior);
+    if (r.preview.expect !== msg.expect || !rec) {
+      result(false, HOUSE_ADMIN_TEXT.changed);
+      return;
+    }
+    const interior = loadMap(rec.interior);
+    const evacuees = [...world.players.values()].filter((o) => lingoEq(o.map.name, rec.interior));
+    // A blackjack hand left mid-play pays the opponent: their purse is written too.
+    const seated = (o: Player) =>
+      [...world.casinoTables.values()].some((t) => t.seats.some((seat) => seat?.id === o.id));
+    const players = [...world.players.values()].filter((o) => evacuees.includes(o) || seated(o));
+    const snap = houseSnapshot(world, [loadMap(rec.map), interior], [houseVaultOf(rec.ownerName)]);
+    // The interior's deletion also drops its cached map and room.
+    const cacheKey = mapPlace(rec.interior)?.key ?? null;
+    const cached = cacheKey === null ? undefined : mapCache.get(cacheKey);
+    const room = world.rooms.get(rec.interior);
+    const respawns = [...world.players.values()].map((o) => [o, o.char.respawn] as const);
+    houseChange(
+      () => {
+        snap();
+        if (cacheKey !== null && cached !== undefined) {
+          mapCache.set(cacheKey, cached);
+        }
+        if (room) {
+          world.rooms.set(rec.interior, room);
+        }
+        for (const [o, r] of respawns) {
+          o.char.respawn = r;
+        }
+      },
+      () => evacuees,
+      (later) => {
+        later(moveOut(world, rec, houseAdminDeps));
+        later(demolish(world, rec.interior, loadMap).out);
+        // The sweep takes its own entries off the list; a revoke takes this house's.
+        world.houseList = world.houseList.filter((e) => !lingoEq(e.interior, rec.interior));
+        world.housesDirty = true;
+        // Where the evacuees stand now, before the interior's deletion would send their saved
+        // rows to the fallback point.
+        for (const o of evacuees) {
+          save(o);
+        }
+        persistItems(players.filter((o) => world.players.has(o.id)));
+        persistHouses();
+        flushInteriorDeletes();
+        const summary = previewSummary(r.preview);
+        const id = insertCharacterEdit(
+          db,
+          {
+            actorAccountId: p.accountId,
+            actorName: p.name,
+            characterId: who.owner.characterId,
+            character: who.owner.name,
+            reason,
+            changes: [],
+            override: false,
+            undoOf: null,
+            kind: "houseRevoke",
+            summary,
+            irreversible: true,
+          },
+          isoNow(),
+        );
+        insertAudit(
+          db,
+          {
+            actor: p.accountId,
+            command: "houseRevoke",
+            target: who.owner.name,
+            before: { house: rec.interior, map: rec.map, type: r.preview.house.type },
+            after: { edit: id, reason, summary },
+          },
+          isoNow(),
+        );
+        later(chatTo(who.owner.characterId, HOUSE_ADMIN_TEXT.toOwnerRevoked(rec.map)));
+        later([
+          {
+            to: p.id,
+            msg: {
+              t: "characterResult",
+              seq: msg.seq,
+              ok: true,
+              text: HOUSE_ADMIN_TEXT.revoked(who.owner.name, rec.map),
+            },
+          },
+        ]);
+      },
+    );
+  };
+
+  /**
+   * Transfer: the preview the admin confirmed must still hold (it refuses a vault that would not
+   * fit); then the house changes hands whole. Logged in both characters' edit logs and the audit
+   * log; a vault merge is logged as `container` moves.
+   */
+  const characterHouseTransfer = (
+    p: Player,
+    msg: Extract<InGameMsg, { t: "characterHouseTransfer" }>,
+  ) => {
+    const result = (ok: boolean, text: string) =>
+      send(p.id, { t: "characterResult", seq: msg.seq, ok, text });
+    const reason = msg.reason.trim().split(/\s+/).join(" ");
+    if (reason === "") {
+      result(false, EDIT_TEXT.needReason);
+      return;
+    }
+    const who = houseParties(msg.name, msg.to);
+    if (!who.ok || !who.to) {
+      result(false, who.ok ? HOUSE_ADMIN_TEXT.noTarget(msg.to.trim()) : who.text);
+      return;
+    }
+    const to = who.to;
+    const r = housePreview(world, who.owner, msg.interior, "transfer", to, houseAdminDeps);
+    if (!r.ok) {
+      result(false, r.text);
+      return;
+    }
+    const rec = ownedHouse(world, who.owner.characterId, msg.interior);
+    if (r.preview.expect !== msg.expect || !rec) {
+      result(false, HOUSE_ADMIN_TEXT.changed);
+      return;
+    }
+    houseChange(
+      houseSnapshot(
+        world,
+        [loadMap(rec.map), loadMap(rec.interior)],
+        [houseVaultOf(rec.ownerName), houseVaultOf(to.name)],
+      ),
+      () => [],
+      (later) => {
+        const t = transferHouse(world, rec, to, r.preview, houseAdminDeps);
+        later(t.out);
+        // The new owner's decay clock starts now, as a build's does.
+        const month = houseMonth();
+        for (const e of world.houseList) {
+          if (lingoEq(e.interior, rec.interior)) {
+            e.month = month;
+          }
+        }
+        const now = isoNow();
+        for (const npc of t.writes.shops) {
+          setPlayerShopOwner(db, npc, to.characterId);
+        }
+        for (const f of t.writes.files) {
+          saveNpcFile(db, f, p.accountId, now);
+        }
+        if (t.writes.interior) {
+          const w = t.writes.interior;
+          saveMapTitleAndSigns(db, w.mapId, w.title, w.signs, now);
+        }
+        persistItems([]);
+        persistHouses();
+        const summary = previewSummary(r.preview);
+        const ids = [who.owner, to].map((c) =>
+          insertCharacterEdit(
+            db,
+            {
+              actorAccountId: p.accountId,
+              actorName: p.name,
+              characterId: c.characterId,
+              character: c.name,
+              reason,
+              changes: [],
+              override: false,
+              undoOf: null,
+              kind: "houseTransfer",
+              summary,
+            },
+            now,
+          ),
+        );
+        insertAudit(
+          db,
+          {
+            actor: p.accountId,
+            command: "houseTransfer",
+            target: who.owner.name,
+            before: { house: rec.interior, map: rec.map, owner: who.owner.name },
+            after: { owner: to.name, edits: ids, reason, summary },
+          },
+          now,
+        );
+        later(chatTo(who.owner.characterId, HOUSE_ADMIN_TEXT.toOwnerTransferred(rec.map, to.name)));
+        later(
+          chatTo(
+            to.characterId,
+            HOUSE_ADMIN_TEXT.toNewOwner(
+              rec.map,
+              who.owner.name,
+              r.preview.renames.includes("door"),
+            ),
+          ),
+        );
+        later([
+          {
+            to: p.id,
+            msg: {
+              t: "characterResult",
+              seq: msg.seq,
+              ok: true,
+              text: HOUSE_ADMIN_TEXT.transferred(who.owner.name, rec.map, to.name),
+            },
+          },
+        ]);
+      },
+    );
   };
 
   /** Server Settings window SAVE: the `settings` permission only; every changed value audited. */
@@ -2430,9 +2789,23 @@ export function createGame(deps: GameDeps): Game {
     const rec = c ? findMapByCoords(db, c.mx, c.my, c.slot) : null;
     // What the interior held goes with it: its items and its shops' stock and tills (issue #35).
     logDemolished(name, rec?.id ?? null);
+    // Its casino tables go too, each stake still held handed back, so a player away in the
+    // reconnect grace is not seated again at a table whose map is gone (issue #36).
+    closeTablesOn(world, name, casinoDeps);
+    // A shop or Bio window open on one of its shopkeepers closes.
+    for (const ps of world.playerShops.values()) {
+      if (lingoEq(ps.interior, name)) {
+        afterCommit.push(...closeNpcWindows(world, ps.npc));
+      }
+    }
     if (rec) {
-      // A respawn point inside the interior goes with it.
+      // A respawn point inside the interior goes with it, saved and live.
       db.query("UPDATE characters SET respawn_map_id = NULL WHERE respawn_map_id = ?").run(rec.id);
+      for (const o of world.players.values()) {
+        if (o.char.respawn?.mapId === rec.id) {
+          o.char.respawn = null;
+        }
+      }
       const to = fallbackTarget(tickDeps);
       if (to) {
         db.query("UPDATE characters SET map_id = ?, x = ?, y = ? WHERE map_id = ?").run(
@@ -3312,6 +3685,15 @@ export function createGame(deps: GameDeps): Game {
         case "characterUndo":
           characterUndo(p, msg);
           return;
+        case "characterHousePreview":
+          characterHousePreview(p, msg);
+          return;
+        case "characterHouseRevoke":
+          characterHouseRevoke(p, msg);
+          return;
+        case "characterHouseTransfer":
+          characterHouseTransfer(p, msg);
+          return;
         // The Guild Center: each change is written with the fields it set.
         case "guildCreate":
           deliver(guildCreate(world, p, msg.name, msg.alignment, guildDeps));
@@ -4020,7 +4402,13 @@ export function createGame(deps: GameDeps): Game {
           flushActivity();
         })();
         commitLogs();
+        rollbacks.length = 0;
+        deliver(afterCommit.splice(0));
       } catch (err) {
+        afterCommit.length = 0;
+        for (const undo of rollbacks.splice(0).reverse()) {
+          undo();
+        }
         // A read (the Activity Log, /chatlog) may have written the buffers: that rolled back too.
         rollbackLogs();
         // Their writes rolled back and they reload from SQL, so their events from this call go
@@ -4065,8 +4453,10 @@ export function createGame(deps: GameDeps): Game {
           flushActivity();
         })();
         commitLogs();
+        deliver(afterCommit.splice(0));
         ok = true;
       } catch (err) {
+        afterCommit.length = 0;
         rollbackLogs();
         fault("tick", err);
         ok = false;

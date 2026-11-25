@@ -327,6 +327,9 @@ function buildAll(): HTMLElement[] {
       moderate: () => {},
       edit: () => {},
       undo: () => {},
+      housePreview: () => {},
+      houseRevoke: () => {},
+      houseTransfer: () => {},
       openActivity: () => {},
       can: () => true,
     });
@@ -405,14 +408,29 @@ function buildAll(): HTMLElement[] {
             override: false,
             undoOf: null,
             undoneBy: null,
+            kind: "edit",
+            summary: "",
+            irreversible: false,
           },
         ],
         chat: [],
         addresses: [],
+        houses: [
+          {
+            interior: "xH11y1",
+            map: "x1y1",
+            x: 4,
+            y: 5,
+            type: "Small House",
+            shops: [],
+            vaultItems: 0,
+          },
+        ],
       },
     });
-    // The Edit and Edits tabs as copies (their controls are kept across tabs), then Moderation.
-    for (const t of ["edit", "edits"]) {
+    // The Items, Edit and Edits tabs as copies (their controls are kept across tabs), then
+    // Moderation.
+    for (const t of ["items", "edit", "edits"]) {
       chars.el.querySelector<HTMLButtonElement>(`[data-action="hub-tab-${t}"]`)?.click();
       const copy = chars.el.querySelector(".hub-body")?.cloneNode(true) as HTMLElement;
       for (const el of copy.querySelectorAll("[data-action]")) {

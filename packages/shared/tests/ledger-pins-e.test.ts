@@ -278,6 +278,18 @@ describe("Only server systems create items", () => {
         "reason:string",
       ],
       characterUndo: ["name:string", "id:string", "reason:string"],
+      // The hub's houses (issue #36): a house by its interior's map name and a new owner by
+      // character name; the server reads what the house holds itself and refuses a change made
+      // over a stale preview (`expect`).
+      characterHousePreview: ["name:string", "interior:string", "to:string"],
+      characterHouseRevoke: ["name:string", "interior:string", "expect:string", "reason:string"],
+      characterHouseTransfer: [
+        "name:string",
+        "interior:string",
+        "to:string",
+        "expect:string",
+        "reason:string",
+      ],
       // The World page (issue #33): a map as the World Editor's SAVE sent it, and the revision.
       contentMapSave: [
         "map.layers[][]:string",
@@ -352,7 +364,8 @@ describe("File editor and path-based file access removed", () => {
     // names match: the World Editor's load, the Control Panel's player hub (a character by name, read
     // through the server for a role with characterView, never a file), a guild page, closing a
     // painting, a newspaper, the profile. The hub's editor (characterEditor) changes a character
-    // through the server's own checks, never by writing a file. The Content page's overview
+    // through the server's own checks, never by writing a file; its houses (issue #36) name a
+    // house by its interior map and a new owner by name. The Content page's overview
     // (contentEditor) reads the content store's draft and history, not a file. Its upload ticket
     // (issue #29) carries nothing: an upload is stored under the hash of its bytes, never a path.
     // The Monsters page's NPC file sections (issue #31) name an NPC file by monster name, never a
@@ -368,6 +381,9 @@ describe("File editor and path-based file access removed", () => {
       "characterModerate",
       "characterEdit",
       "characterUndo",
+      "characterHousePreview",
+      "characterHouseRevoke",
+      "characterHouseTransfer",
       "guildView",
       "viewClose",
       "newspaperLoad",

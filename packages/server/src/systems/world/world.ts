@@ -561,6 +561,8 @@ export interface Player {
   mailList: boolean;
   /** The mailbox is open (from opening it until the list's CLOSE): gates `mailUi` and SEND. */
   mailUi: boolean;
+  /** Where the open mailbox stands (the session's fixture), or null. */
+  mailBox?: { map: string; x: number; y: number } | null;
   /** The open board, which posts go to, until Close or a map change. */
   board: string | null;
 
@@ -1269,6 +1271,9 @@ export function enterRoom(world: World, p: Player): Outgoing[] {
   p.board = null;
   p.mailList = false;
   p.mailUi = false;
+  if (p.mailBox) {
+    p.mailBox = null;
+  }
   const stopped = cancelCrafts(p);
   // The death guard clears when a map is drawn; the loading lock keeps the player safe until then.
   p.dontHitMeAgain = false;

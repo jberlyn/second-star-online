@@ -14,6 +14,7 @@ import {
   CHARACTER_SEARCH_MAX,
   type CharacterHub,
   type CharacterListRow,
+  type HousePreview,
   HUB_ACTIONS,
 } from "../rules/admin/characters.ts";
 import type { ReconcileRunView } from "../rules/admin/reconcile.ts";
@@ -320,6 +321,50 @@ export const characterUndoSchema = z.strictObject({
   reason: z.string().max(200),
 });
 
+/** A house interior's map name (`xH1<mx>yH1<my>`), which names a house. */
+const houseInterior = z.string().min(1).max(40);
+
+/**
+ * The player hub's house buttons (issue #36): what a revoke or a transfer of one of the
+ * character's houses would do, before the admin confirms. Gated by `characterView`, as the hub is.
+ */
+export const characterHousePreviewSchema = z.strictObject({
+  t: z.literal("characterHousePreview"),
+  seq: seqField,
+  name: z.string().min(1).max(CHARACTER_SEARCH_MAX),
+  interior: houseInterior,
+  action: z.enum(["revoke", "transfer"]),
+  /** A transfer's new owner ("" for a revoke). */
+  to: z.string().max(CHARACTER_SEARCH_MAX),
+});
+
+/**
+ * Demolishes one of the character's houses, as decay does; it cannot be undone. `expect` is the
+ * preview the admin confirmed. Gated by `characterEditor`; a reason is required.
+ */
+export const characterHouseRevokeSchema = z.strictObject({
+  t: z.literal("characterHouseRevoke"),
+  seq: seqField,
+  name: z.string().min(1).max(CHARACTER_SEARCH_MAX),
+  interior: houseInterior,
+  expect: z.string().max(40),
+  reason: z.string().max(200),
+});
+
+/**
+ * Gives one of the character's houses to another character, whole: its door, shops and (when it
+ * was the owner's last house) the House Vault's contents. Gated by `characterEditor`.
+ */
+export const characterHouseTransferSchema = z.strictObject({
+  t: z.literal("characterHouseTransfer"),
+  seq: seqField,
+  name: z.string().min(1).max(CHARACTER_SEARCH_MAX),
+  interior: houseInterior,
+  to: z.string().min(1).max(CHARACTER_SEARCH_MAX),
+  expect: z.string().max(40),
+  reason: z.string().max(200),
+});
+
 /** A role as the Roles page sends it (shared `RoleData`; the server checks it with `roleDataError`). */
 const roleDataSchema = z.strictObject({
   id: z.string().max(40),
@@ -504,4 +549,11 @@ export type AdminServerMsg =
   /** A player hub (`characterOpen`'s answer), or why there is none. */
   | { t: "characterHub"; seq: number; hub: CharacterHub | null; error?: string }
   /** A hub button's outcome: the lines the chat command would have printed. */
-  | { t: "characterResult"; seq: number; ok: boolean; text: string };
+  | { t: "characterResult"; seq: number; ok: boolean; text: string }
+  /** What a house revoke or transfer would do (`characterHousePreview`'s answer), or why not. */
+  | {
+      t: "characterHousePreview";
+      seq: number;
+      preview: HousePreview | null;
+      error?: string;
+    };

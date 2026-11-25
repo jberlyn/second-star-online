@@ -194,6 +194,8 @@ export interface ConfirmOptions {
   cancel: string;
   /** The confirm button is a danger (deleting, discarding). */
   danger?: boolean;
+  /** Lines listed under the question: what the change will do, one per line. */
+  list?: readonly string[];
 }
 
 /**
@@ -220,6 +222,16 @@ export function confirmBox(host: HTMLElement, opts: ConfirmOptions): Promise<boo
     p.id = `control-panel-confirm-text-${fieldIds}`;
     p.textContent = opts.text;
     box.setAttribute("aria-labelledby", p.id);
+    let list: HTMLUListElement | null = null;
+    if (opts.list && opts.list.length > 0) {
+      list = document.createElement("ul");
+      list.className = "control-panel-confirm-list";
+      for (const line of opts.list) {
+        const li = document.createElement("li");
+        li.textContent = line;
+        list.append(li);
+      }
+    }
     const done = (yes: boolean) => {
       shade.remove();
       if (before instanceof HTMLElement && before.isConnected) {
@@ -237,7 +249,7 @@ export function confirmBox(host: HTMLElement, opts: ConfirmOptions): Promise<boo
     const buttons = document.createElement("div");
     buttons.className = "control-panel-confirm-buttons";
     buttons.append(stay, go);
-    box.append(p, buttons);
+    box.append(p, ...(list ? [list] : []), buttons);
     box.addEventListener("keydown", (e) => {
       trapTab(box, e);
       if (e.key === "Escape") {

@@ -25,6 +25,7 @@ import {
   type Equipment,
   HUB_CHAT_LINES,
   HUB_HISTORY,
+  type HubHouse,
   type HubIpBan,
   type HubPresence,
   hungerLimits,
@@ -115,6 +116,8 @@ export interface HubDeps {
   ipBan(key: string): IpBanRecord | null;
   /** A map's name by id, or the id when that map is gone. */
   mapName(mapId: string): string;
+  /** The houses they own, as the hub lists them (issue #36: `hubHouses`). */
+  houses(characterId: string): HubHouse[];
   now(): string;
 }
 
@@ -315,6 +318,7 @@ export function characterHub(
     mute: live(deps.mute(c.accountId)),
     edits: deps.edits(c.characterId),
     hunger: hungerLimits(),
+    houses: deps.houses(c.characterId),
     history: deps
       .history(c.accountId, HUB_HISTORY)
       .map((r) => (seesAddresses ? r : { ...r, address: null })),

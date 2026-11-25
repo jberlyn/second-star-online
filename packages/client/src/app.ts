@@ -666,6 +666,9 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     moderate: (req) => send({ t: "characterModerate", ...req }),
     edit: (req) => send({ t: "characterEdit", ...req }),
     undo: (req) => send({ t: "characterUndo", ...req }),
+    housePreview: (req) => send({ t: "characterHousePreview", ...req }),
+    houseRevoke: (req) => send({ t: "characterHouseRevoke", ...req }),
+    houseTransfer: (req) => send({ t: "characterHouseTransfer", ...req }),
     openActivity: (name) => {
       controlPanel.go("activity");
       if (controlPanel.page === "activity") {
@@ -1520,6 +1523,9 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
       case "characterResult":
         charactersPage.receiveResult(msg);
         return;
+      case "characterHousePreview":
+        charactersPage.receiveHousePreview(msg);
+        return;
       case "settingsResult":
         settingsPanel.result(msg);
         return;
@@ -1654,6 +1660,11 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         return;
       case "mailSent":
         mail.sent();
+        return;
+      case "mailClosed":
+        // The mailbox went away under the session (given away or demolished): it closes.
+        mail.reset();
+        model.keyLock = false;
         return;
       case "board":
         board.show(msg.board);

@@ -718,7 +718,18 @@ export interface CharacterEditRow {
   undoOf: string | null;
   /** That edit undid this one. */
   undoneBy: string | null;
+  /**
+   * An editor save (`edit`, which undo works from) or a house change from the hub (issue #36): a
+   * revoke or a transfer, which undo never offers.
+   */
+  kind: CharacterEditKind;
+  /** What a house change destroyed or moved, as the log shows it ("" for an editor save). */
+  summary: string;
+  /** It cannot be undone at all (a revoke). */
+  irreversible: boolean;
 }
+
+export type CharacterEditKind = "edit" | "houseRevoke" | "houseTransfer";
 
 /** How many of a character's newest edits the hub shows. */
 export const HUB_EDITS = 50;
@@ -837,6 +848,8 @@ export const EDIT_TEXT = {
   undone: (name: string) => `Undid the edit to ${name}.`,
   noEdit: "That edit is not in this character's log.",
   alreadyUndone: "That edit has already been undone.",
+  /** A house revoke or transfer (issue #36): a transfer is undone by transferring it back. */
+  noUndoHouse: "A house change can't be undone here. Transfer the house back to undo a transfer.",
   undoInvalid: "Can't undo: what it puts back no longer fits the character as they are now.",
   undoWear:
     "Can't undo: it would put back worn gear that breaks the wear rules. Make a new edit with the override instead.",

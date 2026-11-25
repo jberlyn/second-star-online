@@ -202,6 +202,42 @@ export function planHouse(
 }
 
 /**
+ * The type a built house is, worked out from its blueprint, which does not name it: the layer-2
+ * tiles (codes and their places relative to the first) and what stands outside (a mailbox, a
+ * Street Lamp or nothing) tell the types apart. Null when no type the content lists matches (one
+ * since changed or removed).
+ */
+export function houseTypeOf(rec: {
+  tiles: readonly { code: string; x: number; y: number }[];
+  item1: { item: string } | null;
+}): HouseType | null {
+  const first = rec.tiles[0];
+  const outside = (t: HouseType) =>
+    t.mailbox
+      ? (rec.item1?.item.toLowerCase().endsWith("'s mailbox") ?? false)
+      : t.lamp
+        ? rec.item1 !== null && lingoEq(rec.item1.item, "Street Lamp")
+        : rec.item1 === null;
+  return (
+    content().houses.types.find((t) => {
+      const t0 = t.tiles[0];
+      if (!first || !t0 || t.tiles.length !== rec.tiles.length || !outside(t)) {
+        return false;
+      }
+      return t.tiles.every(([code, dx, dy], i) => {
+        const r = rec.tiles[i];
+        return (
+          r !== undefined &&
+          lingoEq(r.code, code) &&
+          r.x - first.x === dx - t0[1] &&
+          r.y - first.y === dy - t0[2]
+        );
+      });
+    }) ?? null
+  );
+}
+
+/**
  * The do-not-drop flag, worked out afresh from the room you are in: 0 where the header names you
  * ("<name>'s ", exactly; 1.6 matched by substring, so Bob passed in "Jimbob's House") or is exactly
  * "Hall of the <guild>" for your guild; 1 anywhere else. Nothing carries over from an earlier
@@ -215,6 +251,24 @@ export function headDrop(header: string, name: string, guild: string): 0 | 1 {
     return 0;
   }
   return 1;
+}
+
+/**
+ * The do-not-drop flag in a room that may be a house (issue #36): in a personal house's interior
+ * the house's owner, by its blueprint, may furnish it and nobody else, whatever its header says (a
+ * shop retitled "Chris's Market" stays its owner's); a guild hall, or a room that is no house,
+ * keeps the header test (`headDrop`).
+ */
+export function houseDrop(
+  header: string,
+  name: string,
+  guild: string,
+  house: { mine: boolean; hall: boolean } | null,
+): 0 | 1 {
+  if (house && !house.hall) {
+    return house.mine ? 0 : 1;
+  }
+  return headDrop(header, name, guild);
 }
 
 export const isFurniture = (item: string): boolean =>

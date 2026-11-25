@@ -5487,6 +5487,42 @@
     "errors": []
   },
   {
+    "action": "hub-house-revoke",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-house-transfer",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-house-reason",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-house-to",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
     "action": "hub-edit-class",
     "tag": "SELECT",
     "events": ["input"],

@@ -497,9 +497,9 @@ Every ban, unban, IP ban, IP unban, jail, `/unjail`, mute, `/unmute` and pardon 
 Open **Admin → Control Panel → Characters** (the **Control Panel: look up characters** permission, administrators by default) and type part of a name; an empty search lists the most recently saved characters. Choose a row to open their hub:
 
 - **Overview:** class, level, experience, HP, SP, hunger, faction, wanted, stats and skills, where they are, their respawn point and what they ride, and when the account was made and the character last saved.
-- **Items:** gold carried and in the bank, the bag, worn gear, vault, spellbook and the houses they own.
+- **Items:** gold carried and in the bank, the bag, worn gear, vault, spellbook and the houses they own (see [Houses](#houses-in-the-hub)).
 - **Edit:** change the character (see [Editing a character](#editing-a-character)), for a role with **Control Panel: edit characters**.
-- **Edits:** every edit an admin made to them, with who, when, why and each value before and after, and **Undo**.
+- **Edits:** every edit an admin made to them, with who, when, why and each value before and after, and **Undo**; house revokes and transfers too, with what they destroyed or moved.
 - **Moderation:** any ban, jail or mute in force, with who made it and why, and the moderation history. A role with `/banip` also sees the addresses the account logged in from and any IP ban in force on them (noting a role that IP bans do not stop); without it, an IP ban in the history shows without its address, as on `/banlist`. The **Act** form kicks, bans, jails or mutes (a ban, jail or mute needs a reason; a kick takes none, as `/kick` does; the length is typed as for the commands, such as `30m`, `7d` or `perm`, or left empty for the server's default) and lifts each. Each action needs the same permission as its command and follows the same rules: who may act on whom, and who may change or lift someone else's ban.
 - **Chat:** their newest 50 chat lines, for a role with `/chatlog`.
 - **Activity Log** opens their timeline, for a role with the activity log permission.
@@ -520,7 +520,16 @@ The hub's **Edit** tab (the **Control Panel: edit characters** permission, admin
 - **Items with their own storage.** A Crate, Cabinet or Cauldron added in the editor gets its own storage, as one bought does. One the character already has can be moved to another line but not copied, and an `#id` can't be typed in. As in play, the vault takes no containers and gold is never a bag or vault item.
 - **Logs.** Each edit is kept in the `character_edits` table and the audit log. Gold and items it added or removed are `Admin` events in the Activity Log, so they never show as unlogged; bank and vault changes are logged with their amounts.
 
-Houses can't be revoked or transferred here yet (issue #36).
+#### Houses in the hub
+
+**Items → Houses** lists each house the character owns: its type, the map it stands on with its door's tile, the interior's map name, any Small Shop in it (the shopkeeper, how many items it sells and holds in stock, and its till) and how many items the owner's House Vault holds. One House Vault serves all of an owner's houses.
+
+A role with **Control Panel: edit characters** also gets **Revoke** and **Transfer** on each house. Both need a reason. Before either happens, the server reads the house and the page lists exactly what the change will do; nothing changes until you confirm. If the house changes in the meantime (someone drops an item inside, say), the change is refused: look again.
+
+- **Revoke** demolishes the house, as decay does, and can't be undone. Its tiles, door and mailbox or lamp go, and its interior is deleted with the items on its floor and any shop's stock and till. The owner's House Vault and its contents go too if this was their last house; otherwise the vault is kept for their other houses. Anyone inside is moved out to the house's door first, and saved there. Shop windows on its shopkeepers, a mailbox open at it and its casino tables close; a stake still held at a table goes back to its player, including one away mid-hand. The confirmation lists the vault's contents (when it goes), each shop's stock and till, and the items on the floor. To put things back after a mistake, rebuild from the Activity Log, which records each destroyed item as a **Demolished** event.
+- **Transfer** gives the house, whole, to another character you name. Its door, mailbox and House Vault become the new owner's, and so does its header when it names the old owner (a custom shop title is kept). Their House Key opens it, only they may place or take its furniture, and the old owner's open House Vault window there, or their mailbox window at it, closes. A guild hall's door and Guild Vault stay its guild's, and a Small Shop has no door or mailbox to rename. Every Small Shop inside works for the new owner, with its stock and till. If the old owner keeps another house, their House Vault stays theirs. Otherwise its contents move into the new owner's House Vault, added to anything already there; if that would be more than the vault holds, the transfer is refused before anything changes. A guild hall can go only to a member of its guild. Anyone inside stays where they are, and both owners are told if they are online. Transferring the house back returns it, with its door and shops, but the vault rules apply again: contents moved into the new owner's House Vault go back only if they own no other house by then, and a merge is not split apart.
+
+Each revoke or transfer is kept in the owner's **Edits** (a transfer in the new owner's too) and in the audit log. Undo is not offered for them. A House Vault's contents moved by a transfer are **Container** events in the Activity Log, so the item reconciliation still matches.
 
 ### The activity log
 

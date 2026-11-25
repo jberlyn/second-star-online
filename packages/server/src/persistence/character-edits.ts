@@ -2,7 +2,7 @@
  * The character editor's log (issue #26) and the writes an offline edit makes. Plain functions
  * taking the `Db` first; callers own transactions.
  */
-import type { CharacterEditRow, EditChange } from "@secondstaronline/shared";
+import type { CharacterEditKind, CharacterEditRow, EditChange } from "@secondstaronline/shared";
 
 import type { Db } from "./database.ts";
 
@@ -16,6 +16,9 @@ interface EditRow {
   undo_of: string | null;
   undone_by: string | null;
   character_id: string;
+  kind: string;
+  summary: string;
+  irreversible: number;
 }
 
 /** One logged edit, with the character it was made to. */
@@ -32,11 +35,16 @@ const toRow = (r: EditRow): StoredEdit => ({
   override: r.override === 1,
   undoOf: r.undo_of,
   undoneBy: r.undone_by,
+  kind: (r.kind === "houseRevoke" || r.kind === "houseTransfer"
+    ? r.kind
+    : "edit") as CharacterEditKind,
+  summary: r.summary,
+  irreversible: r.irreversible === 1,
   characterId: r.character_id,
 });
 
 const COLUMNS =
-  "id, created_at, actor_name, reason, changes, override, undo_of, undone_by, character_id";
+  "id, created_at, actor_name, reason, changes, override, undo_of, undone_by, character_id, kind, summary, irreversible";
 
 /** Logs one edit and returns its id. An undo also marks the edit it undid. */
 export function insertCharacterEdit(
@@ -50,14 +58,18 @@ export function insertCharacterEdit(
     changes: readonly EditChange[];
     override: boolean;
     undoOf: string | null;
+    /** A house change from the hub (issue #36); an editor save by default. */
+    kind?: CharacterEditKind;
+    summary?: string;
+    irreversible?: boolean;
   },
   now: string,
 ): string {
   const id = Bun.randomUUIDv7();
   db.query(
     `INSERT INTO character_edits (id, created_at, actor_account_id, actor_name, character_id,
-       character, reason, changes, override, undo_of)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       character, reason, changes, override, undo_of, kind, summary, irreversible)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     id,
     now,
@@ -69,6 +81,9 @@ export function insertCharacterEdit(
     JSON.stringify(e.changes),
     e.override ? 1 : 0,
     e.undoOf,
+    e.kind ?? "edit",
+    e.summary ?? "",
+    e.irreversible ? 1 : 0,
   );
   if (e.undoOf) {
     db.query("UPDATE character_edits SET undone_by = ? WHERE id = ?").run(id, e.undoOf);

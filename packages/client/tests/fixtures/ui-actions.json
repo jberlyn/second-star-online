@@ -1024,6 +1024,26 @@
     "hidden": 0,
     "disabled": 0
   },
+  "hub-house-reason": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-house-revoke": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-house-to": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-house-transfer": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
   "hub-length": {
     "count": 1,
     "hidden": 0,

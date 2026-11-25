@@ -663,6 +663,10 @@ export function createEditLog(opts: EditLogOptions): EditLog {
     if (r.undoneBy !== null) {
       return "Undone";
     }
+    // A house revoke or transfer (issue #36) is never undone from the log.
+    if (r.kind !== "edit") {
+      return r.irreversible ? "Can't be undone" : "Transfer back to undo";
+    }
     if (!opts.canUndo()) {
       return "";
     }
@@ -682,6 +686,9 @@ export function createEditLog(opts: EditLogOptions): EditLog {
           const ul = document.createElement("ul");
           ul.className = "hub-edit-changes";
           const items = [
+            ...(r.kind === "houseRevoke" ? ["House revoked"] : []),
+            ...(r.kind === "houseTransfer" ? ["House transferred"] : []),
+            ...(r.summary ? [r.summary] : []),
             ...(r.undoOf ? ["Undid an earlier edit"] : []),
             ...(r.override ? ["Wear rules overridden"] : []),
             ...r.changes.map(changeText),
@@ -739,7 +746,8 @@ export function createEditLog(opts: EditLogOptions): EditLog {
         byId.set(r.id, r);
       }
       table.setRows(rows);
-      undoBox.hidden = !opts.canUndo() || !rows.some((r) => r.undoneBy === null);
+      undoBox.hidden =
+        !opts.canUndo() || !rows.some((r) => r.undoneBy === null && r.kind === "edit");
     },
     result(ok, text) {
       status.textContent = text;

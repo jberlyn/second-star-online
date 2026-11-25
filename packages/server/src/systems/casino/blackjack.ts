@@ -96,9 +96,13 @@ function releaseHolds(world: World, table: BjTable): void {
  * purse already counts the stake). A connected player gets it back in their purse; one away in the
  * reconnect grace was saved with it, so only the refund is logged. The hands are dropped.
  */
-export function refundHolds(world: World, deps: CasinoDeps): void {
+export function refundHolds(
+  world: World,
+  deps: CasinoDeps,
+  only: (key: string) => boolean = () => true,
+): void {
   for (const table of world.casinoTables.values()) {
-    if (table.game !== "blackjack") {
+    if (table.game !== "blackjack" || !only(table.key)) {
       continue;
     }
     for (const s of [1, 2] as const) {
@@ -433,6 +437,30 @@ export function bjDisconnect(world: World, p: Player, deps: CasinoDeps): Outgoin
   const out = dropSeat(world, t.table, t.side, deps, false);
   p.casino = null;
   return out;
+}
+
+/**
+ * A house interior is deleted (demolished, issue #36): its tables go. Each stake still held goes
+ * back as at a shutdown (`refundHolds`: a seat kept for an away player was saved with it, so only
+ * the refund is logged), and nobody is seated there any more, so a return within the grace finds
+ * no table on a map that is gone.
+ */
+export function closeTablesOn(world: World, map: string, deps: CasinoDeps): void {
+  const on = (key: string) => key.toLowerCase().startsWith(`${map.toLowerCase()}:`);
+  refundHolds(world, deps, on);
+  for (const [key, table] of [...world.casinoTables]) {
+    if (!on(key)) {
+      continue;
+    }
+    for (const seat of table.seats) {
+      const p = seat ? world.players.get(seat.id) : undefined;
+      if (p?.casino?.key === key) {
+        p.casino = null;
+        p.keyLock = false;
+      }
+    }
+    world.casinoTables.delete(key);
+  }
 }
 
 /** A resume or a fresh login inside the grace: the table reopens as it was, with no line. */

@@ -32,7 +32,6 @@ import {
   groundLayer,
   groundTipName,
   hasBehaviour,
-  headDrop,
   invAdd,
   invDelSlot,
   isCrystal,
@@ -75,7 +74,7 @@ import { questGive } from "../economy/quests.ts";
 import type { ShopLedger } from "../economy/shop.ts";
 import { depositVault, openVault } from "../economy/vault.ts";
 import { switchClick, useKey } from "../housing/doors.ts";
-import { useDeed } from "../housing/houses.ts";
+import { dropFlag, useDeed } from "../housing/houses.ts";
 import { type ArtStore, useCanvas, useFilm, viewArt } from "../mail/art.ts";
 import { type BoardStore, boardOpen } from "../mail/boards.ts";
 import { type MailStore, mailOpen } from "../mail/mail.ts";
@@ -464,7 +463,7 @@ export function dropIntent(ctx: ItemCtx, room: Room, p: Player, slot: number, n 
   // before Drop's pause gates: placed only where the header names you.
   p.headFlag = 0;
   if (isFurniture(name)) {
-    p.headFlag = headDrop(p.map.title, p.name, p.guild);
+    p.headFlag = dropFlag(ctx.world, p);
     if (p.headFlag === 1) {
       io.tell(p, content().houses.furnitureDrop.text);
       return io.out;
@@ -1099,7 +1098,7 @@ export function actionIntent(ctx: ItemCtx, room: Room, p: Player): Outgoing[] {
   }
   const gate = ctrlGate(g.item, {
     str: statsOf(p).str,
-    mine: headDrop(p.map.title, p.name, p.guild) === 0,
+    mine: dropFlag(ctx.world, p) === 0,
   });
   // The vehicle click on the faced Airship, Boat or Battleship.
   if (gate.kind === "vehicle") {

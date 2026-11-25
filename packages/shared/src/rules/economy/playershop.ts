@@ -80,6 +80,21 @@ export function shopkeeperFile(owner: string, name: string): string {
   ].join("\r");
 }
 
+/**
+ * A shopkeeper's file with its `OWN|` line naming `owner` (a house transfer, issue #36). Only an
+ * existing line is rewritten, in place, so every other line keeps its number and the ledger built
+ * from the file still matches it; a file without one is returned as it is.
+ */
+export function withShopOwner(text: string, owner: string): string {
+  const lines = text.split("\r");
+  const at = lines.findIndex((l) => /^OWN\|/i.test(l));
+  if (at < 0) {
+    return text;
+  }
+  lines[at] = `OWN|${owner}`;
+  return lines.join("\r");
+}
+
 // ---- the client's checks (SH) ---------------------------------------------------------------
 
 export const SHOP_TEXT = {

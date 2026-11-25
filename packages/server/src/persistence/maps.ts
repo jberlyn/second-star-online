@@ -258,6 +258,19 @@ export function saveMapTitle(db: Db, id: string, title: string, now: string): vo
   db.query("UPDATE maps SET title = ?, updated_at = ? WHERE id = ?").run(title, now, id);
 }
 
+/** A house interior's header and signs, as a transfer renames them (issue #36). */
+export function saveMapTitleAndSigns(
+  db: Db,
+  id: string,
+  title: string,
+  signs: readonly [string, string, string],
+  now: string,
+): void {
+  db.query(
+    "UPDATE maps SET title = ?, sign1 = ?, sign2 = ?, sign3 = ?, updated_at = ? WHERE id = ?",
+  ).run(title, signs[0], signs[1], signs[2], now, id);
+}
+
 /** The names of every house interior map (slot 1 or 2) in the database (orphan sweep). */
 export function listInteriorMapNames(db: Db): string[] {
   return db

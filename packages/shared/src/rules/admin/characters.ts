@@ -124,7 +124,83 @@ export interface CharacterHub {
   edits: CharacterEditRow[];
   /** The world's hunger limits for the editor (a client's store has no balance rows). */
   hunger: HungerLimits;
+  /** The houses they own, in the order they were built (issue #36). */
+  houses: HubHouse[];
 }
+
+/** One house a character owns, as the hub lists it (issue #36). */
+export interface HubHouse {
+  /** The interior's map name, which names the house. */
+  interior: string;
+  /** The outdoor map it stands on, and its door (the exit) there. */
+  map: string;
+  x: number;
+  y: number;
+  /** The house type, or null when the content no longer lists one that matches. */
+  type: string | null;
+  /**
+   * The Small Shops in its interior: each shopkeeper, the items it sells (its stock lines), how
+   * many it holds in stock and its till.
+   */
+  shops: { npc: string; lines: number; stock: number; till: number }[];
+  /** How many items the owner's House Vault holds (one vault, shared by all their houses). */
+  vaultItems: number;
+}
+
+/** What one house's revoke or transfer will do, as the hub shows it before the admin confirms. */
+export interface HousePreview {
+  action: "revoke" | "transfer";
+  owner: string;
+  house: HubHouse;
+  /** A transfer's new owner. */
+  to?: string;
+  /** The owner's House Vault and its contents. */
+  vault: { name: string; items: string[] };
+  /**
+   * What happens to the vault: a revoke `destroyed` (the owner's last house) or `kept`; a transfer
+   * `kept` (the old owner keeps another house) or `moved` into the new owner's vault (`merged` when
+   * theirs already holds something).
+   */
+  vaultFate: "destroyed" | "kept" | "moved" | "merged";
+  /** Each shop's stock (by item) and till: destroyed by a revoke, handed over by a transfer. */
+  shops: { npc: string; stock: { item: string; qty: number }[]; till: number }[];
+  /** The items on the interior's floor (a revoke destroys them; a transfer leaves them). */
+  floor: { item: string; qty: number }[];
+  /** The players standing inside: a revoke moves them out to the door. */
+  inside: string[];
+  /**
+   * What a transfer renames for the new owner, as the hub names them: of "door", "mailbox",
+   * "House Vault" and "header", those this house has in its owner's name. A guild hall's door and
+   * vault are its guild's, a Small Shop has neither door nor mailbox, and a custom header stays.
+   */
+  renames: string[];
+  /** The guild a guild hall's door and vault answer to, or null for a player's house. */
+  guild: string | null;
+  /** Names this preview: a revoke or transfer is refused when the house no longer matches it. */
+  expect: string;
+}
+
+export const HOUSE_ADMIN_TEXT = {
+  noHouse: (name: string) => `${name} does not own that house.`,
+  changed: "The house changed since you looked. Look at what it holds again before you confirm.",
+  noTarget: (name: string) => `There is no character named ${name}.`,
+  sameOwner: (name: string) => `${name} already owns that house.`,
+  notGuild: (name: string, guild: string) =>
+    `${name} can't own a hall of ${guild}: they are not a member.`,
+  vaultFull: (name: string, n: number, cap: number) =>
+    `${name}'s House Vault would hold ${n} items, but holds at most ${cap}. Nothing changed.`,
+  revoked: (owner: string, map: string) => `${owner}'s house on ${map} was demolished.`,
+  transferred: (owner: string, map: string, to: string) =>
+    `${owner}'s house on ${map} now belongs to ${to}.`,
+  /** To the owner, when online. */
+  toOwnerRevoked: (map: string) => `An admin has demolished your house on ${map}.`,
+  toOwnerTransferred: (map: string, to: string) =>
+    `An admin has given your house on ${map} to ${to}.`,
+  toNewOwner: (map: string, from: string, door: boolean) =>
+    `An admin has given you ${from}'s house on ${map}.${door ? " Your House Key opens its door." : ""}`,
+  noMap: (map: string) =>
+    `The map ${map} the house stands on is missing, so it can't be demolished.`,
+} as const;
 
 /** An IP ban in force on one of the character's addresses. */
 export interface HubIpBan {

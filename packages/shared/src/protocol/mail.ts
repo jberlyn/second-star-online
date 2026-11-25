@@ -81,6 +81,11 @@ export type MailServerMsg =
     }
   /** The send went through: SEND's close. */
   | { t: "mailSent" }
+  /**
+   * The mailbox session ended from the server (its mailbox was given away or demolished, issue
+   * #36): the mail screen closes and the keys unlock.
+   */
+  | { t: "mailClosed" }
   /** The message board: its topic and text (reloaded after a post), or null to close it. */
   | { t: "board"; board: { topic: string; text: string; lock: boolean } | null }
   /** Using a canvas: the paint screen opens; `reopen` keeps a cancelled picture. */

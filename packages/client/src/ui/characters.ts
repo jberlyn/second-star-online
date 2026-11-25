@@ -8,6 +8,9 @@
  *   are), Items (gold, bank, bag, worn gear, vault, spellbook, houses), Moderation (what is in
  *   force, the buttons and the history, with addresses for a role with `/banip`) and Chat (their
  *   newest lines, for a role with `/chatlog`). Activity opens their Activity Log timeline.
+ * - **Houses** (issue #36): each house's map, door, interior, type, shops and House Vault count.
+ *   With `characterEditor`, Revoke and Transfer ask the server what the change will do, show it,
+ *   and act only once the admin confirms that.
  * - The server reads an online character live, so the hub is never a save behind. Every read is
  *   audited.
  */
@@ -21,9 +24,11 @@ import {
   EDIT_TEXT,
   type EditableCharacter,
   factionLabel,
+  type HousePreview,
   HUB_ACTIONS,
   HUB_TEXT,
   type HubAction,
+  type HubHouse,
   historyLine,
   type ModerationLogRow,
   type ModerationRecord,
@@ -63,6 +68,29 @@ export interface CharactersPageOptions {
     reason: string;
   }): void;
   undo(req: { seq: number; name: string; id: string; reason: string }): void;
+  /** The hub's houses (issue #36): what a revoke or transfer would do, asked before either. */
+  housePreview(req: {
+    seq: number;
+    name: string;
+    interior: string;
+    action: "revoke" | "transfer";
+    to: string;
+  }): void;
+  houseRevoke(req: {
+    seq: number;
+    name: string;
+    interior: string;
+    expect: string;
+    reason: string;
+  }): void;
+  houseTransfer(req: {
+    seq: number;
+    name: string;
+    interior: string;
+    to: string;
+    expect: string;
+    reason: string;
+  }): void;
   /** Opens the character's timeline on the Activity Log page. */
   openActivity(name: string): void;
   /** Whether your role holds a permission, as the server last said. */
@@ -77,6 +105,7 @@ export interface CharactersPage {
   receiveList(msg: { seq: number; rows: CharacterListRow[] }): void;
   receiveHub(msg: { seq: number; hub: CharacterHub | null; error?: string }): void;
   receiveResult(msg: { seq: number; ok: boolean; text: string }): void;
+  receiveHousePreview(msg: { seq: number; preview: HousePreview | null; error?: string }): void;
   /**
    * Your permissions changed: what the hub may no longer show goes at once, an open question
    * closes, and the hub is read again.
@@ -160,6 +189,11 @@ function section(title: string, ...body: Node[]): HTMLElement {
   return s;
 }
 
+function wide(s: HTMLElement): HTMLElement {
+  s.classList.add("hub-wide");
+  return s;
+}
+
 function list(items: readonly string[], empty: string): HTMLElement {
   if (items.length === 0) {
     const p = document.createElement("p");
@@ -175,6 +209,103 @@ function list(items: readonly string[], empty: string): HTMLElement {
     ul.append(li);
   }
   return ul;
+}
+
+/** `2 Apple, Knife`, or `nothing`. */
+function itemsText(items: readonly { item: string; qty: number }[]): string {
+  return items.map((i) => (i.qty === 1 ? i.item : `${i.qty} ${i.item}`)).join(", ") || "nothing";
+}
+
+/** A container's lines as `2 Apple, Knife`. */
+function linesText(lines: readonly string[]): string {
+  const by = new Map<string, { item: string; qty: number }>();
+  for (const l of lines) {
+    const e = by.get(l) ?? { item: l, qty: 0 };
+    e.qty += 1;
+    by.set(l, e);
+  }
+  return itemsText([...by.values()]);
+}
+
+/** `a, b and c`. */
+function andList(words: readonly string[]): string {
+  return words.length <= 1
+    ? words.join("")
+    : `${words.slice(0, -1).join(", ")} and ${words[words.length - 1]}`;
+}
+
+/** A house's row text: `Small House on x1000y992 (10, 5)`. */
+export function houseLabel(h: HubHouse): string {
+  return `${h.type ?? "House"} on ${h.map} (${h.x}, ${h.y})`;
+}
+
+/** A house's shops, as the Houses table shows them. */
+function shopsText(h: HubHouse): string {
+  return (
+    h.shops
+      .map(
+        (s) =>
+          `${s.npc}: ${s.lines} line${s.lines === 1 ? "" : "s"}, ${s.stock} in stock, till ${s.till.toLocaleString("en")} gold`,
+      )
+      .join("; ") || "No shop"
+  );
+}
+
+/** The question a house preview asks, and what the change will do, line by line (issue #36). */
+export function housePreviewText(p: HousePreview): { text: string; list: string[] } {
+  const where = houseLabel(p.house);
+  const list: string[] = [];
+  if (p.action === "revoke") {
+    if (p.inside.length > 0) {
+      list.push(`Everyone inside (${p.inside.join(", ")}) is moved out to its door.`);
+    }
+    list.push(
+      p.vaultFate === "destroyed"
+        ? `${p.vault.name} is destroyed: ${linesText(p.vault.items)}.`
+        : `${p.vault.name} is kept: they own another house.`,
+    );
+    for (const s of p.shops) {
+      list.push(
+        `${s.npc}'s shop is destroyed: stock ${itemsText(s.stock)}; till ${s.till.toLocaleString("en")} gold.`,
+      );
+    }
+    list.push(`On the floor, destroyed: ${itemsText(p.floor)}.`);
+    list.push("This can't be undone.");
+    return { text: `Demolish ${p.owner}'s ${where}, interior ${p.house.interior}?`, list };
+  }
+  const to = p.to ?? "";
+  if (p.renames.length > 0) {
+    list.push(`Its ${andList(p.renames)} become ${to}'s.`);
+  }
+  if (p.guild !== null) {
+    list.push(`Its door and Guild Vault stay The ${p.guild}'s; their Guild Key opens it.`);
+  } else if (!p.renames.includes("header")) {
+    list.push("Its header is kept as it is.");
+  }
+  for (const s of p.shops) {
+    list.push(
+      `${s.npc} works for ${to}, with its stock (${itemsText(s.stock)}) and till (${s.till.toLocaleString("en")} gold).`,
+    );
+  }
+  if (p.vault.items.length === 0) {
+    list.push(`${p.vault.name} is empty: nothing moves.`);
+  } else if (p.vaultFate === "kept") {
+    list.push(`${p.vault.name} stays ${p.owner}'s: they own another house.`);
+  } else {
+    list.push(
+      `${p.vault.name}'s contents move ${p.vaultFate === "merged" ? "in with what is already in" : "into"} ${to}'s House Vault: ${linesText(p.vault.items)}.`,
+    );
+  }
+  if (p.inside.length > 0) {
+    list.push(`Anyone inside (${p.inside.join(", ")}) stays where they are.`);
+  }
+  // Transferring it back gives the house back, but the vault rules apply again then.
+  list.push(
+    p.vaultFate === "moved" || p.vaultFate === "merged"
+      ? `Transferring it back returns the house and its shops, but not necessarily the vault's contents: they go back only if ${to} owns no other house then.`
+      : "Transferring it back returns the house and its shops; the vault rules apply again then.",
+  );
+  return { text: `Give ${p.owner}'s ${where}, interior ${p.house.interior}, to ${to}?`, list };
 }
 
 export function createCharactersPage(opts: CharactersPageOptions): CharactersPage {
@@ -301,7 +432,11 @@ export function createCharactersPage(opts: CharactersPageOptions): CharactersPag
   const modApply = panelButton("hub-apply", "Apply", () => apply(), "danger");
   /** The request waiting for its result (a moderation button, an edit or an undo), and its hub. */
   let modSeq = 0;
-  let pendingMod: { seq: number; name: string; kind: "moderate" | "edit" | "undo" } | null = null;
+  let pendingMod: {
+    seq: number;
+    name: string;
+    kind: "moderate" | "edit" | "undo" | "house";
+  } | null = null;
   /** Answers an open question with Cancel (the hub or the page it was asked on is going). */
   const cancelQuestion = () =>
     root.querySelector(".control-panel-confirm")?.dispatchEvent(new Event("control-panel-cancel"));
@@ -407,6 +542,99 @@ export function createCharactersPage(opts: CharactersPageOptions): CharactersPag
     },
   });
 
+  // ---- the houses (issue #36): kept across redraws so a half-typed reason survives --------------
+  const houseReason = gameInput("hub-house-reason");
+  houseReason.type = "text";
+  houseReason.maxLength = 200;
+  const houseTo = gameInput("hub-house-to");
+  houseTo.type = "text";
+  houseTo.maxLength = CHARACTER_SEARCH_MAX;
+  houseTo.spellcheck = false;
+  const houseStatus = document.createElement("p");
+  houseStatus.className = "activity-status";
+  houseStatus.setAttribute("role", "status");
+  const houseForm = document.createElement("form");
+  houseForm.className = "activity-filters";
+  houseForm.addEventListener("submit", (e) => e.preventDefault());
+  houseForm.append(
+    formField("Reason", houseReason, "Required to revoke or transfer. Kept in the edit log."),
+    formField("Transfer to", houseTo, "The character a transfer gives the house to."),
+  );
+  /** The preview asked for, and what the admin will confirm with it. */
+  let pendingPreview: {
+    seq: number;
+    name: string;
+    interior: string;
+    action: "revoke" | "transfer";
+    to: string;
+    reason: string;
+  } | null = null;
+
+  const houseAsk = (house: HubHouse, act: "revoke" | "transfer") => {
+    const h = hub;
+    if (!h || !opts.can("characterEditor")) {
+      return;
+    }
+    const reason = houseReason.value.trim();
+    if (reason === "") {
+      houseStatus.textContent = EDIT_TEXT.needReason;
+      houseReason.focus();
+      return;
+    }
+    const to = act === "transfer" ? houseTo.value.trim() : "";
+    if (act === "transfer" && to === "") {
+      houseStatus.textContent = "Name the character to give the house to.";
+      houseTo.focus();
+      return;
+    }
+    modSeq += 1;
+    pendingPreview = {
+      seq: modSeq,
+      name: h.name,
+      interior: house.interior,
+      action: act,
+      to,
+      reason,
+    };
+    houseStatus.textContent = "Looking at the house…";
+    opts.housePreview({ seq: modSeq, name: h.name, interior: house.interior, action: act, to });
+  };
+
+  const houseConfirm = (p: HousePreview, asked: NonNullable<typeof pendingPreview>) => {
+    const q = housePreviewText(p);
+    houseStatus.textContent = "";
+    void confirmBox(root, {
+      text: q.text,
+      list: q.list,
+      confirm: asked.action === "revoke" ? "Demolish" : "Transfer",
+      cancel: "Cancel",
+      danger: true,
+    }).then((yes) => {
+      if (!yes || !root.isConnected || hub?.name !== asked.name || !opts.can("characterEditor")) {
+        return;
+      }
+      if (pendingMod !== null) {
+        houseStatus.textContent = EDIT_TEXT.wait;
+        return;
+      }
+      modSeq += 1;
+      pendingMod = { seq: modSeq, name: asked.name, kind: "house" };
+      houseStatus.textContent = "Working…";
+      const base = {
+        seq: modSeq,
+        name: asked.name,
+        interior: asked.interior,
+        expect: p.expect,
+        reason: asked.reason,
+      };
+      if (asked.action === "revoke") {
+        opts.houseRevoke(base);
+      } else {
+        opts.houseTransfer({ ...base, to: asked.to });
+      }
+    });
+  };
+
   // ---- behaviour -------------------------------------------------------------------------------
   const search = () => {
     seq += 1;
@@ -430,6 +658,10 @@ export function createCharactersPage(opts: CharactersPageOptions): CharactersPag
     modReason.value = "";
     modLength.value = "";
     modResult.textContent = "";
+    pendingPreview = null;
+    houseReason.value = "";
+    houseTo.value = "";
+    houseStatus.textContent = "";
     editor.clear();
     editLog.clear();
     searchBox.hidden = true;
@@ -599,16 +831,49 @@ export function createCharactersPage(opts: CharactersPageOptions): CharactersPag
             return [label, item === "NOTHING" || item === "" ? "—" : item];
           }),
         );
-        const houses = createTable<{ map: string; interior: string }>({
+        const editing = opts.can("characterEditor");
+        const houses = createTable<HubHouse>({
           label: "Houses",
           columns: [
-            { label: "Stands on", cell: (r) => r.map },
+            { label: "House", cell: (r) => r.type ?? "Unknown type" },
+            { label: "Stands on", cell: (r) => `${r.map} (${r.x}, ${r.y})` },
             { label: "Interior", cell: (r) => r.interior },
+            { label: "Shop", cell: (r) => shopsText(r) },
+            {
+              label: "House Vault",
+              cell: (r) => `${r.vaultItems} item${r.vaultItems === 1 ? "" : "s"}`,
+              numeric: true,
+            },
+            ...(editing
+              ? [
+                  {
+                    label: "",
+                    cell: (r: HubHouse) => {
+                      const box = document.createElement("div");
+                      box.className = "hub-house-actions";
+                      const rev = panelButton(
+                        "hub-house-revoke",
+                        "Revoke",
+                        () => houseAsk(r, "revoke"),
+                        "danger",
+                      );
+                      const give = panelButton("hub-house-transfer", "Transfer", () =>
+                        houseAsk(r, "transfer"),
+                      );
+                      for (const b of [rev, give]) {
+                        b.dataset.house = r.interior;
+                      }
+                      box.append(rev, give);
+                      return box;
+                    },
+                  },
+                ]
+              : []),
           ],
           empty: "They own no house.",
           key: (r) => r.interior,
         });
-        houses.setRows(s.houses);
+        houses.setRows(h.houses);
         return [
           section(
             "Gold",
@@ -621,7 +886,16 @@ export function createCharactersPage(opts: CharactersPageOptions): CharactersPag
           section("Worn", worn.el),
           section("Vault", list(s.vault, "The vault is empty.")),
           section("Spellbook", list(s.spellbook, "They know no spells.")),
-          section("Houses", houses.el),
+          // Full width: the table has a column for each fact and, to edit, the buttons.
+          wide(
+            section(
+              "Houses",
+              houses.el,
+              // The status stays while editing, so a change's answer shows after the last house goes.
+              ...(editing && h.houses.length > 0 ? [houseForm] : []),
+              ...(editing ? [houseStatus] : []),
+            ),
+          ),
         ];
       }
       case "edit":
@@ -750,6 +1024,12 @@ export function createCharactersPage(opts: CharactersPageOptions): CharactersPag
         editor.result(msg.ok, msg.text);
       } else if (asked.kind === "undo") {
         editLog.result(msg.ok, msg.text);
+      } else if (asked.kind === "house") {
+        houseStatus.textContent = msg.text;
+        if (msg.ok) {
+          houseReason.value = "";
+          houseTo.value = "";
+        }
       } else {
         modResult.textContent = msg.text;
         if (msg.ok) {
@@ -761,12 +1041,30 @@ export function createCharactersPage(opts: CharactersPageOptions): CharactersPag
         ask(hub.name);
       }
     },
+    receiveHousePreview(msg) {
+      const asked = pendingPreview;
+      if (!asked || msg.seq !== asked.seq) {
+        return;
+      }
+      pendingPreview = null;
+      if (!hub || hub.name !== asked.name) {
+        return;
+      }
+      if (!msg.preview) {
+        houseStatus.textContent = msg.error ?? "";
+        return;
+      }
+      houseConfirm(msg.preview, asked);
+    },
     openHub,
     permissionsChanged() {
       cancelQuestion();
       // The server drops an edit the role may no longer make without an answer.
       if (pendingMod && pendingMod.kind !== "moderate" && !opts.can("characterEditor")) {
         pendingMod = null;
+      }
+      if (!opts.can("characterEditor")) {
+        pendingPreview = null;
       }
       const h = hub;
       if (!h) {
@@ -800,6 +1098,10 @@ export function createCharactersPage(opts: CharactersPageOptions): CharactersPag
       modReason.value = "";
       modLength.value = "";
       modResult.textContent = "";
+      pendingPreview = null;
+      houseReason.value = "";
+      houseTo.value = "";
+      houseStatus.textContent = "";
       editor.clear();
       editLog.clear();
       lastQuery = null;

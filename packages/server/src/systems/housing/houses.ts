@@ -15,7 +15,9 @@ import {
   type HouseListEntry,
   type HousePlan,
   type HouseType,
+  houseDrop,
   houseType,
+  houseTypeOf,
   invDelSlot,
   isFootprint,
   isHouseMap,
@@ -32,6 +34,7 @@ import {
 import { logActivity, logPlaced, logWorld, logWorldLines } from "../admin/activity.ts";
 import { refreshSnapshot } from "../admin/worldedit.ts";
 import { createShopkeeper } from "../economy/playershop.ts";
+import { closeMailAt } from "../mail/mail.ts";
 import {
   type GroundItem,
   type HouseRecord,
@@ -289,11 +292,46 @@ export function houseClockStep(p: Player): boolean {
   return true;
 }
 
+/** The house whose interior is `map`, or null (any case). */
+export function houseIn(world: World, map: string): HouseRecord | null {
+  for (const h of world.houses.values()) {
+    if (lingoEq(h.interior, map)) {
+      return h;
+    }
+  }
+  return null;
+}
+
+/**
+ * The do-not-drop flag where `p` stands: a personal house's owner by its blueprint, a guild hall
+ * (or any other room) by its header (`houseDrop`).
+ */
+export function dropFlag(world: World, p: Player): 0 | 1 {
+  const h = houseIn(world, p.map.name);
+  const house = h
+    ? { mine: h.ownerId === p.id, hall: houseTypeOf(h)?.guild ?? h.item1 === null }
+    : null;
+  return houseDrop(p.map.title, p.name, p.guild, house);
+}
+
+/** An owner's House Vault, the container every house of theirs opens. */
+export const houseVaultOf = (owner: string): string => `${owner}'s House Vault`;
+
+/** Whether `ownerId` owns a house (any blueprint names them). */
+export function ownsAHouse(world: World, ownerId: string): boolean {
+  for (const h of world.houses.values()) {
+    if (h.ownerId === ownerId) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /**
  * Demolition for one house, named by its interior: the recorded mailbox or lamp and exit are
  * blanked by exact name and tile, each tile reverts to G3 only where layer 2 still holds it, and
- * the exit field is left. SSO also shows it at once and queues the interior for deletion. Missing
- * blueprint: nothing.
+ * the exit field is left. SSO also shows it at once and queues the interior for deletion, and
+ * empties the owner's House Vault when this was their last house. Missing blueprint: nothing.
  */
 export function demolish(
   world: World,
@@ -335,19 +373,26 @@ export function demolish(
   world.houses.delete(interior);
   world.housesDirty = true;
   world.interiorsToDelete.add(rec.interior);
-  const vault = `${rec.ownerName}'s House Vault`;
-  logWorldLines(world, "demolish", world.containers.get(vault) ?? [], [], {
-    other: vault,
-    details,
-  });
-  world.containersDirty.add(vault);
-  world.containers.delete(vault);
+  // The House Vault is the owner's, shared by all their houses: it goes with their last one.
+  if (!ownsAHouse(world, rec.ownerId)) {
+    const vault = houseVaultOf(rec.ownerName);
+    logWorldLines(world, "demolish", world.containers.get(vault) ?? [], [], {
+      other: vault,
+      details,
+    });
+    world.containersDirty.add(vault);
+    world.containers.delete(vault);
+  }
   const room = world.rooms.get(m.name);
   const out: Outgoing[] = [];
   if (events.length > 0) {
     for (const o of room?.players ?? []) {
       out.push({ to: o.id, msg: { t: "delta", events } });
     }
+  }
+  // A session at its mailbox ends with it (issue #36).
+  if (rec.item1) {
+    out.push(...closeMailAt(world, m.name, rec.item1));
   }
   return { out, interior: rec.interior };
 }

@@ -11,6 +11,7 @@ import {
   type ContentData,
   EDIT_TEXT,
   emptyBag,
+  type HousePreview,
   HUB_TEXT,
   type HubAction,
   installContent,
@@ -18,7 +19,11 @@ import {
   type Permission,
 } from "@secondstaronline/shared";
 
-import { type CharactersPageOptions, createCharactersPage } from "../src/ui/characters.ts";
+import {
+  type CharactersPageOptions,
+  createCharactersPage,
+  housePreviewText,
+} from "../src/ui/characters.ts";
 
 const hub = (over: Partial<CharacterHub> = {}): CharacterHub => {
   const bag = emptyBag();
@@ -64,6 +69,17 @@ const hub = (over: Partial<CharacterHub> = {}): CharacterHub => {
     history: [],
     edits: [],
     hunger: { max: 50_000, start: 50_000, afterDeath: 40_000 },
+    houses: [
+      {
+        interior: "AlHouse1",
+        map: "x1y1",
+        x: 4,
+        y: 5,
+        type: "Small Shop",
+        shops: [{ npc: "Zumu", lines: 2, stock: 3, till: 40 }],
+        vaultItems: 2,
+      },
+    ],
     ...over,
   };
 };
@@ -82,6 +98,9 @@ function page(perms: Permission[] = ["characterView", "ban", "kick"]) {
     activity: [] as string[],
     edit: [] as Parameters<CharactersPageOptions["edit"]>[0][],
     undo: [] as Parameters<CharactersPageOptions["undo"]>[0][],
+    preview: [] as Parameters<CharactersPageOptions["housePreview"]>[0][],
+    revoke: [] as Parameters<CharactersPageOptions["houseRevoke"]>[0][],
+    transfer: [] as Parameters<CharactersPageOptions["houseTransfer"]>[0][],
   };
   const p = createCharactersPage({
     search: (seq, q) => calls.search.push([seq, q]),
@@ -89,6 +108,9 @@ function page(perms: Permission[] = ["characterView", "ban", "kick"]) {
     moderate: (r) => calls.moderate.push(r),
     edit: (r) => calls.edit.push(r),
     undo: (r) => calls.undo.push(r),
+    housePreview: (r) => calls.preview.push(r),
+    houseRevoke: (r) => calls.revoke.push(r),
+    houseTransfer: (r) => calls.transfer.push(r),
     openActivity: (n) => calls.activity.push(n),
     can: (x) => perms.includes(x),
   });
@@ -545,6 +567,9 @@ describe("the editor", () => {
             override: false,
             undoOf: null,
             undoneBy: null,
+            kind: "edit",
+            summary: "",
+            irreversible: false,
           },
         ],
       }),
@@ -586,5 +611,204 @@ describe("one change at a time", () => {
     await save("6");
     expect(calls.edit).toHaveLength(1);
     expect(document.body.textContent).toContain(EDIT_TEXT.wait);
+  });
+});
+
+describe("the hub's houses (issue #36)", () => {
+  const confirmBtn = () =>
+    document.querySelector<HTMLButtonElement>('[data-action="control-panel-confirm-ok"]');
+  const flush = () => new Promise((r) => setTimeout(r, 0));
+  const revokePreview: HousePreview = {
+    action: "revoke",
+    owner: "Al",
+    house: hub().houses[0] as HousePreview["house"],
+    vault: { name: "Al's House Vault", items: ["Apple", "Apple", "Knife"] },
+    vaultFate: "destroyed",
+    shops: [{ npc: "Zumu", stock: [{ item: "Fish", qty: 3 }], till: 40 }],
+    floor: [{ item: "Chair", qty: 1 }],
+    inside: ["Bo"],
+    renames: [],
+    guild: null,
+    expect: "tok1",
+  };
+
+  test("Items lists each house; a viewer gets no Revoke or Transfer", () => {
+    const { p, $, showHub } = page(["characterView"]);
+    showHub();
+    $("hub-tab-items").click();
+    expect(
+      [...p.el.querySelectorAll("table[aria-label='Houses'] td")].map((td) => td.textContent),
+    ).toEqual([
+      "Small Shop",
+      "x1y1 (4, 5)",
+      "AlHouse1",
+      "Zumu: 2 lines, 3 in stock, till 40 gold",
+      "2 items",
+    ]);
+    expect(p.el.querySelector('[data-action="hub-house-revoke"]')).toBeNull();
+    expect(p.el.querySelector('[data-action="hub-house-reason"]')).toBeNull();
+  });
+
+  test("Revoke needs a reason, asks the server first, lists what goes and sends what was shown", async () => {
+    const { p, $, calls, showHub } = page(["characterView", "characterEditor"]);
+    showHub();
+    $("hub-tab-items").click();
+    $("hub-house-revoke").click();
+    expect(p.el.textContent).toContain(EDIT_TEXT.needReason);
+    expect(calls.preview).toEqual([]);
+    $<HTMLInputElement>("hub-house-reason").value = "griefing";
+    $("hub-house-revoke").click();
+    expect(calls.preview).toEqual([
+      { seq: expect.any(Number), name: "Al", interior: "AlHouse1", action: "revoke", to: "" },
+    ]);
+    // An old answer is ignored.
+    p.receiveHousePreview({ seq: -5, preview: revokePreview });
+    expect(confirmBtn()).toBeNull();
+    p.receiveHousePreview({ seq: calls.preview[0]?.seq ?? 0, preview: revokePreview });
+    const box = document.querySelector(".control-panel-confirm-box")?.textContent ?? "";
+    expect(box).toContain("Demolish Al's Small Shop on x1y1 (4, 5), interior AlHouse1?");
+    expect(box).toContain("Everyone inside (Bo) is moved out to its door.");
+    expect(box).toContain("Al's House Vault is destroyed: 2 Apple, Knife.");
+    expect(box).toContain("Zumu's shop is destroyed: stock 3 Fish; till 40 gold.");
+    expect(box).toContain("On the floor, destroyed: Chair.");
+    expect(box).toContain("This can't be undone.");
+    confirmBtn()?.click();
+    await flush();
+    expect(calls.revoke).toEqual([
+      {
+        seq: expect.any(Number),
+        name: "Al",
+        interior: "AlHouse1",
+        expect: "tok1",
+        reason: "griefing",
+      },
+    ]);
+    p.receiveResult({
+      seq: calls.revoke[0]?.seq ?? 0,
+      ok: true,
+      text: "Al's house was demolished.",
+    });
+    expect(p.el.textContent).toContain("Al's house was demolished.");
+    expect($<HTMLInputElement>("hub-house-reason").value).toBe("");
+  });
+
+  test("Transfer needs a name; a refusal from the preview is shown and nothing is sent", async () => {
+    const { p, $, calls, showHub } = page(["characterView", "characterEditor"]);
+    showHub();
+    $("hub-tab-items").click();
+    $<HTMLInputElement>("hub-house-reason").value = "sold";
+    $("hub-house-transfer").click();
+    expect(calls.preview).toEqual([]);
+    $<HTMLInputElement>("hub-house-to").value = " Bo ";
+    $("hub-house-transfer").click();
+    expect(calls.preview.at(-1)).toMatchObject({ action: "transfer", to: "Bo" });
+    p.receiveHousePreview({
+      seq: calls.preview.at(-1)?.seq ?? 0,
+      preview: null,
+      error: "Bo's House Vault would hold 16 items, but holds at most 15. Nothing changed.",
+    });
+    expect(p.el.textContent).toContain("holds at most 15");
+    expect(confirmBtn()).toBeNull();
+    $("hub-house-transfer").click();
+    p.receiveHousePreview({
+      seq: calls.preview.at(-1)?.seq ?? 0,
+      preview: { ...revokePreview, action: "transfer", to: "Bo", vaultFate: "merged" },
+    });
+    // A Small Shop: no door or mailbox, and a custom header stays.
+    const box = document.querySelector(".control-panel-confirm-box")?.textContent ?? "";
+    expect(box).toContain("Give Al's Small Shop on x1y1 (4, 5), interior AlHouse1, to Bo?");
+    expect(box).toContain("Zumu works for Bo, with its stock (3 Fish) and till (40 gold).");
+    expect(box).toContain(
+      "Al's House Vault's contents move in with what is already in Bo's House Vault: 2 Apple, Knife.",
+    );
+    expect(box).toContain("Anyone inside (Bo) stays where they are.");
+    expect(box).toContain("Its header is kept as it is.");
+    expect(box).not.toContain("door");
+    // Transferring back does not promise the vault back.
+    expect(box).toContain(
+      "Transferring it back returns the house and its shops, but not necessarily the vault's contents: they go back only if Bo owns no other house then.",
+    );
+    confirmBtn()?.click();
+    await flush();
+    expect(calls.transfer).toEqual([
+      {
+        seq: expect.any(Number),
+        name: "Al",
+        interior: "AlHouse1",
+        to: "Bo",
+        expect: "tok1",
+        reason: "sold",
+      },
+    ]);
+  });
+
+  test("the edit log shows a house change's summary and never offers its undo", () => {
+    const { p, $, showHub } = page(["characterView", "characterEditor"]);
+    showHub(
+      hub({
+        edits: [
+          {
+            id: "h1",
+            at: "2026-11-22T09:00:00.000Z",
+            actorName: "God",
+            reason: "griefing",
+            changes: [],
+            override: false,
+            undoOf: null,
+            undoneBy: null,
+            kind: "houseRevoke",
+            summary: "Demolished Small House on x1y1 (4, 5).",
+            irreversible: true,
+          },
+        ],
+      }),
+    );
+    $("hub-tab-edits").click();
+    expect(p.el.textContent).toContain("House revoked");
+    expect(p.el.textContent).toContain("Demolished Small House on x1y1 (4, 5).");
+    expect(p.el.textContent).toContain("Can't be undone");
+    expect(p.el.querySelector('[data-action="hub-undo"]')).toBeNull();
+  });
+
+  test("a house's renames and a guild hall's guild are named as they are", () => {
+    const house = housePreviewText({
+      ...revokePreview,
+      action: "transfer",
+      to: "Bo",
+      renames: ["door", "mailbox", "House Vault", "header"],
+    });
+    expect(house.list).toContain("Its door, mailbox, House Vault and header become Bo's.");
+    const hall = housePreviewText({
+      ...revokePreview,
+      action: "transfer",
+      to: "Bo",
+      renames: [],
+      guild: "Hawks",
+    });
+    expect(hall.list).toContain(
+      "Its door and Guild Vault stay The Hawks's; their Guild Key opens it.",
+    );
+    expect(hall.list.join(" ")).not.toContain("mailbox");
+  });
+
+  test("the result of a change stays on screen after the last house goes", async () => {
+    const { p, $, calls, showHub } = page(["characterView", "characterEditor"]);
+    showHub();
+    $("hub-tab-items").click();
+    $<HTMLInputElement>("hub-house-reason").value = "griefing";
+    $("hub-house-revoke").click();
+    p.receiveHousePreview({ seq: calls.preview.at(-1)?.seq ?? 0, preview: revokePreview });
+    confirmBtn()?.click();
+    await flush();
+    p.receiveResult({
+      seq: calls.revoke[0]?.seq ?? 0,
+      ok: true,
+      text: "Al's house was demolished.",
+    });
+    // The hub is read again, now with no house.
+    p.receiveHub({ seq: calls.open.at(-1)?.[0] ?? 0, hub: hub({ houses: [] }) });
+    expect(p.el.textContent).toContain("They own no house.");
+    expect(p.el.textContent).toContain("Al's house was demolished.");
+    expect(p.el.querySelector('[data-action="hub-house-reason"]')).toBeNull();
   });
 });
