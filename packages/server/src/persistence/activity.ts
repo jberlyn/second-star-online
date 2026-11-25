@@ -43,8 +43,21 @@ export function insertActivity(db: Db, entries: readonly ActivityEntry[], now: s
   }
 }
 
-/** Which rows a query reads: one character's timeline, or every movement of one item. */
-export type ActivityScope = { characterId: string } | { name: string } | { item: string };
+/**
+ * Which rows a query reads: one character's timeline, every movement of one item, or every
+ * movement of the currency (`gold`: the gold carried, and gold placed or put in the bank).
+ */
+export type ActivityScope =
+  | { characterId: string }
+  | { name: string }
+  | { item: string }
+  | { gold: true };
+
+const num = (key: string) =>
+  `CASE WHEN json_type(details, '$.${key}') IN ('integer', 'real') THEN json_extract(details, '$.${key}') ELSE 0 END`;
+
+/** A row's change to the gold: carried, placed on the ground, or in a bank (issue #35). */
+const GOLD_CHANGE = `(gold + ${num("placedGold")} + ${num("bank")})`;
 
 export interface ActivityQuery {
   scope: ActivityScope;
@@ -62,7 +75,7 @@ interface Raw {
   id: string;
   created_at: string;
   type: string;
-  character: string;
+  character: string | null;
   other_id: string | null;
   other: string | null;
   item: string | null;
@@ -84,6 +97,8 @@ export function activityRows(db: Db, q: ActivityQuery): ActivityRow[] {
   } else if ("name" in q.scope) {
     where.push("character = ? COLLATE NOCASE");
     args.push(q.scope.name);
+  } else if ("gold" in q.scope) {
+    where.push(`${GOLD_CHANGE} != 0`);
   } else {
     where.push("item = ? COLLATE NOCASE");
     args.push(q.scope.item);
@@ -150,13 +165,15 @@ function toRow(r: Raw): ActivityRow {
  */
 export function activityItemTotals(
   db: Db,
-  item: string,
+  /** The item, or null for the currency (each row's change to the gold). */
+  item: string | null,
   since: string | null,
   until: string | null,
   cap = Number.MAX_SAFE_INTEGER,
 ): { totals: ActivityTotal[]; capped: boolean } {
-  const where = ["item = ? COLLATE NOCASE"];
-  const args: string[] = [item];
+  const gold = item === null;
+  const where = gold ? [`${GOLD_CHANGE} != 0`] : ["item = ? COLLATE NOCASE"];
+  const args: string[] = gold ? [] : [item];
   if (since) {
     where.push("created_at >= ?");
     args.push(since);
@@ -169,7 +186,8 @@ export function activityItemTotals(
     .query<{ type: string; gained: number; lost: number; rows: number }, (string | number)[]>(
       `SELECT type, SUM(CASE WHEN qty > 0 THEN qty ELSE 0 END) AS gained,
          SUM(CASE WHEN qty < 0 THEN -qty ELSE 0 END) AS lost, COUNT(*) AS rows
-       FROM (SELECT type, qty FROM activity_log WHERE ${where.join(" AND ")}
+       FROM (SELECT type, ${gold ? GOLD_CHANGE : "qty"} AS qty FROM activity_log
+         WHERE ${where.join(" AND ")}
          ORDER BY created_at DESC, id DESC LIMIT ?)
        GROUP BY type ORDER BY type`,
     )
@@ -192,11 +210,27 @@ export function activityItemTotals(
   };
 }
 
-/** Forgets rows older than `days` days (0 keeps them). */
-export function pruneActivity(db: Db, now: string, days: number): void {
+/**
+ * Forgets rows older than `days` days (0 keeps them). With `keepAfterSeq` (the last item
+ * reconciliation run's `last_seq`, issue #35), a row the next run has still to read is kept
+ * whatever its age.
+ */
+export function pruneActivity(
+  db: Db,
+  now: string,
+  days: number,
+  keepAfterSeq: number | null = null,
+): void {
   if (days <= 0) {
     return;
   }
   const cutoff = new Date(Date.parse(now) - days * 86_400_000).toISOString();
-  db.query("DELETE FROM activity_log WHERE created_at < ?").run(cutoff);
+  if (keepAfterSeq === null) {
+    db.query("DELETE FROM activity_log WHERE created_at < ?").run(cutoff);
+  } else {
+    db.query("DELETE FROM activity_log WHERE created_at < ? AND seq <= ?").run(
+      cutoff,
+      keepAfterSeq,
+    );
+  }
 }

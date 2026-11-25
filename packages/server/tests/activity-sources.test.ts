@@ -483,7 +483,7 @@ describe("using items up", () => {
     balanced(sim.world, a);
   });
 
-  test("a vehicle deed built is logged as used; the cannonball fired is too", () => {
+  test("a vehicle deed built is logged as used, the vehicle as placed; the cannonball fired is too", () => {
     const map = testMap("x1000y992", [], (x) => (x >= 8 ? "W1" : "G1"));
     const sim = setup([map]);
     const ann = player("Ann", map, 7, 5);
@@ -497,7 +497,9 @@ describe("using items up", () => {
     useIntent(ctx(), room, ann, 1);
     expect(logged(sim.world)).toEqual([
       { type: "use", who: "Ann", item: "Battleship Deed", qty: -1 },
+      { type: "use", who: "Ann", item: "Battleship" },
     ]);
+    expect(sim.world.activity[1]?.details).toEqual({ built: "Battleship", placed: 1 });
     ann.itemPause = 0;
     actionIntent(ctx(), room, ann);
     expect(ann.vehicle).toBe("Battleship");

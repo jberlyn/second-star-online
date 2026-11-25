@@ -71,6 +71,19 @@ export function loadGround(db: Db, mapId: string, now: string): StoredGroundItem
     }));
 }
 
+/** A map's ground items already past their time, which `loadGround` deletes. */
+export function expiredGround(
+  db: Db,
+  mapId: string,
+  now: string,
+): { item: string; qty: number; x: number; y: number }[] {
+  return db
+    .query<{ item: string; qty: number; x: number; y: number }, [string, string]>(
+      "SELECT item, qty, x, y FROM ground_items WHERE map_id = ? AND expires_at IS NOT NULL AND expires_at <= ? ORDER BY id",
+    )
+    .all(mapId, now);
+}
+
 /**
  * A map's ground items, read only and without the ones already decayed (which loading the map
  * deletes): where each lies and what it is (the content contract's check).

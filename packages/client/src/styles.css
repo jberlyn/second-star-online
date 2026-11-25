@@ -1448,6 +1448,16 @@ body {
 .activity-unlogged {
   color: #f0b429;
 }
+.activity-search[hidden],
+.activity-reconcile[hidden] {
+  display: none;
+}
+.activity-reconcile > .control-panel-btn {
+  margin: 0 20px;
+}
+.activity-run {
+  margin: 12px 0;
+}
 /* The Characters page and player hub (ui/characters.ts). */
 .characters [hidden],
 .hub [hidden] {

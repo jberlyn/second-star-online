@@ -658,6 +658,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
   settingsPage.append(settingsPanel.el);
   const activityPage = createActivityLogPage({
     query: (q) => send({ t: "activityQuery", ...q }),
+    reconcile: (r) => send({ t: r.run ? "reconcileRun" : "reconcileQuery", seq: r.seq }),
   });
   const charactersPage = createCharactersPage({
     search: (seq, query) => send({ t: "characterSearch", seq, query }),
@@ -796,6 +797,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         group: "Players",
         permission: "activityLog",
         el: activityPage.el,
+        onShow: () => activityPage.onShow(),
       },
       {
         id: "content",
@@ -1459,6 +1461,9 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         return;
       case "activity":
         activityPage.receive(msg);
+        return;
+      case "reconcile":
+        activityPage.receiveReconcile(msg);
         return;
       case "contentOverview":
       case "contentList":

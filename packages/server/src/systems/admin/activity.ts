@@ -19,6 +19,7 @@ import {
   type Bag,
   className,
   content,
+  countedPile,
   displayName,
   type Equipment,
   isGoldName,
@@ -34,9 +35,10 @@ export interface ActivityEntry {
   /** ISO time, set by the game when the event's intent or tick ends. */
   at?: string;
   type: ActivityType;
-  accountId: string;
-  characterId: string;
-  character: string;
+  /** Null for a world event (`logWorld`). */
+  accountId: string | null;
+  characterId: string | null;
+  character: string | null;
   otherId: string | null;
   other: string | null;
   item: string | null;
@@ -148,6 +150,76 @@ export function logPlaced(
 }
 
 /**
+ * A world event with no character (issue #35): `count` copies of the stored name `pile` (a
+ * pile of the currency counts as gold) made (`count` > 0) or ended (< 0), at `at`. A name that is
+ * not counted (a door, an exit) logs nothing.
+ */
+export function logWorld(
+  world: World,
+  type: ActivityType,
+  pile: string,
+  count: number,
+  f: { other?: string | null; at?: ActivityFields["at"]; details?: ActivityFields["details"] } = {},
+): void {
+  const c = countedPile(pile, count);
+  if (c === null || ("gold" in c ? c.gold : c.n) === 0) {
+    return;
+  }
+  let details: ActivityEntry["details"] = null;
+  for (const [k, v] of Object.entries(f.details ?? {})) {
+    if (v !== null && v !== undefined) {
+      details ??= {};
+      details[k] = v;
+    }
+  }
+  world.activity.push({
+    type,
+    accountId: null,
+    characterId: null,
+    character: null,
+    otherId: null,
+    other: f.other ?? null,
+    item: "gold" in c ? null : c.item,
+    qty: "gold" in c ? 0 : c.n,
+    gold: "gold" in c ? c.gold : 0,
+    map: f.at?.map ?? null,
+    x: f.at?.x ?? null,
+    y: f.at?.y ?? null,
+    details,
+  });
+}
+
+/**
+ * Logs each line of a change to stored lines (a container's, a vault's) as world events of
+ * `type`: what `before` held that `after` does not ended, and the reverse was made.
+ */
+export function logWorldLines(
+  world: World,
+  type: ActivityType,
+  before: readonly string[],
+  after: readonly string[],
+  f: Parameters<typeof logWorld>[4] = {},
+): void {
+  for (const [pile, n] of diffLines(before, after)) {
+    logWorld(world, type, pile, n, f);
+  }
+}
+
+/** Each stored line whose count differs between `before` and `after`, with `after - before`. */
+export function diffLines(before: readonly string[], after: readonly string[]): [string, number][] {
+  const count = (lines: readonly string[]) => {
+    const h = new Map<string, number>();
+    for (const l of lines) {
+      if (l !== "") {
+        h.set(l, (h.get(l) ?? 0) + 1);
+      }
+    }
+    return h;
+  };
+  return diffHoldings(count(before), count(after));
+}
+
+/**
  * A World Editor save: the net change in the map's placed items and gold, by name, logged for the
  * editor with `details.placed` (negative for removed). Unchanged placements log nothing.
  */
@@ -195,7 +267,10 @@ export function logTransform(
   }
 }
 
-/** Logs each line of a bag change (`before` → `after`) as `type`, one event per item. */
+/**
+ * Logs each line of a bag change (`before` → `after`) as `type`, one event per item. `more` adds
+ * details to an item's event, by its name and change.
+ */
 export function logBagChange(
   world: World,
   p: Player | OfflineCharacter,
@@ -203,12 +278,19 @@ export function logBagChange(
   before: Holdings,
   after: Holdings,
   f: Omit<ActivityFields, "item" | "qty" | "gold"> = {},
+  more?: (item: string, n: number) => ActivityFields["details"],
 ): void {
   for (const [key, n] of diffHoldings(before, after)) {
     if (key === GOLD) {
       logActivity(world, p, type, { ...f, gold: n });
     } else {
-      logActivity(world, p, type, { ...f, item: nameOf(key), qty: n });
+      const extra = more?.(nameOf(key), n);
+      logActivity(world, p, type, {
+        ...f,
+        item: nameOf(key),
+        qty: n,
+        ...(extra ? { details: { ...f.details, ...extra } } : {}),
+      });
     }
   }
 }

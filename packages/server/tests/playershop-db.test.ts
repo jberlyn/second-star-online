@@ -368,6 +368,123 @@ describe("decay", () => {
   });
 });
 
+describe("the item reconciliation's rows (issue #35)", () => {
+  /** The activity rows of `types`, as type, character, item, qty and gold. */
+  const rows = (...types: string[]) =>
+    db
+      .query<
+        {
+          type: string;
+          character: string | null;
+          item: string | null;
+          qty: number;
+          gold: number;
+          details: string | null;
+        },
+        string[]
+      >(
+        `SELECT type, character, item, qty, gold, details FROM activity_log
+         WHERE type IN (${types.map(() => "?").join(", ")}) ORDER BY seq`,
+      )
+      .all(...types);
+
+  test("an item sold to a player shop with no line to stock it is logged as lost", async () => {
+    const g = game();
+    const carol = await buildShop(g);
+    const p = walkIn(g, carol);
+    p.y = 9;
+    say(g, carol, "Zumu set Fish=5,2");
+    const ledger = g.world.shops.get("Zumu");
+    if (!ledger) {
+      throw new Error("no ledger");
+    }
+    ledger.gold = 100;
+    // The shop buys Apples but has no SEL line to stock them.
+    ledger.lines = ledger.lines.filter((l) => l.kind !== "SEL");
+    p.shop = { npc: "Zumu", mode: "sell" };
+    const line = ledger.lines.find((l) => l.kind === "BUY" && l.item === "Apple")?.line ?? 0;
+    g.intent(carol, { t: "sell", line, count: 1 });
+    g.tick();
+    expect(rows("playerShop").map((r) => [r.item, r.qty, r.gold, r.details])).toEqual([
+      ["Apple", -1, 0, JSON.stringify({ shop: "Zumu", mode: "sell", lost: 1 })],
+      [null, 0, 1, JSON.stringify({ shop: "Zumu", mode: "sell" })],
+    ]);
+  });
+
+  test("gold given to a player's shopkeeper moves into its counted till; to an NPC it is paid", async () => {
+    const g = game();
+    const carol = await buildShop(g);
+    const p = walkIn(g, carol);
+    say(g, carol, "Zumu set Fish=5,2");
+    const till = g.world.shops.get("Zumu")?.gold ?? 0;
+    // Zumu stands at (10, 4): one tile ahead of Carol facing north.
+    p.x = 10;
+    p.y = 5;
+    p.facing = "N";
+    p.stepFrames = 0;
+    p.itemPause = 0;
+    p.char.gold = 100;
+    g.intent(carol, { t: "gold", n: 40 });
+    g.tick();
+    expect(g.world.shops.get("Zumu")?.gold).toBe(till + 40);
+    expect(
+      rows("playerShop", "pay")
+        .filter((r) => r.gold !== 0)
+        .map((r) => [r.type, r.gold, r.details]),
+    ).toEqual([["playerShop", -40, JSON.stringify({ till: true, gift: true })]]);
+  });
+
+  test("an item put down in an interior the same tick it is deleted is logged as destroyed", async () => {
+    const g = game();
+    await buildShop(g);
+    const interior = findMapByCoords(db, 1000, 992, 1);
+    if (!interior) {
+      throw new Error("no interior");
+    }
+    // Waiting to be written when the deletion comes: it is written first, then destroyed with it.
+    g.world.groundLog.push({
+      mapId: interior.id,
+      add: { id: "late", item: "Corn", x: 3, y: 3, kind: "drop", expiresAt: null },
+    });
+    g.world.interiorsToDelete.add(INTERIOR);
+    g.tick();
+    expect(findMapByCoords(db, 1000, 992, 1)).toBeNull();
+    expect(rows("demolish").map((r) => [r.item, r.qty])).toEqual([["Corn", -1]]);
+    expect(db.query("SELECT COUNT(*) AS n FROM ground_items WHERE id = 'late'").get()).toEqual({
+      n: 0,
+    });
+  });
+
+  test("a demolished shop's stock and till are logged as destroyed", async () => {
+    let g = game();
+    const carol = await buildShop(g);
+    walkIn(g, carol).y = 9;
+    say(g, carol, "Zumu set Fish=5,2");
+    const ledger = g.world.shops.get("Zumu") ?? null;
+    if (!ledger) {
+      throw new Error("no ledger");
+    }
+    ledger.gold = 100;
+    const apple = ledger.lines.find((l) => l.kind === "SEL" && l.item === "Apple");
+    if (apple) {
+      apple.stock = 3;
+    }
+    ledger.dirty = true;
+    g.tick();
+    g.leave(carol);
+    now = "2027-01-10T00:00:00.000Z";
+    g = game({ 50: [2, 1] });
+    const ann = await makeChar(g, "Ann");
+    g.enter(ann, false);
+    g.tick();
+    expect(findMapByCoords(db, 1000, 992, 1)).toBeNull();
+    expect(rows("demolish").map((r) => [r.character, r.item, r.qty, r.gold])).toEqual([
+      [null, null, 0, -100],
+      [null, "Apple", -3, 0],
+    ]);
+  });
+});
+
 describe("buying from a player shop", () => {
   test("bug fixed: the seventh item, on line 18, can be bought", () => {
     let lines = npcLines(shopkeeperFile("Carol", "Zumu"));

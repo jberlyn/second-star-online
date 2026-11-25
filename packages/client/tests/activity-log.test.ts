@@ -4,7 +4,13 @@
  */
 import { describe, expect, test } from "bun:test";
 
-import { ACTIVITY_GROUPS, ACTIVITY_PAGE, type ActivityRow } from "@secondstaronline/shared";
+import {
+  ACTIVITY_GROUPS,
+  ACTIVITY_PAGE,
+  type ActivityRow,
+  type ReconcileItem,
+  type ReconcileRunView,
+} from "@secondstaronline/shared";
 
 import {
   type ActivityRequest,
@@ -12,6 +18,7 @@ import {
   createActivityLogPage,
   dayAfter,
   dayStart,
+  type ReconcileRequest,
   typesFor,
 } from "../src/ui/activity-log.ts";
 
@@ -230,5 +237,149 @@ describe("showing rows", () => {
     p.show("character", "Al");
     p.receive({ seq: 1, rows: [row({ type: "unlogged", other: null })], more: false });
     expect(p.el.querySelector(".activity-unlogged")?.textContent).toBe("-2 Apple");
+  });
+});
+
+describe("the Reconciliation section (issue #35)", () => {
+  const item = (over: Partial<ReconcileItem> = {}): ReconcileItem => ({
+    item: "Steel Sword",
+    currency: false,
+    baseline: 4,
+    made: 1,
+    ended: 0,
+    unlogged: 1,
+    expected: 5,
+    actual: 7,
+    difference: 2,
+    ...over,
+  });
+  const run = (over: Partial<ReconcileRunView> = {}): ReconcileRunView => ({
+    id: "run1",
+    at: "2026-11-25T04:00:01.000Z",
+    by: null,
+    baseline: false,
+    items: 40,
+    mismatches: 1,
+    rows: [item()],
+    more: 0,
+    ...over,
+  });
+
+  function reconPage() {
+    const sent: ReconcileRequest[] = [];
+    const queries: ActivityRequest[] = [];
+    const p = createActivityLogPage({
+      query: (q) => queries.push(q),
+      reconcile: (r) => sent.push(r),
+    });
+    document.body.replaceChildren(p.el);
+    const $ = <T extends HTMLElement>(action: string) =>
+      p.el.querySelector<T>(`[data-action="${action}"]`) as T;
+    const recon = () => p.el.querySelector<HTMLElement>(".activity-reconcile");
+    const cells = () =>
+      [...p.el.querySelectorAll(".activity-run tbody tr")].map((tr) =>
+        [...tr.querySelectorAll("td")].map((td) => td.textContent),
+      );
+    return { p, sent, queries, $, recon, cells };
+  }
+
+  test("the Reconciliation mode asks for the latest runs and hides the search", () => {
+    const { sent, $, recon, p } = reconPage();
+    expect(recon()?.hidden).toBe(true);
+    $("activity-mode-reconcile").click();
+    expect(sent).toEqual([{ seq: 1, run: false }]);
+    expect(recon()?.hidden).toBe(false);
+    expect(p.el.querySelector<HTMLElement>(".activity-search")?.hidden).toBe(true);
+    expect($("activity-mode-reconcile").getAttribute("aria-pressed")).toBe("true");
+    // Shown again: asked again.
+    p.onShow();
+    expect(sent).toEqual([
+      { seq: 1, run: false },
+      { seq: 2, run: false },
+    ]);
+  });
+
+  test("runs are shown newest first with their differing items; an item opens its flow", () => {
+    const { p, $, cells, queries } = reconPage();
+    $("activity-mode-reconcile").click();
+    p.receiveReconcile({
+      seq: 1,
+      runs: [
+        run({
+          rows: [item(), item({ item: "Gold", currency: true, difference: -5, unlogged: 0 })],
+          mismatches: 2,
+        }),
+        run({ id: "run0", at: "2026-11-24T04:00:00.000Z", baseline: true, rows: [], by: "God" }),
+      ],
+    });
+    const headings = [...p.el.querySelectorAll(".activity-run h2")].map((h) => h.textContent);
+    expect(headings).toEqual([
+      "2026-11-25 04:00:01, nightly run: 2 of 40 items differ",
+      "2026-11-24 04:00:00, run by God: baseline taken of 40 items",
+    ]);
+    expect(cells()).toEqual([
+      ["Steel Sword", "4", "1", "0", "5", "7", "+2", "+1"],
+      ["Gold", "4", "1", "0", "5", "7", "-5", "0"],
+    ]);
+    // Each item's name opens its flow; the currency's opens the gold's.
+    const links = p.el.querySelectorAll<HTMLElement>("[data-action='activity-reconcile-item']");
+    expect([...links].map((l) => l.textContent)).toEqual(["Steel Sword", "Gold"]);
+    links[1]?.click();
+    expect(queries.at(-1)).toMatchObject({ scope: "item", name: "Gold", before: null });
+    links[0]?.click();
+    expect(queries.at(-1)).toMatchObject({ scope: "item", name: "Steel Sword", before: null });
+    expect(p.el.querySelector<HTMLElement>(".activity-search")?.hidden).toBe(false);
+    expect($("activity-mode-item").getAttribute("aria-pressed")).toBe("true");
+  });
+
+  test("Run now asks for a run and shows what it found; an older answer is ignored", () => {
+    const { p, $, sent } = reconPage();
+    $("activity-mode-reconcile").click();
+    // Waiting for an answer, Run now is off.
+    expect($<HTMLButtonElement>("activity-reconcile-run").disabled).toBe(true);
+    p.receiveReconcile({ seq: 1, runs: [] });
+    $("activity-reconcile-run").click();
+    expect(sent.at(-1)).toEqual({ seq: 2, run: true });
+    expect($<HTMLButtonElement>("activity-reconcile-run").disabled).toBe(true);
+    p.receiveReconcile({ seq: 1, runs: [run()] });
+    expect(p.el.querySelectorAll(".activity-run")).toHaveLength(0);
+    p.receiveReconcile({
+      seq: 2,
+      runs: [run({ mismatches: 0, rows: [] })],
+      text: "Every item's count matches what the log expects.",
+    });
+    expect($<HTMLButtonElement>("activity-reconcile-run").disabled).toBe(false);
+    expect(p.el.querySelector(".activity-reconcile-status")?.textContent).toBe(
+      "Every item's count matches what the log expects.",
+    );
+    expect(p.el.querySelector(".activity-run h2")?.textContent).toBe(
+      "2026-11-25 04:00:01, nightly run: all 40 items match",
+    );
+  });
+
+  test("no run yet says how to start; a reset forgets the runs", () => {
+    const { p, $ } = reconPage();
+    $("activity-mode-reconcile").click();
+    p.receiveReconcile({ seq: 1, runs: [] });
+    expect(p.el.querySelector(".activity-reconcile-status")?.textContent).toBe(
+      "No run yet: Run now takes the baseline.",
+    );
+    p.reset();
+    expect(p.el.querySelector<HTMLElement>(".activity-reconcile")?.hidden).toBe(true);
+    expect(p.el.querySelectorAll(".activity-run")).toHaveLength(0);
+  });
+
+  test("a world event's row names no character", () => {
+    const { p } = page();
+    p.show("item", "Apple");
+    p.receive({
+      seq: 1,
+      rows: [row({ type: "decay", character: null, other: null, qty: -2 })],
+      more: false,
+    });
+    const cells = [...p.el.querySelectorAll("table[aria-label='Activity'] tbody td")].map(
+      (td) => td.textContent,
+    );
+    expect(cells.slice(1, 3)).toEqual(["Decay", "World"]);
   });
 });

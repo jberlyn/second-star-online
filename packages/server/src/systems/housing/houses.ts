@@ -7,6 +7,7 @@
  */
 import {
   checkPlacement,
+  countedPile,
   type DeltaEvent,
   deedUse,
   FACING_DELTA,
@@ -28,7 +29,7 @@ import {
   tileAt,
 } from "@secondstaronline/shared";
 
-import { logActivity } from "../admin/activity.ts";
+import { logActivity, logPlaced, logWorld, logWorldLines } from "../admin/activity.ts";
 import { refreshSnapshot } from "../admin/worldedit.ts";
 import { createShopkeeper } from "../economy/playershop.ts";
 import {
@@ -197,6 +198,21 @@ export function placeHouseIntent(
     qty: -1,
     details: { built: type.house },
   });
+  // The items the house is built with (a Stove, an Anvil) are made with it; the engine's fixtures
+  // (its door, vault and exit) are not items (issue #35).
+  for (const [map, items] of [
+    [m.name, plan.outdoorItems],
+    [plan.interior, plan.interiorItems],
+  ] as const) {
+    for (const it of items) {
+      if (countedPile(it.item) !== null) {
+        logPlaced(world, p, "use", it.item, {
+          at: { map, x: it.x, y: it.y },
+          details: { built: type.house },
+        });
+      }
+    }
+  }
   invDelSlot(p.char.bag, slot - 1, 1);
   p.invDirty = true;
   // 4. The tiles, each only where layer 2 still holds `TILE_DEFAULTS.empty`.
@@ -290,6 +306,10 @@ export function demolish(
     return { out: [], interior: null };
   }
   const events: DeltaEvent[] = [];
+  // What the house held is destroyed with it, logged as world events (issue #35): its outdoor
+  // items here, its vault's contents below, and its interior's floor and shops when the interior
+  // is deleted.
+  const details = { house: interior };
   for (const it of [rec.item1, rec.item2]) {
     if (!it) {
       continue;
@@ -298,6 +318,10 @@ export function demolish(
       m.ground.splice(m.ground.indexOf(g), 1);
       world.groundLog.push({ mapId: m.id, del: g.id });
       events.push({ e: "gdel", id: g.id });
+      logWorld(world, "demolish", g.item, -(g.qty ?? 1), {
+        at: { map: m.name, x: g.x, y: g.y },
+        details,
+      });
     }
   }
   for (const t of rec.tiles) {
@@ -311,8 +335,13 @@ export function demolish(
   world.houses.delete(interior);
   world.housesDirty = true;
   world.interiorsToDelete.add(rec.interior);
-  world.containersDirty.add(`${rec.ownerName}'s House Vault`);
-  world.containers.delete(`${rec.ownerName}'s House Vault`);
+  const vault = `${rec.ownerName}'s House Vault`;
+  logWorldLines(world, "demolish", world.containers.get(vault) ?? [], [], {
+    other: vault,
+    details,
+  });
+  world.containersDirty.add(vault);
+  world.containers.delete(vault);
   const room = world.rooms.get(m.name);
   const out: Outgoing[] = [];
   if (events.length > 0) {

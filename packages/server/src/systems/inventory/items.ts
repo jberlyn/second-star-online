@@ -64,7 +64,7 @@ import {
   useItem,
 } from "@secondstaronline/shared";
 
-import { logActivity } from "../admin/activity.ts";
+import { logActivity, logWorld } from "../admin/activity.ts";
 import { bjSit } from "../casino/blackjack.ts";
 import { ckSit } from "../casino/checkers.ts";
 import { slotOpen } from "../casino/slots.ts";
@@ -541,12 +541,13 @@ export function dropIntent(ctx: ItemCtx, room: Room, p: Player, slot: number, n 
     expiresAt: null,
     droppedBy: { id: p.id, name: p.name },
   });
-  logActivity(ctx.world, p, "drop", {
-    item: name,
-    qty: -qty,
-    at: { map: p.map.name, x: t.x, y: t.y },
-    details: { placed: placed === name ? null : placed },
-  });
+  const at = { map: p.map.name, x: t.x, y: t.y };
+  if (placed === name) {
+    logActivity(ctx.world, p, "drop", { item: name, qty: -qty, at });
+  } else {
+    // The kit is used up: the stand it puts down is an owned fixture, not an item (issue #35).
+    logActivity(ctx.world, p, "use", { item: name, qty: -qty, at, details: { stand: placed } });
+  }
   invDelSlot(p.char.bag, slot - 1, qty);
   changed(p);
   return io.out;
@@ -1065,7 +1066,13 @@ export function actionIntent(ctx: ItemCtx, room: Room, p: Player): Outgoing[] {
   const pig = ctrlPig(room, p, ctx.rng);
   if (pig) {
     if (pig.grabbed) {
-      logActivity(ctx.world, p, "pickup", { item: pig.grabbed, qty: 1, other: pig.grabbed });
+      // A monster becomes an item: it counts as made (issue #35).
+      logActivity(ctx.world, p, "pickup", {
+        item: pig.grabbed,
+        qty: 1,
+        other: pig.grabbed,
+        details: { as: "monster" },
+      });
     }
     io.out.push(...pig.out);
     if (pig.slotsChanged) {
@@ -1234,6 +1241,9 @@ export function decayLoot(ctx: ItemCtx): Outgoing[] {
     const io = new ItemOut(room);
     for (const g of expired) {
       removeGround(ctx, room, io, g.id);
+      logWorld(ctx.world, "decay", g.item, -(g.qty ?? 1), {
+        at: { map: room.map.name, x: g.x, y: g.y },
+      });
     }
     out.push(...io.out);
   }

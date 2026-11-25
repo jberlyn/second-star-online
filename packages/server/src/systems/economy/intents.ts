@@ -3,7 +3,7 @@
  * server's handler, against server state. The NPC is the one whose Bio you opened, and it must
  * still be in your map's roster (SSO checks the map's roster, not what the client says).
  */
-import { content, lingoEq, promoteClass } from "@secondstaronline/shared";
+import { content, displayName, lingoEq, promoteClass } from "@secondstaronline/shared";
 
 import { type Holdings, holdingsOf, logActivity, logBagChange } from "../admin/activity.ts";
 import type { ItemCtx } from "../inventory/items.ts";
@@ -115,15 +115,41 @@ function containerInUse(ctx: ItemCtx, name: string): boolean {
 
 /**
  * Logs what a shop sale or purchase moved, as the bag and gold changed: a player's shop names its
- * owner (their timeline gets the sale through the till), an NPC's names the NPC.
+ * owner (their timeline gets the sale through the till), an NPC's names the NPC. An item sold to a
+ * player's shop that has no line to stock it is gone (`lost`, issue #35).
  */
-function logShop(ctx: ItemCtx, p: Player, npc: string, mode: "buy" | "sell", before: Holdings) {
+function logShop(
+  ctx: ItemCtx,
+  p: Player,
+  npc: string,
+  mode: "buy" | "sell",
+  before: Holdings,
+  stock?: { before: ShopLedger; after: ShopLedger },
+) {
   const ps = ctx.world.playerShops.get(npc.toLowerCase());
   const owner = ps ? ctx.world.houses.get(ps.interior)?.ownerName : undefined;
-  logBagChange(ctx.world, p, ps ? "playerShop" : mode, before, holdingsOf(p.char), {
-    other: ps && owner ? { id: ps.ownerId, name: owner } : npc,
-    details: ps ? { shop: npc, mode } : null,
-  });
+  const stocked = (l: ShopLedger, item: string) =>
+    l.lines
+      .filter((x) => x.kind === "SEL" && lingoEq(displayName(x.item), displayName(item)))
+      .reduce((n, x) => n + (x.stock ?? 0), 0);
+  logBagChange(
+    ctx.world,
+    p,
+    ps ? "playerShop" : mode,
+    before,
+    holdingsOf(p.char),
+    {
+      other: ps && owner ? { id: ps.ownerId, name: owner } : npc,
+      details: ps ? { shop: npc, mode } : null,
+    },
+    (item, n) => {
+      if (!ps || !stock || n >= 0) {
+        return null;
+      }
+      const lost = -n - (stocked(stock.after, item) - stocked(stock.before, item));
+      return lost > 0 ? { lost } : null;
+    },
+  );
 }
 
 function forgetContainer(ctx: ItemCtx, name: string): void {
@@ -192,7 +218,7 @@ export function sellIntent(ctx: ItemCtx, p: Player, line: number, count: number)
   p.char.gold = r.buyer.gold;
   p.char.bag = r.buyer.bag;
   p.invDirty = true;
-  logShop(ctx, p, shop.npc, "sell", before);
+  logShop(ctx, p, shop.npc, "sell", before, { before: shop, after: r.ledger });
   return [...r.texts.map((t) => tell(p, t)), processed(p, true)];
 }
 
@@ -314,11 +340,18 @@ export function giveGoldToNpc(ctx: ItemCtx, room: Room, p: Player, n: number): O
   if (p.char.gold - n < 0) {
     return out;
   }
-  logActivity(ctx.world, p, "pay", { other: name, gold: -n });
+  const shop = npcFileNamed(ctx.world.npcs, name) ? (ctx.shop?.(name) ?? null) : null;
+  // A player's shopkeeper keeps the gift in a till the item reconciliation counts, so it moves
+  // there; an ordinary NPC's till is not counted, so the gold is paid away (issue #35).
+  const tilled = shop !== null && ctx.world.playerShops.has(name.toLowerCase());
+  logActivity(ctx.world, p, tilled ? "playerShop" : "pay", {
+    other: name,
+    gold: -n,
+    details: tilled ? { till: true, gift: true } : null,
+  });
   p.char.gold -= n;
   p.invDirty = true;
   out.push(tell(p, NPC_TEXT.thanksGold(name)));
-  const shop = npcFileNamed(ctx.world.npcs, name) ? (ctx.shop?.(name) ?? null) : null;
   // The gift goes into the NPC's till, which starts at 0 without a GLD| line (1.6 kept it only
   // with a GLD| line among the first 60).
   if (shop) {

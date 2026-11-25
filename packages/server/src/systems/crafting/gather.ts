@@ -51,7 +51,7 @@ import {
   workedNode,
 } from "@secondstaronline/shared";
 
-import { logPlaced } from "../admin/activity.ts";
+import { logPlaced, logWorld } from "../admin/activity.ts";
 import { addGround, ItemOut } from "../inventory/items.ts";
 import { fighterOf } from "../monsters/attack.ts";
 import { aqsToMap } from "../social/factions.ts";
@@ -103,9 +103,12 @@ function drop(
   by: Player | null = null,
   details: Record<string, string | boolean> | null = null,
 ): void {
-  // The gatherer's activity log names what they found; regrowth has no gatherer.
+  // The gatherer's activity log names what they found; regrowth has no gatherer, so it is a world
+  // event (issue #35).
   if (by) {
     logPlaced(ctx.world, by, "gather", item, { at: { map: room.map.name, x, y }, details });
+  } else {
+    logWorld(ctx.world, "regrow", item, 1, { at: { map: room.map.name, x, y }, details });
   }
   addGround({ world: ctx.world, rng: ctx.rng, now: ctx.now }, room, io, {
     item,

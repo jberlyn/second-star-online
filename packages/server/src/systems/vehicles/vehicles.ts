@@ -123,6 +123,8 @@ export function vehicleDeed(
     qty: -1,
     details: { built: vehicle },
   });
+  // The vehicle itself is made, parked: counted by its kind wherever it is (issue #35).
+  logActivity(ctx.world, p, "use", { item: vehicle, details: { built: vehicle, placed: 1 } });
   invDelSlot(p.char.bag, slot - 1, 1);
   p.invDirty = true;
   return io.out;

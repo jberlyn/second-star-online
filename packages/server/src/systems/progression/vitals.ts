@@ -148,6 +148,10 @@ export function checkDeath(room: Room, p: Player, rng: Rng, drop?: DeathDropCtx)
   // Kept on purpose: flying into danger is a risk the rider takes.
   const aboard = p.vehicle !== null;
   if (aboard) {
+    // The vehicle is lost with nobody carrying it (issue #35); the death row names it too.
+    if (drop && p.vehicle) {
+      logActivity(drop.item.world, p, "deathDrop", { item: p.vehicle, details: { lost: 1 } });
+    }
     out.push(...vehicleDeath(room, p));
   }
   if (lightning) {

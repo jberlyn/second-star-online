@@ -16,6 +16,7 @@ import {
   type CharacterListRow,
   HUB_ACTIONS,
 } from "../rules/admin/characters.ts";
+import type { ReconcileRunView } from "../rules/admin/reconcile.ts";
 import {
   EDITOR_ITEM_SLOTS,
   type EditorMap,
@@ -184,6 +185,17 @@ const seqField = z
   .int()
   .min(0)
   .max(2 ** 31);
+
+/**
+ * The Activity Log page's Reconciliation section (issue #35): the latest runs (`reconcileQuery`),
+ * or a run now (`reconcileRun`), which first saves everything live. Both answer `reconcile` with
+ * their `seq`, and both are gated by the `activityLog` permission.
+ */
+export const reconcileQuerySchema = z.strictObject({
+  t: z.literal("reconcileQuery"),
+  seq: seqField,
+});
+export const reconcileRunSchema = z.strictObject({ t: z.literal("reconcileRun"), seq: seqField });
 
 /**
  * The Characters page's search: characters whose name contains `query`, ignoring case (the most
@@ -482,6 +494,11 @@ export type AdminServerMsg =
       totalsCapped?: number;
       error?: string;
     }
+  /**
+   * The Reconciliation section (`reconcileQuery`'s or `reconcileRun`'s answer, with its `seq`): the
+   * newest runs, newest first. `text` says what a run now did, or why it did not run.
+   */
+  | { t: "reconcile"; seq: number; runs: ReconcileRunView[]; text?: string }
   /** The Characters page's search results (`characterSearch`'s answer, with its `seq`). */
   | { t: "characterList"; seq: number; rows: CharacterListRow[] }
   /** A player hub (`characterOpen`'s answer), or why there is none. */

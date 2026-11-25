@@ -9,6 +9,10 @@
  *
  * Both filter by event type (one type or a whole group) and by UTC date. A player named in a row
  * opens their timeline, and an item opens its flow. Older rows load a page at a time.
+ *
+ * - **Reconciliation** (issue #35): the newest item reconciliation runs, newest first, each with the
+ *   items whose count differs from what the log expects and the items with unlogged changes. Run
+ *   now starts one. An item opens its flow.
  */
 import {
   ACTIVITY_GROUP_LABELS,
@@ -21,12 +25,30 @@ import {
   type ActivityTotal,
   type ActivityType,
   activitySummary,
+  type ReconcileItem,
+  type ReconcileRunView,
 } from "@secondstaronline/shared";
 
 import { action, gameInput } from "./action.ts";
 import { createTable, formField, pageHeading, panelButton } from "./control-panel-kit.ts";
 
 export type ActivityScope = "character" | "item";
+
+/** What the page shows: a timeline or a flow (a search), or the reconciliation runs. */
+export type ActivityMode = ActivityScope | "reconcile";
+
+/** A request for the reconciliation runs (`reconcileQuery`), or a run now (`reconcileRun`). */
+export interface ReconcileRequest {
+  seq: number;
+  run: boolean;
+}
+
+/** The server's answer (`reconcile`). */
+export interface ReconcileReply {
+  seq: number;
+  runs: ReconcileRunView[];
+  text?: string;
+}
 
 /** One request for a page of rows (the `activityQuery` intent without its `t`). */
 export interface ActivityRequest {
@@ -54,6 +76,10 @@ export interface ActivityLogPage {
   readonly el: HTMLElement;
   /** Shows the rows of the answer to the latest request; older answers are ignored. */
   receive(msg: ActivityReply): void;
+  /** Shows the reconciliation runs of the answer to the latest request. */
+  receiveReconcile(msg: ReconcileReply): void;
+  /** The page came into view: the reconciliation runs are asked for again when they are shown. */
+  onShow(): void;
   /** Opens a character's timeline or an item's flow and asks for it. */
   show(scope: ActivityScope, name: string): void;
   /** Forgets the search and its results (a logout, or the permission lost). */
@@ -99,13 +125,30 @@ const SCOPE_TEXT: Record<ActivityScope, { label: string; help: string; empty: st
   },
   item: {
     label: "Item",
-    help: "An item's name as the bag shows it, such as Steel Sword or Blue Crystal.",
+    help: "An item's name as the bag shows it, such as Steel Sword or Blue Crystal. The currency's name (Gold) shows every change to the gold.",
     empty: "Nothing is logged for this item with these filters.",
   },
 };
 
+/** A run's heading: when, who ran it, and what it found. */
+export function runHeading(r: ReconcileRunView): string {
+  const who = r.by === null ? "nightly run" : `run by ${r.by}`;
+  const found = r.baseline
+    ? `baseline taken of ${r.items} item${r.items === 1 ? "" : "s"}`
+    : r.mismatches === 0
+      ? `all ${r.items} item${r.items === 1 ? "" : "s"} match`
+      : `${r.mismatches} of ${r.items} item${r.items === 1 ? "" : "s"} differ`;
+  return `${activityTime(r.at)}, ${who}: ${found}`;
+}
+
+/** A signed number, `+3` or `-2` (0 as `0`). */
+export function signed(n: number): string {
+  return n > 0 ? `+${n}` : String(n);
+}
+
 export function createActivityLogPage(opts: {
   query(req: ActivityRequest): void;
+  reconcile?(req: ReconcileRequest): void;
 }): ActivityLogPage {
   const root = document.createElement("section");
   root.className = "activity-log";
@@ -117,7 +160,9 @@ export function createActivityLogPage(opts: {
   );
 
   let scope: ActivityScope = "character";
+  let mode: ActivityMode = "character";
   let seq = 0;
+  let reconcileSeq = 0;
   /** The filters of the rows on screen, for asking for older ones. */
   let shown: Omit<ActivityRequest, "seq" | "before" | "limit"> | null = null;
   let rows: ActivityRow[] = [];
@@ -131,7 +176,10 @@ export function createActivityLogPage(opts: {
     setScope("character"),
   );
   const itemBtn = panelButton("activity-mode-item", "Item flow", () => setScope("item"));
-  modes.append(timelineBtn, itemBtn);
+  const reconcileBtn = panelButton("activity-mode-reconcile", "Reconciliation", () =>
+    setMode("reconcile"),
+  );
+  modes.append(timelineBtn, itemBtn, reconcileBtn);
 
   // ---- the filters ---------------------------------------------------------------------------
   const form = document.createElement("form");
@@ -227,7 +275,11 @@ export function createActivityLogPage(opts: {
       {
         label: "Character",
         cell: (r) =>
-          scope === "item" ? link("activity-player", r.character, "character") : r.character,
+          r.character === null
+            ? "World"
+            : scope === "item"
+              ? link("activity-player", r.character, "character")
+              : r.character,
       },
       { label: "What", cell: (r) => summaryCell(r) },
       {
@@ -277,11 +329,115 @@ export function createActivityLogPage(opts: {
   });
   more.hidden = true;
 
-  root.append(modes, form, status, totalsBox, table.el, more);
+  // ---- reconciliation ------------------------------------------------------------------------
+  const search = document.createElement("div");
+  search.className = "activity-search";
+  search.append(form, status, totalsBox, table.el, more);
+
+  const recon = document.createElement("div");
+  recon.className = "activity-reconcile";
+  recon.hidden = true;
+  const reconIntro = document.createElement("p");
+  reconIntro.className = "activity-status";
+  reconIntro.textContent =
+    "A run saves the world, counts every item and the gold wherever they are held, and compares the count with the last run's plus what the log says was made and ended since. A difference is a source or sink the log missed, or a dupe. Runs happen nightly and when you choose Run now.";
+  const runNow = panelButton(
+    "activity-reconcile-run",
+    "Run now",
+    () => askReconcile(true),
+    "primary",
+  );
+  const reconStatus = document.createElement("p");
+  reconStatus.className = "activity-status activity-reconcile-status";
+  reconStatus.setAttribute("role", "status");
+  const runsBox = document.createElement("div");
+  runsBox.className = "activity-runs";
+  recon.append(reconIntro, runNow, reconStatus, runsBox);
+
+  /** The item's name, as a link to its flow (the currency's flow is every change to the gold). */
+  const itemCell = (r: ReconcileItem): string | Node =>
+    link("activity-reconcile-item", r.item, "item");
+
+  const drawRuns = (runs: readonly ReconcileRunView[]) => {
+    runsBox.replaceChildren();
+    for (const r of runs) {
+      const section = document.createElement("section");
+      section.className = "activity-run";
+      const h = document.createElement("h2");
+      h.className = "activity-subtitle";
+      h.textContent = runHeading(r);
+      section.append(h);
+      if (r.rows.length > 0) {
+        const t = createTable<ReconcileItem>({
+          label: `Run of ${activityTime(r.at)}`,
+          columns: [
+            { label: "Item", cell: itemCell },
+            { label: "Last run", cell: (x) => String(x.baseline), numeric: true },
+            { label: "Made", cell: (x) => String(x.made), numeric: true },
+            { label: "Ended", cell: (x) => String(x.ended), numeric: true },
+            { label: "Expected", cell: (x) => String(x.expected), numeric: true },
+            { label: "Counted", cell: (x) => String(x.actual), numeric: true },
+            { label: "Difference", cell: (x) => differenceCell(x.difference), numeric: true },
+            { label: "Unlogged", cell: (x) => signed(x.unlogged), numeric: true },
+          ],
+          empty: "",
+          key: (x) => (x.currency ? "" : x.item.toLowerCase()),
+        });
+        t.setRows(r.rows);
+        section.append(t.el);
+      }
+      if (r.more > 0) {
+        const p = document.createElement("p");
+        p.className = "activity-status";
+        p.textContent = `${r.more} more item${r.more === 1 ? "" : "s"} not shown.`;
+        section.append(p);
+      }
+      runsBox.append(section);
+    }
+  };
+
+  const differenceCell = (n: number): Node => {
+    const span = document.createElement("span");
+    span.textContent = signed(n);
+    if (n !== 0) {
+      span.className = "activity-unlogged";
+    }
+    return span;
+  };
+
+  const askReconcile = (run: boolean) => {
+    if (!opts.reconcile) {
+      return;
+    }
+    reconcileSeq += 1;
+    runNow.disabled = true;
+    reconStatus.textContent = run ? "Running…" : "Loading…";
+    opts.reconcile({ seq: reconcileSeq, run });
+  };
+
+  root.append(modes, search, recon);
 
   // ---- behaviour -----------------------------------------------------------------------------
+  const setMode = (m: ActivityMode) => {
+    if (m === "reconcile") {
+      if (mode !== "reconcile") {
+        mode = "reconcile";
+        drawScope();
+        askReconcile(false);
+      }
+      return;
+    }
+    setScope(m);
+  };
+
   const setScope = (s: ActivityScope) => {
+    const was = mode;
+    mode = s;
+    if (s === scope && was === s) {
+      return;
+    }
     if (s === scope) {
+      drawScope();
       return;
     }
     scope = s;
@@ -292,8 +448,11 @@ export function createActivityLogPage(opts: {
   };
 
   const drawScope = () => {
-    timelineBtn.setAttribute("aria-pressed", String(scope === "character"));
-    itemBtn.setAttribute("aria-pressed", String(scope === "item"));
+    timelineBtn.setAttribute("aria-pressed", String(mode === "character"));
+    itemBtn.setAttribute("aria-pressed", String(mode === "item"));
+    reconcileBtn.setAttribute("aria-pressed", String(mode === "reconcile"));
+    search.hidden = mode === "reconcile";
+    recon.hidden = mode !== "reconcile";
     const text = SCOPE_TEXT[scope];
     const label = nameField.querySelector("label");
     const help = nameField.querySelector("p");
@@ -351,6 +510,7 @@ export function createActivityLogPage(opts: {
 
   const open = (s: ActivityScope, n: string) => {
     scope = s;
+    mode = s;
     drawScope();
     name.value = n;
     type.value = "";
@@ -388,10 +548,29 @@ export function createActivityLogPage(opts: {
           ? SCOPE_TEXT[shown.scope].empty
           : `${rows.length}${msg.more ? "+" : ""} event${rows.length === 1 ? "" : "s"}, newest first.`;
     },
+    receiveReconcile(msg) {
+      if (msg.seq !== reconcileSeq) {
+        return;
+      }
+      runNow.disabled = false;
+      drawRuns(msg.runs);
+      reconStatus.textContent =
+        msg.text ?? (msg.runs.length === 0 ? "No run yet: Run now takes the baseline." : "");
+    },
+    onShow() {
+      if (mode === "reconcile") {
+        askReconcile(false);
+      }
+    },
     show: open,
     reset() {
       seq += 1;
+      reconcileSeq += 1;
+      runNow.disabled = false;
+      runsBox.replaceChildren();
+      reconStatus.textContent = "";
       scope = "character";
+      mode = "character";
       drawScope();
       name.value = "";
       type.value = "";

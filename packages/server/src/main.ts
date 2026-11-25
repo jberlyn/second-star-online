@@ -254,6 +254,7 @@ export function startServer(options: ServerOptions): RunningServer {
     onFault: options.onFault,
     crashPoint: options.crashPoint,
     config: { ...DEFAULT_SERVER_CONFIG, ...options.config },
+    nightlyReconcile: true,
   });
   live = game;
   // The contract's points: a server whose start, fallback or jail point cannot hold a player still

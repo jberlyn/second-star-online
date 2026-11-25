@@ -5,7 +5,7 @@ import { describe, expect, test } from "bun:test";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 
-import { content, type ServerMsg } from "@secondstaronline/shared";
+import { activityChange, content, countedPile, type ServerMsg } from "@secondstaronline/shared";
 
 import {
   actionIntent,
@@ -459,6 +459,23 @@ describe("the Newspaper Kit", () => {
     dropIntent(s.ctx(), s.room(), a, 1);
     expect(s.map.ground.map((g) => g.item)).toEqual(["Alice's Newspaper"]);
     expect(a.char.bag[0]).toBeNull();
+  });
+  test("placing the stand is logged as the Kit used up; the stand is a fixture, not counted (issue #35)", () => {
+    const s = scene(k2);
+    const a = s.join("Alice");
+    s.give(a, "Newspaper Kit");
+    dropIntent(s.ctx(), s.room(), a, 1);
+    const rows = s.world.activity.map((e) => ({
+      type: e.type,
+      item: e.item,
+      qty: e.qty,
+      details: e.details,
+    }));
+    expect(rows).toEqual([
+      { type: "use", item: "Newspaper Kit", qty: -1, details: { stand: "Alice's Newspaper" } },
+    ]);
+    expect(rows.map((r) => activityChange({ ...r, gold: 0 }).item)).toEqual([-1]);
+    expect(countedPile("Alice's Newspaper")).toBeNull();
   });
   test("divergence: not K2: 'You can't put a newspaper stand here!' and the Kit is kept", () => {
     const s = scene();

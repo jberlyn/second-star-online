@@ -37,6 +37,7 @@ export {
   NPC_SPELL_TAGS,
 } from "./rules/admin/npcfile.ts";
 export * from "./rules/admin/permissions.ts";
+export * from "./rules/admin/reconcile.ts";
 export * from "./rules/admin/worldedit.ts";
 export {
   EDITOR_ITEMS,

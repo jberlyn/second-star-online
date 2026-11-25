@@ -21,6 +21,7 @@ import {
   liveNpcText,
   mapCodes,
   NOTHING,
+  parseNpcFile,
   type Rng,
   storedCopyAs,
   storedCopyOf,
@@ -43,7 +44,7 @@ import {
   type World,
   type WorldMap,
 } from "../world/world.ts";
-import { logActivity } from "./activity.ts";
+import { diffLines, logActivity, logWorld, logWorldLines } from "./activity.ts";
 import { closeNpcWindows } from "./npcedit.ts";
 
 /** How many holders a usage place names. */
@@ -493,6 +494,15 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
           continue;
         }
         n += shopStockOf(f.text, a.spellings);
+        // The stock removed or replaced, as world events (issue #35).
+        const stockLines = (t: string) =>
+          parseNpcFile(f.name, t).sells.flatMap((l) =>
+            Array.from({ length: Math.max(0, l.stock ?? 0) }, () => l.item),
+          );
+        logWorldLines(world, "admin", stockLines(f.text), stockLines(text), {
+          other: f.name,
+          details,
+        });
         const ledger = ledgerFromTemplate(setNpcFile(world.npcs, f.name, text));
         world.shops.set(f.name, ledger);
         store.saveShopFile(f.name, text, ledger, actor.accountId, deps.now());
@@ -551,6 +561,7 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
           world.containersDirty.add(next);
         } else {
           lostInside += lines.length;
+          logWorldLines(world, "admin", lines, [], { other: displayName(stored), details });
         }
       };
       let held = 0;
@@ -604,9 +615,9 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
             touched.add(p);
           }
         }
-        const vaultBefore = p.char.vault.length;
         const inVault = p.char.vault.filter(is).length;
         if (inVault > 0) {
+          const vaultWas = p.char.vault;
           held += inVault;
           characters.add(p.id);
           refund += purge ? inVault : 0;
@@ -617,10 +628,10 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
           p.char.vault = purge
             ? p.char.vault.filter((v) => !is(v))
             : p.char.vault.map((v) => (is(v) ? as(v) : v));
-          logActivity(world, p, "admin", {
-            item: a.key,
-            details: { ...details, vault: purge ? p.char.vault.length - vaultBefore : inVault },
-          });
+          // Each copy gone from the vault, and each replacement put in it (issue #35).
+          for (const [stored, n] of diffLines(vaultWas, p.char.vault)) {
+            logActivity(world, p, "admin", { item: stored, details: { ...details, vault: n } });
+          }
           p.char.storeDirty = true;
           touched.add(p);
         }
@@ -706,13 +717,12 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
         }
         const kept = purge ? items.filter((v) => !is(v)) : items.map((v) => (is(v) ? as(v) : v));
         store.setVault(r.characterId, kept);
-        logActivity(world, offline(r), "admin", {
-          item: a.key,
-          details: {
-            ...details,
-            vault: purge ? kept.length - items.length : items.filter(is).length,
-          },
-        });
+        for (const [stored, n] of diffLines(items, kept)) {
+          logActivity(world, offline(r), "admin", {
+            item: stored,
+            details: { ...details, vault: n },
+          });
+        }
       }
       if (purge && a.refundGold > 0) {
         for (const [id, e] of refunds) {
@@ -741,10 +751,9 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
           }
           // Its lines changed: an open window on it closes (its list named the old lines).
           closeContainer(name);
-          world.containers.set(
-            name,
-            purge ? items.filter((v) => !is(v)) : items.map((v) => (is(v) ? as(v) : v)),
-          );
+          const next = purge ? items.filter((v) => !is(v)) : items.map((v) => (is(v) ? as(v) : v));
+          logWorldLines(world, "admin", items, next, { other: displayName(name), details });
+          world.containers.set(name, next);
           world.containersDirty.add(name);
         }
       }
@@ -763,6 +772,8 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
             continue;
           }
           onGround += (g.qty ?? 1) * storedCount(g.item);
+          const at = { map: m.name, x: g.x, y: g.y };
+          logWorld(world, "admin", g.item, -(g.qty ?? 1), { at, details });
           if (purge) {
             moveStorage(g.item, null);
             m.ground.splice(m.ground.indexOf(g), 1);
@@ -774,6 +785,7 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
             // A pile's count moves to its quantity when the new item is not one that counts in
             // its name (`5 Blue Crystal` replaced by Apple is a pile of 5 Apples).
             const next = groundAs(g.item, g.qty ?? 1);
+            logWorld(world, "admin", next.item, next.qty, { at, details });
             moveStorage(g.item, next.item);
             g.item = next.item;
             if (next.qty > 1) {
@@ -800,11 +812,13 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
       }
       for (const g of offlineGround(a.spellings)) {
         onGround += g.qty * storedCount(g.item);
+        logWorld(world, "admin", g.item, -g.qty, { details });
         if (purge) {
           moveStorage(g.item, null);
           store.deleteGround(g.id);
         } else {
           const next = groundAs(g.item, g.qty);
+          logWorld(world, "admin", next.item, next.qty, { details });
           moveStorage(g.item, next.item);
           store.renameGround(g.id, next.item, next.qty);
         }

@@ -30,7 +30,7 @@ import {
   withoutId,
 } from "@secondstaronline/shared";
 
-import { logActivity } from "../admin/activity.ts";
+import { diffLines, logActivity, logWorld } from "../admin/activity.ts";
 import type { GroundItem, Outgoing, Player, World } from "../world/world.ts";
 import { VAULT_TEXT } from "./vault.ts";
 
@@ -201,6 +201,8 @@ export function depositContainer(
   const out: Outgoing[] = [];
   let count = 0;
   let brews = 0;
+  /** What the brews used up and made in the Cauldron, by stored line. */
+  const made: [string, number][] = [];
   while (count < n && line.qty > 0) {
     const lines = linesOf(world, name);
     if (lines.length >= containerCapacity(name)) {
@@ -213,6 +215,7 @@ export function depositContainer(
     write(world, name, brewed ?? next);
     if (brewed !== null) {
       brews += 1;
+      made.push(...diffLines(next, brewed));
     }
   }
   if (line.qty <= 0) {
@@ -225,6 +228,14 @@ export function depositContainer(
     qty: -count,
     details: { container: name, brews: brews || null },
   });
+  // A brew makes and uses up items in the Cauldron, not in the bag: logged as stored (issue #35).
+  for (const [stored, n] of made) {
+    logActivity(world, p, "craft", {
+      other: displayName(name),
+      item: stored,
+      details: { container: name, brew: true, stored: n },
+    });
+  }
   out.push(tell(p, count > 1 ? VAULT_TEXT.dropMany(count, item) : VAULT_TEXT.drop(item)));
   for (let i = 0; i < brews; i++) {
     out.push(tell(p, CRAFT_TEXT.puff));
@@ -315,6 +326,11 @@ export function saveClockStep(world: World, p: Player, rng: Rng): void {
     const lines = linesOf(world, refill.chest);
     if (lines.length < containerCapacity(refill.chest)) {
       write(world, refill.chest, [...lines, refill.item]);
+      // Made from nothing: a world event (issue #35).
+      logWorld(world, "refill", refill.item, 1, {
+        other: displayName(refill.chest),
+        details: { container: refill.chest },
+      });
     }
   }
 }

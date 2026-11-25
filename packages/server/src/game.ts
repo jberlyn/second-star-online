@@ -18,6 +18,7 @@ import {
   CHAT_COLOR,
   type ContentMapsView,
   type CreateMsg,
+  CURRENCY,
   can,
   canOpenControlPanel,
   cheatLine,
@@ -35,6 +36,7 @@ import {
   findNewQuest,
   findSkillIndex,
   footWalkGrid,
+  goldPileName,
   HUB_EDITS,
   HUB_TEXT,
   hubArgs,
@@ -46,12 +48,14 @@ import {
   isActivityType,
   isJailMap,
   isStaff,
+  lingoEq,
   MODERATION_TEXT,
   mapName,
   mergePlayerPrefs,
   NEW_SKILL_VALUE,
   NO_FOG,
   type NpcSections,
+  nightlyDue,
   normaliseXp,
   PASSWORD_TEXT,
   type Permission,
@@ -59,10 +63,12 @@ import {
   parseMapName,
   prefsEqual,
   questLineUnanswerable,
+  RECONCILE_RUNS_SHOWN,
   ROLE_TEXT,
   type Role,
   type RoleData,
   type RoleDef,
+  reconcileItems,
   roleDataError,
   roleFromData,
   rolesError,
@@ -159,6 +165,7 @@ import {
 } from "./persistence/economy.ts";
 import {
   deleteGround,
+  expiredGround,
   insertGround,
   loadGround,
   peekGround,
@@ -216,6 +223,18 @@ import { insertNpcFileVersion, loadNpcFiles, saveNpcFile } from "./persistence/n
 import { deletePlayerShops, insertPlayerShop, loadPlayerShops } from "./persistence/playershops.ts";
 import { loadAccountPreferencesRecord, saveAccountPreferences } from "./persistence/preferences.ts";
 import {
+  activityFlows,
+  countHoldings,
+  insertRun,
+  lastActivitySeq,
+  recentRuns,
+  runCounts,
+  runView,
+  type StoredRun,
+  saveCasinoHolds,
+  takeCasinoHolds,
+} from "./persistence/reconcile.ts";
+import {
   deleteRole,
   loadRoles,
   roleHolders,
@@ -242,11 +261,13 @@ import {
 } from "./settings.ts";
 import {
   type ActivityFields,
+  checkHoldings,
   checkPlayer,
   holdingsOf,
   logActivity,
   logBagChange,
   logEditorPlacements,
+  logWorld,
   resetHoldings,
 } from "./systems/admin/activity.ts";
 import {
@@ -450,6 +471,11 @@ export interface GameDeps {
   dropOtherSessions?(playerId: string): void;
   /** Times the stretches of each tick; absent in normal play. */
   probe?: TickProbe;
+  /**
+   * Runs the item reconciliation nightly, at the first tick after `RECONCILE_NIGHTLY_HOUR` UTC
+   * (issue #35); main.ts turns it on. Off by default, so a test's clock never starts one.
+   */
+  nightlyReconcile?: boolean;
   /** Server infrastructure (`SSO_*` variables); defaults to `DEFAULT_SERVER_CONFIG`. */
   config?: ServerConfig;
 }
@@ -537,6 +563,8 @@ const EDITOR_INTENTS = new Set([
   "roleDelete",
   "roleAssign",
   "activityQuery",
+  "reconcileQuery",
+  "reconcileRun",
   "characterSearch",
   "characterOpen",
   "characterModerate",
@@ -588,6 +616,8 @@ const ADMIN_INTENTS: Readonly<Record<string, { permission: Permission; reason: s
   roleDelete: { permission: "settings", reason: "Attempted Admin Access" },
   roleAssign: { permission: "settings", reason: "Attempted Admin Access" },
   activityQuery: { permission: "activityLog", reason: "Attempted Admin Access" },
+  reconcileQuery: { permission: "activityLog", reason: "Attempted Admin Access" },
+  reconcileRun: { permission: "activityLog", reason: "Attempted Admin Access" },
   // The player hub; each moderation button also needs its own command's permission.
   characterSearch: { permission: "characterView", reason: "Attempted Admin Access" },
   characterOpen: { permission: "characterView", reason: "Attempted Admin Access" },
@@ -727,7 +757,13 @@ export function createGame(deps: GameDeps): Game {
   /** Forgets chat lines, activity and audit rows past their retention settings. */
   const pruneLogs = () => {
     pruneChatLog(db, isoNow(), settings.chatLogRetention / DAY_SECONDS);
-    pruneActivity(db, isoNow(), settings.activityLogRetention / DAY_SECONDS);
+    // Rows the next reconciliation run has still to read are kept (issue #35).
+    pruneActivity(
+      db,
+      isoNow(),
+      settings.activityLogRetention / DAY_SECONDS,
+      recentRuns(db, 1)[0]?.lastSeq ?? null,
+    );
     pruneAudit(db, isoNow(), settings.auditLogRetention / DAY_SECONDS);
   };
   pruneLogs();
@@ -741,12 +777,25 @@ export function createGame(deps: GameDeps): Game {
    */
   let chatWritten = 0;
   let activityWritten = 0;
+  /** The stakes `casino_holds` holds, as last written (set once the startup refunds have run). */
+  let holdsWritten = "";
   /** Writes the chat lines and activity logged since the last write (`world.chatLog`, `.activity`). */
   const flushChatLog = () => {
     if (world.chatLog.length > chatWritten) {
       insertChatLog(db, world.chatLog.slice(chatWritten), isoNow());
       chatWritten = world.chatLog.length;
     }
+    if (world.activity.length > activityWritten) {
+      insertActivity(db, world.activity.slice(activityWritten), isoNow());
+      activityWritten = world.activity.length;
+    }
+  };
+  /**
+   * Writes only the activity logged since the last write: each entry point does this in its own
+   * transaction, so an item change and its row commit together (issue #35). Chat lines wait for
+   * the tick.
+   */
+  const flushActivity = () => {
     if (world.activity.length > activityWritten) {
       insertActivity(db, world.activity.slice(activityWritten), isoNow());
       activityWritten = world.activity.length;
@@ -763,6 +812,44 @@ export function createGame(deps: GameDeps): Game {
   const rollbackLogs = () => {
     chatWritten = 0;
     activityWritten = 0;
+    // The stakes written may have rolled back with the purses: the next save writes them again.
+    holdsWritten = "";
+  };
+  // Blackjack stakes a crash left held (a clean shutdown refunds them first): the saved purse
+  // already counts each, as the restart gives it back, so the refund is logged as a clean
+  // shutdown's is, and the log and the purse agree (issue #35).
+  try {
+    db.transaction(() => {
+      for (const h of takeCasinoHolds(db)) {
+        logActivity(world, { id: h.characterId, accountId: h.accountId, name: h.name }, "reward", {
+          gold: h.gold,
+          details: { game: "blackjack", refund: true, restart: true },
+        });
+      }
+      flushChatLog();
+    })();
+    commitLogs();
+  } catch (err) {
+    rollbackLogs();
+    throw err;
+  }
+  // The table is empty now; `persistItems` writes it again whenever the stakes change.
+  holdsWritten = "[]";
+  /** The stakes held at the blackjack tables now, by character. */
+  const casinoHolds = (): Map<string, number> => {
+    const m = new Map<string, number>();
+    for (const t of world.casinoTables.values()) {
+      if (t.game !== "blackjack") {
+        continue;
+      }
+      t.seats.forEach((seat, i) => {
+        const held = t.held[i] ?? 0;
+        if (seat && held > 0) {
+          m.set(seat.id, (m.get(seat.id) ?? 0) + held);
+        }
+      });
+    }
+    return m;
   };
   // Named containers: the Cauldrons and carried crates and cabinets.
   world.containers = loadContainers(db);
@@ -841,7 +928,7 @@ export function createGame(deps: GameDeps): Game {
     }
     const rec = findMapByCoords(db, c.mx, c.my, c.slot);
     const m = rec
-      ? toWorldMap({ ...rec, slots: slotsFor(rec.id), ground: groundFor(rec.id) })
+      ? toWorldMap({ ...rec, slots: slotsFor(rec.id), ground: groundFor(rec.id, rec.name) })
       : null;
     mapCache.set(key, m);
     return m;
@@ -869,9 +956,16 @@ export function createGame(deps: GameDeps): Game {
     return rec ? loadMap(rec.name) : null;
   };
 
-  /** A map's ground items; loot already past its time is deleted on the way. */
-  function groundFor(mapId: string) {
-    return loadGround(db, mapId, isoNow()).map((g) => ({
+  /**
+   * A map's ground items; loot already past its time is deleted on the way, and logged as decayed
+   * (issue #35), as it is when it decays on a loaded map.
+   */
+  function groundFor(mapId: string, map: string) {
+    const now = isoNow();
+    for (const g of expiredGround(db, mapId, now)) {
+      logWorld(world, "decay", g.item, -g.qty, { at: { map, x: g.x, y: g.y } });
+    }
+    return loadGround(db, mapId, now).map((g) => ({
       id: g.id,
       item: g.item,
       ...(g.qty > 1 ? { qty: g.qty } : {}),
@@ -1141,7 +1235,12 @@ export function createGame(deps: GameDeps): Game {
     world.guildsDirty.clear();
     const guildFields = [...world.guildFields];
     world.guildFields.clear();
+    // The stakes held at the tables, written with the purses that count them (`savedGold`).
+    const holds = casinoHolds();
+    const holdsKey = JSON.stringify([...holds].sort());
+    const holdsDue = holdsKey !== holdsWritten;
     if (
+      !holdsDue &&
       log.length === 0 &&
       players.length === 0 &&
       !shopsDirty &&
@@ -1227,6 +1326,10 @@ export function createGame(deps: GameDeps): Game {
           }
           saveVault(db, p.id, p.char.vault);
         }
+      }
+      if (holdsDue) {
+        saveCasinoHolds(db, holds);
+        holdsWritten = holdsKey;
       }
       crashPoint("persist:mid");
       for (const shop of world.shops.values()) {
@@ -1871,8 +1974,15 @@ export function createGame(deps: GameDeps): Game {
     const q = { ...asked, name: asked.name.trim(), types: asked.types.filter(isActivityType) };
     flushChatLog();
     const c = q.scope === "character" ? findCharacterAccount(db, q.name) : null;
-    const scope: ActivityScope =
-      q.scope === "item" ? { item: q.name } : c ? { characterId: c.characterId } : { name: q.name };
+    // The currency's name asks for its flow: every change to the gold (issue #35).
+    const gold = q.scope === "item" && CURRENCY !== null && lingoEq(q.name, CURRENCY);
+    const scope: ActivityScope = gold
+      ? { gold: true }
+      : q.scope === "item"
+        ? { item: q.name }
+        : c
+          ? { characterId: c.characterId }
+          : { name: q.name };
     const rows = activityRows(db, {
       scope,
       types: q.types,
@@ -1916,13 +2026,74 @@ export function createGame(deps: GameDeps): Game {
       seq: q.seq,
       rows,
       more,
-      ...(first && q.scope === "item" ? itemTotals(q.name, q.since, q.until) : {}),
+      ...(first && q.scope === "item" ? itemTotals(gold ? null : q.name, q.since, q.until) : {}),
       ...(error ? { error } : {}),
     };
   };
 
+  /**
+   * An item reconciliation run (issue #35): every unexplained change to what players carry is
+   * logged, everything live is saved as the periodic save does, then the database is counted in
+   * this one transaction and compared with the last run's count and the activity rows written
+   * since it. The first run only takes the baseline. `by` names who ran it (null: the nightly run).
+   */
+  const runReconcile = (by: string | null): StoredRun => {
+    for (const o of world.players.values()) {
+      checkHoldings(world, o);
+    }
+    saveEveryone();
+    const currency = CURRENCY ?? "Gold";
+    const prev = recentRuns(db, 1)[0] ?? null;
+    const lastSeq = lastActivitySeq(db);
+    const actual = countHoldings(db, currency);
+    const flows = prev ? activityFlows(db, prev.lastSeq, lastSeq, currency) : new Map();
+    const items = reconcileItems(prev ? runCounts(db, prev.id) : null, flows, actual, currency);
+    const run: StoredRun = {
+      id: Bun.randomUUIDv7(),
+      at: isoNow(),
+      by,
+      lastSeq,
+      baseline: prev === null,
+      items: items.length,
+      mismatches: items.filter((i) => i.difference !== 0).length,
+    };
+    insertRun(db, run, items);
+    return run;
+  };
+  /** The nightly run is checked for once a minute. */
+  let reconcileCheckAt = nowMs() + 60_000;
+  /**
+   * The nightly run, when one is due: in its own transaction after the tick's, so a run that
+   * fails rolls back only itself (and is tried again a minute later).
+   */
+  const nightlyReconcile = () => {
+    if (!deps.nightlyReconcile || nowMs() < reconcileCheckAt) {
+      return;
+    }
+    reconcileCheckAt = nowMs() + 60_000;
+    // Read from the database, so a run that rolled back is not taken for one that happened.
+    const last = recentRuns(db, 1)[0];
+    if (last && Date.parse(last.at) >= nightlyDue(nowMs())) {
+      return;
+    }
+    try {
+      db.transaction(() => runReconcile(null))();
+      commitLogs();
+    } catch (err) {
+      rollbackLogs();
+      fault("reconcile", err);
+    }
+  };
+  /** The Reconciliation section's answer: the newest runs, newest first. */
+  const reconcileMsg = (seq: number, text?: string): ServerMsg => ({
+    t: "reconcile",
+    seq,
+    runs: recentRuns(db, RECONCILE_RUNS_SHOWN).map((r) => runView(db, r)),
+    ...(text ? { text } : {}),
+  });
+
   /** An item's totals, over at most its newest `ACTIVITY_TOTALS_MAX` events (the tick waits for it). */
-  const itemTotals = (item: string, since: string | null, until: string | null) => {
+  const itemTotals = (item: string | null, since: string | null, until: string | null) => {
     const r = activityItemTotals(db, item, since, until, ACTIVITY_TOTALS_MAX);
     return { totals: r.totals, ...(r.capped ? { totalsCapped: ACTIVITY_TOTALS_MAX } : {}) };
   };
@@ -2257,6 +2428,8 @@ export function createGame(deps: GameDeps): Game {
     world.rooms.delete(name);
     const c = parseHouseMapName(name);
     const rec = c ? findMapByCoords(db, c.mx, c.my, c.slot) : null;
+    // What the interior held goes with it: its items and its shops' stock and tills (issue #35).
+    logDemolished(name, rec?.id ?? null);
     if (rec) {
       // A respawn point inside the interior goes with it.
       db.query("UPDATE characters SET respawn_map_id = NULL WHERE respawn_map_id = ?").run(rec.id);
@@ -2277,11 +2450,61 @@ export function createGame(deps: GameDeps): Game {
     mapCache.delete(name);
     return true;
   }
+  /**
+   * Logs what a deleted interior destroys as `demolish` world events: the items on its floor (as
+   * saved; nothing moves there while it is empty) and each of its player shops' stock and till.
+   */
+  function logDemolished(interior: string, mapId: string | null): void {
+    const details = { house: interior };
+    if (mapId !== null) {
+      for (const g of db
+        .query<{ item: string; qty: number; x: number; y: number }, [string]>(
+          "SELECT item, qty, x, y FROM ground_items WHERE map_id = ? ORDER BY id",
+        )
+        .all(mapId)) {
+        logWorld(world, "demolish", g.item, -g.qty, {
+          at: { map: interior, x: g.x, y: g.y },
+          details,
+        });
+      }
+    }
+    for (const ps of world.playerShops.values()) {
+      if (!lingoEq(ps.interior, interior)) {
+        continue;
+      }
+      const ledger = shopLedger(ps.npc);
+      if (!ledger) {
+        continue;
+      }
+      const till = ledger.gold ?? npcFileNamed(world.npcs, ps.npc)?.gold ?? 0;
+      const pile = goldPileName(till);
+      if (pile !== null && till !== 0) {
+        logWorld(world, "demolish", pile, -1, {
+          other: ps.npc,
+          at: { map: interior, x: null, y: null },
+          details,
+        });
+      }
+      for (const l of ledger.lines) {
+        if (l.kind === "SEL" && l.stock) {
+          logWorld(world, "demolish", l.item, -l.stock, {
+            other: ps.npc,
+            at: { map: interior, x: null, y: null },
+            details,
+          });
+        }
+      }
+    }
+  }
   /** The queued interiors nobody is in any more. */
   const flushInteriorDeletes = () => {
     if (world.interiorsToDelete.size === 0) {
       return;
     }
+    // The ground changes not yet written go first, so what a deleted interior destroys is read
+    // as it stands (issue #35): an item that decayed there is not destroyed twice, and one just
+    // put down is not lost unlogged.
+    persistItems([]);
     db.transaction(() => {
       for (const name of [...world.interiorsToDelete]) {
         if (deleteInterior(name)) {
@@ -2660,8 +2883,26 @@ export function createGame(deps: GameDeps): Game {
             now,
           });
           made = { id: characterId, accountId: account.id, name: msg.name };
+          // What a new character starts with is where those items came from: logged with the
+          // character, in its transaction, so the rows and the bag commit together (issue #35).
+          logBagChange(world, made, "reward", new Map(), holdingsOf(loadInventory(db, made.id)), {
+            details: { start: true },
+          });
+          flushActivity();
         })();
+        commitLogs();
       } catch (err) {
+        rollbackLogs();
+        // Assigned in the transaction's closure, which the narrowing does not see.
+        const failed = made as { id: string } | null;
+        if (failed) {
+          const gone = failed.id;
+          world.activity.splice(
+            0,
+            world.activity.length,
+            ...world.activity.filter((e) => e.characterId !== gone),
+          );
+        }
         if (
           err instanceof UsernameTakenError ||
           (err instanceof Error && /UNIQUE/.test(err.message))
@@ -2672,12 +2913,7 @@ export function createGame(deps: GameDeps): Game {
         unnoteCreate(limits, ip, counted);
         throw err;
       }
-      // What a new character starts with is where those items came from, logged once it exists.
       if (made) {
-        const who: { id: string; accountId: string; name: string } = made;
-        logBagChange(world, who, "reward", new Map(), holdingsOf(loadInventory(db, who.id)), {
-          details: { start: true },
-        });
         stampChat();
       }
       return { ok: true };
@@ -3034,6 +3270,29 @@ export function createGame(deps: GameDeps): Game {
         case "activityQuery":
           send(p.id, activityQuery(p, msg));
           return;
+        case "reconcileQuery":
+          send(p.id, reconcileMsg(msg.seq));
+          return;
+        case "reconcileRun": {
+          const run = runReconcile(p.name);
+          insertAudit(
+            db,
+            { actor: p.accountId, command: "reconcile", target: null, after: { run: run.id } },
+            isoNow(),
+          );
+          send(
+            p.id,
+            reconcileMsg(
+              msg.seq,
+              run.baseline
+                ? "The first run took the baseline: the next run compares with it."
+                : run.mismatches === 0
+                  ? "Every item's count matches what the log expects."
+                  : `${run.mismatches} item${run.mismatches === 1 ? "'s count differs" : "s' counts differ"} from what the log expects.`,
+            ),
+          );
+          return;
+        }
         case "characterSearch":
           send(p.id, {
             t: "characterList",
@@ -3427,7 +3686,12 @@ export function createGame(deps: GameDeps): Game {
           if (room) {
             const r = clickNpc(room, p, msg.slot, rng);
             if (r.grabbed) {
-              logActivity(world, p, "pickup", { item: r.grabbed, qty: 1, other: r.grabbed });
+              logActivity(world, p, "pickup", {
+                item: r.grabbed,
+                qty: 1,
+                other: r.grabbed,
+                details: { as: "monster" },
+              });
             }
             deliver(r.out);
             if (r.slotsChanged) {
@@ -3690,7 +3954,10 @@ export function createGame(deps: GameDeps): Game {
   const inner = { enter: core.enter, leave: core.leave, intent: core.intent, tick: core.tick };
   /** Forgets `characterId`'s activity events logged since `mark` (a call that threw and evicted them). */
   const dropActivity = (characterId: string, mark: number) => {
-    const kept = world.activity.slice(mark).filter((e) => e.characterId !== characterId);
+    // A world event the call logged (a decay as a map loaded) rolled back with it too.
+    const kept = world.activity
+      .slice(mark)
+      .filter((e) => e.characterId !== characterId && e.characterId !== null);
     world.activity.splice(mark, world.activity.length - mark, ...kept);
   };
   /** A logged line or event takes the time its intent ended, not the time it was written. */
@@ -3710,7 +3977,13 @@ export function createGame(deps: GameDeps): Game {
     enter(characterId: string, resumed: boolean, ip?: string) {
       const mark = world.activity.length;
       try {
-        const r = db.transaction(() => inner.enter(characterId, resumed, ip))();
+        // Each entry point writes the rows it logged in its own transaction, with the state they
+        // describe, so a crash never keeps one without the other (issue #35).
+        const r = db.transaction(() => {
+          const ok = inner.enter(characterId, resumed, ip);
+          flushActivity();
+          return ok;
+        })();
         commitLogs();
         return r;
       } catch (err) {
@@ -3726,7 +3999,10 @@ export function createGame(deps: GameDeps): Game {
     leave(characterId: string) {
       const mark = world.activity.length;
       try {
-        db.transaction(() => inner.leave(characterId))();
+        db.transaction(() => {
+          inner.leave(characterId);
+          flushActivity();
+        })();
         commitLogs();
       } catch (err) {
         rollbackLogs();
@@ -3739,7 +4015,10 @@ export function createGame(deps: GameDeps): Game {
     intent(characterId: string, msg: InGameMsg) {
       const mark = world.activity.length;
       try {
-        db.transaction(() => inner.intent(characterId, msg))();
+        db.transaction(() => {
+          inner.intent(characterId, msg);
+          flushActivity();
+        })();
         commitLogs();
       } catch (err) {
         // A read (the Activity Log, /chatlog) may have written the buffers: that rolled back too.
@@ -3781,13 +4060,19 @@ export function createGame(deps: GameDeps): Game {
       }
       let ok: boolean;
       try {
-        db.transaction(() => inner.tick())();
+        db.transaction(() => {
+          inner.tick();
+          flushActivity();
+        })();
         commitLogs();
         ok = true;
       } catch (err) {
         rollbackLogs();
         fault("tick", err);
         ok = false;
+      }
+      if (ok) {
+        nightlyReconcile();
       }
       // Whatever no event explained since the last check is logged as unlogged. No SQL: it only
       // fills the buffer, outside the tick's transaction, and is timed with the tick's last phase.

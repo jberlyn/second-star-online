@@ -8,6 +8,10 @@
  * character carries (bag, worn gear and gold in hand): a sale is `qty -1, gold +40`, a bank
  * deposit `gold -500`. A trade or a give is written once for each side. Items are recorded by name
  * and quantity, not by individual copy.
+ *
+ * A world event (an item decaying on the ground, a quest chest refilled, a house demolished, a
+ * plant regrown) has no character: its `qty` and `gold` are the change to what exists. How each
+ * type counts towards what exists is in reconcile.ts (issue #35).
  */
 
 /** The event types, by group, in the order the Control Panel's filter lists them. */
@@ -55,6 +59,17 @@ export const ACTIVITY_GROUPS = {
     "transform",
     /** Created or removed by an admin (`/drop`, the character editor). */
     "admin",
+    /** A world event: an item on the ground decayed (its loot time ran out). No character. */
+    "decay",
+    /** A world event: the periodic save put an item in a quest chest. No character. */
+    "refill",
+    /**
+     * A world event: a demolished house took what was in it, its vault, items, shop stock and till.
+     * No character.
+     */
+    "demolish",
+    /** A world event: a regrown plant produced an item on the ground. No character. */
+    "regrow",
     /**
      * A change to what a character carries that no event explained: a missed source or sink in
      * the code, or a dupe. Written by the server's own check, so nothing goes unrecorded.
@@ -139,6 +154,10 @@ export const ACTIVITY_TYPE_LABELS: Readonly<Record<ActivityType, string>> = {
   deathDrop: "Death drop",
   transform: "Transform",
   admin: "Admin",
+  decay: "Decay",
+  refill: "Chest refill",
+  demolish: "Demolished",
+  regrow: "Regrowth",
   unlogged: "Unlogged change",
   kill: "Kill",
   playerKill: "Player kill",
@@ -159,7 +178,8 @@ export interface ActivityRow {
   /** ISO time, UTC. */
   at: string;
   type: ActivityType;
-  character: string;
+  /** The character, or null for a world event. */
+  character: string | null;
   /** The other party: a player (`otherIsPlayer`), an NPC, a monster or a container; or null. */
   other: string | null;
   otherIsPlayer: boolean;
@@ -215,6 +235,9 @@ export function activitySummary(r: ActivityRow): string {
     parts.push(
       d0.placedGold < 0 ? `${-d0.placedGold} gold removed` : `${d0.placedGold} gold placed`,
     );
+  }
+  if (typeof d0.stored === "number") {
+    parts.push(d0.stored < 0 ? `${-d0.stored} used up in storage` : `${d0.stored} made in storage`);
   }
   if (typeof d0.lost === "number") {
     parts.push(`${d0.lost} lost (no room)`);
