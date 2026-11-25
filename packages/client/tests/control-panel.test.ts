@@ -47,13 +47,13 @@ function panelWith(perms: Permission[], changes = { n: 0 }) {
     enterRoom: (r) => calls.push(`enterRoom:${r}`),
     playerSettings: () => calls.push("playerSettings"),
   };
-  const page = (id: string, title: string, permission: Permission) => {
+  const page = (id: string, title: string, permission: Permission, group = "Server") => {
     const el = document.createElement("div");
     el.className = `page-${id}`;
     return {
       id,
       title,
-      group: "Server",
+      group,
       permission,
       el,
       onShow: () => shown.push(id),
@@ -62,7 +62,12 @@ function panelWith(perms: Permission[], changes = { n: 0 }) {
   };
   let can = new Set<Permission>(perms);
   const controlPanel = createControlPanel({
-    pages: [page("settings", "Server Settings", "settings"), page("logs", "Logs", "activityLog")],
+    pages: [
+      page("settings", "Server Settings", "settings"),
+      page("logs", "Logs", "activityLog", "Players"),
+      page("items", "Items", "contentEditor", "Content"),
+      page("community", "Community", "contentEditor", "Content"),
+    ],
     links: [
       {
         id: "worldEditor",
@@ -97,6 +102,7 @@ describe("the Control Panel shell", () => {
     const { sidebar, controlPanel, shown } = panelWith(["settings", "contentEditor"]);
     expect(sidebar()).toEqual([
       ["Server", "Server Settings"],
+      ["Content", "Community", "Items"],
       ["Classic tools", "World Editor"],
     ]);
     // The first page opens and asks for its data; it is marked current.
@@ -105,8 +111,15 @@ describe("the Control Panel shell", () => {
     expect(controlPanel.el.querySelector('[aria-current="page"]')?.textContent).toBe(
       "Server Settings",
     );
+    // Groups keep their order; the entries under each are A–Z, and the top one opens first.
     const all = panelWith(["settings", "activityLog"]);
-    expect(all.sidebar()).toEqual([["Server", "Server Settings", "Logs"]]);
+    expect(all.sidebar()).toEqual([
+      ["Server", "Server Settings"],
+      ["Players", "Logs"],
+    ]);
+    expect(all.controlPanel.page).toBe("settings");
+    const content = panelWith(["contentEditor"]);
+    expect(content.controlPanel.page).toBe("community");
     all.controlPanel.go("logs");
     expect(all.controlPanel.page).toBe("logs");
   });
@@ -203,7 +216,7 @@ describe("the Control Panel shell", () => {
     const page = (id: string, permission: Permission) => ({
       id,
       title: id,
-      group: "G",
+      group: id,
       permission,
       el: document.createElement("div"),
       onShow: () => shown.push(id),
@@ -613,7 +626,7 @@ describe("leaving a page (issue #29, stage 7 review)", () => {
     const page = (id: string, permission: Permission) => ({
       id,
       title: id,
-      group: "G",
+      group: id,
       permission,
       el: document.createElement("div"),
       onHide: () => hidden.push(id),

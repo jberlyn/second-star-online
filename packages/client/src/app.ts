@@ -1119,7 +1119,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
       ).map(([id, title, area]) => ({
         id,
         title,
-        group: "Game",
+        group: "Content",
         permission: "contentEditor" as const,
         el: area.el,
         onShow: () => area.onShow(),
@@ -1129,7 +1129,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
       {
         id: "pictures",
         title: "Pictures & Sounds",
-        group: "Game",
+        group: "Content",
         permission: "contentEditor",
         el: contentPage.artEl,
         onShow: () => contentPage.onShow(),
@@ -1140,7 +1140,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
       {
         id: "content",
         title: "Publish Changes",
-        group: "Game",
+        group: "Publishing",
         permission: "contentEditor",
         el: contentPage.el,
         onShow: () => contentPage.onShow(),
@@ -1151,7 +1151,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
       {
         id: "packs",
         title: "Packs",
-        group: "Game",
+        group: "Publishing",
         permission: "contentEditor",
         el: packsPage.el,
         onShow: () => packsPage.onShow(),
@@ -1161,7 +1161,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
       {
         id: "world",
         title: "World",
-        group: "Game",
+        group: "Content",
         permission: "contentEditor",
         el: worldPage.el,
         onShow: () => worldPage.onShow(),

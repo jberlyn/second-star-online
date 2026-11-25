@@ -9,7 +9,8 @@
  *   over the Control Panel as floating windows (Friends, Who's Online, Send IM with a count of IMs that
  *   came while here, the chat rooms and Player Settings), and Return To Title Screen.
  * - The sidebar: the admin pages your role may use, grouped, then the classic editors (they leave
- *   the Control Panel for their own screens without putting you back on the map).
+ *   the Control Panel for their own screens without putting you back on the map). Groups keep the
+ *   order their first page is listed in; the entries under each are in A–Z order.
  * - A page with unsaved changes asks before anything leaves it.
  */
 import type { Permission } from "@secondstaronline/shared";
@@ -69,7 +70,7 @@ export interface ControlPanel {
   readonly el: HTMLElement;
   /** The page showing, or null. */
   readonly page: string | null;
-  /** Shows the Control Panel: the last page you had open, if you may still use it, else the first. */
+  /** Shows the Control Panel: the last page you had open, if you may still use it, else the first listed. */
   open(): void;
   /** Shows a page (asking first if the open one has changes). */
   /** Shows page `id` (asking first if the open page has changes), then runs `then` on it. */
@@ -203,6 +204,15 @@ export function createControlPanel(opts: ControlPanelOptions): ControlPanel {
   /** The page to come back to when the Control Panel opens again. */
   let last: string | null = null;
   const allowed = () => opts.pages.filter((p) => opts.can(p.permission));
+  /** The page at the top of the sidebar: the first group's first entry in A–Z order. */
+  const first = (): PanelPage | null => {
+    const pages = allowed();
+    const group = pages[0]?.group;
+    return (
+      pages.filter((p) => p.group === group).sort((a, b) => a.title.localeCompare(b.title))[0] ??
+      null
+    );
+  };
 
   /** Runs `go` now, or once the operator agrees to drop the open page's changes. */
   const guard = (go: () => void, what: string) => {
@@ -287,7 +297,9 @@ export function createControlPanel(opts: ControlPanelOptions): ControlPanel {
         const h = document.createElement("h2");
         h.className = "control-panel-group-title";
         h.textContent = g;
-        sec.append(h, ...entries.filter((e) => e.group === g).map((e) => e.el));
+        const inGroup = entries.filter((e) => e.group === g);
+        inGroup.sort((a, b) => (a.el.textContent ?? "").localeCompare(b.el.textContent ?? ""));
+        sec.append(h, ...inGroup.map((e) => e.el));
         return sec;
       }),
     );
@@ -312,8 +324,7 @@ export function createControlPanel(opts: ControlPanelOptions): ControlPanel {
       setUnread(0);
       fillRooms();
       drawSidebar();
-      const pages = allowed();
-      show(pages.find((p) => p.id === last) ?? pages[0] ?? null);
+      show(allowed().find((p) => p.id === last) ?? first());
     },
     go,
     refresh() {
@@ -324,7 +335,7 @@ export function createControlPanel(opts: ControlPanelOptions): ControlPanel {
         closeQuestions();
         current.discard?.();
         if (root.isConnected) {
-          show(allowed()[0] ?? null);
+          show(first());
         } else {
           current.onHide?.();
           current = null;
