@@ -1161,6 +1161,206 @@ body {
 .items-list-row .balance-field {
   flex: 0 1 140px;
 }
+/* The Items page's own look (ui/items-page.ts, `.items-editor`): a calm form with room between
+   its parts, a help line under each tab's title, rarely used fields folded under "More options",
+   and the Save bar split into saving (left) and resetting (right). */
+.items-editor .items-filters {
+  display: flex;
+  gap: 8px;
+}
+.items-editor .items-filters .balance-field {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 4px 0;
+}
+.items-editor .items-new > summary {
+  display: inline-block;
+  padding: 5px 12px;
+  border: 1px solid #555;
+  border-radius: 4px;
+  background: #2f2f2f;
+  list-style: none;
+}
+.items-editor .items-new > summary::-webkit-details-marker {
+  display: none;
+}
+.items-editor .items-new[open] > summary {
+  margin-bottom: 4px;
+}
+.items-editor .items-list-item {
+  padding: 6px 10px;
+}
+.items-editor .items-list-meta {
+  margin-left: 4px;
+}
+.items-empty-form {
+  flex: 1 1 480px;
+  margin: 0;
+  padding: 40px 16px;
+  border: 1px dashed #333;
+  border-radius: 6px;
+  color: #8b96ad;
+  text-align: center;
+}
+.items-empty-form[hidden] {
+  display: none;
+}
+.items-editor .items-form-head .content-section-title {
+  margin-bottom: 0;
+}
+.items-editor .items-form-id {
+  margin: 2px 0 6px;
+}
+.items-editor .items-form-id:empty {
+  display: none;
+}
+.items-editor .items-tag-original {
+  background: #1f2a1f;
+  border-color: #3d6b3d;
+  color: #a9dca9;
+}
+.items-editor .items-tag-changed {
+  background: #23324f;
+  border-color: #3c5a93;
+  color: #b9cdf5;
+}
+.items-editor .balance-row {
+  padding: 14px 0;
+}
+.items-editor .balance-row-title {
+  font-size: 15px;
+}
+.items-intro {
+  margin: 0 0 10px;
+  color: #b8c4dd;
+}
+.items-editor .items-group > .control-panel-field,
+.items-editor .items-group > .items-check,
+.items-editor .items-more > .control-panel-field,
+.items-editor .items-more > .items-check {
+  max-width: 560px;
+}
+.items-editor .items-group > .items-check,
+.items-editor .items-more > .items-check {
+  margin: 6px 0;
+}
+.items-editor .items-list-editor {
+  margin: 14px 0;
+  padding: 10px 12px;
+  background: #222;
+  border: 1px solid #2f2f2f;
+  border-radius: 4px;
+}
+.items-editor .items-list-title {
+  font-size: 13px;
+}
+.items-editor .items-list-editor > .control-panel-field-help {
+  margin: 2px 0 6px;
+}
+.items-editor .items-list-row {
+  align-items: flex-end;
+  gap: 4px 14px;
+  padding: 6px 0;
+  border-top: 1px solid #2c2c2c;
+}
+.items-editor .items-list-row .balance-field {
+  flex: 0 1 160px;
+  padding: 0;
+}
+.items-editor .items-list-row .items-check {
+  align-self: center;
+  max-width: 200px;
+}
+.items-editor .items-list-row .balance-field.items-range {
+  flex: 0 1 220px;
+}
+.items-range-pair {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #b8c4dd;
+}
+.items-range-pair > input {
+  width: 6em;
+  min-width: 0;
+}
+.items-editor .items-add {
+  margin-top: 6px;
+}
+.items-pick .items-checks {
+  margin: 2px 0;
+}
+.items-more-picks > summary,
+.items-more > summary {
+  cursor: pointer;
+  color: #9fb6e8;
+}
+.items-more-picks > summary {
+  margin-top: 4px;
+  font-size: 12px;
+}
+.items-more-picks[open] > summary {
+  margin-bottom: 4px;
+}
+.items-more {
+  margin: 16px 0 4px;
+  padding: 8px 12px;
+  border: 1px solid #2f2f2f;
+  border-radius: 4px;
+}
+.items-more[open] > summary {
+  margin-bottom: 4px;
+}
+.items-group-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 10px;
+  border-top: 1px dashed #2c2c2c;
+}
+.items-group-foot .control-panel-sources {
+  margin: 0;
+}
+.items-editor .items-restore[hidden] {
+  display: none;
+}
+.items-remove {
+  margin-top: 20px;
+  padding-top: 12px;
+  border-top: 1px solid #2c2c2c;
+}
+.items-remove .control-panel-field-help {
+  margin-top: 4px;
+}
+.items-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+}
+.items-actions .content-buttons[hidden],
+.items-editor .control-panel-btn[hidden] {
+  display: none;
+}
+.items-editor .control-panel-tab {
+  padding: 5px 8px;
+}
+.items-editor .items-checks {
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+}
+.control-panel-tab-used::after {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: 6px;
+  vertical-align: middle;
+  border-radius: 50%;
+  background: #6e8fd6;
+}
 /* Editor forms (control-panel-kit.ts): one section at a time behind tabs, where the rules came
    from folded away, and the Save bar kept in view at the bottom. */
 .control-panel-tabs {

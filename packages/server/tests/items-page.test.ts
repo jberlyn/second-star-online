@@ -83,7 +83,7 @@ describe("the Items page's view (#30 stage 3)", () => {
     expect(item?.defined).toBe(false);
     expect(item?.form.strength).toBe(strengthRequirement("Long Sword"));
     // Each rule's source is the pack's row that decides it.
-    expect(item?.sources.find((x) => x.label === "Strength")?.from).toMatch(
+    expect(item?.sources.find((x) => x.label === "Strength needed")?.from).toMatch(
       /^the pack's contains "Long Sword" \(row \d+\)$/,
     );
     expect(item?.pack).toEqual(item?.form);
@@ -319,7 +319,10 @@ describe("the Items page's changes (#30 stage 3)", () => {
       ok: false,
       text: "Long Sword was not saved.",
       problems: [
-        { where: "Trains 1", message: "names a skill that does not exist: Basket Weaving" },
+        {
+          where: "Skills it trains 1",
+          message: "names a skill that does not exist: Basket Weaving",
+        },
       ],
     });
     expect(s.draft()).toEqual([]);
@@ -338,7 +341,7 @@ describe("the Items page's changes (#30 stage 3)", () => {
       expect: item.fingerprint,
     });
     expect(roll.result?.ok).toBe(false);
-    expect(roll.result?.problems?.[0]?.where).toBe("Attack roll 2");
+    expect(roll.result?.problems?.[0]?.where).toBe("Damage roll 2");
     expect(roll.result?.problems?.[0]?.message).not.toMatch(/randomN/);
   });
 

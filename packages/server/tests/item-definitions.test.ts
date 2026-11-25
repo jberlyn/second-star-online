@@ -987,7 +987,7 @@ describe("stage 4 review fixes (#30)", () => {
         data: { ...item?.form, requires: [{ on: "equip", needs: "Basket Weaving", atLeast: 1 }] },
         expect: item?.fingerprint,
       });
-      expect(!answer.ok && answer.problems?.[0]?.where).toBe("Needs 1");
+      expect(!answer.ok && answer.problems?.[0]?.where).toBe("Requirement 1");
     } finally {
       installContent(classic);
     }

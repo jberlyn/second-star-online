@@ -5,11 +5,17 @@
  * record of its rules, which the content store compiles into exact rows that win in every table.
  * An SSO page: 1.6 kept its items' rules in its scripts.
  *
+ * The form speaks the operator's words, not the tables': a tab per job the item can do (Basics,
+ * Picture, Weapon, Armour, When used, Tool, Breaking, On the ground), each tab marked when the item
+ * has settings there, damage typed as "from … to …" rather than `flat + random(n)`, protection as
+ * "less damage" rather than a signed delta, and the rarely used fields folded under "More options".
+ *
  * Changes go into the content store's shared draft, so the Content page publishes, undoes and
  * notices them like any other row. A change carries the item as the page showed it (`fingerprint`),
  * and the server refuses it if someone changed the item since (here or in the Content page's JSON
- * editor). Pictures use #29's panels, made by the Content page; removing an item goes through the
- * Content page's where-used report and removal form (#28).
+ * editor). One Save sends the rules and then the name. Pictures use #29's panels, made by the
+ * Content page; removing an item goes through the Content page's where-used report and removal
+ * form (#28).
  *
  * Refreshes never touch a form being edited: its fields and fingerprint stay as they were filled,
  * while its tags and sources follow the server.
@@ -116,25 +122,37 @@ export function rollRange(flat: number, randomN: number | null): string {
   return !randomN ? `Always ${flat}` : `Rolls ${flat + 1} to ${flat + randomN}`;
 }
 
-/** The definition's keys each group of the form holds. */
-const GROUP_KEYS: Record<string, readonly (keyof ItemDefinition)[]> = {
-  equip: ["slot", "strength", "twoHanded", "behaviours"],
-  attack: ["attack", "trains"],
-  armour: ["armour", "elemental", "spellDefense", "gear", "cooldowns", "sound"],
-  use: ["use", "menu"],
-  tools: ["tools", "requires"],
-  breaking: ["damaged", "breaks", "paperdoll"],
-  ground: ["ground", "container", "inEditorList", "inPlayerShops"],
-};
+/**
+ * The lowest and highest results of `flat + random(n)`. `random(n)` rolls 1 to n, and 0 (or none)
+ * rolls nothing, so `6 + random(6)` is 7 to 12 and `6 + random(0)` is always 6.
+ */
+export function rollBounds(flat: number, randomN: number | null): { from: number; to: number } {
+  return randomN ? { from: flat + 1, to: flat + randomN } : { from: flat, to: flat };
+}
 
-const GROUP_TITLES: Record<string, string> = {
-  equip: "Equip",
-  attack: "Attack",
-  armour: "Armour and gear",
-  use: "Use",
-  tools: "Tools and needs",
-  breaking: "Breaking and look",
-  ground: "Ground, containers and lists",
+/** The roll that gives `from` to `to` (`rollBounds` backwards): a fixed value rolls nothing. */
+export function rollFrom(from: number, to: number): { flat: number; randomN: number } {
+  return from === to ? { flat: from, randomN: 0 } : { flat: from - 1, randomN: to - from + 1 };
+}
+
+/** The definition's keys each tab of the form holds (what "Restore this tab" puts back). */
+const GROUP_KEYS: Record<string, readonly (keyof ItemDefinition)[]> = {
+  basics: [
+    "slot",
+    "strength",
+    "twoHanded",
+    "behaviours",
+    "requires",
+    "paperdoll",
+    "inEditorList",
+    "inPlayerShops",
+  ],
+  weapon: ["attack", "trains", "cooldowns", "sound"],
+  armour: ["armour", "elemental", "spellDefense", "gear"],
+  use: ["use", "menu"],
+  tools: ["tools"],
+  breaking: ["damaged", "breaks"],
+  ground: ["ground", "container"],
 };
 
 const KIND_TEXT: Record<ItemListEntry["kind"], string> = {
@@ -144,28 +162,147 @@ const KIND_TEXT: Record<ItemListEntry["kind"], string> = {
   other: "Other",
 };
 
-/** A column of a list of records (attack rolls, armour rows, use effects). */
+/** Where an item is worn (the Equip slot). 1.6's weapon hand is the left one. */
+const SLOT_TEXT: Record<string, string> = {
+  LeftHand: "Weapon hand",
+  RightHand: "Off hand (shield)",
+  Head: "Head",
+  Body: "Body",
+  Feet: "Feet",
+  Ring: "Ring",
+  No: "Nowhere: Equip refuses it",
+};
+
+/** The slots armour and breaks are tested in (1.6's `RingE`-style names). */
+const SLOT_VAR_TEXT: Record<string, string> = {
+  LeftHandE: "Weapon hand",
+  RightHandE: "Off hand (shield)",
+  HeadE: "Head",
+  BodyE: "Body",
+  FeetE: "Feet",
+  RingE: "Ring",
+};
+
+/** The worn slots gear bonuses and swing speeds are tested in. */
+const WORN_TEXT: Record<string, string> = {
+  weapon: "Weapon hand",
+  offHand: "Off hand",
+  head: "Head",
+  body: "Body",
+  feet: "Feet",
+  ring: "Ring",
+};
+
+const POWER_TEXT: Record<string, string> = {
+  attack: "Attack power",
+  spell: "Spell power",
+  blackArts: "Black Arts power",
+  martialArts: "Martial Arts power",
+  killXp: "XP per kill",
+};
+
+const LAYER_TEXT: Record<string, string> = {
+  weapon: "Weapon",
+  shield: "Shield",
+  helm: "Helmet",
+  gloves: "Gloves",
+  body: "Body",
+};
+
+const GROUND_LAYER_TEXT: Record<string, string> = {
+  hidden: "Hidden (not drawn)",
+  overChars: "Over the characters",
+  overLayer3: "Over the top map layer",
+};
+
+const TOOL_TEXT: Record<string, string> = {
+  Chop: "Chop trees",
+  Mine: "Mine rock",
+  Dig: "Dig",
+  Farm: "Plant seeds",
+  Fish: "Fish",
+  Water: "Water crops",
+};
+
+const MENU_TEXT: Record<string, string> = {
+  Storage: "Storage (opens it)",
+};
+
+/** What each behaviour does, as a tick box says it. */
+const BEHAVIOUR_TEXT: Record<string, string> = {
+  key: "Key: opens doors",
+  book: "Book: can be read",
+  bow: "Bow: shoots arrows",
+  crossbow: "Crossbow: also trains Martial Arts",
+  sword: "Counts as a sword (Firesword)",
+  swingFireballs: "Every swing also throws a fireball",
+  hidesName: "Hides the wearer's name",
+  hidesHead: "Hides the wearer's hair",
+  hidesHelm: "Hides the wearer's helmet",
+  quiver: "Drawn on the wearer's back",
+  hiddenFacingNorth: "Not drawn facing north",
+  chest: "Chest: opens with a click",
+  cabinet: "Cabinet (a container)",
+  windCabinet: "Wind Cabinet (a container)",
+  crate: "Crate (a container)",
+  cauldron: "Cauldron: brews recipes",
+  personalVault: "Personal vault",
+  map: "Drawn as a map on the ground",
+  camera: "Camera: takes photos",
+  film: "Film for a camera",
+  canvas: "Canvas: opens the paint screen",
+  newspaperKit: "Newspaper kit",
+  argonsFist: "Casts Argon's Fist when used",
+  releasesMonster: "Dropped, it becomes the monster",
+  slotMachine: "Slot machine",
+  blackjackTable: "Blackjack table",
+  checkersTable: "Checkers table",
+  highScoreStatue: "Shows the high scores",
+  assassinStatue: "Shows the assassins' ranking",
+  door: "Door",
+  switchDoor: "Door opened by switches",
+  clock: "Clock: shows the server time",
+  messageBoard: "Message board",
+  universalMail: "Mailbox",
+  guildCenter: "Guild center",
+  noClick: "Clicking it does nothing",
+  noCtrl: "Ctrl on it does nothing",
+};
+
+/** A choice's words: its entry in `text`, or the value itself. */
+const textOf = (text: Record<string, string>) => (v: string) => text[v] ?? v;
+
+/** A column of a list of records (damage rolls, protection rows, use effects). */
 interface Column {
   key: string;
   label: string;
-  kind: "int" | "intOrNull" | "bool" | "select" | "text";
+  kind: "int" | "intOrNull" | "bool" | "select" | "text" | "range";
   min?: number;
   max?: number;
   options?: () => string[];
+  /** The words a select shows for each value. */
+  optionText?: (v: string) => string;
   /** An empty pick or text leaves the field out. */
   optional?: boolean;
+  /** Shown and typed with the opposite sign: a rule's −2 is "2 less damage". */
+  negate?: boolean;
+  /** A range's largest spread (`randomN`). */
+  maxSpread?: number;
+  /** A range from a number to itself writes `randomN: null`, not 0 (use effects). */
+  nullWhenFixed?: boolean;
+  placeholder?: string;
 }
 
 /** A list of records in the definition, at a path: its columns and a new record. */
 interface ListSpec {
   id: string;
   label: string;
+  /** One record, for the Add button ("Add damage roll"). */
+  one: string;
   path: string[];
   help: string;
   columns: Column[];
   fresh(): Obj;
-  /** A row's preview (a roll's range). */
-  preview?(row: Obj): string;
 }
 
 /** The value at `path`. */
@@ -217,13 +354,16 @@ function setAt(root: Obj, path: readonly string[], n: unknown): void {
   });
 }
 
+/** A number for a field: the opposite sign when `negate`, never "-0". */
+const signed = (v: number, negate: boolean) => (negate && v !== 0 ? -v : v);
+
 export function createItemsPage(actions: ItemsPageActions): ItemsPage {
   const el = document.createElement("div");
-  el.className = "items-page balance-page";
+  el.className = "items-page balance-page items-editor";
   el.append(
     pageHeading(
       "Items",
-      "Every item's rules in one form: its slot, Strength, attack, armour, gear, what Use does and the skills it trains. Saving gives the item a definition of its own, which plays instead of the pack's rows that match it. Changes go into the content draft, published from the Content page.",
+      "Pick an item to change how it works in the game. Saving puts your changes in the draft: players get them once you publish on the Content page.",
     ),
   );
   const draftLine = document.createElement("div");
@@ -232,16 +372,9 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
   const draftText = document.createElement("span");
   draftLine.append(
     draftText,
-    panelButton("items-open-content", "Review and publish on the Content page", () =>
-      actions.openContent(),
-    ),
+    panelButton("items-open-content", "Review and publish…", () => actions.openContent()),
   );
 
-  // ---- a new item ----
-  const newBox = document.createElement("details");
-  newBox.className = "items-new";
-  const newSummary = action(document.createElement("summary"), "items-new-toggle");
-  newSummary.textContent = "New item";
   const field = (
     label: string,
     input: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement,
@@ -264,11 +397,19 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
     }
     return wrap;
   };
+
+  // ---- a new item ----
+  const newBox = document.createElement("details");
+  newBox.className = "items-new";
+  const newSummary = action(document.createElement("summary"), "items-new-toggle");
+  newSummary.textContent = "+ New item";
   const newName = noAutofill(action(document.createElement("input"), "items-new-name"));
   newName.maxLength = 40;
   const newDisplay = noAutofill(action(document.createElement("input"), "items-new-display"));
   newDisplay.maxLength = 40;
+  newDisplay.placeholder = "Same as the ID";
   const newFrom = noAutofill(action(document.createElement("input"), "items-new-copy"));
+  newFrom.placeholder = "Start from scratch";
   const namesList = document.createElement("datalist");
   namesList.id = "items-names";
   newFrom.setAttribute("list", namesList.id);
@@ -277,17 +418,17 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
   newStatus.setAttribute("role", "status");
   const createBtn = panelButton(
     "items-create",
-    "Make it in the draft",
+    "Create item",
     () => {
       const name = newName.value.trim();
       if (name === "") {
-        newStatus.textContent = "Give it a name.";
+        newStatus.textContent = "Give it an ID.";
         return;
       }
       seq += 1;
       saving.set(seq, { name, create: true });
       createBtn.disabled = true;
-      newStatus.textContent = "Saving…";
+      newStatus.textContent = "Creating…";
       const from = newFrom.value.trim();
       actions.set(seq, {
         name,
@@ -306,24 +447,19 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
   newBox.append(
     newSummary,
     field(
-      "Name",
-      newName,
-      "items-new-name",
-      "Its permanent key: rules, maps and saved characters name it by this, so it never changes. Rename it later by its display name.",
-    ),
-    field(
-      "Display name",
-      newDisplay,
-      "items-new-display",
-      "What players see. Leave it empty to show the name.",
-    ),
-    field(
-      "Copy the rules and picture of",
+      "Copy an existing item (optional)",
       newFrom,
       "items-new-copy",
-      "Optional: an item it starts as (the safe way to make a new sword). Change what you like after.",
+      "The easiest way to make an item: start from a similar one, then change what you need.",
     ),
     namesList,
+    field(
+      "ID",
+      newName,
+      "items-new-name",
+      "Its permanent name inside the game: maps and saved characters use it, so it can't change later.",
+    ),
+    field("Name players see (optional)", newDisplay, "items-new-display"),
     createBtn,
     newStatus,
   );
@@ -333,15 +469,15 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
   listBox.className = "items-list-box";
   const search = noAutofill(action(document.createElement("input"), "items-search"));
   search.type = "search";
-  search.placeholder = "Find an item";
+  search.placeholder = "Search items";
   const kindSel = action(document.createElement("select"), "items-kind");
   for (const [v, t] of [
-    ["all", "Every kind"],
+    ["all", "All items"],
     ["weapon", "Weapons"],
     ["armour", "Armour"],
     ["food", "Food"],
     ["other", "Other"],
-    ["changed", "Changed or yours"],
+    ["changed", "Changed or added by you"],
     ["retired", "Retired"],
   ]) {
     const o = document.createElement("option");
@@ -354,22 +490,24 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
   listEl.setAttribute("aria-label", "Items");
   const listCount = document.createElement("p");
   listCount.className = "control-panel-field-help";
-  listBox.append(
-    newBox,
-    field("Find", search, "items-search"),
-    field("Show", kindSel, "items-kind"),
-    listCount,
-    listEl,
-  );
+  const filters = document.createElement("div");
+  filters.className = "items-filters";
+  filters.append(field("Search", search, "items-search"), field("Show", kindSel, "items-kind"));
+  listBox.append(newBox, filters, listCount, listEl);
 
   // ---- the form ----
   const form = document.createElement("section");
   form.className = "items-form";
   form.hidden = true;
+  const header = document.createElement("div");
+  header.className = "items-form-head";
   const title = document.createElement("h2");
   title.className = "content-section-title";
+  const subtitle = document.createElement("p");
+  subtitle.className = "control-panel-field-help items-form-id";
   const tags = document.createElement("div");
   tags.className = "balance-tags";
+  header.append(title, subtitle, tags);
   const noticeLine = document.createElement("p");
   noticeLine.className = "balance-stale";
   noticeLine.hidden = true;
@@ -377,7 +515,7 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
   noticeLine.append(
     noticeText,
     " ",
-    panelButton("items-notice", "Answer it on the Content page", () => {
+    panelButton("items-notice", "Review it on the Content page", () => {
       if (shown) {
         actions.openContentRow({ dataset: "items", part: "definitions", key: shown.name });
       }
@@ -387,28 +525,17 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
   stale.className = "balance-stale";
   stale.hidden = true;
   stale.textContent =
-    "Someone changed this item since you started editing it: saving will be refused. Drop your edit to see theirs.";
-  // Identity: the display name and the pictures.
-  const identity = document.createElement("section");
-  identity.className = "balance-row";
-  const identityTitle = document.createElement("h3");
-  identityTitle.className = "balance-row-title";
-  identityTitle.textContent = "Name";
+    "Someone changed this item while you were editing it, so saving will be refused. Undo your changes to see theirs.";
+  // The name players see: in the Basics tab, saved with the rules.
   const display = noAutofill(action(document.createElement("input"), "items-display"));
   display.maxLength = 40;
-  const renameBtn = panelButton("items-rename", "Rename in the draft", () => {
-    if (shown) {
-      send({
-        name: shown.name,
-        op: "rename",
-        display: display.value.trim(),
-        expect: shown.fingerprint,
-      });
-    }
-  });
+  const displayField = field("Name players see", display, "items-display");
+  const displayHelp = document.createElement("p");
+  displayHelp.className = "control-panel-field-help";
+  displayField.append(displayHelp);
   const removeBtn = panelButton(
     "items-remove",
-    "Remove or retire… (where it is used)",
+    "Remove or retire this item…",
     () => {
       if (shown) {
         actions.openContentRow({ dataset: "items", part: "items", key: shown.name });
@@ -416,25 +543,25 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
     },
     "danger",
   );
-  const identityButtons = document.createElement("div");
-  identityButtons.className = "content-buttons";
-  identityButtons.append(renameBtn, removeBtn);
-  identity.append(
-    identityTitle,
-    field("Display name", display, "items-display", "What players see; empty shows its name."),
-    identityButtons,
-  );
-  // The pictures: a tab of their own, since they are tall.
+  const removeBox = document.createElement("div");
+  removeBox.className = "items-remove";
+  const removeHelp = document.createElement("p");
+  removeHelp.className = "control-panel-field-help";
+  removeHelp.textContent = "Opens the Content page, which shows where the item is used first.";
+  removeBox.append(removeBtn, removeHelp);
+  // The pictures: a tab of their own, saved by their own buttons.
   const pictures = document.createElement("section");
   pictures.className = "balance-row";
+  pictures.dataset.group = "picture";
+  pictures.dataset.ownSave = "";
   pictures.hidden = true;
   const picturesTitle = document.createElement("h3");
   picturesTitle.className = "balance-row-title";
-  picturesTitle.textContent = "Pictures";
+  picturesTitle.textContent = "Picture";
   const picturesHost = document.createElement("div");
   picturesHost.className = "items-pictures-host";
   pictures.append(picturesTitle, picturesHost);
-  // The rule groups: one fieldset, locked while a save is on its way.
+  // The tabs: one fieldset, locked while a save is on its way.
   const rules = document.createElement("fieldset");
   rules.className = "items-rules";
   const groupsEl = document.createElement("div");
@@ -442,52 +569,42 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
   const status = document.createElement("p");
   status.className = "balance-status";
   status.setAttribute("role", "status");
-  const saveBtn = panelButton(
-    "items-save",
-    "Save to the draft",
-    () => {
-      if (shown) {
-        send({ name: shown.name, op: "set", data: clean(work), expect: filled.fingerprint });
-      }
-    },
-    "primary",
-  );
-  const undoEditBtn = panelButton("items-undo-edit", "Drop my edit", () => {
+  const saveBtn = panelButton("items-save", "Save changes", () => save(), "primary");
+  const undoEditBtn = panelButton("items-undo-edit", "Undo changes", () => {
     fill();
     status.textContent = "";
     update();
   });
-  const revertBtn = panelButton("items-revert", "Play the pack's rules again", () => {
+  const revertBtn = panelButton("items-revert", "Restore the original", () => {
     if (shown) {
       send({ name: shown.name, op: "revert", expect: shown.fingerprint });
     }
   });
-  const dropBtn = panelButton("items-discard", "Drop the draft's changes", () => {
+  const dropBtn = panelButton("items-discard", "Cancel unpublished changes", () => {
     if (shown) {
       send({ name: shown.name, op: "discard", expect: shown.fingerprint });
     }
   });
+  const mainButtons = document.createElement("div");
+  mainButtons.className = "content-buttons";
+  mainButtons.append(saveBtn, undoEditBtn);
+  const resetButtons = document.createElement("div");
+  resetButtons.className = "content-buttons items-reset-buttons";
+  resetButtons.append(revertBtn, dropBtn);
   const buttons = document.createElement("div");
-  buttons.className = "content-buttons";
-  buttons.append(saveBtn, undoEditBtn, revertBtn, dropBtn);
+  buttons.className = "items-actions";
+  buttons.append(mainButtons, resetButtons);
   const tabs = sectionTabs(form, "items");
-  form.append(
-    title,
-    tags,
-    noticeLine,
-    stale,
-    tabs.el,
-    identity,
-    pictures,
-    rules,
-    formActions(buttons, status),
-  );
+  form.append(header, noticeLine, stale, tabs.el, rules, formActions(buttons, status));
   const loading = document.createElement("p");
   loading.className = "balance-loading";
   loading.textContent = "Loading…";
   const layout = document.createElement("div");
   layout.className = "items-layout";
-  layout.append(listBox, form);
+  const empty = document.createElement("p");
+  empty.className = "items-empty-form";
+  empty.textContent = "Pick an item on the left to see and change how it works.";
+  layout.append(listBox, empty, form);
   el.append(draftLine, loading, layout);
 
   // ---- state ----
@@ -512,6 +629,8 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
     slot: undefined,
   };
   let busy = false;
+  /** A name to save once the rules' save is answered (one Save sends both). */
+  let renameNext: string | null = null;
   /** Fields whose text does not read (their errors). */
   const invalid = new Map<HTMLElement, string>();
   let panels: ItemPanels | null | undefined;
@@ -524,28 +643,28 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
       }
     }
   };
-  /** The rules section has an edit (or text that does not read) not yet saved. */
+  /** The rules have an edit (or text that does not read) not yet saved. */
   const rulesDirty = () => shown !== null && (canonical(work) !== filled.value || invalid.size > 0);
-  /** The display name has an edit not yet renamed. */
+  /** The name players see has an edit not yet saved. */
   const nameDirty = () => shown !== null && display.value.trim() !== filled.display;
   const dirty = () => rulesDirty() || nameDirty();
 
   const send = (change: ItemChange) => {
     if (busy) {
-      return;
+      return false;
     }
     // What the server's message check would refuse unanswered is refused here, before the form
     // locks waiting for an answer that would never come.
     const tooLong =
       change.name.trim().length > 80
-        ? "That item's name is longer than 80 characters."
+        ? "That item's ID is longer than 80 characters."
         : (change.display ?? "").length > 40
-          ? "A display name is at most 40 characters."
+          ? "The name players see is at most 40 characters."
           : null;
     if (tooLong) {
       status.textContent = tooLong;
       status.className = "balance-status balance-status-error";
-      return;
+      return false;
     }
     // Locked before the request goes, so nothing typed from here on can be lost.
     busy = true;
@@ -555,6 +674,40 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
     seq += 1;
     saving.set(seq, { name: change.name, op: change.op });
     actions.set(seq, change);
+    return true;
+  };
+
+  const renameChange = (): ItemChange | null =>
+    shown
+      ? {
+          name: shown.name,
+          op: "rename",
+          display: display.value.trim(),
+          expect: shown.fingerprint,
+        }
+      : null;
+
+  /** Saves the rules, then the name (each only when changed). */
+  const save = () => {
+    if (!shown) {
+      return;
+    }
+    if (rulesDirty()) {
+      const name = nameDirty() ? display.value.trim() : null;
+      if (name !== null && name.length > 40) {
+        status.textContent = "The name players see is at most 40 characters.";
+        status.className = "balance-status balance-status-error";
+        return;
+      }
+      if (send({ name: shown.name, op: "set", data: clean(work), expect: filled.fingerprint })) {
+        renameNext = name;
+      }
+    } else if (nameDirty()) {
+      const change = renameChange();
+      if (change) {
+        send(change);
+      }
+    }
   };
 
   const ask = () => {
@@ -572,26 +725,31 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
     label: string,
     write: (n: number | null | undefined) => void,
     id: string,
+    opts: { negate?: boolean; placeholder?: string } = {},
   ) => {
+    const negate = opts.negate === true;
     const input = noAutofill(action(document.createElement("input"), id));
     input.type = "number";
-    input.min = String(min);
-    input.max = String(max);
+    // What is typed is the shown sign: the limits turn round with it.
+    const lo = negate ? -max : min;
+    const hi = negate ? -min : max;
+    input.min = String(lo);
+    input.max = String(hi);
     input.step = "1";
-    input.value = typeof value === "number" ? String(value) : "";
+    input.value = typeof value === "number" ? String(signed(value, negate)) : "";
     if (nullable) {
-      input.placeholder = "none";
+      input.placeholder = opts.placeholder ?? "None";
     }
     input.addEventListener("input", () => {
       const t = input.value.trim();
       if (t === "" && nullable) {
         invalid.delete(input);
         write(null);
-      } else if (!/^-?\d+$/.test(t) || Number(t) < min || Number(t) > max) {
-        invalid.set(input, `${label}: a whole number from ${min} to ${max}`);
+      } else if (!/^-?\d+$/.test(t) || Number(t) < lo || Number(t) > hi) {
+        invalid.set(input, `${label}: a whole number from ${lo} to ${hi}`);
       } else {
         invalid.delete(input);
-        write(Number(t));
+        write(signed(Number(t), negate));
       }
       edited();
     });
@@ -634,11 +792,19 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
   const labelled = (label: string, control: HTMLElement, help = "") => {
     const wrap = document.createElement("div");
     wrap.className = "control-panel-field balance-field";
-    const l = document.createElement("label");
+    const isGroup = control.tagName === "DIV";
+    // A group of tick boxes is named by a heading, not a label (a label names one control).
+    const l = document.createElement(isGroup ? "span" : "label");
     l.className = "control-panel-field-label";
     fieldIds += 1;
     control.id ||= `items-field-${fieldIds}`;
-    l.htmlFor = control.id;
+    if (l instanceof HTMLLabelElement) {
+      l.htmlFor = control.id;
+    } else {
+      l.id = `${control.id}-label`;
+      control.setAttribute("role", "group");
+      control.setAttribute("aria-labelledby", l.id);
+    }
     l.textContent = label;
     wrap.append(l, control);
     if (help) {
@@ -649,8 +815,62 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
     }
     return wrap;
   };
+  /** A help line under a tab's title: what the tab is for. */
+  const intro = (text: string) => {
+    const p = document.createElement("p");
+    p.className = "items-intro";
+    p.textContent = text;
+    return p;
+  };
 
-  /** A list of records: a table of rows, each removable, and an Add button. */
+  /**
+   * Tick boxes for a list of values: the ticked ones in view, the rest folded under `more` (forty
+   * abilities or skills at once are a wall).
+   */
+  const pickMany = (
+    listId: string,
+    values: readonly string[],
+    has: Set<string>,
+    text: (v: string) => string,
+    id: (v: string) => string,
+    more: string,
+    write: (picked: string[]) => void,
+  ) => {
+    const box = document.createElement("div");
+    box.className = "items-pick";
+    box.dataset.list = listId;
+    const on = document.createElement("div");
+    on.className = "items-checks";
+    const rest = document.createElement("details");
+    rest.className = "items-more-picks";
+    const restSummary = action(document.createElement("summary"), `items-${listId}-more`);
+    restSummary.textContent = more;
+    const off = document.createElement("div");
+    off.className = "items-checks";
+    rest.append(restSummary, off);
+    const sorted = [...values].sort((a, b) => text(a).localeCompare(text(b)));
+    for (const v of sorted) {
+      const tick = check(has.has(v), text(v), id(v), (ticked) => {
+        if (ticked) {
+          has.add(v);
+        } else {
+          has.delete(v);
+        }
+        write(values.filter((x) => has.has(x)));
+      });
+      (has.has(v) ? on : off).append(tick);
+    }
+    if (on.children.length === 0) {
+      const none = document.createElement("p");
+      none.className = "control-panel-field-help";
+      none.textContent = "None.";
+      on.append(none);
+    }
+    box.append(on, rest);
+    return box;
+  };
+
+  /** A list of records: a row of fields for each, each removable, and an Add button. */
   const listEditor = (spec: ListSpec) => {
     const box = document.createElement("div");
     box.className = "items-list-editor";
@@ -668,32 +888,33 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
         ...arr.map((row, i) => {
           const line = document.createElement("div");
           line.className = "items-list-row";
-          const preview = document.createElement("span");
-          preview.className = "control-panel-field-help balance-preview";
-          const showPreview = () => {
-            if (spec.preview) {
-              preview.textContent = spec.preview(row);
-            }
-          };
+          const name = `${spec.label} ${arr.length > 1 ? `${i + 1} ` : ""}`;
           for (const c of spec.columns) {
             const id = `items-${spec.id}-${c.key}`;
             let control: HTMLElement;
+            if (c.kind === "range") {
+              line.append(rangeField(row, c, `${name.trim()}`, id));
+              continue;
+            }
             if (c.kind === "int" || c.kind === "intOrNull") {
               control = intInput(
                 row[c.key],
                 c.min ?? 0,
                 c.max ?? 9999,
                 c.kind === "intOrNull",
-                `${spec.label} ${i + 1}: ${c.label}`,
+                `${name}${c.label}`.trim(),
                 (n) => {
                   if (c.optional && n === null) {
                     delete row[c.key];
                   } else {
                     row[c.key] = n;
                   }
-                  showPreview();
                 },
                 id,
+                {
+                  ...(c.negate ? { negate: true } : {}),
+                  ...(c.placeholder ? { placeholder: c.placeholder } : {}),
+                },
               );
             } else if (c.kind === "bool") {
               control = check(row[c.key] === true, c.label, id, (on) => {
@@ -702,12 +923,12 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
                 } else {
                   delete row[c.key];
                 }
-                showPreview();
               });
             } else if (c.kind === "select") {
+              const words = c.optionText ?? ((v: string) => v);
               const opts = [
-                ...(c.optional ? [["", "None"] as const] : []),
-                ...(c.options?.() ?? []).map((o) => [o, o] as const),
+                ...(c.optional ? [["", c.placeholder ?? "None"] as const] : []),
+                ...(c.options?.() ?? []).map((o) => [o, words(o)] as const),
               ];
               control = select(String(row[c.key] ?? ""), opts, id, (v) => {
                 if (c.optional && v === "") {
@@ -719,6 +940,9 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
             } else {
               const t = noAutofill(action(document.createElement("input"), id));
               t.value = String(row[c.key] ?? "");
+              if (c.placeholder) {
+                t.placeholder = c.placeholder;
+              }
               t.addEventListener("input", () => {
                 if (c.optional && t.value.trim() === "") {
                   delete row[c.key];
@@ -741,40 +965,82 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
               forgetGone();
               edited();
             }),
-            preview,
           );
-          showPreview();
           return line;
         }),
       );
     };
-    const add = panelButton(
-      `items-${spec.id}-add`,
-      `Add ${spec.label.toLowerCase().replace(/s$/, "")}`,
-      () => {
-        const arr = (at(work, spec.path) as Obj[] | undefined) ?? [];
-        arr.push(spec.fresh());
-        put(work, spec.path, arr);
-        draw();
-        edited();
-      },
-    );
+    const add = panelButton(`items-${spec.id}-add`, `+ Add ${spec.one}`, () => {
+      const arr = (at(work, spec.path) as Obj[] | undefined) ?? [];
+      arr.push(spec.fresh());
+      put(work, spec.path, arr);
+      draw();
+      edited();
+    });
+    add.classList.add("items-add");
     draw();
     box.append(head, help, rowsEl, add);
     return box;
   };
 
-  const ROLL_COLUMNS: Column[] = [
-    { key: "flat", label: "Fixed", kind: "int", min: -9999, max: 9999 },
-    { key: "randomN", label: "+ random(n)", kind: "int", min: 0, max: 9999 },
-    { key: "strengthHalf", label: "+ random(Strength) / 2", kind: "bool" },
-  ];
-  const rollPreview = (r: Obj) =>
-    `${rollRange(Number(r.flat ?? 0), Number(r.randomN ?? 0))}${r.strengthHalf ? ", + random(Strength) / 2" : ""}`;
+  /**
+   * A roll typed as "from … to …" (a row's `flat` and `randomN`): `6 + random(6)` shows as 7 to 12.
+   */
+  const rangeField = (row: Obj, c: Column, name: string, id: string) => {
+    const wrap = document.createElement("div");
+    wrap.className = "control-panel-field balance-field items-range";
+    const l = document.createElement("label");
+    l.className = "control-panel-field-label";
+    const fromIn = noAutofill(action(document.createElement("input"), `${id}-from`));
+    const toIn = noAutofill(action(document.createElement("input"), `${id}-to`));
+    fieldIds += 1;
+    fromIn.id = `items-field-${fieldIds}`;
+    l.htmlFor = fromIn.id;
+    l.textContent = c.label;
+    fromIn.setAttribute("aria-label", `${c.label} from`);
+    toIn.setAttribute("aria-label", `${c.label} to`);
+    const b = rollBounds(Number(row.flat ?? 0), (row.randomN as number | null | undefined) ?? null);
+    for (const [input, v] of [
+      [fromIn, b.from],
+      [toIn, b.to],
+    ] as const) {
+      input.type = "number";
+      input.step = "1";
+      input.value = String(v);
+    }
+    const lo = c.min ?? -9999;
+    const hi = c.max ?? 9999;
+    const spread = c.maxSpread ?? 9999;
+    const read = () => {
+      const f = fromIn.value.trim();
+      const t = toIn.value.trim();
+      const err = `${name}: whole numbers from ${lo} to ${hi + spread}, "to" no lower than "from"`;
+      if (!/^-?\d+$/.test(f) || !/^-?\d+$/.test(t)) {
+        invalid.set(wrap, err);
+      } else {
+        const r = rollFrom(Number(f), Number(t));
+        if (Number(t) < Number(f) || r.flat < lo || r.flat > hi || r.randomN > spread) {
+          invalid.set(wrap, err);
+        } else {
+          invalid.delete(wrap);
+          row.flat = r.flat;
+          row.randomN = c.nullWhenFixed && r.randomN === 0 ? null : r.randomN;
+        }
+      }
+      edited();
+    };
+    fromIn.addEventListener("input", read);
+    toIn.addEventListener("input", read);
+    const pair = document.createElement("div");
+    pair.className = "items-range-pair";
+    pair.append(fromIn, " to ", toIn);
+    wrap.append(l, pair);
+    return wrap;
+  };
 
   /**
-   * Builds the rule groups from `work`; with `only`, redraws that group alone, so text another
-   * group holds that does not read yet (and its error) stays as it is.
+   * Builds the tabs from `work`; with `only`, redraws that tab alone, so text another tab holds
+   * that does not read yet (and its error) stays as it is.
    */
   const drawGroups = (only?: string) => {
     const c = choices();
@@ -783,52 +1049,90 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
       return;
     }
     const item = shown;
-    const group = (id: string, ...controls: HTMLElement[]) => {
+    /** Fields folded under "More options", open when one of them has a value. */
+    const more = (open: boolean, ...controls: HTMLElement[]) => {
+      const box = document.createElement("details");
+      box.className = "items-more";
+      box.open = open;
+      const summary = action(document.createElement("summary"), "items-more-toggle");
+      summary.textContent = "More options";
+      box.append(summary, ...controls);
+      return box;
+    };
+    const has = (...paths: string[][]) => paths.some((p) => clean(at(work, p)) !== undefined);
+    const group = (id: string, label: string, help: string, ...controls: HTMLElement[]) => {
       const sec = document.createElement("section");
       sec.className = "balance-row items-group";
       sec.dataset.group = id;
       const h = document.createElement("h3");
       h.className = "balance-row-title";
-      h.textContent = GROUP_TITLES[id] ?? id;
-      const from = sourcesNote(
-        item.defined
-          ? "In the draft it plays its own definition:"
-          : "What it plays now comes from:",
-        item.sources.filter((x) => x.group === id).map((s) => `${s.label}: ${s.from}`),
+      h.textContent = label;
+      sec.append(h, intro(help), ...controls);
+      const foot = document.createElement("div");
+      foot.className = "items-group-foot";
+      foot.append(
+        sourcesNote(
+          item.defined
+            ? "Where these settings come from: this item's own rules"
+            : "Where these settings come from",
+          item.sources.filter((x) => x.group === id).map((s) => `${s.label}: ${s.from}`),
+        ),
       );
-      sec.append(h, from, ...controls);
       if (item.pack) {
         const pack = item.pack;
-        sec.append(
-          panelButton(`items-pack-${id}`, "Use the pack's rules here", () => {
-            for (const k of GROUP_KEYS[id] ?? []) {
-              const v = (pack as Obj)[k];
-              put(work, [k], v === undefined ? undefined : structuredClone(v));
-            }
-            drawGroups(id);
-            forgetGone();
-            edited();
-          }),
-        );
+        const restore = panelButton(`items-pack-${id}`, "Restore this tab to the original", () => {
+          for (const k of GROUP_KEYS[id] ?? []) {
+            const v = (pack as Obj)[k];
+            put(work, [k], v === undefined ? undefined : structuredClone(v));
+          }
+          drawGroups(id);
+          forgetGone();
+          edited();
+        });
+        restore.classList.add("items-restore");
+        foot.append(restore);
       }
+      sec.append(foot);
       return sec;
     };
+
+    // ---- Basics ----
     // The same test the server uses: a name whose behaviours are its base item's.
     const masterwork = !definesBehaviours(item.name);
-    const equip = group(
-      "equip",
+    const abilities = masterwork
+      ? (() => {
+          const p = document.createElement("p");
+          p.className = "control-panel-field-help";
+          p.textContent = `A +N masterwork has the abilities of the item it is made from.`;
+          return p;
+        })()
+      : labelled(
+          "Special abilities",
+          pickMany(
+            "behaviours",
+            c.behaviours,
+            new Set((work.behaviours as string[] | undefined) ?? []),
+            textOf(BEHAVIOUR_TEXT),
+            (b) => `items-behaviour-${b}`,
+            "Add an ability…",
+            (picked) => put(work, ["behaviours"], picked.length > 0 ? picked : undefined),
+          ),
+          "What it does besides being worn: opening doors, shooting arrows, holding items…",
+        );
+    const basics = group(
+      "basics",
+      "Basics",
+      "Its name, where it is worn and what a player needs to use it.",
+      displayField,
       labelled(
-        "Slot",
+        "Worn in",
         select(
           String(work.slot ?? ""),
-          [
-            ["", "None (not equipped)"],
-            ...c.slots.map((s) => [s, s === "No" ? "No (Equip refuses it)" : s] as const),
-          ],
+          [["", "Not worn"], ...c.slots.map((s) => [s, SLOT_TEXT[s] ?? s] as const)],
           "items-slot",
           (v) => put(work, ["slot"], v === "" ? undefined : v),
         ),
-        "1.6's weapon hand is LeftHand; RightHand holds a shield.",
+        "Weapons go in the weapon hand; shields and arrows in the off hand.",
       ),
       labelled(
         "Strength needed",
@@ -841,43 +1145,81 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
           (n) => put(work, ["strength"], n ?? undefined),
           "items-strength",
         ),
-        "Empty: none.",
+        "The Strength a player needs to equip it. Leave it empty for none.",
       ),
-      check(work.twoHanded === true, "Takes both hands", "items-two-handed", (on) =>
+      check(work.twoHanded === true, "Needs both hands", "items-two-handed", (on) =>
         put(work, ["twoHanded"], on ? true : undefined),
       ),
+      abilities,
+      listEditor({
+        id: "requires",
+        label: "Requirements",
+        one: "requirement",
+        path: ["requires"],
+        help: "A skill or level a player must reach before equipping or using it.",
+        columns: [
+          {
+            key: "on",
+            label: "Before",
+            kind: "select",
+            options: () => ["equip", "use"],
+            optionText: textOf({ equip: "Equipping", use: "Using" }),
+          },
+          {
+            key: "needs",
+            label: "Needs",
+            kind: "select",
+            options: () => ["level", ...c.skills],
+            optionText: textOf({ level: "Level" }),
+          },
+          { key: "atLeast", label: "At least", kind: "int", min: 0, max: 1_000_000 },
+          {
+            key: "text",
+            label: "Message if not met",
+            kind: "text",
+            optional: true,
+            placeholder: "The usual message",
+          },
+        ],
+        fresh: () => ({ on: "equip", needs: "level", atLeast: 1 }),
+      }),
+      check(
+        work.inPlayerShops === true,
+        "Players can sell it in their shops",
+        "items-in-shops",
+        (on) => put(work, ["inPlayerShops"], on ? true : undefined),
+      ),
+      check(
+        work.inEditorList === true,
+        "Listed in the World Editor's items",
+        "items-in-editor",
+        (on) => put(work, ["inEditorList"], on ? true : undefined),
+      ),
+      more(
+        has(["paperdoll"]),
+        listEditor({
+          id: "paperdoll",
+          label: "Borrow another item's worn picture",
+          one: "borrowed picture",
+          path: ["paperdoll"],
+          help: "Draws it on the character as another item looks when worn. Not needed once it has worn pictures of its own (the Picture tab).",
+          columns: [
+            {
+              key: "layer",
+              label: "Worn as",
+              kind: "select",
+              options: () => c.layers,
+              optionText: textOf(LAYER_TEXT),
+            },
+            { key: "becomes", label: "Looks like", kind: "text", placeholder: "Another item's ID" },
+          ],
+          fresh: () => ({ layer: "weapon", becomes: "" }),
+        }),
+      ),
+      removeBox,
     );
-    if (masterwork) {
-      const p = document.createElement("p");
-      p.className = "control-panel-field-help";
-      p.textContent = "A +N masterwork takes its behaviours from the item it is made from.";
-      equip.append(p);
-    } else {
-      const behaviours = document.createElement("div");
-      behaviours.className = "items-checks";
-      behaviours.dataset.list = "behaviours";
-      const has = new Set((work.behaviours as string[] | undefined) ?? []);
-      for (const b of c.behaviours) {
-        behaviours.append(
-          check(has.has(b), b, `items-behaviour-${b}`, (on) => {
-            if (on) {
-              has.add(b);
-            } else {
-              has.delete(b);
-            }
-            put(
-              work,
-              ["behaviours"],
-              has.size > 0 ? c.behaviours.filter((x) => has.has(x)) : undefined,
-            );
-          }),
-        );
-      }
-      equip.append(
-        labelled("Behaviours", behaviours, "What it does: a bow, a key, a sword for Firesword…"),
-      );
-    }
-    // Attack.
+
+    // ---- Weapon ----
     const tiers = noAutofill(action(document.createElement("textarea"), "items-tiers"));
     tiers.rows = 4;
     tiers.value =
@@ -898,181 +1240,256 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
           invalid.delete(tiers);
           put(work, ["attack", "blocks"], v);
         } catch {
-          invalid.set(tiers, "Skill tiers: a JSON list of blocks");
+          invalid.set(tiers, "Skill bonuses: a JSON list of blocks");
         }
       }
       edited();
     });
-    const trains = document.createElement("div");
-    trains.className = "items-checks";
-    trains.dataset.list = "trains";
-    const trained = new Set(
-      ((work.trains as string[] | undefined) ?? []).map((s) => s.toLowerCase()),
-    );
-    for (const s of c.skills) {
-      trains.append(
-        check(trained.has(s.toLowerCase()), s, `items-trains-${s.replace(/\W/g, "-")}`, (on) => {
-          if (on) {
-            trained.add(s.toLowerCase());
-          } else {
-            trained.delete(s.toLowerCase());
-          }
-          const list = c.skills.filter((x) => trained.has(x.toLowerCase()));
-          put(work, ["trains"], list.length > 0 ? list : undefined);
-        }),
-      );
-    }
-    const attack = group(
-      "attack",
-      listEditor({
-        id: "base",
-        label: "Attack rolls",
-        path: ["attack", "base"],
-        help: "Its attack power: each roll draws in turn and the last stands (the Gold Axe draws an Axe's roll first).",
-        columns: ROLL_COLUMNS,
-        fresh: () => ({ flat: 1, randomN: 6 }),
-        preview: rollPreview,
-      }),
-      listEditor({
-        id: "overrides",
-        label: "Override rolls",
-        path: ["attack", "overrides"],
-        help: "Rolled after the gear bonus, replacing the power: few items have any.",
-        columns: ROLL_COLUMNS,
-        fresh: () => ({ flat: 1, randomN: 6 }),
-        preview: rollPreview,
-      }),
-      labelled(
-        "Skill tiers (JSON)",
-        tiers,
-        'The skill tiers added to its power, block by block: [{"tiers":[{"subWeapon":null,"when":["Slash > 10"],"op":"add","value":1}]}]. Empty: none.',
-      ),
-      labelled("Trains", trains, "The skills a kill with it trains. None ticked: it trains none."),
-    );
-    // Armour and gear.
+    const rollColumns = (label: string): Column[] => [
+      { key: "flat", label, kind: "range", min: -9999, max: 9999, maxSpread: 9999 },
+      {
+        key: "strengthHalf",
+        label: "Plus up to half the wielder's Strength",
+        kind: "bool",
+      },
+    ];
     const sound = noAutofill(action(document.createElement("input"), "items-sound"));
     sound.value = typeof work.sound === "string" ? work.sound : "";
-    sound.placeholder = "the default swing";
+    sound.placeholder = "The usual swing";
     sound.disabled = work.sound === null;
     sound.addEventListener("input", () => {
       put(work, ["sound"], sound.value.trim() === "" ? undefined : sound.value.trim());
       edited();
     });
-    const armour = group(
-      "armour",
+    const weapon = group(
+      "weapon",
+      "Weapon",
+      "How hard it hits when held in the weapon hand, how fast it swings and what it trains.",
       listEditor({
-        id: "armour",
-        label: "Armour rows",
-        path: ["armour"],
-        help: "Mitigation while worn in the row's slot (HitMe, and HitMe2 or none).",
-        columns: [
-          { key: "slot", label: "Slot", kind: "select", options: () => c.slotVars },
-          { key: "hitMe", label: "HitMe", kind: "int", min: -999, max: 999 },
-          { key: "hitMe2", label: "HitMe2", kind: "intOrNull", min: -999, max: 999 },
-        ],
-        fresh: () => ({ slot: c.slotVars[0] ?? "BodyE", hitMe: 1, hitMe2: null }),
+        id: "base",
+        label: "Damage",
+        one: "damage roll",
+        path: ["attack", "base"],
+        help: "The damage each hit rolls, before skills and Strength add to it. Most weapons have one roll; with more, the last one counts.",
+        columns: rollColumns("Damage"),
+        fresh: () => ({ flat: 1, randomN: 6 }),
       }),
-      listEditor({
-        id: "elemental",
-        label: "Elemental armour",
-        path: ["elemental"],
-        help: "Armour against a trigger (a spell effect), while worn in the slot.",
-        columns: [
-          { key: "handler", label: "Handler", kind: "select", options: () => ["HitMe", "HitMe2"] },
-          { key: "trigger", label: "Trigger", kind: "text" },
-          { key: "slot", label: "Slot", kind: "select", options: () => c.slotVars },
-          { key: "delta", label: "Adds", kind: "int", min: -999, max: 999 },
-        ],
-        fresh: () => ({ handler: "HitMe", trigger: "", slot: c.slotVars[0] ?? "BodyE", delta: 1 }),
-      }),
-      listEditor({
-        id: "spellDefense",
-        label: "Spell defence",
-        path: ["spellDefense"],
-        help: "Spell damage it takes off (or adds) while worn in the slot.",
-        columns: [
-          { key: "slot", label: "Slot", kind: "select", options: () => c.slotVars },
-          { key: "delta", label: "Takes off", kind: "int", min: -999, max: 999 },
-        ],
-        fresh: () => ({ slot: c.slotVars[0] ?? "BodyE", delta: 1 }),
-      }),
-      listEditor({
-        id: "gear",
-        label: "Gear bonuses",
-        path: ["gear"],
-        help: "Power it adds while worn in the slot.",
-        columns: [
-          { key: "slot", label: "Slot", kind: "select", options: () => c.wornSlots },
-          { key: "power", label: "Power", kind: "select", options: () => c.powers },
-          { key: "add", label: "Adds", kind: "int", min: -999, max: 999 },
-        ],
-        fresh: () => ({ slot: c.wornSlots[0] ?? "ring", power: c.powers[0] ?? "attack", add: 1 }),
-      }),
+      labelled(
+        "Skills it trains",
+        pickMany(
+          "trains",
+          c.skills,
+          new Set(
+            ((work.trains as string[] | undefined) ?? []).flatMap(
+              (s) => c.skills.find((x) => x.toLowerCase() === s.toLowerCase()) ?? [],
+            ),
+          ),
+          (s) => s,
+          (s) => `items-trains-${s.replace(/\W/g, "-")}`,
+          "Add a skill…",
+          (picked) => put(work, ["trains"], picked.length > 0 ? picked : undefined),
+        ),
+        "Killing something with it trains these skills.",
+      ),
       listEditor({
         id: "cooldowns",
-        label: "Swing cooldowns",
+        label: "Swing speed",
+        one: "swing speed",
         path: ["cooldowns"],
-        help: "The swing delays it sets while worn in the slot (one per slot; frames, 20 a second).",
+        help: "The wait between swings while it is worn, in frames (20 a second; the usual is 14). Lower is faster. A ring can set it too.",
         columns: [
-          { key: "slot", label: "Slot", kind: "select", options: () => c.wornSlots },
-          { key: "atDelay", label: "Swing delay", kind: "int", min: 0, max: 1000 },
-          { key: "actionDelay", label: "Action delay", kind: "int", min: 0, max: 1000 },
+          {
+            key: "slot",
+            label: "While worn in",
+            kind: "select",
+            options: () => c.wornSlots,
+            optionText: textOf(WORN_TEXT),
+          },
+          { key: "atDelay", label: "Between attacks", kind: "int", min: 0, max: 1000 },
+          { key: "actionDelay", label: "Between actions", kind: "int", min: 0, max: 1000 },
         ],
-        fresh: () => ({ slot: "weapon", atDelay: 10, actionDelay: 10 }),
+        fresh: () => ({ slot: "weapon", atDelay: 14, actionDelay: 14 }),
       }),
-      labelled("Swing sound", sound, "A sound's name; empty plays the default swing."),
+      labelled("Swing sound", sound, "A sound's name. Leave it empty for the usual swing."),
       check(work.sound === null, "Swings silently", "items-silent-swing", (on) => {
         put(work, ["sound"], on ? null : undefined);
         sound.disabled = on;
         sound.value = "";
       }),
+      more(
+        has(["attack", "overrides"], ["attack", "blocks"]),
+        listEditor({
+          id: "overrides",
+          label: "Final damage override",
+          one: "override roll",
+          path: ["attack", "overrides"],
+          help: "Rolled after every bonus, replacing the damage. Almost no item has one.",
+          columns: rollColumns("Damage"),
+          fresh: () => ({ flat: 1, randomN: 6 }),
+        }),
+        labelled(
+          "Skill bonuses (JSON)",
+          tiers,
+          'Damage added as the wielder\'s skills rise, block by block: [{"tiers":[{"subWeapon":null,"when":["Slash > 10"],"op":"add","value":1}]}]. Copying an existing weapon is the easy way to get these.',
+        ),
+      ),
     );
-    // Use.
+
+    // ---- Armour ----
+    const armour = group(
+      "armour",
+      "Armour",
+      "How much it protects the wearer, and the bonuses it gives while worn.",
+      listEditor({
+        id: "armour",
+        label: "Protection",
+        one: "protection",
+        path: ["armour"],
+        help: "How much less damage each hit does while it is worn there. A negative number makes hits hurt more.",
+        columns: [
+          {
+            key: "slot",
+            label: "While worn in",
+            kind: "select",
+            options: () => c.slotVars,
+            optionText: textOf(SLOT_VAR_TEXT),
+          },
+          {
+            key: "hitMe",
+            label: "Against players",
+            kind: "int",
+            min: -999,
+            max: 999,
+            negate: true,
+          },
+          {
+            key: "hitMe2",
+            label: "Against monsters",
+            kind: "intOrNull",
+            min: -999,
+            max: 999,
+            negate: true,
+          },
+        ],
+        fresh: () => ({
+          slot: c.slotVars.includes("BodyE") ? "BodyE" : c.slotVars[0],
+          hitMe: -1,
+          hitMe2: -1,
+        }),
+      }),
+      listEditor({
+        id: "spellDefense",
+        label: "Spell protection",
+        one: "spell protection",
+        path: ["spellDefense"],
+        help: "How much less damage attack spells do while it is worn there. Metal armour usually has a negative number: spells hurt more.",
+        columns: [
+          {
+            key: "slot",
+            label: "While worn in",
+            kind: "select",
+            options: () => c.slotVars,
+            optionText: textOf(SLOT_VAR_TEXT),
+          },
+          {
+            key: "delta",
+            label: "Less spell damage",
+            kind: "int",
+            min: -999,
+            max: 999,
+            negate: true,
+          },
+        ],
+        fresh: () => ({ slot: c.slotVars.includes("BodyE") ? "BodyE" : c.slotVars[0], delta: -1 }),
+      }),
+      listEditor({
+        id: "gear",
+        label: "Bonuses while worn",
+        one: "bonus",
+        path: ["gear"],
+        help: "Adds to the wearer's power while it is worn there.",
+        columns: [
+          {
+            key: "slot",
+            label: "While worn in",
+            kind: "select",
+            options: () => c.wornSlots,
+            optionText: textOf(WORN_TEXT),
+          },
+          {
+            key: "power",
+            label: "Adds to",
+            kind: "select",
+            options: () => c.powers,
+            optionText: textOf(POWER_TEXT),
+          },
+          { key: "add", label: "Amount", kind: "int", min: -999, max: 999 },
+        ],
+        fresh: () => ({ slot: c.wornSlots[0] ?? "ring", power: c.powers[0] ?? "attack", add: 1 }),
+      }),
+      more(
+        has(["elemental"]),
+        listEditor({
+          id: "elemental",
+          label: "Protection against one attacker",
+          one: "protection",
+          path: ["elemental"],
+          help: "Extra protection against one weapon (when a player hits) or one monster (when it hits), such as Ice Armor against an Ice Sword or a Yeti.",
+          columns: [
+            {
+              key: "handler",
+              label: "Hit by",
+              kind: "select",
+              options: () => ["HitMe", "HitMe2"],
+              optionText: textOf({ HitMe: "A player's weapon", HitMe2: "A monster" }),
+            },
+            {
+              key: "trigger",
+              label: "Named",
+              kind: "text",
+              placeholder: "Ice Sword, a Yeti…",
+            },
+            {
+              key: "slot",
+              label: "While worn in",
+              kind: "select",
+              options: () => c.slotVars,
+              optionText: textOf(SLOT_VAR_TEXT),
+            },
+            {
+              key: "delta",
+              label: "Less damage",
+              kind: "int",
+              min: -999,
+              max: 999,
+              negate: true,
+            },
+          ],
+          fresh: () => ({
+            handler: "HitMe",
+            trigger: "",
+            slot: c.slotVars.includes("BodyE") ? "BodyE" : c.slotVars[0],
+            delta: -1,
+          }),
+        }),
+      ),
+    );
+
+    // ---- When used ----
     const message = noAutofill(action(document.createElement("input"), "items-use-message"));
     message.value = String(at(work, ["use", "message"]) ?? "");
+    message.placeholder = "None";
     message.addEventListener("input", () => {
       put(work, ["use", "message"], message.value === "" ? undefined : message.value);
       edited();
     });
     const refusal = noAutofill(action(document.createElement("input"), "items-use-refusal"));
     refusal.value = String(at(work, ["use", "refusal"]) ?? "");
+    refusal.placeholder = "You cannot use the …";
     refusal.addEventListener("input", () => {
       put(work, ["use", "refusal"], refusal.value.trim() === "" ? undefined : refusal.value);
       edited();
     });
-    const use = group(
-      "use",
-      check(at(work, ["use", "usable"]) === true, "Use accepts it", "items-usable", (on) =>
-        put(work, ["use", "usable"], on ? true : undefined),
-      ),
-      check(
-        at(work, ["use", "silent"]) === true,
-        "Use says and does nothing",
-        "items-use-silent",
-        (on) => put(work, ["use", "silent"], on ? true : undefined),
-      ),
-      listEditor({
-        id: "effects",
-        label: "Use effects",
-        path: ["use", "effects"],
-        help: "Each adds a fixed amount plus random(n) to the stat when used (food raises Hunger).",
-        columns: [
-          { key: "stat", label: "Stat", kind: "select", options: () => c.stats },
-          { key: "flat", label: "Fixed", kind: "int", min: -99999, max: 99999 },
-          { key: "randomN", label: "+ random(n)", kind: "intOrNull", min: 0, max: 99999 },
-        ],
-        fresh: () => ({ stat: "Hunger", flat: 1000, randomN: null }),
-        preview: (r) =>
-          rollRange(Number(r.flat ?? 0), r.randomN === null ? null : Number(r.randomN ?? 0)),
-      }),
-      labelled(
-        "Eat or drink line",
-        message,
-        '" & SelInventory & " marks the item\'s name. Empty: none.',
-      ),
-      labelled("Refusal line", refusal, 'Shown in place of "You cannot use the X." Empty: none.'),
-    );
-    // Stage 4: books and the menu (in Use), tools and needs, breaking and look, ground.
     const textAt = (path: string[], id: string, placeholder = "") => {
       const t = noAutofill(action(document.createElement("input"), id));
       t.value = String(at(work, path) ?? "");
@@ -1083,8 +1500,24 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
       });
       return t;
     };
-    const intAt = (path: string[], min: number, max: number, label: string, id: string) =>
-      intInput(at(work, path), min, max, true, label, (n) => put(work, path, n ?? undefined), id);
+    const intAt = (
+      path: string[],
+      min: number,
+      max: number,
+      label: string,
+      id: string,
+      placeholder?: string,
+    ) =>
+      intInput(
+        at(work, path),
+        min,
+        max,
+        true,
+        label,
+        (n) => put(work, path, n ?? undefined),
+        id,
+        placeholder ? { placeholder } : {},
+      );
     const flagAt = (path: string[], label: string, id: string) =>
       check(at(work, path) === true, label, id, (on) => put(work, path, on ? true : undefined));
     /** A field holding JSON (an object or a list) at `path`; empty leaves it out. */
@@ -1114,79 +1547,133 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
       });
       return area;
     };
-    use.append(
+    const use = group(
+      "use",
+      "When used",
+      "What happens when a player uses it from their bag: eating food, drinking a potion, reading a book.",
+      flagAt(["use", "usable"], "Players can use it", "items-usable"),
+      listEditor({
+        id: "effects",
+        label: "Effects",
+        one: "effect",
+        path: ["use", "effects"],
+        help: "Each changes a stat by an amount in the range when it is used. Food raises Hunger.",
+        columns: [
+          { key: "stat", label: "Stat", kind: "select", options: () => c.stats },
+          {
+            key: "flat",
+            label: "Changes it by",
+            kind: "range",
+            min: -99999,
+            max: 99999,
+            maxSpread: 99999,
+            nullWhenFixed: true,
+          },
+        ],
+        fresh: () => ({ stat: "Hunger", flat: 1000, randomN: null }),
+      }),
       labelled(
-        "Mysticism to read",
-        intAt(["use", "mysticism"], 0, 1000, "Mysticism to read", "items-mysticism"),
-        "A spell book: the Mysticism reading it needs. Empty: 1.",
+        "Message when used",
+        message,
+        'Shown to the player, such as "You eat an apple." Leave it empty for none.',
       ),
       labelled(
-        "Skill book (JSON)",
-        jsonAt(["use", "skillBook"], "Skill book", "items-skill-book", false),
-        'Reading it teaches a skill and uses it up: {"skill":"Fishing","points":[{"op":"add","value":"1 + random(5)"}],"upTo":77}. Empty: not a skill book.',
+        "Message when it can't be used",
+        refusal,
+        'Replaces "You cannot use the …". Leave it empty for the usual message.',
       ),
       labelled(
-        "Menu button",
+        "Item menu button",
         select(
           String(work.menu ?? ""),
-          [["", "Equip (the default)"], ...c.menus.map((m) => [m, m] as const)],
+          [["", "Equip (the usual)"], ...c.menus.map((m) => [m, MENU_TEXT[m] ?? m] as const)],
           "items-menu",
           (v) => put(work, ["menu"], v === "" ? undefined : v),
         ),
-        "The item menu's button in place of Equip.",
+        "The button the item's menu shows in place of Equip: a stove's Cook, an anvil's Smith.",
+      ),
+      more(
+        has(["use", "mysticism"], ["use", "skillBook"], ["use", "silent"]),
+        flagAt(["use", "silent"], "Using it does nothing and says nothing", "items-use-silent"),
+        labelled(
+          "Mysticism needed to read",
+          intAt(["use", "mysticism"], 0, 1000, "Mysticism needed to read", "items-mysticism", "1"),
+          "For a spell book: the Mysticism a player needs to learn its spell.",
+        ),
+        labelled(
+          "Skill book (JSON)",
+          jsonAt(["use", "skillBook"], "Skill book", "items-skill-book", false),
+          'Reading it teaches a skill and uses it up: {"skill":"Fishing","points":[{"op":"add","value":"1 + random(5)"}],"upTo":77}. Leave it empty if it is not a skill book.',
+        ),
       ),
     );
+
+    // ---- Tool ----
     const tools = group(
       "tools",
+      "Tool",
+      "What players can gather with it, such as chopping trees with an axe or fishing with a rod.",
       listEditor({
         id: "tools",
         label: "Tool uses",
+        one: "tool use",
         path: ["tools"],
-        help: "What it can do as a tool (its tier: 1 when empty) and the swing ladder that sets its speed. Items naming the same counter share their hit count.",
+        help: "A better tier gathers more often. The swing speed sets how fast it swings, from the gathering skill. Items that share hits keep one count of hits between them.",
         columns: [
-          { key: "can", label: "Can", kind: "select", options: () => c.toolCans, optional: true },
-          { key: "tier", label: "Tier", kind: "intOrNull", min: 1, max: 1000, optional: true },
+          {
+            key: "can",
+            label: "Can",
+            kind: "select",
+            options: () => c.toolCans,
+            optionText: textOf(TOOL_TEXT),
+            optional: true,
+            placeholder: "Nothing",
+          },
+          {
+            key: "tier",
+            label: "Tier",
+            kind: "intOrNull",
+            min: 1,
+            max: 1000,
+            optional: true,
+            placeholder: "1",
+          },
           {
             key: "ladder",
-            label: "Ladder",
+            label: "Swing speed from",
             kind: "select",
             options: () => c.ladders,
             optional: true,
+            placeholder: "The usual",
           },
-          { key: "counter", label: "Counter", kind: "text", optional: true },
+          {
+            key: "counter",
+            label: "Shares hits with",
+            kind: "text",
+            optional: true,
+            placeholder: "No other item",
+          },
         ],
         fresh: () => ({ can: c.toolCans[0] ?? "Chop" }),
       }),
-      listEditor({
-        id: "requires",
-        label: "Needs",
-        path: ["requires"],
-        help: 'What it needs before it is equipped or used: a skill (or "level") at least so high, and the line a refusal says (empty: the engine\'s).',
-        columns: [
-          { key: "on", label: "On", kind: "select", options: () => ["equip", "use"] },
-          { key: "needs", label: "Needs", kind: "select", options: () => ["level", ...c.skills] },
-          { key: "atLeast", label: "At least", kind: "int", min: 0, max: 1_000_000 },
-          { key: "text", label: "Refusal", kind: "text", optional: true },
-        ],
-        fresh: () => ({ on: "equip", needs: "level", atLeast: 1 }),
-      }),
     );
+
+    // ---- Breaking ----
     const breakSlots = (kind: "armour" | "weapon") => {
       const box = document.createElement("div");
       box.className = "items-checks";
       box.dataset.list = `breaks-${kind}`;
       const has = new Set((at(work, ["breaks", kind]) as string[] | undefined) ?? []);
-      for (const v of kind === "armour" ? c.breakArmourSlots : c.breakWeaponSlots) {
+      const slots = kind === "armour" ? c.breakArmourSlots : c.breakWeaponSlots;
+      for (const v of slots) {
         box.append(
-          check(has.has(v), v, `items-breaks-${kind}-${v}`, (on) => {
+          check(has.has(v), SLOT_VAR_TEXT[v] ?? v, `items-breaks-${kind}-${v}`, (on) => {
             if (on) {
               has.add(v);
             } else {
               has.delete(v);
             }
-            const list = (kind === "armour" ? c.breakArmourSlots : c.breakWeaponSlots).filter((x) =>
-              has.has(x),
-            );
+            const list = slots.filter((x) => has.has(x));
             put(work, ["breaks", kind], list.length > 0 ? list : undefined);
           }),
         );
@@ -1195,92 +1682,152 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
     };
     const breaking = group(
       "breaking",
+      "Breaking",
+      "Whether it can break while in use, and what it turns into.",
       labelled(
-        "Broken form",
-        textAt(["damaged"], "items-damaged", "it does not change"),
-        "The item it becomes when it breaks.",
-      ),
-      labelled(
-        "Breaks as armour, worn in",
+        "Can break when worn as armour in",
         breakSlots("armour"),
-        "None ticked: it never breaks as armour.",
+        "Tick none and it never breaks as armour.",
       ),
       labelled(
-        "Breaks as a weapon, held in",
+        "Can break when used as a weapon in",
         breakSlots("weapon"),
-        "None ticked: it never breaks as a weapon.",
+        "Tick none and it never breaks as a weapon.",
       ),
-      listEditor({
-        id: "paperdoll",
-        label: "Drawn when worn as",
-        path: ["paperdoll"],
-        help: "The worn picture a layer draws it with: another item's (a copy is drawn as the item it was copied from). Its own worn frames, uploaded below, need none.",
-        columns: [
-          { key: "layer", label: "Layer", kind: "select", options: () => c.layers },
-          { key: "becomes", label: "Drawn as", kind: "text" },
-        ],
-        fresh: () => ({ layer: "weapon", becomes: "" }),
-      }),
+      labelled(
+        "Breaks into",
+        textAt(["damaged"], "items-damaged", "Nothing: it stays as it is"),
+        "The ID of the item it becomes when it breaks.",
+      ),
     );
+
+    // ---- On the ground ----
+    const offset = (axis: "dx" | "dy", label: string) =>
+      intInput(
+        at(work, ["ground", "offset", axis]),
+        -1000,
+        1000,
+        true,
+        label,
+        (n) => {
+          const other = at(work, ["ground", "offset", axis === "dx" ? "dy" : "dx"]);
+          if ((n === null || n === undefined) && other === undefined) {
+            put(work, ["ground", "offset"], undefined);
+          } else {
+            const o = { dx: 0, dy: 0, ...((at(work, ["ground", "offset"]) as Obj) ?? {}) };
+            o[axis] = n ?? 0;
+            put(work, ["ground", "offset"], o);
+          }
+        },
+        `items-ground-offset-${axis}`,
+        { placeholder: "0" },
+      );
+    const ctrlText = noAutofill(action(document.createElement("input"), "items-ground-ctrl"));
+    ctrlText.value = String(at(work, ["ground", "ctrlText", "text"]) ?? "");
+    ctrlText.placeholder = "Ctrl picks it up";
+    const ctrlUnpause = check(
+      at(work, ["ground", "ctrlText", "unpause"]) === true,
+      "The message ends Ctrl's pause",
+      "items-ground-ctrl-unpause",
+      () => writeCtrl(),
+    );
+    const writeCtrl = () => {
+      const text = ctrlText.value.trim();
+      const unpause = (ctrlUnpause.querySelector("input") as HTMLInputElement).checked;
+      put(work, ["ground", "ctrlText"], text === "" ? undefined : { text, unpause });
+    };
+    ctrlText.addEventListener("input", () => {
+      writeCtrl();
+      edited();
+    });
+    const offsetPair = document.createElement("div");
+    offsetPair.className = "items-range-pair";
+    offsetPair.append("Right ", offset("dx", "Right"), " Down ", offset("dy", "Down"));
     const ground = group(
       "ground",
-      flagAt(["ground", "blocks"], "Stops a walker", "items-ground-blocks"),
-      listEditor({
-        id: "ground-platforms",
-        label: "Skill platform",
-        path: ["ground", "platforms"],
-        help: 'Blocks a walker until a skill (or "level") is at least so high; every row must be met. None: it is no platform.',
-        columns: [
-          { key: "needs", label: "Needs", kind: "select", options: () => ["level", ...c.skills] },
-          { key: "atLeast", label: "At least", kind: "int", min: 0, max: 1_000_000 },
-        ],
-        fresh: () => ({ needs: "level", atLeast: 1 }),
-      }),
-      labelled(
-        "Ground overlay",
-        textAt(["ground", "overlay"], "items-ground-overlay", "none"),
-        "The animated overlay drawn on it.",
-      ),
+      "On the ground",
+      "How it behaves on the map, and how much it holds if it is a container.",
       flagAt(
-        ["ground", "inUse"],
-        "Its overlay animates only while someone crafts at it",
-        "items-ground-in-use",
+        ["ground", "blocks"],
+        "Blocks movement: nobody can walk through it",
+        "items-ground-blocks",
       ),
       labelled(
-        "Ground layer",
-        select(
-          String(at(work, ["ground", "layer"]) ?? ""),
-          [["", "With the items (the default)"], ...c.groundLayers.map((l) => [l, l] as const)],
-          "items-ground-layer",
-          (v) => put(work, ["ground", "layer"], v === "" ? undefined : v),
+        "Hover name",
+        textAt(["ground", "tipName"], "items-ground-tip", "Its name"),
+        "What the tip says when the mouse is over it on the ground.",
+      ),
+      flagAt(["ground", "tipless"], "Show no hover name", "items-ground-tipless"),
+      labelled(
+        "Container size",
+        intAt(["container", "capacity"], 0, 1000, "Container size", "items-capacity", "The usual"),
+        "How many lines of items it holds, if it is a container.",
+      ),
+      flagAt(["container", "uniqueId"], "Each copy has its own storage", "items-unique-id"),
+      more(
+        has(
+          ["ground", "platforms"],
+          ["ground", "overlay"],
+          ["ground", "inUse"],
+          ["ground", "layer"],
+          ["ground", "offset"],
+          ["ground", "ctrlText"],
         ),
+        listEditor({
+          id: "ground-platforms",
+          label: "Blocks until a skill is high enough",
+          one: "skill needed",
+          path: ["ground", "platforms"],
+          help: "Players can only cross it once they reach every skill or level listed.",
+          columns: [
+            {
+              key: "needs",
+              label: "Needs",
+              kind: "select",
+              options: () => ["level", ...c.skills],
+              optionText: textOf({ level: "Level" }),
+            },
+            { key: "atLeast", label: "At least", kind: "int", min: 0, max: 1_000_000 },
+          ],
+          fresh: () => ({ needs: "level", atLeast: 1 }),
+        }),
+        labelled(
+          "Animated overlay",
+          textAt(["ground", "overlay"], "items-ground-overlay", "None"),
+          "An animation drawn over it, such as a fire's flames.",
+        ),
+        flagAt(
+          ["ground", "inUse"],
+          "Animate only while someone crafts at it",
+          "items-ground-in-use",
+        ),
+        labelled(
+          "Drawn on layer",
+          select(
+            String(at(work, ["ground", "layer"]) ?? ""),
+            [
+              ["", "With the other items (the usual)"],
+              ...c.groundLayers.map((l) => [l, GROUND_LAYER_TEXT[l] ?? l] as const),
+            ],
+            "items-ground-layer",
+            (v) => put(work, ["ground", "layer"], v === "" ? undefined : v),
+          ),
+        ),
+        labelled(
+          "Position on its tile (pixels)",
+          offsetPair,
+          "Moves its picture on its tile. The Picture tab lets you drag it instead.",
+        ),
+        labelled(
+          "Ctrl message",
+          ctrlText,
+          'Ctrl on it says this instead of picking it up, such as "It is too heavy."',
+        ),
+        ctrlUnpause,
       ),
-      labelled(
-        "Ground offset (JSON)",
-        jsonAt(["ground", "offset"], "Ground offset", "items-ground-offset", false),
-        'Pixels from the tile: {"dx":0,"dy":-8}. Empty: none.',
-      ),
-      flagAt(["ground", "tipless"], "The hover tip never names it", "items-ground-tipless"),
-      labelled(
-        "Hover tip name",
-        textAt(["ground", "tipName"], "items-ground-tip", "its name"),
-        "What the hover tip calls it on the ground.",
-      ),
-      labelled(
-        "Ctrl line (JSON)",
-        jsonAt(["ground", "ctrlText"], "Ctrl line", "items-ground-ctrl", false),
-        'The one line Ctrl on it says, taking nothing: {"text":"It is too heavy.","unpause":false}. Empty: Ctrl picks it up.',
-      ),
-      labelled(
-        "Container lines",
-        intAt(["container", "capacity"], 0, 1000, "Container lines", "items-capacity"),
-        "The lines it holds as a container. Empty: the default.",
-      ),
-      flagAt(["container", "uniqueId"], "Gets a #id in a bag", "items-unique-id"),
-      flagAt(["inEditorList"], "On the World Editor's item list", "items-in-editor"),
-      flagAt(["inPlayerShops"], "Player shops accept it", "items-in-shops"),
     );
-    const sections = [equip, attack, armour, use, tools, breaking, ground];
+
+    const sections = [basics, pictures, weapon, armour, use, tools, breaking, ground];
     const old = only
       ? [...groupsEl.children].find((e) => (e as HTMLElement).dataset.group === only)
       : undefined;
@@ -1289,6 +1836,31 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
       old.replaceWith(fresh);
     } else {
       groupsEl.replaceChildren(...sections);
+    }
+    markUsed();
+  };
+
+  /**
+   * Marks each tab that holds settings (its tab shows a dot), and shows "Restore this tab" only on
+   * a tab that differs from the pack's.
+   */
+  const markUsed = () => {
+    const pack = shown?.pack ?? null;
+    for (const sec of groupsEl.querySelectorAll<HTMLElement>(":scope > .items-group")) {
+      const keys = GROUP_KEYS[sec.dataset.group ?? ""] ?? [];
+      const used = keys.some((k) => clean(work[k]) !== undefined);
+      if (sec.dataset.used !== String(used)) {
+        sec.dataset.used = String(used);
+      }
+      const restore = sec.querySelector<HTMLButtonElement>(
+        ":scope > .items-group-foot > .items-restore",
+      );
+      if (restore) {
+        const same = keys.every(
+          (k) => canonical(work[k]) === canonical(pack ? (pack as Obj)[k] : undefined),
+        );
+        restore.hidden = same;
+      }
     }
   };
 
@@ -1302,7 +1874,7 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
     invalid.clear();
     drawGroups();
   };
-  /** Fills the display name from the view. */
+  /** Fills the name players see from the view. */
   const fillName = () => {
     if (!shown) {
       return;
@@ -1318,6 +1890,7 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
 
   const edited = () => {
     status.textContent = "";
+    markUsed();
     update();
   };
 
@@ -1326,30 +1899,34 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
     if (!v) {
       return;
     }
-    title.textContent = v.display && v.display !== v.name ? `${v.display} (${v.name})` : v.name;
-    const t: string[] = [];
+    const shownName = v.display || v.name;
+    title.textContent = shownName;
+    subtitle.textContent = shownName === v.name ? "" : `ID: ${v.name}`;
+    display.placeholder = v.name;
+    displayHelp.textContent = `What players see. Leave it empty to show its ID, ${v.name}, which never changes.`;
+    const t: [string, string][] = [];
     t.push(
       v.inPack
         ? v.defined || v.edited
-          ? "Has its own definition"
-          : "Plays the pack's rules"
-        : "Your item",
+          ? ["Changed by you", "changed"]
+          : ["Original", "original"]
+        : ["Added by you", "changed"],
     );
     if (v.retired) {
-      t.push("Retired");
+      t.push(["Retired", "retired"]);
     }
-    if (v.pending.definition === "set") {
-      t.push("Definition changed in the draft");
+    if (v.pending.definition === "set" || v.pending.catalogue !== null) {
+      t.push(["Unpublished changes", "pending"]);
     } else if (v.pending.definition !== null) {
-      t.push("Definition dropped in the draft");
-    }
-    if (v.pending.catalogue !== null) {
-      t.push("Name or picture changed in the draft");
+      t.push([
+        v.inPack ? "Back to the original once published" : "Rules cleared once published",
+        "pending",
+      ]);
     }
     tags.replaceChildren(
-      ...t.map((x) => {
+      ...t.map(([x, kind]) => {
         const s = document.createElement("span");
-        s.className = "balance-tag";
+        s.className = `balance-tag items-tag-${kind}`;
         s.textContent = x;
         return s;
       }),
@@ -1362,12 +1939,15 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
     saveBtn.disabled = busy || !isDirty || errs.length > 0;
     undoEditBtn.hidden = !isDirty;
     undoEditBtn.disabled = busy;
-    revertBtn.textContent = v.inPack ? "Play the pack's rules again" : "Drop its definition";
-    revertBtn.hidden = !(v.defined || v.edited);
+    revertBtn.textContent = v.inPack ? "Restore the original" : "Clear all its rules";
+    revertBtn.title = v.inPack
+      ? "Plays the pack's original rules again once published."
+      : "Leaves it with no rules once published.";
+    revertBtn.hidden = !(v.defined || v.edited) || v.pending.definition === "revert";
     revertBtn.disabled = busy;
+    dropBtn.title = "Takes this item's changes out of the draft: players keep what they have now.";
     dropBtn.hidden = v.pending.definition === null && v.pending.catalogue === null;
     dropBtn.disabled = busy;
-    renameBtn.disabled = busy || !nameDirty();
     removeBtn.disabled = busy;
     // A form being saved takes no typing until the answer comes.
     rules.disabled = busy;
@@ -1398,7 +1978,10 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
       }
       return kind === "all" || i.kind === kind;
     });
-    listCount.textContent = `${rows.length} of ${list.length} items`;
+    listCount.textContent =
+      rows.length === list.length
+        ? `${list.length} items`
+        : `${rows.length} of ${list.length} items`;
     listEl.replaceChildren(
       ...rows.map((i) => {
         const li = document.createElement("li");
@@ -1410,18 +1993,22 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
           b.setAttribute("aria-current", "true");
         }
         const name = document.createElement("span");
-        name.textContent = i.display === i.name ? i.name : `${i.display} (${i.name})`;
+        name.className = "items-list-name";
+        name.textContent = i.display || i.name;
         const meta = document.createElement("span");
         meta.className = "items-list-meta";
         meta.textContent = [
           KIND_TEXT[i.kind],
-          i.state === "yours" ? "yours" : i.state === "edited" ? "changed" : "",
+          i.state === "yours" ? "added by you" : i.state === "edited" ? "changed" : "",
           i.retired ? "retired" : "",
-          i.pending ? "in the draft" : "",
+          i.pending ? "unpublished" : "",
         ]
           .filter((x) => x !== "")
           .join(" · ");
         b.append(name, " ", meta);
+        if (i.display && i.display !== i.name) {
+          b.title = `ID: ${i.name}`;
+        }
         b.addEventListener("click", () => openItem(i.name));
         li.append(b);
         return li;
@@ -1454,7 +2041,7 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
     if (shown && (dirty() || busy || panels?.pending())) {
       status.textContent = busy
         ? "Wait for the save to finish."
-        : `${shown.display || shown.name} has unsaved changes: save them or drop your edit first.`;
+        : `${shown.display || shown.name} has unsaved changes: save them or undo them first.`;
       status.className = "balance-status balance-status-error";
       return;
     }
@@ -1482,8 +2069,9 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
     draftText.textContent =
       total === 0
         ? ""
-        : `The draft holds ${view.itemDraft === 1 ? "1 item change" : `${view.itemDraft} item changes`}${view.otherDraft > 0 ? ` and ${view.otherDraft} other ${view.otherDraft === 1 ? "change" : "changes"}` : ""}, live once published. `;
+        : `${total === 1 ? "1 unpublished change" : `${total} unpublished changes`}${view.otherDraft > 0 && view.itemDraft > 0 ? ` (${view.itemDraft} to items)` : view.itemDraft === 0 ? " (none to items)" : ""}. Players get them once you publish. `;
     const item = view.item;
+    empty.hidden = openName !== null && shown !== null;
     if (!openName) {
       return;
     }
@@ -1494,6 +2082,7 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
       if (shown && !view.items.some((i) => i.name.toLowerCase() === open)) {
         shown = null;
         form.hidden = true;
+        empty.hidden = false;
         openName = null;
         panels?.clear();
       }
@@ -1502,10 +2091,11 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
     const first = shown === null || shown.name !== item.name;
     shown = item;
     form.hidden = false;
+    empty.hidden = true;
     if (first) {
       fill();
     } else if (!busy) {
-      // Each section catches up on its own: an edit in one is never lost to a refresh of the other.
+      // Each part catches up on its own: an edit in one is never lost to a refresh of the other.
       if (!rulesDirty()) {
         fillRules();
       } else if (canonical(item.form) === filled.value) {
@@ -1574,15 +2164,18 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
             newName.value = "";
             newDisplay.value = "";
             newFrom.value = "";
+            newBox.open = false;
             openName = msg.view.item.name;
             shown = null;
           }
         } else if (openName && save.name.toLowerCase() === openName.toLowerCase()) {
           busy = false;
+          const next = renameNext;
+          renameNext = null;
           if (msg.result) {
             if (msg.result.ok && newer && msg.view.item) {
-              // Saved: the section saved shows what the draft now holds; an unsaved edit in the
-              // other section stays (a rename keeps rule edits, a rules save keeps a typed name).
+              // Saved: the part saved shows what the draft now holds; an unsaved edit in the
+              // other part stays (a rename keeps rule edits, a rules save keeps a typed name).
               shown = msg.view.item;
               if (save.op === "rename") {
                 fillName();
@@ -1604,6 +2197,20 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
               ? "balance-status"
               : "balance-status balance-status-error";
           }
+          if (newer) {
+            appliedSeq = msg.seq;
+            show(msg.view);
+          } else {
+            update();
+          }
+          // The rules are saved: the name the same Save carried goes next.
+          if (msg.result?.ok && save.op === "set" && next !== null && nameDirty()) {
+            const change = renameChange();
+            if (change) {
+              send(change);
+            }
+          }
+          return;
         }
         if (newer) {
           appliedSeq = msg.seq;
@@ -1635,6 +2242,7 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
       work = {};
       filled = { value: "", fingerprint: "", display: "", slot: undefined };
       busy = false;
+      renameNext = null;
       invalid.clear();
       panels?.clear();
       search.value = "";
@@ -1648,6 +2256,7 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
       listEl.replaceChildren();
       groupsEl.replaceChildren();
       form.hidden = true;
+      empty.hidden = false;
       loading.hidden = false;
       draftLine.hidden = true;
     },

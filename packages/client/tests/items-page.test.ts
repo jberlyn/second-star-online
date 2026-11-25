@@ -14,7 +14,14 @@ import type {
   ItemListEntry,
 } from "@secondstaronline/shared";
 
-import { canonical, createItemsPage, type ItemChange, rollRange } from "../src/ui/items-page.ts";
+import {
+  canonical,
+  createItemsPage,
+  type ItemChange,
+  rollBounds,
+  rollFrom,
+  rollRange,
+} from "../src/ui/items-page.ts";
 
 afterEach(() => document.body.replaceChildren());
 
@@ -62,8 +69,8 @@ const sword = (
     attack: { base: [{ flat: 6, randomN: 6 }] },
   },
   sources: [
-    { group: "equip", label: "Slot", from: 'the pack\'s contains "Long Sword" (row 90)' },
-    { group: "attack", label: "Attack rolls", from: 'the pack\'s contains "Long Sword" (row 8)' },
+    { group: "basics", label: "Worn in", from: 'the pack\'s contains "Long Sword" (row 90)' },
+    { group: "weapon", label: "Damage", from: 'the pack\'s contains "Long Sword" (row 8)' },
   ],
   edited: false,
   pending: { definition: null, catalogue: null },
@@ -157,8 +164,10 @@ describe("the Items page", () => {
     expect(t.q(".items-form h2").textContent).toBe("Long Sword");
     expect(t.act<HTMLSelectElement>("items-slot").value).toBe("LeftHand");
     expect(t.act<HTMLInputElement>("items-strength").value).toBe("8");
-    expect(t.p.el.textContent).toContain('Slot: the pack\'s contains "Long Sword" (row 90)');
-    expect(t.p.el.textContent).toContain("Rolls 7 to 12");
+    expect(t.p.el.textContent).toContain('Worn in: the pack\'s contains "Long Sword" (row 90)');
+    // Damage reads as "from … to …", not `flat + random(n)`.
+    expect(t.act<HTMLInputElement>("items-base-flat-from").value).toBe("7");
+    expect(t.act<HTMLInputElement>("items-base-flat-to").value).toBe("12");
     // Nothing edited: nothing to save.
     expect(t.act<HTMLButtonElement>("items-save").disabled).toBe(true);
     expect(t.p.changes()).toBe(0);
@@ -248,22 +257,25 @@ describe("the Items page", () => {
       result: {
         ok: false,
         text: "Long Sword was not saved.",
-        problems: [{ where: "Trains", message: "names a skill that does not exist: Basket" }],
+        problems: [
+          { where: "Skills it trains", message: "names a skill that does not exist: Basket" },
+        ],
       },
     });
     expect(t.p.el.textContent).toContain(
-      "Long Sword was not saved. Trains: names a skill that does not exist: Basket",
+      "Long Sword was not saved. Skills it trains: names a skill that does not exist: Basket",
     );
     // The edit stays to fix.
     expect(t.act<HTMLInputElement>("items-strength").value).toBe("23");
   });
 
-  test("an attack roll is added, previewed and removed", () => {
+  test("a damage roll is added and removed", () => {
     const t = opened();
     t.act<HTMLButtonElement>("items-base-add").click();
     const rolls = t.p.el.querySelectorAll('[data-list="base"] .items-list-row');
     expect(rolls.length).toBe(2);
-    expect(t.p.el.textContent).toContain("Rolls 2 to 7");
+    const from = t.p.el.querySelectorAll<HTMLInputElement>('[data-action="items-base-flat-from"]');
+    expect(from[1]?.value).toBe("2");
     (
       t.p.el.querySelectorAll<HTMLButtonElement>(
         '[data-action="items-base-remove"]',
@@ -276,7 +288,7 @@ describe("the Items page", () => {
   test("the pack's rules for a group come back into the form", () => {
     const t = opened();
     t.type("items-strength", "40");
-    t.q<HTMLButtonElement>('[data-action="items-pack-equip"]').click();
+    t.q<HTMLButtonElement>('[data-action="items-pack-basics"]').click();
     expect(t.act<HTMLInputElement>("items-strength").value).toBe("8");
     // The pack has no behaviours row: they go.
     expect(t.act<HTMLInputElement>("items-behaviour-sword").checked).toBe(false);
@@ -320,10 +332,10 @@ describe("the Items page", () => {
     expect(t.openedRows).toEqual([{ dataset: "items", part: "items", key: "Long Sword" }]);
   });
 
-  test("a rename sends the display name; Play the pack's rules again drops the definition", () => {
+  test("Save sends a new name alone; Restore the original drops the definition", () => {
     const t = opened("a".repeat(16));
     t.type("items-display", "Old Sword");
-    t.act<HTMLButtonElement>("items-rename").click();
+    t.act<HTMLButtonElement>("items-save").click();
     expect(t.sent[0]?.change).toEqual({
       name: "Long Sword",
       op: "rename",
@@ -340,12 +352,57 @@ describe("the Items page", () => {
     expect(t.sent[1]?.change).toEqual({ name: "Long Sword", op: "revert", expect: "e".repeat(16) });
   });
 
-  test("a rename keeps unsaved rule edits, and a rules save keeps a typed name", () => {
+  test("one Save sends the rules, then the name, naming the item as the rules' save left it", () => {
     const t = opened("a".repeat(16));
     t.type("items-strength", "23");
     t.type("items-display", "Old Sword");
-    t.act<HTMLButtonElement>("items-rename").click();
-    // The rename's answer: the catalogue changed, the rules did not.
+    t.act<HTMLButtonElement>("items-save").click();
+    expect(t.sent).toHaveLength(1);
+    expect(t.sent[0]?.change.op).toBe("set");
+    // The rules' answer: saved. The name goes next, with the new fingerprint.
+    t.p.receive({
+      t: "contentItems",
+      seq: 3,
+      view: view(sword("b".repeat(16), { strength: 23 }, { defined: true })),
+      result: { ok: true, text: "Long Sword is in the draft." },
+    });
+    expect(t.sent[1]?.change).toEqual({
+      name: "Long Sword",
+      op: "rename",
+      display: "Old Sword",
+      expect: "b".repeat(16),
+    });
+    t.p.receive({
+      t: "contentItems",
+      seq: 4,
+      view: view(sword("c".repeat(16), { strength: 23 }, { display: "Old Sword", defined: true })),
+      result: { ok: true, text: "Long Sword is called Old Sword in the draft." },
+    });
+    expect(t.q(".items-form h2").textContent).toBe("Old Sword");
+    expect(t.p.changes()).toBe(0);
+  });
+
+  test("a refused rules save sends no name, and keeps both edits", () => {
+    const t = opened("a".repeat(16));
+    t.type("items-strength", "23");
+    t.type("items-display", "Old Sword");
+    t.act<HTMLButtonElement>("items-save").click();
+    t.p.receive({
+      t: "contentItems",
+      seq: 3,
+      view: view(sword("a".repeat(16))),
+      result: { ok: false, text: "Long Sword was not saved." },
+    });
+    expect(t.sent).toHaveLength(1);
+    expect(t.act<HTMLInputElement>("items-strength").value).toBe("23");
+    expect(t.act<HTMLInputElement>("items-display").value).toBe("Old Sword");
+  });
+
+  test("a name save keeps unsaved rule edits, and a rules save keeps a typed name", () => {
+    const t = opened("a".repeat(16));
+    t.type("items-display", "Old Sword");
+    t.act<HTMLButtonElement>("items-save").click();
+    // Typed while the name was on its way? The form is locked: type after the answer.
     t.p.receive({
       t: "contentItems",
       seq: 3,
@@ -358,21 +415,23 @@ describe("the Items page", () => {
       ),
       result: { ok: true, text: "Long Sword is called Old Sword in the draft." },
     });
-    expect(t.act<HTMLInputElement>("items-strength").value).toBe("23");
-    expect(t.p.changes()).toBe(1);
-    // The edit is still saveable: it names the item as it is now.
-    t.act<HTMLButtonElement>("items-save").click();
-    expect(t.sent[1]?.change.expect).toBe("b".repeat(16));
-    // A typed (unsaved) name survives a rules save.
-    t.type("items-display", "Older Sword");
+    t.type("items-strength", "23");
+    // A refresh with the name only: the rule edit stays, saveable against the item as it is now.
+    t.p.published();
     t.p.receive({
       t: "contentItems",
-      seq: 4,
-      view: view(sword("c".repeat(16), { strength: 23 }, { display: "Old Sword" })),
-      result: { ok: true, text: "Long Sword is in the draft." },
+      seq: 5,
+      view: view(
+        sword(
+          "c".repeat(16),
+          {},
+          { display: "Old Sword", pending: { definition: null, catalogue: "set" } },
+        ),
+      ),
     });
-    expect(t.act<HTMLInputElement>("items-display").value).toBe("Older Sword");
-    expect(t.p.changes()).toBe(1);
+    expect(t.act<HTMLInputElement>("items-strength").value).toBe("23");
+    t.act<HTMLButtonElement>("items-save").click();
+    expect(t.sent[1]?.change.expect).toBe("c".repeat(16));
   });
 
   test("a refused New item leaves the open item and its edits alone", () => {
@@ -402,7 +461,7 @@ describe("the Items page", () => {
   test("a name the server could never answer is refused before the form locks", () => {
     const t = opened();
     t.type("items-display", "x".repeat(41));
-    t.act<HTMLButtonElement>("items-rename").click();
+    t.act<HTMLButtonElement>("items-save").click();
     expect(t.sent).toHaveLength(0);
     expect(t.q<HTMLFieldSetElement>(".items-rules").disabled).toBe(false);
   });
@@ -458,6 +517,20 @@ describe("the Items page", () => {
   test("helpers: a roll's range, and a form compared without its empty parts", () => {
     expect(rollRange(6, 6)).toBe("Rolls 7 to 12");
     expect(rollRange(3, 0)).toBe("Always 3");
+    expect(rollBounds(6, 6)).toEqual({ from: 7, to: 12 });
+    expect(rollBounds(6, 0)).toEqual({ from: 6, to: 6 });
+    expect(rollBounds(6, null)).toEqual({ from: 6, to: 6 });
+    expect(rollFrom(7, 12)).toEqual({ flat: 6, randomN: 6 });
+    expect(rollFrom(6, 6)).toEqual({ flat: 6, randomN: 0 });
+    for (const [flat, n] of [
+      [-3, 4],
+      [0, 1],
+      [10, 0],
+    ] as const) {
+      const b = rollBounds(flat, n);
+      const back = rollFrom(b.from, b.to);
+      expect(rollBounds(back.flat, back.randomN)).toEqual(b);
+    }
     expect(canonical({ b: 1, a: { x: [] }, use: {} })).toBe(canonical({ b: 1 }));
   });
 });
@@ -482,13 +555,13 @@ describe("the rest of the definition (#30 stage 4)", () => {
     expect(data.inPlayerShops).toBe(true);
   });
 
-  test("clearing a group's last field leaves the group out, and bad JSON is refused", () => {
+  test("clearing a group's last field leaves the group out, and a bad number is refused", () => {
     const t = opened();
     t.act<HTMLInputElement>("items-ground-blocks").click();
     t.act<HTMLInputElement>("items-ground-blocks").click();
-    t.type("items-ground-offset", "{not json");
+    t.type("items-ground-offset-dx", "99999");
     expect(t.act<HTMLButtonElement>("items-save").disabled).toBe(true);
-    t.type("items-ground-offset", "");
+    t.type("items-ground-offset-dx", "");
     expect(t.act<HTMLButtonElement>("items-save").disabled).toBe(true);
   });
 });
@@ -510,9 +583,9 @@ describe("stage 4 review fixes (#30)", () => {
 
   test("the pack's rules for one group leave another group's unread text and error (Sol 12)", () => {
     const t = opened();
-    t.type("items-ground-offset", "{not json");
-    t.q<HTMLButtonElement>('[data-action="items-pack-equip"]').click();
-    expect(t.act<HTMLTextAreaElement>("items-ground-offset").value).toBe("{not json");
+    t.type("items-ground-offset-dx", "99999");
+    t.q<HTMLButtonElement>('[data-action="items-pack-basics"]').click();
+    expect(t.act<HTMLInputElement>("items-ground-offset-dx").value).toBe("99999");
     expect(t.act<HTMLButtonElement>("items-save").disabled).toBe(true);
   });
 
@@ -553,5 +626,140 @@ describe("stage 4 review fixes (#30)", () => {
       ),
     });
     expect(shows).toHaveLength(3);
+  });
+});
+
+/** The definition the last Save sent. */
+function savedData(sent: readonly { change: ItemChange }[]): ItemDefinition {
+  const last = sent.at(-1);
+  if (!last) {
+    throw new Error("nothing was sent");
+  }
+  return last.change.data as ItemDefinition;
+}
+
+describe("the plain-language form", () => {
+  test("damage typed as from and to saves as the roll that gives it", () => {
+    const t = opened();
+    t.type("items-base-flat-from", "10");
+    t.type("items-base-flat-to", "15");
+    t.act("items-save").click();
+    expect(savedData(t.sent).attack?.base).toEqual([{ flat: 9, randomN: 6 }]);
+  });
+
+  test("a fixed amount rolls nothing, and 'to' below 'from' is refused", () => {
+    const t = opened();
+    t.type("items-base-flat-from", "9");
+    t.type("items-base-flat-to", "9");
+    expect(t.act<HTMLButtonElement>("items-save").disabled).toBe(false);
+    t.type("items-base-flat-to", "3");
+    expect(t.act<HTMLButtonElement>("items-save").disabled).toBe(true);
+    expect(t.p.el.textContent).toContain('"to" no lower than "from"');
+    t.type("items-base-flat-to", "9");
+    t.act("items-save").click();
+    expect(savedData(t.sent).attack?.base).toEqual([{ flat: 9, randomN: 0 }]);
+  });
+
+  test("protection shows as less damage, and is saved with the rules' sign", () => {
+    const t = page();
+    t.p.onShow();
+    t.p.receive({ t: "contentItems", seq: 1, view: view(null) });
+    t.p.open("Long Sword");
+    t.p.receive({
+      t: "contentItems",
+      seq: 2,
+      view: view(sword("a".repeat(16), { armour: [{ slot: "BodyE", hitMe: -4, hitMe2: null }] })),
+    });
+    expect(t.act<HTMLInputElement>("items-armour-hitMe").value).toBe("4");
+    expect(t.act<HTMLInputElement>("items-armour-hitMe2").value).toBe("");
+    t.type("items-armour-hitMe", "6");
+    t.type("items-armour-hitMe2", "2");
+    t.act("items-save").click();
+    expect(savedData(t.sent).armour).toEqual([{ slot: "BodyE", hitMe: -6, hitMe2: -2 }]);
+    // The slot reads as a place, not a variable.
+    const slot = t.act<HTMLSelectElement>("items-armour-slot");
+    expect(slot.selectedOptions[0]?.textContent).toBe("Body");
+  });
+
+  test("a tab with settings is marked, and the mark follows an edit", async () => {
+    const t = opened();
+    const used = () =>
+      [...t.p.el.querySelectorAll<HTMLButtonElement>(".control-panel-tab-used")].map(
+        (b) => b.dataset.tab,
+      );
+    // The tab strip follows the form a moment later (it watches it).
+    const settle = () => new Promise((r) => setTimeout(r, 0));
+    await settle();
+    expect(used()).toEqual(["Basics", "Weapon"]);
+    t.act<HTMLInputElement>("items-ground-blocks").click();
+    await settle();
+    expect(used()).toEqual(["Basics", "Weapon", "On the ground"]);
+  });
+
+  test("Restore this tab shows only where the item differs from the pack", () => {
+    const t = opened();
+    const restore = (id: string) => t.act<HTMLButtonElement>(`items-pack-${id}`);
+    // The sword's behaviours and training are its own, not the pack's (which has none).
+    expect(restore("basics").hidden).toBe(false);
+    expect(restore("armour").hidden).toBe(true);
+    t.act<HTMLInputElement>("items-ground-blocks").click();
+    expect(restore("ground").hidden).toBe(false);
+  });
+
+  test("rarely used fields are folded away, and open when the item uses one", () => {
+    const t = opened();
+    const more = (group: string) =>
+      t.q<HTMLDetailsElement>(`.items-group[data-group="${group}"] .items-more`);
+    expect(more("weapon").open).toBe(false);
+    expect(more("ground").open).toBe(false);
+    const u = page();
+    u.p.onShow();
+    u.p.receive({ t: "contentItems", seq: 1, view: view(null) });
+    u.p.open("Long Sword");
+    u.p.receive({
+      t: "contentItems",
+      seq: 2,
+      view: view(sword("a".repeat(16), { ground: { offset: { dx: 1, dy: 2 } } })),
+    });
+    expect(u.q<HTMLDetailsElement>('.items-group[data-group="ground"] .items-more').open).toBe(
+      true,
+    );
+    expect(u.act<HTMLInputElement>("items-ground-offset-dy").value).toBe("2");
+  });
+
+  test("abilities and trained skills show what is ticked, the rest folded under Add", () => {
+    const t = opened();
+    const pick = t.q('[data-list="behaviours"]');
+    const shownTicks = [...pick.querySelectorAll(":scope > .items-checks input")].map(
+      (i) => (i as HTMLElement).dataset.action,
+    );
+    expect(shownTicks).toEqual(["items-behaviour-sword"]);
+    const folded = [...pick.querySelectorAll(".items-more-picks input")].map(
+      (i) => (i as HTMLElement).dataset.action,
+    );
+    expect(folded).toEqual(["items-behaviour-key"]);
+    // Ticking a folded one saves it.
+    t.act<HTMLInputElement>("items-behaviour-key").click();
+    t.act("items-save").click();
+    expect(savedData(t.sent).behaviours).toEqual(["key", "sword"]);
+  });
+
+  test("an offset typed as two numbers saves as one", () => {
+    const t = opened();
+    t.type("items-ground-offset-dy", "-8");
+    t.act("items-save").click();
+    expect(savedData(t.sent).ground).toEqual({
+      offset: { dx: 0, dy: -8 },
+    });
+  });
+
+  test("the Ctrl message is a line and a tick box, not JSON", () => {
+    const t = opened();
+    t.type("items-ground-ctrl", "It is too heavy.");
+    t.act<HTMLInputElement>("items-ground-ctrl-unpause").click();
+    t.act("items-save").click();
+    expect(savedData(t.sent).ground).toEqual({
+      ctrlText: { text: "It is too heavy.", unpause: true },
+    });
   });
 });

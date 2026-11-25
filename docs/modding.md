@@ -205,7 +205,7 @@ What still needs code: a new mechanic (an item that does something no table or [
 
 #### Example: Moonblade
 
-This illustrative example adds a sword `"Moonblade"` (`9 + random(6)` base power, Strength `15`, `LeftHand`, drawn when worn as a `Broad Sword`). On a running server, the Control Panel's [Items page](running-a-server.md#the-items-page) does all of this in one form: **New item** `Moonblade`, copying `Long Sword`, then change what differs and publish. In a pack it is two records:
+This illustrative example adds a sword `"Moonblade"` (`9 + random(6)` base power, Strength `15`, `LeftHand`, drawn when worn as a `Broad Sword`). On a running server, the Control Panel's [Items page](running-a-server.md#the-items-page) does all of this in one form: **+ New item** `Moonblade`, copying `Long Sword`, then change what differs (its damage is typed as a range, **10 to 15**) and publish. In a pack it is two records:
 
 1. **Catalogue (`items.json`, `items`):**
 
@@ -271,7 +271,7 @@ The [Moonblade](#example-moonblade) above is one. Its fields, and the tables eac
 - **Checks:** the schema's limits (Strength 0–200, attack `flat` −9999–9999 and `randomN` 0–9999, armour ±999, use effects ±99999), an item the catalogue has (a retired one too), skills that exist (trained, in a skill tier, needed, a skill platform's, a skill book's), one swing cooldown per slot, two-handed only in LeftHand and never on a bow (a bow shoots arrows held in the off hand, and some arrows must be wearable there), a tool use that does something (a use or a ladder; a tier only with a use) with a ladder that exists, one picture per paperdoll layer, Storage only with a `#id` for each copy (a copy held from before gets its id when first opened), Smith only on an item a repair recipe takes (unless the pack already gave it Smith), a book that teaches only when it is a book, a spell book only when a spell's book is it, a skill book's formulas checked as the table's are, and a new item's name never a map fixture's (`Wooden Door`, `Gold Chest`, or a door's other form). Removing an item takes its definition with it.
 - **Editing a pack's item:** an operator who edits an item gets a definition seeded from what it plays now (saved unchanged, it plays identically). From then on the item no longer follows the pack's rule changes; when a pack update changes what the pack's rules play for it, the Content page raises a notice for the definition, and taking the pack's version drops the definition. `seedDefinition` and `resolveIn` in `packages/shared/src/content/definitions.ts` give an item's current rules as a definition.
 
-Definitions are edited on the Control Panel's [Items page](running-a-server.md#the-items-page), which shows each rule group with where it comes from, or as JSON on the Content page (dataset `items`, part `definitions`); both refuse a save over a change they have not seen.
+Definitions are edited on the Control Panel's [Items page](running-a-server.md#the-items-page), which shows each rule group as a tab in plain words with where it comes from, or as JSON on the Content page (dataset `items`, part `definitions`); both refuse a save over a change they have not seen.
 
 ## Tiles (`tiles.json`)
 

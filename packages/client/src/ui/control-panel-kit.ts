@@ -341,7 +341,8 @@ export interface SectionTabs {
  * need no scrolling. The sections are `form`'s `.balance-row` elements (not one inside another),
  * however a page draws and redraws them: the strip follows the form as it changes, a section the
  * page hides has no tab, and the tab chosen stays chosen from one record to the next (the Attack
- * tab stays open as you move from sword to sword). The last tab shows every section.
+ * tab stays open as you move from sword to sword). The last tab shows every section. A section
+ * with `data-used="true"` marks its tab as holding settings.
  */
 export function sectionTabs(form: HTMLElement, id: string): SectionTabs {
   const strip = document.createElement("div");
@@ -382,6 +383,15 @@ export function sectionTabs(form: HTMLElement, id: string): SectionTabs {
       const on = b.dataset.tab === current;
       b.setAttribute("aria-selected", String(on));
       b.tabIndex = on ? 0 : -1;
+      // A section that says it holds settings (`data-used`) marks its tab, so the tabs show at a
+      // glance what the record has.
+      const used = sections.some((s) => tabLabel(s) === b.dataset.tab && s.dataset.used === "true");
+      b.classList.toggle("control-panel-tab-used", used);
+      if (used) {
+        b.title = "Has settings";
+      } else {
+        b.removeAttribute("title");
+      }
     }
   };
 
@@ -451,7 +461,7 @@ export function sectionTabs(form: HTMLElement, id: string): SectionTabs {
     childList: true,
     subtree: true,
     attributes: true,
-    attributeFilter: ["hidden"],
+    attributeFilter: ["hidden", "data-used"],
   });
   sync();
 
