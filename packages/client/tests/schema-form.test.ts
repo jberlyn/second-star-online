@@ -139,6 +139,8 @@ test("plain words: keys, entry titles, blanks and shapes", () => {
   expect(humanize("npcSpawn")).toBe("NPC spawn");
   expect(entryTitle({ name: "Firebolt", sp: 3 }, 0)).toBe("Firebolt");
   expect(entryTitle({ sp: 3 }, 4)).toBe("Entry 5");
+  expect(entryTitle({ roll: 1, npc: "Water God" }, 0)).toBe("Water God");
+  expect(entryTitle({ roll: 1, wants: "scroll" }, 0)).toBe("scroll");
   expect(blank({ type: "integer", minimum: 5 })).toBe(5);
   expect(
     blank({

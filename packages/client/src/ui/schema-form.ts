@@ -288,6 +288,7 @@ export function entryTitle(v: unknown, at: number): string {
       "skill",
       "item",
       "monster",
+      "npc",
       "deed",
       "house",
       "file",
@@ -306,6 +307,15 @@ export function entryTitle(v: unknown, at: number): string {
       if (typeof x === "number") {
         return `${humanize(k)} ${x}`;
       }
+    }
+  }
+  if (v !== null && typeof v === "object" && !Array.isArray(v)) {
+    // No field that names it: its first words.
+    const first = Object.values(v as Record<string, unknown>).find(
+      (x) => typeof x === "string" && x.trim() !== "",
+    ) as string | undefined;
+    if (first) {
+      return first.length > 48 ? `${first.slice(0, 45)}…` : first;
     }
   }
   if (typeof v === "string" && v.trim() !== "") {

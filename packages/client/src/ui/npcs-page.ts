@@ -860,12 +860,15 @@ export function createNpcsPage(actions: NpcsPageActions): NpcsPage {
     }
     if (mode === "forms") {
       const m = modelOf(npcText(base, work));
-      drawSections(
-        m.mixed,
-        m.lines
-          .filter((l) => l.kind === null && l.text !== "")
-          .map((l) => ({ line: l.line, text: l.text })),
-      );
+      const kept = m.lines
+        .filter((l) => l.kind === null && l.text !== "")
+        .map((l) => ({ line: l.line, text: l.text }));
+      drawSections(m.mixed, kept);
+      // The file as text is only offered when the form can't show all of it: the form covers
+      // everything an NPC file does in play.
+      modeBox.hidden = m.mixed.length === 0 && kept.length === 0;
+    } else {
+      modeBox.hidden = false;
     }
   };
 

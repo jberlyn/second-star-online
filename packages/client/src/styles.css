@@ -1687,7 +1687,7 @@ body {
     min-height: 0;
     overflow-y: auto;
   }
-  .content-area-tab.content-area-fill {
+  .content-area-tab.content-area-fill:not(.control-panel-tab-hidden) {
     display: flex;
     flex-direction: column;
     height: 100%;

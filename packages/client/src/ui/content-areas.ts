@@ -13,6 +13,8 @@
  *
  * `HOMES` maps each part to its page, so a change listed on the Content page opens there.
  */
+import { content, hasContent } from "@secondstaronline/shared";
+
 import type { AreaPart, AreaTab, RecordPanelLike } from "./content-area-page.ts";
 
 const p = (
@@ -171,19 +173,31 @@ export const SPELL_TABS = (amounts: AreaTab, effect?: () => RecordPanelLike | nu
   },
 ];
 
+/** A class's name by its number, as players see it ("4 · Knight"). */
+function className(code: string): string {
+  if (!hasContent()) {
+    return code;
+  }
+  const k = content().classes.classes.find((c) => String(c.code) === code);
+  return k?.name ? `${k.name} (${code})` : code;
+}
+
 /** The Skills & Classes page's tabs after its skill list. */
 export const CLASS_TABS: AreaTab[] = [
   {
     kind: "records",
     label: "Classes",
     help: "The classes characters belong to and are promoted to.",
-    part: p("classes", "classes", "Classes", "", { noun: "class" }),
+    part: p("classes", "classes", "Classes", "", { noun: "class", labelOf: className }),
   },
   {
     kind: "records",
     label: "Starting classes",
     help: "The classes a new character can pick.",
-    part: p("classes", "startClasses", "Starting classes", "", { noun: "starting class" }),
+    part: p("classes", "startClasses", "Starting classes", "", {
+      noun: "starting class",
+      labelOf: className,
+    }),
   },
   {
     kind: "settings",

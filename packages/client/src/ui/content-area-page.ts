@@ -44,6 +44,8 @@ export interface AreaPart {
   noun?: string;
   /** Entries may not be added or removed here (another page does it, or the engine fixes them). */
   fixed?: boolean;
+  /** How an entry is listed, from its key (a class's name by its number); its key when left out. */
+  labelOf?: (key: string) => string;
   /** A picture panel shown above an entry's form (a spell's cast effect), saving on its own. */
   panel?: () => RecordPanelLike | null;
 }
@@ -579,8 +581,9 @@ function recordsView(id: string, deps: AreaPageDeps, part: AreaPart): Records {
 
   const draw = () => {
     const words = search.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    const label = (key: string | null) => (key === null ? "" : (part.labelOf?.(key) ?? key));
     const rows = (listing?.rows ?? []).filter((r) =>
-      words.every((w) => (r.key ?? "").toLowerCase().includes(w)),
+      words.every((w) => `${r.key ?? ""} ${label(r.key)}`.toLowerCase().includes(w)),
     );
     count.textContent = `${rows.length} of ${listing?.rows.length ?? 0}`;
     list.replaceChildren(
@@ -589,7 +592,7 @@ function recordsView(id: string, deps: AreaPageDeps, part: AreaPart): Records {
         const b = action(document.createElement("button"), `${id}-open`);
         b.type = "button";
         b.className = "items-list-item";
-        b.textContent = r.key ?? "";
+        b.textContent = label(r.key);
         b.setAttribute("aria-current", String(r.key === openKey));
         const meta = rowTags({ status: r.status, draft: r.draft ? { op: r.draft } : null })
           .filter((t) => t.text !== "Original")
@@ -656,7 +659,7 @@ function recordsView(id: string, deps: AreaPageDeps, part: AreaPart): Records {
         if (openKey !== key) {
           return;
         }
-        title.textContent = row.key ?? part.title;
+        title.textContent = row.key === null ? part.title : (part.labelOf?.(row.key) ?? row.key);
         copy.hidden = part.fixed === true || row.keyField === null;
         formBox.hidden = false;
         empty.hidden = true;

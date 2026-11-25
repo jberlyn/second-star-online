@@ -194,6 +194,20 @@ describe("the NPCs page", () => {
     expect(t.q<HTMLSelectElement>("#npcs-mode").value).toBe("text");
   });
 
+  test("the file as text is only offered when the form can't show all of it", () => {
+    const t = page();
+    const viewBox = () => t.q<HTMLElement>(".npcs-mode");
+    // Every line is one the form shows: no text view, nothing programmer-shaped.
+    t.open(amber({ text: "BIO|Name: Amber\rSEL|Apple:10:5" }));
+    expect(viewBox().hidden).toBe(true);
+    // A line the form doesn't show (OWN|) is kept, and the text view is there to change it.
+    t.open(amber());
+    expect(viewBox().hidden).toBe(false);
+    // A file read two ways opens as text, with the view offered.
+    t.open(amber({ text: "BIO|I sell INV|x:1" }));
+    expect(viewBox().hidden).toBe(false);
+  });
+
   test("the shared helpers: the text a save sends, and the server's check", () => {
     expect(npcText("BIO|x", { ...emptyish(), bio: ["y"] })).toBe("BIO|y");
     expect(npcCheck("SEL|Apple:1:1").error).toBeNull();
