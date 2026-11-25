@@ -153,7 +153,14 @@ describe("Server-side roles, admin commands and editors", () => {
     game.intent(al, { t: "editClose" });
 
     game.intent(al, { t: "npcEditOpen" });
-    game.intent(al, { t: "npcSave", name: "Amber", text: "BIO|Name: Amber\nGLD|5\n" });
+    game.intent(al, { t: "npcLoad", name: "Amber" });
+    const loaded = sent.findLast((o) => o.msg.t === "npcScript")?.msg as { revision: string };
+    game.intent(al, {
+      t: "npcSave",
+      name: "Amber",
+      text: "BIO|Name: Amber\nGLD|5\n",
+      expect: loaded.revision,
+    });
     expect(sent.at(-1)?.msg).toEqual({ t: "alert", text: "NPC has been successfully saved." });
 
     expect(

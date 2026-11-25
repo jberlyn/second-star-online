@@ -257,6 +257,8 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
   let permissions: ReadonlySet<string> = new Set();
   let editor: WorldEditor | null = null;
   let npcEditor: NpcEditor | null = null;
+  /** The NPC file the editor last loaded or saved, and its revision (SAVE names it). */
+  let npcRevision: { name: string; revision: string } | null = null;
   /** Which editor, or the Control Panel, is up; each opens from the others. */
   let editing: "world" | "npc" | "controlPanel" | null = null;
 
@@ -1499,7 +1501,16 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         if (!npcEditor) {
           npcEditor = createNpcEditor(assets, {
             load: (name) => send({ t: "npcLoad", name }),
-            save: (name, text) => send({ t: "npcSave", name, text }),
+            // SAVE names the revision LOAD (or the last SAVE) showed for that file.
+            save: (name, text) =>
+              send({
+                t: "npcSave",
+                name,
+                text,
+                ...(npcRevision && npcRevision.name.toLowerCase() === name.toLowerCase()
+                  ? { expect: npcRevision.revision }
+                  : {}),
+              }),
           });
         }
         if (editing !== "npc") {
@@ -1512,7 +1523,11 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         }
         return;
       case "npcScript":
+        npcRevision = { name: msg.name, revision: msg.revision };
         npcEditor?.showScript(msg.text);
+        return;
+      case "npcRevision":
+        npcRevision = { name: msg.name, revision: msg.revision };
         return;
       case "npcClosed":
         // An NPC editor save changed this NPC: its windows close, so the edit applies at once.

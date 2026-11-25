@@ -72,11 +72,13 @@ import {
   planWorn,
   removedTileCodes,
   resolveIn,
+  resolveMonster,
   resolveNpcItemNames,
   ruleMatches,
   SERVER_ONLY_DATASETS,
   type SoundChange,
   seedDefinition,
+  seedMonsterDefinition,
   soundUses,
   TILE_MAPS_SHOWN,
   TILES_PER_SHEET,
@@ -277,6 +279,9 @@ const KIND_TABLES = [
   "itemRules use.effects",
 ] as const;
 const isDefinitionRow = (r: RowRef): boolean => r.dataset === "items" && r.part === "definitions";
+/** A monster definition's row (issue #31). */
+const isMonsterDefinitionRow = (r: RowRef): boolean =>
+  r.dataset === "monsters" && r.part === "definitions";
 
 /** Where an item or a monster is used, for its removal (issue #28). */
 export interface ContentUsage {
@@ -1295,6 +1300,20 @@ export class ContentService {
     if (op === "set" && ref.dataset === "quests" && ref.part === "pools") {
       data = resolvePoolItems(data, this.draftContent().items.items);
     }
+    // A file the NPC Editor or the Monsters page saved plays instead of its content row, so a
+    // change to the row would publish and never play (issue #31): it is refused, naming where the
+    // file is changed instead.
+    if (
+      (op === "set" || op === "revert") &&
+      ref.dataset === "npcFiles" &&
+      ref.part === "files" &&
+      ref.key !== null &&
+      this.npcSaves().some((f) => f.npc.toLowerCase() === (ref.key as string).toLowerCase())
+    ) {
+      return fail(
+        `${ref.key}'s NPC file has a live save (from the NPC Editor or the Monsters page), which plays instead of this row: change it there.`,
+      );
+    }
     // An NPC file gets the NPC Editor's handling: display names become keys, then its checks.
     if (op === "set" && ref.dataset === "npcFiles" && ref.part === "files") {
       const row = data as { name?: unknown; text?: unknown } | null;
@@ -1361,6 +1380,17 @@ export class ContentService {
         (waiting?.action as { copies?: string } | undefined)?.copies === "retire";
       if (op !== "remove" && !keepsRetire) {
         this.dropAction(row);
+      }
+      // A species' definition is its record's (issue #31): removing the species from any path
+      // removes the definition too (a definition only the draft holds is discarded).
+      if (op === "remove" && ref.dataset === "monsters" && ref.part === "monsters" && key) {
+        const defRef: RowRef = { dataset: "monsters", part: "definitions", key };
+        const pending = this.draft().find((d) => sameRow(d, defRef));
+        if (rowValue(this.published, defRef) !== undefined) {
+          upsertDraftRow(this.db, { ...row, ...defRef, op: "remove", data: null });
+        } else if (pending) {
+          deleteDraftRow(this.db, "monsters", "definitions", pending.key as string);
+        }
       }
     })();
     return { ok: true, value: undefined };
@@ -2430,6 +2460,45 @@ export class ContentService {
       const item = this.draftItem(d, ref.key);
       return this.itemFingerprintOf(item?.name ?? ref.key, draft);
     }
+    if (
+      ref.dataset === "monsters" &&
+      (ref.part === "definitions" || ref.part === "monsters") &&
+      ref.key !== null
+    ) {
+      // A monster's definition and its species record share one revision (issue #31): what the
+      // monster plays now, its definition and record, and what the draft holds for them.
+      const draft = this.draft();
+      const d = this.draftContent(draft);
+      const known =
+        rowValue(d, ref) !== undefined ||
+        draft.some((r) => sameRow(r, ref)) ||
+        contentRows(this.db).some((r) => sameRow(r, ref));
+      if (!known) {
+        return null;
+      }
+      const name =
+        (ref.part === "monsters"
+          ? d.monsters.monsters.find((m) => lingoEq(m.name, ref.key as string))?.name
+          : (d.monsters.definitions ?? []).find((m) => lingoEq(m.name, ref.key as string))?.name) ??
+        ref.key;
+      const defRef: RowRef = { dataset: "monsters", part: "definitions", key: name };
+      const recRef: RowRef = { dataset: "monsters", part: "monsters", key: name };
+      const definition = rowValue(d, defRef);
+      const compiled = this.compiledDraft(draft);
+      return rowHash({
+        plays:
+          definition === undefined
+            ? seedMonsterDefinition(name, resolveMonster(name, compiled), compiled.monsters)
+            : null,
+        definition: definition ?? null,
+        record: rowValue(d, recRef) ?? null,
+        pending: [
+          draft.find((r) => sameRow(r, defRef))?.op ?? null,
+          draft.find((r) => sameRow(r, recRef))?.op ?? null,
+        ],
+        edited: contentRows(this.db).some((r) => sameRow(r, defRef)),
+      });
+    }
     return null;
   }
 
@@ -2945,10 +3014,13 @@ export class ContentService {
   private readonly compileInputs = new Map<string, unknown>();
   private shareCompileInputs(data: ContentData): void {
     const d = data as unknown as Record<string, unknown>;
-    for (const id of ["items", "itemRules", "attPower", "classes", "craft"] as const) {
-      if (!(data.items.definitions?.length ?? 0)) {
-        return;
-      }
+    const items = (data.items.definitions?.length ?? 0) > 0;
+    const monsters = (data.monsters.definitions?.length ?? 0) > 0;
+    const ids = [
+      ...(items ? (["items", "itemRules", "attPower", "classes", "craft"] as const) : []),
+      ...(monsters ? (["monsters"] as const) : []),
+    ];
+    for (const id of ids) {
       const key = `${id}\u0000${rowHash(d[id])}`;
       const known = this.compileInputs.get(key);
       if (known !== undefined) {
@@ -3034,6 +3106,25 @@ export class ContentService {
     // The world cleanups waiting with it are part of the draft too.
     for (const a of draftActions(this.db)) {
       h.update(`${a.kind}\u0000${a.key}\u0000${a.updatedAt}\u0000${rowHash(a.action)}\n`);
+    }
+    // So do the live NPC file saves the publish's cleanup would change or delete (issue #31): one
+    // saved since (the Monsters page, the NPC Editor) changes the revision, so a publish never acts
+    // on a file newer than the one its author reviewed.
+    // And the live saves of the NPC files the draft changes as rows.
+    const rows = new Set(
+      draft
+        .filter((d) => d.dataset === "npcFiles" && d.part === "files" && d.key !== null)
+        .map((d) => (d.key as string).toLowerCase()),
+    );
+    for (const f of this.npcSaves()) {
+      if (rows.has(f.npc.toLowerCase())) {
+        h.update(`npcrow\u0000${f.npc.toLowerCase()}\u0000${rowHash(f.text)}\n`);
+      }
+    }
+    for (const f of this.npcSavesAfter(this.liveActions(draft))) {
+      if (f.text !== f.was) {
+        h.update(`npc\u0000${f.npc.toLowerCase()}\u0000${rowHash(f.was)}\n`);
+      }
     }
     return h.digest("hex").slice(0, 16);
   }
@@ -3748,6 +3839,11 @@ export class ContentService {
       };
     } else {
       own.push({ ref, op: "remove", data: null });
+      // A monster that goes takes its definition with it (issue #31).
+      const defRef: RowRef = { dataset: "monsters", part: "definitions", key };
+      if (rowValue(base, defRef) !== undefined) {
+        own.push({ ref: defRef, op: "remove", data: null });
+      }
       if (ownFile.length > 0 && rowValue(base, npcFileRef(key)) !== undefined) {
         own.push({ ref: npcFileRef(key), op: "remove", data: null });
       }
@@ -3990,6 +4086,38 @@ export class ContentService {
   }
 
   /** Whether an installed pack's catalogue has the item. */
+  /** Whether a pack has this monster: a species, an editor list entry or an NPC file. */
+  private isPackMonster(name: string): boolean {
+    const k = name.toLowerCase();
+    const m = this.packData.monsters;
+    return (
+      m.monsters.some((x) => x.name.toLowerCase() === k) ||
+      Object.values(m.editorLists).some((e) =>
+        [...e.monsters, ...e.npcs].some((x) => x.toLowerCase() === k),
+      ) ||
+      this.packData.npcFiles.files.some((f) => f.name.toLowerCase() === k)
+    );
+  }
+
+  /** The pack the monster tables come from (issue #31), as `definitionTablesOwner` for items. */
+  private monsterTablesOwner(): { name: string; version: string } {
+    const owners = new Map<string, { name: string; version: string }>();
+    for (const part of ["rules", "casting", "meleeAffinities", "skillCaps", "editorLists"]) {
+      const o = this.owners.get(rowLabel({ dataset: "monsters", part, key: null }).toLowerCase());
+      if (o) {
+        owners.set(`${o.name}\u0000${o.version}`, o);
+      }
+    }
+    const list = [...owners.values()];
+    if (list.length === 1) {
+      return list[0] as { name: string; version: string };
+    }
+    if (list.length === 0 && this.packs.length === 1) {
+      return this.packs[0] as { name: string; version: string };
+    }
+    return { name: "the installed packs", version: "" };
+  }
+
   private isPackItem(name: string): boolean {
     const k = name.toLowerCase();
     return this.packData.items.items.some((i) => i.name.toLowerCase() === k);
@@ -4037,14 +4165,27 @@ export class ContentService {
       if (nowHash === r.baseHash) {
         continue;
       }
-      const defined = isDefinitionRow(r) && rowValue(this.packData, r) === undefined;
-      if (defined && (r.key === null || !this.isPackItem(r.key))) {
-        // The operator's own item: its definition follows no pack.
+      const monster = isMonsterDefinitionRow(r);
+      const defined = (isDefinitionRow(r) || monster) && rowValue(this.packData, r) === undefined;
+      if (
+        defined &&
+        r.baseHash === null &&
+        (r.key === null || !(monster ? this.isPackMonster(r.key) : this.isPackItem(r.key)))
+      ) {
+        // The operator's own item or monster: its definition followed no pack when it was made, and
+        // follows none now. One that had a pack base (a pack item or monster the pack has since
+        // dropped) still gets its notice.
         continue;
       }
-      // A definition no pack supplies is compared against the rules the item plays from the
-      // packs' tables: name the pack those tables come from, or the installed packs when several do.
-      const from = defined ? this.definitionTablesOwner() : owner;
+      // A definition no pack supplies is compared against the rules the item (or monster) plays
+      // from the packs' tables: name the pack those tables come from, or the installed packs when
+      // several do.
+      const from = defined
+        ? monster
+          ? this.monsterTablesOwner()
+          : this.definitionTablesOwner()
+        : owner;
+      const thing = monster ? "monster" : "item";
       const who = from.version === "" ? from.name : `${from.name} v${from.version}`;
       out.push({
         dataset: r.dataset,
@@ -4060,8 +4201,8 @@ export class ContentService {
           ? {
               note:
                 r.op === "set"
-                  ? `${who} changed its rules for ${r.key}. Your definition still plays: a defined item no longer follows the packs' rule changes. "Was" and "now" are what the packs' rules play for it; taking the packs' version drops your definition, so the item plays their rules again.`
-                  : `${who} changed its rules for ${r.key}. You removed your definition, so the item already plays the packs' rules, "now" included; taking the packs' version or keeping yours both leave it so.`,
+                  ? `${who} changed its rules for ${r.key}. Your definition still plays: a defined ${thing} no longer follows the packs' rule changes. "Was" and "now" are what the packs' rules play for it; taking the packs' version drops your definition, so the ${thing} plays their rules again.`
+                  : `${who} changed its rules for ${r.key}. You removed your definition, so the ${thing} already plays the packs' rules, "now" included; taking the packs' version or keeping yours both leave it so.`,
             }
           : {}),
       });
@@ -4129,6 +4270,18 @@ export class ContentService {
 
   private packRowValue(ref: RowRef): unknown {
     const v = rowValue(this.packData, ref);
+    if (v === undefined && isMonsterDefinitionRow(ref) && ref.key !== null) {
+      // A monster definition no pack has (issue #31): what the packs' monster tables play for it,
+      // as a definition; none for the operator's own monster.
+      if (!this.isPackMonster(ref.key)) {
+        return undefined;
+      }
+      if (this.packCompiled?.from !== this.packData) {
+        this.packCompiled = { from: this.packData, data: compileDefinitions(this.packData) };
+      }
+      const d = this.packCompiled.data;
+      return seedMonsterDefinition(ref.key, resolveMonster(ref.key, d), d.monsters);
+    }
     if (v !== undefined || !isDefinitionRow(ref) || ref.key === null) {
       return v;
     }

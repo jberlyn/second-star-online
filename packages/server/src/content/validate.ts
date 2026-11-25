@@ -23,6 +23,7 @@ import {
   lingoEq,
   npcLootItemOk,
   npcShopItemOk,
+  resolveMonster,
   ruleMatches,
 } from "@secondstaronline/shared";
 
@@ -41,7 +42,18 @@ export function schemaProblems(data: ContentData): ContentProblem[] {
     const parsed = DATASET_SCHEMAS[id].safeParse(data[id]);
     if (!parsed.success) {
       for (const issue of parsed.error.issues.slice(0, 20)) {
-        out.push({ where: [id, ...issue.path.map(String)].join("/"), message: issue.message });
+        const path = issue.path.map(String);
+        // A definition is named by its key, not its place in the list, so the refusal names the
+        // item or monster and the field (`monsters/definitions/Slime/skillCap`).
+        if (path[0] === "definitions" && /^\d+$/.test(path[1] ?? "")) {
+          const entry = (data[id] as { definitions?: { name?: unknown }[] }).definitions?.[
+            Number(path[1])
+          ];
+          if (typeof entry?.name === "string") {
+            path[1] = entry.name;
+          }
+        }
+        out.push({ where: [id, ...path].join("/"), message: issue.message });
       }
     }
   }
@@ -153,6 +165,7 @@ export function keyProblems(
         message: `a key may not be a map fixture's name: ${i.name} is one (or a door's other form)`,
       })),
     ...nameProblems("monsters/monsters", data.monsters.monsters, packKeys.monsters),
+    ...newMonsterKeyProblems(data, packKeys.monsters),
     ...data.npcFiles.files
       .filter((f) => !packKeys.npcFiles.has(f.name.toLowerCase()))
       .flatMap((f) => {
@@ -160,6 +173,83 @@ export function keyProblems(
         return bad ? [{ where: `npcFiles/files/${f.name}`, message: bad }] : [];
       }),
   ];
+}
+
+/**
+ * A new species' key (issue #31) must not be taken for something else the game names: an item (its
+ * key or display name), an engine or map fixture, an NPC on an editor's NPC list, or a faction.
+ */
+function newMonsterKeyProblems(
+  data: ContentData,
+  packMonsters: ReadonlySet<string>,
+): ContentProblem[] {
+  const items = new Set(
+    data.items.items.flatMap((i) => [i.name, i.display ?? i.name]).map((n) => n.toLowerCase()),
+  );
+  const npcs = new Set(
+    [
+      ...data.monsters.editorLists.worldEditor.npcs,
+      ...data.monsters.editorLists.npcEditor.npcs,
+    ].map((n) => n.toLowerCase()),
+  );
+  const factions = new Set(data.social.factions.map((f) => f.key.toLowerCase()));
+  const out: ContentProblem[] = [];
+  for (const m of data.monsters.monsters) {
+    const k = m.name.toLowerCase();
+    if (packMonsters.has(k)) {
+      continue;
+    }
+    const why = items.has(k)
+      ? "an item's name"
+      : isEngineFixture(m.name) || isFixtureName(data, m.name)
+        ? "a fixture's name (a door, a sign, an exit…)"
+        : npcs.has(k)
+          ? "an NPC's name (on an editor's NPC list)"
+          : factions.has(k)
+            ? "a faction's name"
+            : null;
+    if (why) {
+      out.push({
+        where: `monsters/monsters/${m.name}`,
+        message: `a new monster's key may not be ${why}: ${m.name} is one`,
+      });
+    }
+  }
+  return out;
+}
+
+/**
+ * The monster rules a schema cannot see alone (issue #31, decision 10): a trap holds its victim
+ * where it stands, so it must be immobile, and it is one tile on land (no 3×2 footprint, no sea).
+ * Checked against what the monster plays (its record and its compiled rules).
+ */
+export function monsterProblems(data: ContentData): ContentProblem[] {
+  const out: ContentProblem[] = [];
+  const traps = data.monsters.monsters.filter((m) => m.flags?.trap === true);
+  if (traps.length === 0) {
+    return out;
+  }
+  const compiled = compileDefinitions(data);
+  for (const m of traps) {
+    const at = `monsters/monsters/${m.name}`;
+    if (m.flags?.immobile !== true) {
+      out.push({ where: `${at}/flags/trap`, message: "a trap must be immobile too" });
+    }
+    const hits = new Map(resolveMonster(m.name, compiled).map((h) => [h.key, h]));
+    const defined = (data.monsters.definitions ?? []).some((d) => lingoEq(d.name, m.name));
+    for (const [field, label] of [
+      ["sea", "a sea creature"],
+      ["footprint", "3×2 wide"],
+    ] as const) {
+      if ((hits.get(`monsters rules.${field}`)?.deciding.length ?? 0) > 0) {
+        out.push({
+          where: defined ? `monsters/definitions/${m.name}/${field}` : `${at}/flags/trap`,
+          message: `a trap cannot be ${label}`,
+        });
+      }
+    }
+  }
+  return out;
 }
 
 /**
@@ -295,6 +385,11 @@ export type ReferenceKind =
    * copies still play by it). The definition goes with the item when it is removed.
    */
   | "definedItem"
+  /**
+   * The monster a monster definition is for (issue #31): a species, a name on an editor list, or an
+   * NPC file's. The definition goes with the species when it is removed.
+   */
+  | "definedMonster"
   | "skill"
   | "shopItem"
   | "lootItem";
@@ -596,6 +691,15 @@ export function referencesOf(data: ContentData): Reference[] {
       });
     });
   }
+  // A monster definition is the monster's: its row goes with it, and its weapon families must
+  // match some item (issue #31).
+  for (const d of data.monsters.definitions ?? []) {
+    const row: RowRef = { dataset: "monsters", part: "definitions", key: d.name };
+    add(row, ["name"], "definedMonster", d.name, []);
+    d.affinities?.forEach((a, j) => {
+      add(row, ["affinities", j, "weapon"], "itemPattern", a.weapon, ["affinities", j]);
+    });
+  }
   // A deed is an item: its row goes with it.
   for (const d of data.houses.deeds) {
     add({ dataset: "houses", part: "deeds", key: d.deed }, ["deed"], "item", d.deed, []);
@@ -814,10 +918,19 @@ export function unresolved(data: ContentData): (r: Reference) => boolean {
         return !items.has(n);
       case "definedItem":
         return !data.items.items.some((i) => i.name.toLowerCase() === n);
+      case "definedMonster":
+        return !(
+          monsters.has(n) ||
+          Object.values(data.monsters.editorLists).some((e) =>
+            [...e.monsters, ...e.npcs].some((x) => x.toLowerCase() === n),
+          ) ||
+          data.npcFiles.files.some((f) => f.name.toLowerCase() === n)
+        );
       case "itemOrFixture":
         return !items.has(n) && !fixtures.has(n);
       case "itemPattern":
-        return !live.items.items.some((i) => lingoContains(i.name, r.name));
+        // An empty pattern is contained in every name: it names no item, it matches them all.
+        return r.name.trim() === "" || !live.items.items.some((i) => lingoContains(i.name, r.name));
       case "monster":
         return !monsters.has(n);
       case "skill":
@@ -859,7 +972,9 @@ export function referenceProblems(next: ContentData, published: ContentData): Co
  * (`items/definitions/Sword/requires/0/needs`), so the Items page names the field it is in.
  */
 function referenceWhere(r: Reference): string {
-  return r.row.dataset === "items" && r.row.part === "definitions" && r.path.length > 0
+  return (r.row.dataset === "items" || r.row.dataset === "monsters") &&
+    r.row.part === "definitions" &&
+    r.path.length > 0
     ? `${r.where}/${r.path.join("/")}`
     : r.where;
 }
@@ -890,6 +1005,8 @@ export function referenceMessage(r: Reference): string {
       return `matches no item (or only retired ones): ${name}`;
     case "definedItem":
       return `is the definition of an item that does not exist: ${name}`;
+    case "definedMonster":
+      return `is the definition of a monster that does not exist (no species, editor list entry or NPC file): ${name}`;
     default:
       return `names an item that does not exist (or is retired): ${name}`;
   }
@@ -1090,6 +1207,7 @@ export function checkStore(
   return [
     ...keyProblems(next, packKeys),
     ...definitionProblems(next),
+    ...monsterProblems(next),
     ...skillProblems(next, published),
     ...progressionProblems(next),
     ...referenceProblems(withNpcSaves(next, npcSaves), withNpcSaves(published, npcSaves)),

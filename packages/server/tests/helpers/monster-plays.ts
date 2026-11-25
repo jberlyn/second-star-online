@@ -131,7 +131,7 @@ export function plays(name: string) {
   return {
     rules: rules(name),
     damage: damage(name, defenseOf(name)),
-    skillCap: INTELLIGENCE.map((i) => monsterSkillCap(sp?.body ?? 0, i)),
+    skillCap: INTELLIGENCE.map((i) => monsterSkillCap(sp?.body ?? 0, i, name)),
     killXp: [meleeKillXp(xp, name, NO_EQUIPMENT), meleeKillXp(xp, name, ring)],
   };
 }

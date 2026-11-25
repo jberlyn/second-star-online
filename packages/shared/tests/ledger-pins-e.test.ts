@@ -221,6 +221,16 @@ describe("Only server systems create items", () => {
       // and undone like any other row.
       contentItems: ["name:string"],
       contentItemSet: ["name:string", "display:string", "copyFrom:string", "expect:string"],
+      // A monster's NPC file sections (issue #31): the server checks each loot item and spell tag,
+      // and writes the file through the NPC Editor's own check.
+      contentNpcFile: ["name:string"],
+      contentNpcFileSet: [
+        "name:string",
+        "expect:string",
+        "sections.loot[].item:string",
+        "sections.spells[]:string",
+        "sections.flags[]:string",
+      ],
       characterSearch: ["query:string"],
       characterOpen: ["name:string"],
       characterModerate: ["name:string", "duration:string", "reason:string"],
@@ -269,7 +279,8 @@ describe("Only server systems create items", () => {
         "map.items[].name:string",
       ],
       npcLoad: ["name:string"],
-      npcSave: ["name:string", "text:string"],
+      // The revision LOAD showed (SSO): 16 hex digits, matched against the file as it stands.
+      npcSave: ["name:string", "text:string", "expect:string"],
       roleSave: ["role.id:string", "role.name:string", "role.permissions[]:string"],
       roleDelete: ["id:string"],
       roleAssign: ["name:string", "role:string"],
@@ -332,11 +343,15 @@ describe("File editor and path-based file access removed", () => {
     // through the server's own checks, never by writing a file. The Content page's overview
     // (contentEditor) reads the content store's draft and history, not a file. Its upload ticket
     // (issue #29) carries nothing: an upload is stored under the hash of its bytes, never a path.
+    // The Monsters page's NPC file sections (issue #31) name an NPC file by monster name, never a
+    // path, and write it through the NPC Editor's checks.
     expect(types.filter((t) => /file|transfer|char|view|load/i.test(t))).toEqual([
       "editLoad",
       "npcLoad",
       "contentOverview",
       "contentUploadTicket",
+      "contentNpcFile",
+      "contentNpcFileSet",
       "characterSearch",
       "characterOpen",
       "characterModerate",

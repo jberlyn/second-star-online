@@ -180,8 +180,26 @@ describe("the Admin menu's NPC Editor (menu 502)", () => {
     c.onMessage({ t: "npcEditor" });
     const field = root.querySelector(".npced-script") as HTMLTextAreaElement;
     expect(field).not.toBeNull();
-    c.onMessage({ t: "npcScript", name: "Cril", text: "GLD|10" });
+    c.onMessage({ t: "npcScript", name: "Cril", text: "GLD|10", revision: "0123456789abcdef" });
     expect(field.value).toBe("GLD|10");
+    // SAVE names the revision LOAD showed for that file, then the one the save answered with.
+    const npcs = root.querySelector('[aria-label="NPCs"]') as HTMLElement;
+    [...npcs.querySelectorAll<HTMLElement>(".npced-row")][4]?.click();
+    const save = root.querySelector('[aria-label="SAVE"]') as HTMLButtonElement;
+    save.click();
+    expect((c.sent as Record<string, unknown>[]).filter((m) => m.t === "npcSave").at(-1)).toEqual({
+      t: "npcSave",
+      name: "Cril",
+      text: "GLD|10",
+      expect: "0123456789abcdef",
+    });
+    c.onMessage({ t: "npcRevision", name: "Cril", revision: "fedcba9876543210" });
+    save.click();
+    expect(
+      (c.sent as Record<string, unknown>[]).filter((m) => m.t === "npcSave").at(-1),
+    ).toMatchObject({
+      expect: "fedcba9876543210",
+    });
     expect(root.querySelector(".menu-bar")?.isConnected).toBe(true);
     // Return To Game, then back: the same field, the same text (a cast member keeps it).
     menuClick(root, "Admin", "Return To Game");

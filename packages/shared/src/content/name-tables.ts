@@ -637,11 +637,23 @@ export function resolveMonster(name: string, data?: Partial<ContentData>): Table
   const sp = d.monsters.monsters.find((m) => m.name.toLowerCase() === lower);
   const body = String(sp?.body ?? 0);
   const rows: NameRow[] = [];
-  d.monsters.skillCaps.byBody.forEach((r, i) => {
-    if (r.body === body) {
-      rows.push({ match: "body", pattern: r.body, index: i + 1, raw: r as unknown as Obj });
+  // A monster definition's cap by species (issue #31; compiled `skillCaps.bySpecies`) stands in for
+  // the by-body rows: its own cap, or none (the default).
+  const bySpecies = (d.monsters.skillCaps as { bySpecies?: { name: string; skillCap: unknown }[] })
+    .bySpecies;
+  const own = bySpecies?.findIndex((s) => s.name.toLowerCase() === lower) ?? -1;
+  if (own >= 0) {
+    const r = bySpecies?.[own] as Obj;
+    if (typeof r.skillCap === "number") {
+      rows.push({ match: "species", pattern: name, index: own + 1, raw: r });
     }
-  });
+  } else {
+    d.monsters.skillCaps.byBody.forEach((r, i) => {
+      if (r.body === body) {
+        rows.push({ match: "body", pattern: r.body, index: i + 1, raw: r as unknown as Obj });
+      }
+    });
+  }
   if (rows.length > 0) {
     hits.push({
       key: SKILL_CAP_TABLE,

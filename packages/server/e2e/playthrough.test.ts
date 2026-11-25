@@ -189,8 +189,12 @@ describe("the playthrough", () => {
     king.send({ t: "npcEditOpen" });
     await king.waitFor((m) => m.t === "npcEditor");
     king.clear();
+    king.send({ t: "npcLoad", name: "Smithy" });
+    const smithy = await king.waitFor((m) => m.t === "npcScript");
+    king.clear();
     king.send({
       t: "npcSave",
+      expect: smithy.t === "npcScript" ? smithy.revision : "",
       name: "Smithy",
       text: ["BIO|Name: Smithy", "BIO|Class: Trainer", "TRN|Grunt:100"].join("\r"),
     });

@@ -529,7 +529,7 @@ function smash(
   p.vitalsDirty = true;
   // Skill gain, then the level check.
   const f = fighterOf(p);
-  for (const s of rollKillSkillGain(f, sp?.body ?? 0, ctx.rng, sp?.skillXp)) {
+  for (const s of rollKillSkillGain(f, sp?.body ?? 0, ctx.rng, sp?.skillXp, m.name)) {
     ev.lines.push(advancedText(s));
   }
   // One line for each level gained.

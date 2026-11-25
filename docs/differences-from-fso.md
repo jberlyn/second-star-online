@@ -30,17 +30,17 @@ An entry uses this shape; `Pinned by` is optional:
 | Section | Entries |
 |---|---:|
 | [Design changes](#design-changes) | 82 |
-| [Fixed bugs](#fixed-bugs) | 306 |
+| [Fixed bugs](#fixed-bugs) | 307 |
 | [Kept on purpose](#kept-on-purpose) | 12 |
 | [Server authority and exploits](#server-authority-and-exploits) | 138 |
 | [Not in SSO](#not-in-sso) | 40 |
-| **Total** | **578** |
+| **Total** | **579** |
 
 By system (the code folder that holds the change):
 
 | System | Bugs fixed | Server authority and exploits |
 |---|---:|---:|
-| admin | [14](#admin) | [25](#server-side-admin) |
+| admin | [15](#admin) | [25](#server-side-admin) |
 | casino | [16](#casino) | [3](#server-side-casino) |
 | chat | [12](#chat) | [7](#server-side-chat) |
 | combat | [28](#combat) | [7](#server-side-combat) |
@@ -884,6 +884,15 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Why:** Prevents silent data loss when inspecting and re-saving NPC scripts.
 - **In the code:** `packages/shared/src/rules/admin/npcfile.ts` (`showNpcScript`); `packages/server/src/systems/admin/npcedit.ts` (`loadNpc`)
 - **Pinned by:** `lossless display: preserves OWN|, all first characters, empty lines, and >100 lines` (packages/shared/tests/admin/npcfile.test.ts); `LOAD's reply displays lossless complete text including OWN|, empty lines, and >100 lines` (packages/client/tests/npceditor.test.ts); `SSO: a file over the save limit loads in full with a warning that SAVE will refuse it` (packages/server/tests/npcedit.test.ts)
+
+#### NPC editor SAVE never writes over a file it has not loaded
+- **Kind:** Bug fixed
+- **What you notice:** SAVE on an NPC whose file exists needs a LOAD of that file first, and is refused if the file changed since (another admin, the Control Panel's Monsters page or a content publish saved it): LOAD it again and redo the edit. Saving twice in a row after one LOAD works. A file that does not exist yet can still be made without a LOAD.
+- **1.6:** SAVE wrote the field's text over the file whatever it held, so an admin who had not loaded it, or loaded it before someone else's save, silently put back old lines.
+- **SSO:** LOAD's reply carries the file's revision (a hash of its text; shop sales do not change it), SAVE names it, and each save answers with the new one. The Monsters page's loot, spells and flags save the same way.
+- **Why:** Two editors now write NPC files (the NPC Editor and the Monsters page), so a save must never undo a change its author has not seen.
+- **In the code:** `packages/server/src/systems/admin/npcedit.ts` (`saveNpc`, `npcRevisionOf`); `packages/server/src/systems/admin/npcsections.ts` (`saveNpcSections`); `packages/client/src/app.ts` (`npcRevision`)
+- **Pinned by:** `a SAVE naming no revision makes a file that does not exist, but never replaces one` and `a SAVE from a LOAD older than the file is refused, either way round` (packages/server/tests/npcedit.test.ts); `a monster's NPC file sections need the Content page's permission and save as the NPC Editor does (issue #31)` (packages/server/tests/admin.test.ts)
 
 #### Unauthorized staff chat shows a refusal and clears input
 - **Kind:** Bug fixed

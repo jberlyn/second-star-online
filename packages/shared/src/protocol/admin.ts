@@ -106,6 +106,11 @@ export const npcSaveSchema = z.strictObject({
   t: z.literal("npcSave"),
   name: npcName,
   text: z.string().max(30_000),
+  /** The revision LOAD showed (`npcScript.revision`); a save naming another is refused. */
+  expect: z
+    .string()
+    .regex(/^[0-9a-f]{16}$/)
+    .optional(),
 });
 
 /**
@@ -398,7 +403,18 @@ export type AdminServerMsg =
    * LOAD's reply: the file as the server holds it, CR-separated; "" when there is
    * none. The client shows it through `showNpcScript`.
    */
-  | { t: "npcScript"; name: string; text: string }
+  | {
+      t: "npcScript";
+      name: string;
+      text: string;
+      /**
+       * The file's revision (SSO): SAVE names it, so a save over a file someone changed since LOAD
+       * (the Monsters page, a publish, another admin) is refused.
+       */
+      revision: string;
+    }
+  /** A SAVE went through: the file's new revision, for the next SAVE without a LOAD (SSO). */
+  | { t: "npcRevision"; name: string; revision: string }
   /** An NPC editor save changed this NPC's file: its Bio window and shop list close (SSO). */
   | { t: "npcClosed" }
   /**

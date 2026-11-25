@@ -598,13 +598,13 @@ describe("the Balance page on a running server", () => {
         }),
       ).toMatchObject({ ok: true });
       // Rows of other datasets name no revision, as before (an item's catalogue row does since
-      // #30: the Items page renames it).
+      // #30, and a monster's species row since #31: their editors fingerprint them).
       const items = contentIntent(server.content, ADMIN, {
         t: "contentRow",
         seq: 10,
-        dataset: "monsters",
-        part: "monsters",
-        key: "Slime",
+        dataset: "spells",
+        part: "spells",
+        key: "Firebolt",
       }) as { row: { revision?: string } };
       expect(items.row.revision).toBeUndefined();
     } finally {

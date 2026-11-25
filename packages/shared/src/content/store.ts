@@ -77,7 +77,7 @@ export type DatasetId = keyof ContentData;
  * The format of the store file the server sends clients (`/content/<hash>.json`). A client built
  * for another format reloads to get the matching client.
  */
-export const CONTENT_FORMAT = 8;
+export const CONTENT_FORMAT = 9;
 
 /** The datasets only the server reads. */
 export const SERVER_ONLY_DATASETS = [
@@ -145,8 +145,11 @@ export function setDefinitionCompiler(fn: (data: ContentData) => ContentData): v
  * tables. The data is not changed.
  */
 export function buildContentStore(raw: ContentData, hash = ""): ContentStore {
-  if (!compileItems && (raw.items.definitions?.length ?? 0) > 0) {
-    throw new Error("item definitions need content/definitions.ts loaded");
+  if (
+    !compileItems &&
+    ((raw.items.definitions?.length ?? 0) > 0 || (raw.monsters.definitions?.length ?? 0) > 0)
+  ) {
+    throw new Error("item and monster definitions need content/definitions.ts loaded");
   }
   const data = compileItems ? compileItems(raw) : raw;
   const items = new Map<string, Item>();

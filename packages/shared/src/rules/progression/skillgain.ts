@@ -5,7 +5,7 @@
  */
 import { content } from "../../content/store.ts";
 import { type Faction, type Fighter, findSkillIndex, SKILL_KEYS } from "../core/fighter.ts";
-import { lingoContains, type Rng } from "../core/lingo.ts";
+import { lingoContains, lingoEq, type Rng } from "../core/lingo.ts";
 import { excepted } from "../core/patterns.ts";
 import { weaponIs } from "../crafting/masterwork.ts";
 import { factionPerk } from "../social/factions.ts";
@@ -42,13 +42,23 @@ export function skillCaps(f: Fighter): { max: number; mage: number } {
   return { max: factionPerk(f.faction, "skillCap"), mage: mageSkillCap(f.faction) };
 }
 
-/** The skill cap by the killed monster's body, plus the Intelligence tiers. */
-export function monsterSkillCap(body: number, intelligence: number): number {
+/**
+ * The skill cap by the killed monster: a monster definition's cap by species (issue #31; compiled
+ * `skillCaps.bySpecies`, the default when it sets none), else by its body; plus the Intelligence
+ * tiers.
+ */
+export function monsterSkillCap(body: number, intelligence: number, species?: string): number {
   const caps = content().monsters.skillCaps;
   let cap = caps.default;
-  for (const row of caps.byBody) {
-    if (row.body === String(body)) {
-      cap = row.skillCap;
+  const bySpecies = (caps as { bySpecies?: { name: string; skillCap: number | null }[] }).bySpecies;
+  const own = species === undefined ? undefined : bySpecies?.find((s) => lingoEq(s.name, species));
+  if (own) {
+    cap = own.skillCap ?? caps.default;
+  } else {
+    for (const row of caps.byBody) {
+      if (row.body === String(body)) {
+        cap = row.skillCap;
+      }
     }
   }
   for (const t of caps.intelligenceTiers) {
@@ -74,8 +84,10 @@ export function rollKillSkillGain(
   rng: Rng,
   /** The killed species' own `skillXp`, for `xp` skills. */
   xp?: number,
+  /** The killed monster's name, for a definition's cap by species (issue #31). */
+  species?: string,
 ): string[] {
-  const monsterCap = monsterSkillCap(monsterBody, f.int);
+  const monsterCap = monsterSkillCap(monsterBody, f.int, species);
   const gained: string[] = [];
   const seen = new Set<number>();
   for (const name of weaponSkillList(f.equip.weapon)) {

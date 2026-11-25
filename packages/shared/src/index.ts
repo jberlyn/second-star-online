@@ -11,6 +11,7 @@ export * from "./content/balance.ts";
 export * from "./content/bodies.ts";
 export * from "./content/definitions.ts";
 export * from "./content/fx.ts";
+export * from "./content/monster-definitions.ts";
 export * from "./content/name-tables.ts";
 export * from "./content/picture.ts";
 export * from "./content/sounds.ts";

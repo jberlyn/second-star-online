@@ -456,6 +456,63 @@ export const contentItemSetSchema = z.strictObject({
     .optional(),
 });
 
+/**
+ * One field of an NPC file line: one line of printable text, so a save can never add a line of its
+ * own (a pasted line break), with none of the characters that split a line (`|`, `:`) or the file
+ * (`` ` ``, `*`, `^`).
+ */
+const npcFileField = (max: number) =>
+  // Not trimmed: a field the file holds with spaces must come back as it was, so an unchanged line
+  // keeps its text (the server refuses a blank one).
+  z
+    .string()
+    .min(1)
+    .max(max)
+    .refine(
+      (t) =>
+        ![...t].some((c) => c.charCodeAt(0) < 32 || c.charCodeAt(0) === 127 || "|:`*^".includes(c)),
+      { message: "one line, without | : ` * or ^" },
+    );
+
+/**
+ * Asks for a monster's NPC file sections (issue #31, stage 3): its drop lines, the monster spells
+ * it casts and its flags, as the Monsters page edits them.
+ */
+export const contentNpcFileSchema = z.strictObject({
+  t: z.literal("contentNpcFile"),
+  seq,
+  name: z.string().trim().min(1).max(80),
+});
+
+/**
+ * Saves a monster's NPC file sections (issue #31, stage 3). Like an NPC Editor save it applies at
+ * once, outside the draft; every other line of the file stays as it was. `expect` is the file's
+ * revision as the page last showed it (`ContentNpcFileView.revision`, null when it had no file), so
+ * a save over a file the NPC Editor or a publish changed since is refused.
+ */
+export const contentNpcFileSetSchema = z.strictObject({
+  t: z.literal("contentNpcFileSet"),
+  seq,
+  name: z.string().trim().min(1).max(80),
+  expect: z
+    .string()
+    .regex(/^[0-9a-f]{16}$/)
+    .nullable(),
+  sections: z.strictObject({
+    loot: z
+      .array(
+        z.strictObject({
+          item: npcFileField(80),
+          // Any chance a file may hold (the NPC Editor takes any whole number from 1).
+          oneIn: z.number().int().min(1).max(Number.MAX_SAFE_INTEGER),
+        }),
+      )
+      .max(100),
+    spells: z.array(npcFileField(40)).max(100),
+    flags: z.array(npcFileField(250)).max(100),
+  }),
+});
+
 /** Asks for the sound panels' view (issue #29, stage 7). */
 export const contentSoundArtSchema = z.strictObject({ t: z.literal("contentSoundArt"), seq });
 
@@ -881,6 +938,26 @@ export interface ContentItemView {
 }
 
 /** The Items page's view: the list, and the open item. */
+/** A monster's NPC file as the Monsters page edits it (issue #31, stage 3). */
+export interface ContentNpcFileView {
+  /** The file's name (the store's spelling), or the monster's when it has no file yet. */
+  name: string;
+  /** Whether it has a file (an empty one counts). */
+  exists: boolean;
+  /** The file's revision, null with no file: what a save names as `expect`. */
+  revision: string | null;
+  loot: { item: string; oneIn: number }[];
+  spells: string[];
+  flags: string[];
+  /** Lines (1-based) read as two sections at once, which the page cannot edit apart. */
+  mixed: number[];
+  /** Lines in the file, and the most a file may hold. */
+  lines: number;
+  maxLines: number;
+  /** The monster spell tags a `spells` entry may name. */
+  spellTags: string[];
+}
+
 export interface ContentItemsView {
   items: ItemListEntry[];
   item: ContentItemView | null;
@@ -1051,6 +1128,17 @@ export type ContentServerMsg =
       seq: number;
       view: ContentItemsView;
       result?: { ok: boolean; text: string; problems?: ContentProblemView[] };
+    }
+  /**
+   * A monster's NPC file sections, after a `contentNpcFile` ask or with a `contentNpcFileSet`'s
+   * answer; `view` is null when the name is neither a monster nor a file.
+   */
+  | {
+      t: "contentNpcFile";
+      seq: number;
+      view: ContentNpcFileView | null;
+      error?: string;
+      result?: { ok: boolean; text: string };
     }
   /** A tileset cut into tiles (cells showing nothing left out), or why it could not be. */
   | {

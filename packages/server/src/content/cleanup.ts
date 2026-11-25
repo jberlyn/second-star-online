@@ -6,7 +6,13 @@
  * its row (a station's one tool, a roll table's entry) is never removed: it is left, or replaced.
  * Pure.
  */
-import { type ContentData, crystalPile, isCrystal, lingoEq } from "@secondstaronline/shared";
+import {
+  type ContentData,
+  crystalPile,
+  isCrystal,
+  lingoContains,
+  lingoEq,
+} from "@secondstaronline/shared";
 
 import { keyField, type RowRef, rowLabel, rowValue, sameRow } from "./rows.ts";
 import { type JsonPath, type Reference, referencesOf } from "./validate.ts";
@@ -57,9 +63,20 @@ export function usesOf(
 ): Reference[] {
   return referencesOf(data).filter(
     (r) =>
-      (kind === "item" ? ITEM_KINDS.has(r.kind) : r.kind === "monster" || r.kind === "npc") &&
-      names(r, spellings),
+      ((kind === "item" ? ITEM_KINDS.has(r.kind) : r.kind === "monster" || r.kind === "npc") &&
+        names(r, spellings)) ||
+      (kind === "item" && r.kind === "itemPattern" && lastMatch(data, r.name, spellings)),
   );
+}
+
+/**
+ * Whether the item (by any of `spellings`) is the last live item a `contains` pattern matches (a
+ * monster's weapon family, a tool or a requirement row): removing it would leave the pattern
+ * matching nothing, so the pattern is a use of it.
+ */
+function lastMatch(data: ContentData, pattern: string, spellings: readonly string[]): boolean {
+  const live = data.items.items.filter((i) => !i.retired && lingoContains(i.name, pattern));
+  return live.length > 0 && live.every((i) => spellings.some((s) => lingoEq(s, i.name)));
 }
 
 /** One row a cleanup changes: its new JSON, or its removal. */

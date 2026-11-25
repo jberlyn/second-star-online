@@ -51,6 +51,16 @@ export function npcFileNow(world: World, name: string, ledgerOf: LedgerOf): stri
   return f ? liveNpcText(f, ledgerOf(f.name)) : "";
 }
 
+/** A file's revision: 16 hex digits of its text's hash (no file reads as ""). */
+export function npcFileRevision(text: string): string {
+  return new Bun.CryptoHasher("sha256").update(text).digest("hex").slice(0, 16);
+}
+
+/** The revision of an NPC's file as it stands (shop sales leave it as it is). */
+export function npcRevisionOf(world: World, name: string): string {
+  return npcFileRevision(npcFileNamed(world.npcs, name)?.text ?? "");
+}
+
 /** LOAD. */
 export function loadNpc(world: World, p: Player, name: string, ledgerOf: LedgerOf): Outgoing[] {
   const listed = npcEditorName(name);
@@ -58,7 +68,12 @@ export function loadNpc(world: World, p: Player, name: string, ledgerOf: LedgerO
     return [];
   }
   const text = npcFileNow(world, listed, ledgerOf);
-  const out: Outgoing[] = [{ to: p.id, msg: { t: "npcScript", name: listed, text } }];
+  const out: Outgoing[] = [
+    {
+      to: p.id,
+      msg: { t: "npcScript", name: listed, text, revision: npcRevisionOf(world, listed) },
+    },
+  ];
   // LOAD shows every line, but SAVE refuses more than NPC_MAX_LINES: say so before the edit.
   const lines = editorLines(text).length;
   if (lines > NPC_MAX_LINES) {
@@ -105,10 +120,32 @@ export function saveNpc(
   name: string,
   text: string,
   ledgerOf: LedgerOf,
+  expect?: string,
 ): { out: Outgoing[]; save: NpcSave | null } {
   const listed = npcEditorName(name);
   if (!inEditor(p) || !listed) {
     return { out: [], save: null };
+  }
+  // A save from a LOAD older than the file (the Monsters page or another admin saved it since) is
+  // refused, so it never puts back what they changed. A file that exists is saved only over the
+  // LOAD that showed it; one that does not yet exist may be made without a LOAD, as in 1.6.
+  const exists = npcFileNamed(world.npcs, listed) !== null;
+  if (
+    (expect === undefined && exists) ||
+    (expect !== undefined && expect !== npcRevisionOf(world, listed))
+  ) {
+    return {
+      out: [
+        {
+          to: p.id,
+          msg: {
+            t: "alert",
+            text: expect === undefined ? NPC_EDIT_TEXT.unloaded : NPC_EDIT_TEXT.stale,
+          },
+        },
+      ],
+      save: null,
+    };
   }
   const lines = resolveNpcItemNames(editorLines(text));
   const check = checkNpcFile(lines);
@@ -126,6 +163,10 @@ export function saveNpc(
   world.shops.delete(npc);
   const out: Outgoing[] = closeNpcWindows(world, npc);
   const alert = [NPC_EDIT_TEXT.saved, ...check.warnings].join("\n");
+  out.push({
+    to: p.id,
+    msg: { t: "npcRevision", name: listed, revision: npcRevisionOf(world, npc) },
+  });
   out.push({ to: p.id, msg: { t: "alert", text: alert } });
   return { out, save: { npc, text: saved, previous } };
 }

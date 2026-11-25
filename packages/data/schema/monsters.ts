@@ -46,7 +46,7 @@ export const monsterFlagsSchema = z.strictObject({
 
 export const monsterSchema = z.strictObject({
   /** The species' permanent key: the name it was created with (the 1.6 name for Classic). */
-  name: z.string().min(1),
+  name: z.string().min(1).max(80),
   /** The name players see, when an operator has renamed the species; the key otherwise. */
   display: z.string().min(1).max(40).optional(),
   /**
@@ -56,15 +56,15 @@ export const monsterSchema = z.strictObject({
   body: bodyNumberSchema,
   /** False for the bodies with no `Chars` bitmap (hidden from the editor). */
   bodyInMainChars: z.boolean(),
-  /** Species hit points; every species has them. */
-  hp: int,
+  /** Species hit points; every species has them (at least 1). */
+  hp: int.min(1).max(1_000_000_000),
   /** Monster attack table value, or null when the name has no entry (it never melees). */
-  attack: int.nullable(),
+  attack: int.min(0).max(1_000_000_000).nullable(),
   /** Cast line 3: subtracted from melee AttPower. */
-  defense: int,
+  defense: int.min(0).max(1_000_000_000),
   /** Base XP, melee kill table and spell kill table. */
-  xpMelee: int,
-  xpSpell: int,
+  xpMelee: int.min(0).max(1_000_000_000),
+  xpSpell: int.min(0).max(1_000_000_000),
   /**
    * The XP a kill gives each `xp`-model skill the weapon trains, replacing the skills' own `kill`
    * amount. Kill XP for the character level is `xpMelee`/`xpSpell`.
@@ -120,6 +120,64 @@ export const monsterSpellSchema = z.strictObject({
   aName: z.boolean(),
 });
 
+const on = z.literal(true).optional();
+
+/**
+ * A monster definition (issue #31), keyed by its name: what the monster tables decide for it, in
+ * one record, which the store compiles into exact rows that win in every table they cover (as an
+ * item definition does, #30). An absent field means none: an empty definition takes the pack's
+ * rules away from the monster.
+ */
+export const monsterDefinitionSchema = z.strictObject({
+  /** The monster's (or NPC's) name, as the tables test it. */
+  name: z.string().min(1).max(80),
+  /** Spawns and moves only on sea tiles (`rules.sea`). */
+  sea: on,
+  /** 3×2 wide (`rules.footprint`). */
+  footprint: on,
+  /** Walks toward players though off the World Editor's monster list (`rules.hostile`). */
+  hostile: on,
+  /** Attacks wanted players (`rules.officer`). */
+  officer: on,
+  /** Never attacks an innocent player (`rules.sparesInnocent`). */
+  sparesInnocent: on,
+  /** Clears its block when it moves (`rules.clearsBlock`). */
+  clearsBlock: on,
+  /** A click on it says its own name (`rules.namesSelf`). */
+  namesSelf: on,
+  /** Never gives quests (`rules.noQuests`). */
+  noQuests: on,
+  /** Never casts monster spells (`casting.neverCasts`). */
+  neverCasts: on,
+  /** The kill XP after the ring, in place of `xpMelee` (`rules.killXp`). */
+  killXp: int.min(0).max(1_000_000_000).optional(),
+  /** Broadcast on a kill, `{}` the killer's name (`rules.killBroadcasts`). */
+  killBroadcast: z.string().min(1).max(200).optional(),
+  /** Melee damage added by a weapon family, in order (`meleeAffinities`, monster side exact). */
+  affinities: z
+    .array(
+      z.strictObject({
+        /** A weapon family: part of the weapons' names (never empty, which every weapon contains). */
+        weapon: z.string().trim().min(1).max(80),
+        delta: meleeAffinitySchema.shape.delta,
+        randomN: meleeAffinitySchema.shape.randomN,
+      }),
+    )
+    .max(64)
+    .optional(),
+  /** The kill skill cap, by species (ahead of the by-body rows); absent: `skillCaps.default`. */
+  skillCap: int.min(0).max(1_000_000).optional(),
+  /** On the editor lists (`editorLists`): off a list it is taken off it. */
+  lists: z
+    .strictObject({
+      worldEditorMonsters: on,
+      worldEditorNpcs: on,
+      npcEditorMonsters: on,
+      npcEditorNpcs: on,
+    })
+    .optional(),
+});
+
 export const monstersDataSchema = z.strictObject({
   monsters: z.array(monsterSchema),
   editorLists: z.strictObject({
@@ -162,6 +220,11 @@ export const monstersDataSchema = z.strictObject({
    * player shop's shopkeeper is.
    */
   generic: z.strictObject({ body: bodyNumberSchema, hp: int, defense: int }),
+  /**
+   * Monster definitions (issue #31), keyed by name: one record of what the monster tables decide
+   * for a monster, compiled into exact rows that win. Classic ships none.
+   */
+  definitions: z.array(monsterDefinitionSchema).optional(),
 });
 
 export type Monster = z.infer<typeof monsterSchema>;
@@ -170,3 +233,4 @@ export type MeleeAffinity = z.infer<typeof meleeAffinitySchema>;
 export type MonsterSpellKind = z.infer<typeof monsterSpellKindSchema>;
 export type MonsterSpellRule = z.infer<typeof monsterSpellSchema>;
 export type MonstersData = z.infer<typeof monstersDataSchema>;
+export type MonsterDefinition = z.infer<typeof monsterDefinitionSchema>;

@@ -37,6 +37,13 @@ type Script = Extract<ServerMsg, { t: "npcScript" }>;
 type Shop = Extract<ServerMsg, { t: "shop" }>;
 const deltas = (bot: Bot): DeltaEvent[] =>
   bot.inbox.flatMap((m) => (m.t === "delta" ? m.events : []));
+/** SAVE as the editor does it: LOAD the file first, then SAVE naming the revision LOAD showed. */
+async function loadAndSave(bot: Bot, name: string, text: string): Promise<void> {
+  bot.send({ t: "npcLoad", name });
+  const s = await bot.waitFor((m): m is Script => m.t === "npcScript" && m.name === name);
+  bot.clear();
+  bot.send({ t: "npcSave", name, text, expect: s.revision });
+}
 const goldOf = (bot: Bot) => bot.inbox.flatMap((m) => (m.t === "inv" ? [m.inv.gold] : [])).at(-1);
 
 describe("the NPC editor", () => {
@@ -144,7 +151,7 @@ describe("the NPC editor", () => {
     await settle();
     alice.clear();
     bob.clear();
-    alice.send({ t: "npcSave", name: "Amber", text: "SEL|Fire:5:10\n" });
+    await loadAndSave(alice, "Amber", "SEL|Fire:5:10\n");
     const a = await alice.waitFor((m): m is Alert => m.t === "alert");
     expect(a.text).toBe('The NPC was not saved. Line 1: "Fire" is not an item.');
     expect(bob.inbox.some((m) => m.t === "npcClosed")).toBe(false);
@@ -153,11 +160,7 @@ describe("the NPC editor", () => {
 
   test("a save replaces Amber's file: Bob's shop closes; reopened, it sells at the new price", async () => {
     alice.clear();
-    alice.send({
-      t: "npcSave",
-      name: "Amber",
-      text: "BIO|Name: Amber\nGLD|5\nSEL|Apple:7:2\nBUY|Apple:3\n",
-    });
+    await loadAndSave(alice, "Amber", "BIO|Name: Amber\nGLD|5\nSEL|Apple:7:2\nBUY|Apple:3\n");
     const a = await alice.waitFor((m): m is Alert => m.t === "alert");
     expect(a.text).toBe("NPC has been successfully saved.");
     await bob.waitFor((m) => m.t === "npcClosed");
@@ -175,7 +178,7 @@ describe("the NPC editor", () => {
 
   test("the Slime's drops are its INV| lines: INV|5 Gold:1 always drops 5 Gold", async () => {
     alice.clear();
-    alice.send({ t: "npcSave", name: "Slime", text: "INV|5 Gold:1\n" });
+    await loadAndSave(alice, "Slime", "INV|5 Gold:1\n");
     await alice.waitFor((m) => m.t === "alert");
     bob.clear();
     bob.send({ t: "attack", seq: 1, held: true });
@@ -190,7 +193,7 @@ describe("the NPC editor", () => {
   test("bug fixed: a chatter line past line 20 saves with no warning, and is said", async () => {
     alice.clear();
     const lines = [...Array.from({ length: 20 }, () => "BIO|Name: Amber"), "RND|Hello"];
-    alice.send({ t: "npcSave", name: "Amber", text: lines.join("\n") });
+    await loadAndSave(alice, "Amber", lines.join("\n"));
     const a = await alice.waitFor((m): m is Alert => m.t === "alert");
     expect(a.text).toBe("NPC has been successfully saved.");
     expect(server.game.world.npcs.get("amber")?.chatter).toEqual(["Hello"]);

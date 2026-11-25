@@ -16,7 +16,7 @@ import { type ContentData, DATASET_IDS, type DatasetId } from "@secondstaronline
  */
 export const KEYED_LISTS: Partial<Record<DatasetId, Record<string, string>>> = {
   items: { items: "name", definitions: "name" },
-  monsters: { monsters: "name" },
+  monsters: { monsters: "name", definitions: "name" },
   spells: { spells: "name" },
   classes: { classes: "code", skills: "skill", startClasses: "code" },
   help: { topics: "file" },

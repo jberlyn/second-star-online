@@ -368,6 +368,42 @@ A species' `flags` turn on the mechanics no table names (1.6 tied each one to a 
 
 A species saved before these flags existed took its mechanics from its body number; the upgrade that added them gave each such row the flags its body had, so it plays the same. A new species on one of those bodies takes none unless you give it the flags.
 
+### Monster definitions
+
+A **monster definition** (`monsters.json` `definitions`, keyed by the monster's name) is what the monster tables decide for one monster, in one record, as an [item definition](#item-definitions) is for an item. The content store compiles it into exact rows for that monster, and the pack's rows that matched it stop applying to it in every table the definition covers; the rest of a `contains` row's family keeps them (defining `"Orc"` leaves `"Orc Chief"` on the pack's rows).
+
+```json
+{
+  "name": "Overlord",
+  "footprint": true,
+  "hostile": true,
+  "killBroadcast": "*** ** * All hail {} who has rid the world of an evil overlord!",
+  "affinities": [
+    { "weapon": "Dark", "delta": -12, "randomN": 0 },
+    { "weapon": "Hope", "delta": 14, "randomN": 6 }
+  ]
+}
+```
+
+| Field | Table it replaces | Meaning |
+|---|---|---|
+| `sea`, `footprint`, `hostile`, `officer`, `sparesInnocent`, `clearsBlock`, `namesSelf`, `noQuests` | `rules.<field>` | `true`: the rule applies to it |
+| `neverCasts` | `casting.neverCasts` | `true`: it never casts monster spells |
+| `killXp` | `rules.killXp` | kill XP after the ring, in place of `xpMelee` |
+| `killBroadcast` | `rules.killBroadcasts` | broadcast on a kill, `{}` the killer's name |
+| `affinities` | `meleeAffinities` (monster side) | in order: a swung weapon whose name contains `weapon` adds `delta`, then `random(randomN)` (0 rolls nothing) |
+| `skillCap` | `skillCaps.byBody` | the kill skill cap for this species, ahead of the by-body rows; left out, `skillCaps.default` |
+| `lists` | `editorLists` | `worldEditorMonsters`, `worldEditorNpcs`, `npcEditorMonsters`, `npcEditorNpcs`: on that list (off it when left out) |
+
+- **Left out means none.** A definition with only a `name` takes every rule above away from the monster, gives it the default skill cap whatever its body, and takes it off the editor lists.
+- **Stays elsewhere:** its stats and flags (`monsters`), its loot, spells cast and NPC flags (its NPC file), and the monster spells themselves (`casting.spells`).
+- **Order:** a definition's rows go where the monster's first matching row was (else first), so the order other monsters' rows meet in is the pack's, and the order of the definitions never matters.
+- **Names:** a definition is for its name as the tables test it: any case, nothing round it. A live name the tables would test differently (`"Orc 2"`, `"Orc#2"`) keeps the pack's rows.
+- **Checks:** the schema's limits, a name that is a species, an editor list entry or an NPC file, and an affinity's weapon text that some item's name contains. Removing the species takes its definition with it.
+- **Editing a pack's monster:** an operator who defines a pack monster from what it plays now (`seedMonsterDefinition` with `resolveMonster`, in `packages/shared/src/content/monster-definitions.ts` and `name-tables.ts`) gets one that plays identically. From then on the monster no longer follows the pack's rule changes; when a pack update changes what the pack's rules play for it, the Content page raises a notice for the definition, and taking the pack's version drops the definition. The operator's own monsters raise none.
+
+That is Classic's Overlord as its tables play it (wide, walking toward players, its kill broadcast, the Sword of Darkness and Sword of Hope rows), with no kill skill cap of its own (the default) and on no editor list. Until the Monsters page, definitions are edited as JSON on the Content page (dataset `monsters`, part `definitions`), which refuses a save over a change it has not seen.
+
 ### Example: Frost Wolf
 
 1. Append a species row to `monsters.json` `monsters`:

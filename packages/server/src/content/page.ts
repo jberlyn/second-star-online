@@ -55,9 +55,14 @@ function staleRow(service: ContentService, ref: RowRef, expect: string | undefin
   if (revision === null || revision === expect) {
     return null;
   }
-  // An item's catalogue row is checked when the editor names the revision it opened (the Content
-  // page always does); a change naming none (a script, a test) is not refused.
-  if (ref.dataset === "items" && ref.part === "items" && expect === undefined) {
+  // An item's catalogue row (and a monster's species record, issue #31) is checked when the editor
+  // names the revision it opened (the Content page always does); a change naming none (a script, a
+  // test) is not refused.
+  if (
+    ((ref.dataset === "items" && ref.part === "items") ||
+      (ref.dataset === "monsters" && ref.part === "monsters")) &&
+    expect === undefined
+  ) {
     return null;
   }
   return `${rowLabel(ref)} changed since you opened it: open it again before saving.`;
@@ -263,7 +268,9 @@ type ContentIntent = Extract<
       | "contentBalance"
       | "contentBalanceSet"
       | "contentItems"
-      | "contentItemSet";
+      | "contentItemSet"
+      | "contentNpcFile"
+      | "contentNpcFileSet";
   }
 >;
 
@@ -301,6 +308,9 @@ export const CONTENT_INTENTS = [
   "contentBalanceSet",
   "contentItems",
   "contentItemSet",
+  // A monster's NPC file sections (issue #31): the game answers these, since they save live.
+  "contentNpcFile",
+  "contentNpcFileSet",
 ] as const;
 
 /** A removal intent as the service's removal, with the defaults (retire, clear, despawn, delete). */
@@ -330,7 +340,7 @@ export function removalOf(msg: Extract<InGameMsg, { t: "contentRemove" }>): Remo
 export function contentIntent(
   service: ContentService,
   actor: ContentActor,
-  msg: ContentIntent,
+  msg: Exclude<ContentIntent, { t: "contentNpcFile" | "contentNpcFileSet" }>,
   world?: ContentWorld,
 ): ContentServerMsg {
   switch (msg.t) {

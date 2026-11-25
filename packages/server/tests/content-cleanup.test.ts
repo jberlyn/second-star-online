@@ -325,7 +325,18 @@ describe("where content refers to an item, and its cleanup", () => {
     // The fishing tool "Fishing" and the Axe tool are parts of names, matched with contains.
     const g = (r: { where: string }) => r.where === "gather/gathering";
     const tools = (r: { where: string }) => r.where === "itemRules/tools";
-    expect(usesOf(data, "item", "Fishing Pole").filter(tools)).toEqual([]);
+    // The Fishing Pole is the only item "Fishing" matches, so the pattern is a use of it (issue
+    // #31: removing it would leave the tool matching nothing); with a second fishing item it is not.
+    expect(
+      usesOf(data, "item", "Fishing Pole")
+        .filter(tools)
+        .map((r) => r.name),
+    ).toContain("Fishing");
+    const twoPoles = {
+      ...data,
+      items: { ...data.items, items: [...data.items.items, { name: "Fishing Net" }] },
+    } as ContentData;
+    expect(usesOf(twoPoles, "item", "Fishing Pole").filter(tools)).toEqual([]);
     const poles = data.items.items.map((i) =>
       /fishing/i.test(i.name) ? { ...i, retired: true as const } : i,
     );
@@ -1308,6 +1319,54 @@ describe("removing content in use from a running game", () => {
     ).toEqual([{ item: "Mage's Ring", qty: 5 }]);
     game.tick();
     expect(activity("unlogged")).toEqual([]);
+  });
+
+  test("a live NPC file save after the draft was reviewed refuses its publish; a masked row edit is refused (issue #31)", async () => {
+    const god = await make("God", "administrator");
+    saveNpcFile(db, { npc: "Agavar", text: "BIO|Hi\rSEL|Ruby Ring:9:3" }, "acc", "t");
+    service.draftRemoval(
+      ADMIN(god),
+      {
+        kind: "item",
+        key: "Ruby Ring",
+        content: "remove",
+        copies: "retire",
+        replacement: null,
+        refundGold: 0,
+      },
+      game.contentWorld,
+    );
+    const reviewed = service.draftRev();
+    // Someone saves Agavar's file (the Monsters page, the NPC Editor) before the publish.
+    saveNpcFile(db, { npc: "Agavar", text: "BIO|Newer\rSEL|Ruby Ring:9:3" }, "acc", "t");
+    expect(service.draftRev()).not.toBe(reviewed);
+    const r = service.publish(ADMIN(god), reviewed, "", game.contentWorld);
+    expect(r.ok).toBe(false);
+    // A save the cleanup does not touch leaves the revision as it was.
+    const now = service.draftRev();
+    saveNpcFile(db, { npc: "Cril", text: "GLD|5" }, "acc", "t");
+    expect(service.draftRev()).toBe(now);
+    // The content row of a file with a live save would never play: changing it is refused.
+    const row = service.draftSet(
+      ADMIN(god),
+      { dataset: "npcFiles", part: "files", key: "Agavar" },
+      "set",
+      { name: "Agavar", text: "BIO|Row" },
+    );
+    expect(row.ok).toBe(false);
+    // A row drafted before a live save of its file: the save changes the draft's revision, so the
+    // publish its author reviewed is refused.
+    const amber = service.draftSet(
+      ADMIN(god),
+      { dataset: "npcFiles", part: "files", key: "Amber" },
+      "set",
+      { name: "Amber", text: "BIO|Row" },
+    );
+    expect(amber.ok).toBe(true);
+    const before = service.draftRev();
+    saveNpcFile(db, { npc: "Amber", text: "BIO|Live" }, "acc", "t");
+    const pub = service.publish(ADMIN(god), before, "", game.contentWorld);
+    expect(pub.ok ? "" : pub.error).toContain("the draft changed since you last looked");
   });
 
   test("removing a crystal purges its stacks, vault lines and shop lines, and no other colour's", async () => {

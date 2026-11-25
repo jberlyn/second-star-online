@@ -49,6 +49,7 @@ import {
   mergePlayerPrefs,
   NEW_SKILL_VALUE,
   NO_FOG,
+  type NpcSections,
   normaliseXp,
   PASSWORD_TEXT,
   type Permission,
@@ -272,6 +273,7 @@ import {
   unnoteCreate,
 } from "./systems/admin/login-limits.ts";
 import { closeNpcWindows, loadNpc, openNpcEditor, saveNpc } from "./systems/admin/npcedit.ts";
+import { npcFileView, saveNpcSections } from "./systems/admin/npcsections.ts";
 import {
   applySave,
   closeEditor,
@@ -1048,8 +1050,8 @@ export function createGame(deps: GameDeps): Game {
    * NPC editor SAVE: the file, the version it replaced and the dropped ledger are written
    * together.
    */
-  const npcSave = (p: Player, name: string, text: string) => {
-    const r = saveNpc(world, p, name, text, ledgerOf);
+  const npcSave = (p: Player, name: string, text: string, expect?: string) => {
+    const r = saveNpc(world, p, name, text, ledgerOf, expect);
     const save = r.save;
     if (save) {
       const now = isoNow();
@@ -1061,6 +1063,36 @@ export function createGame(deps: GameDeps): Game {
       })();
     }
     deliver(r.out);
+  };
+  /**
+   * A monster's NPC file sections saved from the Monsters page (issue #31): written as an NPC
+   * Editor save is (the file, the version it replaced, the dropped ledger and an audit line).
+   */
+  const npcSectionsSave = (
+    p: Player,
+    seq: number,
+    name: string,
+    expect: string | null,
+    sections: NpcSections,
+  ) => {
+    const r = saveNpcSections(world, name, expect, sections, ledgerOf);
+    const save = r.save;
+    if (save) {
+      const now = isoNow();
+      db.transaction(() => {
+        insertNpcFileVersion(db, { npc: save.npc, text: save.previous }, p.accountId, now);
+        saveNpcFile(db, { npc: save.npc, text: save.text }, p.accountId, now);
+        deleteShop(db, save.npc);
+        insertAudit(db, { actor: p.accountId, command: "npcSections", target: save.npc }, now);
+      })();
+    }
+    deliver(r.out);
+    send(p.id, {
+      t: "contentNpcFile",
+      seq,
+      view: npcFileView(world, name),
+      result: { ok: r.ok, text: r.text },
+    });
   };
   const itemCtx = (): ItemCtx => ({
     world,
@@ -2774,6 +2806,21 @@ export function createGame(deps: GameDeps): Game {
         cheat(p.name, p.ip, gate.reason);
         return;
       }
+      // A monster's NPC file sections (issue #31) save live, as the NPC Editor does.
+      if (msg.t === "contentNpcFile") {
+        const view = npcFileView(world, msg.name);
+        send(p.id, {
+          t: "contentNpcFile",
+          seq: msg.seq,
+          view,
+          ...(view ? {} : { error: `There is no monster or NPC file named ${msg.name}.` }),
+        });
+        return;
+      }
+      if (msg.t === "contentNpcFileSet") {
+        npcSectionsSave(p, msg.seq, msg.name, msg.expect, msg.sections);
+        return;
+      }
       if ((CONTENT_INTENTS as readonly string[]).includes(msg.t)) {
         const service = deps.content;
         const seq = "seq" in msg ? msg.seq : 0;
@@ -2975,7 +3022,7 @@ export function createGame(deps: GameDeps): Game {
           deliver(loadNpc(world, p, msg.name, ledgerOf));
           return;
         case "npcSave":
-          npcSave(p, msg.name, msg.text);
+          npcSave(p, msg.name, msg.text, msg.expect);
           return;
         case "move":
           setHeld(p, msg.held, msg.turn, msg.scheduled);

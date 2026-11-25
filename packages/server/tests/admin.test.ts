@@ -14,6 +14,7 @@ import {
   installContent,
   MODERATION_TEXT,
   MODERATOR,
+  NPC_EDIT_TEXT,
   PERMISSIONS,
   type Permission,
   type RoleDef,
@@ -27,6 +28,7 @@ import { setRole } from "../src/persistence/accounts.ts";
 import { recentAudit, recentCheats } from "../src/persistence/admin.ts";
 import { type Db, openDatabase } from "../src/persistence/database.ts";
 import { migrate } from "../src/persistence/migrations.ts";
+import { loadNpcFiles } from "../src/persistence/npcfiles.ts";
 import { loadSettingOverrides, saveSettingOverride } from "../src/persistence/settings.ts";
 import { type AdminDeps, applyRole, type CharacterAccount } from "../src/systems/admin/commands.ts";
 import { openEditor } from "../src/systems/admin/worldedit.ts";
@@ -1535,6 +1537,100 @@ describe("bans, settings and the logs in the game (real SQLite)", () => {
     expect(
       recentCheats(db, 3).filter((c) => c.name === "Bob" && c.reason === "Attempted Admin Access"),
     ).toHaveLength(3);
+  });
+
+  test("a monster's NPC file sections need the Content page's permission and save as the NPC Editor does (issue #31)", async () => {
+    const { game, make } = await start();
+    const alice = await make("Alice", "administrator");
+    const bob = await make("Bob");
+    sent.length = 0;
+    const sections = { loot: [{ item: "Long Sword", oneIn: 2 }], spells: [], flags: [] };
+    game.intent(bob.characterId, { t: "contentNpcFile", seq: 1, name: "Orc" });
+    game.intent(bob.characterId, {
+      t: "contentNpcFileSet",
+      seq: 2,
+      name: "Orc",
+      expect: null,
+      sections,
+    });
+    expect(sent.filter((o) => o.to === bob.characterId && o.msg.t.startsWith("content"))).toEqual(
+      [],
+    );
+    expect(
+      recentCheats(db, 2).filter((c) => c.name === "Bob" && c.reason === "Attempted Admin Access"),
+    ).toHaveLength(2);
+    // Alice, in the Control Panel, saves Orc's drops: written as an NPC Editor save is.
+    game.intent(alice.characterId, { t: "controlPanelOpen" });
+    sent.length = 0;
+    game.intent(alice.characterId, { t: "contentNpcFile", seq: 3, name: "orc" });
+    const view = sent.find((o) => o.msg.t === "contentNpcFile")?.msg;
+    if (view?.t !== "contentNpcFile" || !view.view) {
+      throw new Error("a view");
+    }
+    game.intent(alice.characterId, {
+      t: "contentNpcFileSet",
+      seq: 4,
+      name: "Orc",
+      expect: view.view.revision,
+      sections: { ...sections, spells: view.view.spells, flags: view.view.flags },
+    });
+    const answer = sent.find((o) => o.msg.t === "contentNpcFile" && o.msg.seq === 4)?.msg;
+    expect(answer).toMatchObject({ result: { ok: true } });
+    expect(loadNpcFiles(db).find((f) => f.npc === view.view?.name)?.text).toContain(
+      "INV|Long Sword:2",
+    );
+    expect(recentAudit(db, 1).map((r) => `${r.command} ${r.target}`)).toEqual([
+      `npcSections ${view.view.name}`,
+    ]);
+    // The same revision again is stale now.
+    game.intent(alice.characterId, {
+      t: "contentNpcFileSet",
+      seq: 5,
+      name: "Orc",
+      expect: view.view.revision,
+      sections,
+    });
+    expect(sent.find((o) => o.msg.t === "contentNpcFile" && o.msg.seq === 5)?.msg).toMatchObject({
+      result: { ok: false },
+    });
+    // The NPC Editor and the Monsters page each refuse to save over the other's newer save.
+    game.intent(alice.characterId, { t: "editClose" });
+    game.intent(alice.characterId, { t: "npcEditOpen" });
+    game.intent(alice.characterId, { t: "npcLoad", name: "Orc" });
+    const loaded = sent.findLast((o) => o.msg.t === "npcScript")?.msg as { revision: string };
+    game.intent(alice.characterId, { t: "controlPanelOpen" });
+    sent.length = 0;
+    game.intent(alice.characterId, { t: "contentNpcFile", seq: 6, name: "Orc" });
+    const now = sent.find((o) => o.msg.t === "contentNpcFile")?.msg as {
+      view: { revision: string; spells: string[]; flags: string[] };
+    };
+    game.intent(alice.characterId, {
+      t: "contentNpcFileSet",
+      seq: 7,
+      name: "Orc",
+      expect: now.view.revision,
+      sections: { loot: [], spells: now.view.spells, flags: now.view.flags },
+    });
+    expect(sent.find((o) => o.msg.t === "contentNpcFile" && o.msg.seq === 7)?.msg).toMatchObject({
+      result: { ok: true },
+    });
+    game.intent(alice.characterId, { t: "editClose" });
+    game.intent(alice.characterId, { t: "npcEditOpen" });
+    sent.length = 0;
+    game.intent(alice.characterId, {
+      t: "npcSave",
+      name: "Orc",
+      text: "INV|Long Sword:2",
+      expect: loaded.revision,
+    });
+    expect(texts(sent, alice.characterId)).toEqual([]);
+    expect(sent.find((o) => o.msg.t === "alert")?.msg).toEqual({
+      t: "alert",
+      text: NPC_EDIT_TEXT.stale,
+    });
+    expect(loadNpcFiles(db).find((f) => f.npc === view.view?.name)?.text).not.toContain(
+      "Long Sword",
+    );
   });
 
   test("a publish that lowers a vehicle's full hull lowers a rider's hull and resends it (issue #19)", async () => {

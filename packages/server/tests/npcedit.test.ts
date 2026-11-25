@@ -16,6 +16,7 @@ import {
   content,
   editorLines,
   installContent,
+  NPC_EDIT_TEXT,
   NPC_EDITOR_MONSTERS,
   NPC_EDITOR_NPCS,
   rollLoot,
@@ -29,7 +30,13 @@ import { type Db, openDatabase } from "../src/persistence/database.ts";
 import { loadShop } from "../src/persistence/economy.ts";
 import { migrate } from "../src/persistence/migrations.ts";
 import { loadNpcFiles, npcFileVersions } from "../src/persistence/npcfiles.ts";
-import { loadNpc, openNpcEditor, saveNpc } from "../src/systems/admin/npcedit.ts";
+import {
+  loadNpc,
+  npcFileRevision,
+  npcRevisionOf,
+  openNpcEditor,
+  saveNpc,
+} from "../src/systems/admin/npcedit.ts";
 import { openEditor } from "../src/systems/admin/worldedit.ts";
 import { giveGoldToNpc } from "../src/systems/economy/intents.ts";
 import { ledgerFromTemplate, type ShopLedger } from "../src/systems/economy/shop.ts";
@@ -174,6 +181,8 @@ describe("LOAD", () => {
           t: "npcScript",
           name: "Amber",
           text: "BIO|Name: Amber\rBIO|Class: Casino Manager\rGLD|107537454\rSEL|Apple:10:10028\rBUY|Apple:5\rSEL|Ale:10:9604\rBUY|Ale:5\rSEL|Pie:10:5771\rBUY|Pie:5",
+          // The file's revision, not the live stock's: a sale does not make a LOAD stale.
+          revision: npcFileRevision(amber.text),
         },
       },
     ]);
@@ -187,6 +196,7 @@ describe("LOAD", () => {
       t: "npcScript",
       name: "Oraku",
       text: "",
+      revision: npcFileRevision(""),
     });
     expect(loadNpc(world, i, "Cuche", ledgerOf(world))).toEqual([]); // a player shop's file
     expect(loadNpc(world, i, "", ledgerOf(world))).toEqual([]);
@@ -202,7 +212,7 @@ describe("LOAD of a long file", () => {
     setNpcFile(world.npcs, "Amber", text);
     const out = loadNpc(world, i, "Amber", ledgerOf(world));
     expect(out.map((o) => o.msg)).toEqual([
-      { t: "npcScript", name: "Amber", text },
+      { t: "npcScript", name: "Amber", text, revision: npcFileRevision(text) },
       {
         t: "alert",
         text: "This file has 103 lines. An NPC file holds at most 100 lines, so remove 3 before saving.",
@@ -218,7 +228,14 @@ describe("SAVE", () => {
   test("a refused save says why and changes nothing", () => {
     const { world, i } = scene();
     openNpcEditor(world, i, casino);
-    const r = saveNpc(world, i, "Amber", "SEL|Fire:5:10\n", ledgerOf(world));
+    const r = saveNpc(
+      world,
+      i,
+      "Amber",
+      "SEL|Fire:5:10\n",
+      ledgerOf(world),
+      npcRevisionOf(world, "Amber"),
+    );
     expect(r.save).toBeNull();
     expect(r.out[0]?.msg).toEqual({
       t: "alert",
@@ -241,7 +258,7 @@ describe("SAVE", () => {
       "GLD|9",
       "",
     ].join("\n");
-    const r = saveNpc(world, i, "amber", text, ledgerOf(world));
+    const r = saveNpc(world, i, "amber", text, ledgerOf(world), npcRevisionOf(world, "amber"));
     expect(r.save?.npc).toBe("Amber");
     expect(r.save?.text.split("\r")).toHaveLength(23);
     expect(r.save?.previous).toContain("GLD|1"); // LOAD's view of the old file, live gold
@@ -262,15 +279,15 @@ describe("SAVE", () => {
     const author = player("a", map, 1, 1);
     const slime = stand(map, 1, "Slime", 9, 9);
     expect(authorPath(world.npcs, slime, author, rngByN({ 10: [1] }))).not.toBeNull();
-    saveNpc(world, i, "Slime", "FLG|Still", ledgerOf(world));
+    saveNpc(world, i, "Slime", "FLG|Still", ledgerOf(world), npcRevisionOf(world, "Slime"));
     expect(authorPath(world.npcs, slime, author, rngByN({ 10: [1] }))).toBeNull();
     expect(hasFlag(world.npcs, "slime", "Still")).toBe(true);
-    saveNpc(world, i, "Wolf", "INV|5 Gold:1", ledgerOf(world));
+    saveNpc(world, i, "Wolf", "INV|5 Gold:1", ledgerOf(world), npcRevisionOf(world, "Wolf"));
     expect(rollLoot(npcFileNamed(world.npcs, "Wolf")?.loot ?? null, rngByN())).toBe("5 Gold");
     expect(npcData(world.npcs, "Andero")).not.toBeNull();
-    saveNpc(world, i, "Andero", "", ledgerOf(world));
+    saveNpc(world, i, "Andero", "", ledgerOf(world), npcRevisionOf(world, "Andero"));
     expect(npcData(world.npcs, "Andero")).toBeNull(); // EMPTY: no Bio, never moves
-    saveNpc(world, i, "Oraku", "BIO|Name: Oraku", ledgerOf(world));
+    saveNpc(world, i, "Oraku", "BIO|Name: Oraku", ledgerOf(world), npcRevisionOf(world, "Oraku"));
     expect(npcData(world.npcs, "Oraku")?.bio).toEqual(["Name: Oraku"]);
   });
 
@@ -304,6 +321,7 @@ describe("SAVE", () => {
       "Amber",
       [...Array.from({ length: 60 }, () => "BIO|x"), "GLD|50"].join("\n"),
       ledgerOf(world),
+      npcRevisionOf(world, "Amber"),
     );
     expect(give(p)).toBe(60);
     saveNpc(
@@ -312,9 +330,10 @@ describe("SAVE", () => {
       "Amber",
       [...Array.from({ length: 59 }, () => "BIO|x"), "GLD|50"].join("\n"),
       ledgerOf(world),
+      npcRevisionOf(world, "Amber"),
     );
     expect(give(p)).toBe(60);
-    saveNpc(world, i, "Amber", "BIO|x", ledgerOf(world));
+    saveNpc(world, i, "Amber", "BIO|x", ledgerOf(world), npcRevisionOf(world, "Amber"));
     expect(give(p)).toBe(10);
   });
 });
@@ -413,7 +432,12 @@ describe("persistence (real SQL)", () => {
     const loaded = sent.filter((m) => m.msg.t === "npcScript").at(-1)?.msg;
     expect(loaded).toMatchObject({ t: "npcScript", name: "Amber" });
     expect(loaded && "text" in loaded ? loaded.text : "").toContain("SEL|Apple:10:10028");
-    g.intent(id, { t: "npcSave", name: "Amber", text: "BIO|Name: Amber\nGLD|5\nSEL|Apple:7:2\n" });
+    g.intent(id, {
+      t: "npcSave",
+      name: "Amber",
+      text: "BIO|Name: Amber\nGLD|5\nSEL|Apple:7:2\n",
+      expect: (loaded as { revision: string }).revision,
+    });
     expect(sent.at(-1)?.msg).toEqual({ t: "alert", text: "NPC has been successfully saved." });
     expect(loadNpcFiles(db)).toEqual([
       { npc: "Amber", text: "BIO|Name: Amber\rGLD|5\rSEL|Apple:7:2" },
@@ -431,6 +455,7 @@ describe("persistence (real SQL)", () => {
       t: "npcScript",
       name: "Amber",
       text: "BIO|Name: Amber\rGLD|5\rSEL|Apple:7:2",
+      revision: npcFileRevision("BIO|Name: Amber\rGLD|5\rSEL|Apple:7:2"),
     });
   });
 
@@ -443,5 +468,50 @@ describe("persistence (real SQL)", () => {
     g.intent(id, { t: "npcEditOpen" });
     g.intent(id, { t: "npcSave", name: "Amber", text: "GLD|1" });
     expect(loadNpcFiles(db)).toEqual([]);
+  });
+});
+
+describe("SAVE names the revision LOAD showed (SSO)", () => {
+  test("a SAVE naming no revision makes a file that does not exist, but never replaces one", () => {
+    const { world, i } = scene();
+    openNpcEditor(world, i, casino);
+    const over = saveNpc(world, i, "Amber", "BIO|Mine.", ledgerOf(world));
+    expect(over.save).toBeNull();
+    expect(over.out.map((o) => o.msg)).toEqual([{ t: "alert", text: NPC_EDIT_TEXT.unloaded }]);
+    expect(npcFileNamed(world.npcs, "Oraku")).toBeNull();
+    expect(saveNpc(world, i, "Oraku", "BIO|New.", ledgerOf(world)).save).not.toBeNull();
+  });
+
+  test("a SAVE from a LOAD older than the file is refused, either way round", () => {
+    const { world, i } = scene();
+    openNpcEditor(world, i, casino);
+    const loaded = loadNpc(world, i, "Amber", ledgerOf(world))[0]?.msg;
+    if (loaded?.t !== "npcScript") {
+      throw new Error("LOAD");
+    }
+    // The Monsters page (or another admin) saves the file meanwhile.
+    setNpcFile(world.npcs, "Amber", "BIO|Changed elsewhere.");
+    const stale = saveNpc(world, i, "Amber", "BIO|Mine.", ledgerOf(world), loaded.revision);
+    expect(stale.save).toBeNull();
+    expect(stale.out.map((o) => o.msg)).toEqual([{ t: "alert", text: NPC_EDIT_TEXT.stale }]);
+    expect(npcFileNamed(world.npcs, "Amber")?.text).toBe("BIO|Changed elsewhere.");
+    // A fresh LOAD saves, and its answer carries the revision the next SAVE names.
+    const again = loadNpc(world, i, "Amber", ledgerOf(world))[0]?.msg;
+    if (again?.t !== "npcScript") {
+      throw new Error("LOAD");
+    }
+    const ok = saveNpc(world, i, "Amber", "BIO|Mine.", ledgerOf(world), again.revision);
+    expect(ok.save).not.toBeNull();
+    const next = ok.out.find((o) => o.msg.t === "npcRevision")?.msg;
+    expect(next).toEqual({
+      t: "npcRevision",
+      name: "Amber",
+      revision: npcFileRevision("BIO|Mine."),
+    });
+    // The next SAVE, naming that revision, goes through without another LOAD.
+    expect(
+      saveNpc(world, i, "Amber", "BIO|Mine again.", ledgerOf(world), npcFileRevision("BIO|Mine."))
+        .save,
+    ).not.toBeNull();
   });
 });

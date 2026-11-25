@@ -19,7 +19,7 @@ import {
   findSkillIndex,
 } from "../core/fighter.ts";
 import { lingoContains, lingoEq, type Rng } from "../core/lingo.ts";
-import { ruleMatches } from "../core/patterns.ts";
+import { excepted, ruleMatches } from "../core/patterns.ts";
 import { FACING_DELTA, type Facing } from "../movement/movement.ts";
 import { factionPerk } from "../social/factions.ts";
 import { armourRows, elementalRows, factionRows, randomAndDefense } from "./armour.ts";
@@ -203,7 +203,8 @@ export function meleeDamageVsMonster(
 ): number {
   let dmg = attPower - monster.defense;
   for (const a of content().monsters.meleeAffinities) {
-    if (!lingoContains(weapon, a.weapon)) {
+    // A row a monster definition took the monster from (issue #31) is not its.
+    if (!lingoContains(weapon, a.weapon) || excepted(a, monster.name)) {
       continue;
     }
     const hit =

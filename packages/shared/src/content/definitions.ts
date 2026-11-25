@@ -20,6 +20,7 @@ import type { ItemDefinition } from "@secondstaronline/data";
 import { lingoEq } from "../rules/core/lingo.ts";
 import { behaviourName, behaviourTest } from "../rules/inventory/behaviours.ts";
 import { lookName } from "../rules/inventory/paperdoll.ts";
+import { compileMonsterDefinitions } from "./monster-definitions.ts";
 import {
   exactPatternFor,
   exactRowsFor,
@@ -520,10 +521,25 @@ function tableAt(root: Obj, key: string): { get(): Obj[]; set(v: Obj[]): void } 
 }
 
 /**
- * The data with every item definition compiled into its tables (see the module comment). Data with
- * no definitions comes back as it is.
+ * The data with every item definition (see the module comment) and every monster definition
+ * (monster-definitions.ts, issue #31) compiled into their tables. Data with no definitions comes
+ * back as it is.
  */
 export function compileDefinitions(data: ContentData): ContentData {
+  const known = compiledAll.get(data);
+  if (known) {
+    return known;
+  }
+  const out = compileMonsterDefinitions(compileItemDefinitions(data));
+  compiledAll.set(data, out);
+  compiledAll.set(out, out);
+  return out;
+}
+/** Data with both kinds of definition compiled, by the data it was compiled from. */
+const compiledAll = new WeakMap<ContentData, ContentData>();
+
+/** The data with every item definition compiled into its tables. */
+function compileItemDefinitions(data: ContentData): ContentData {
   const defs = data.items.definitions ?? [];
   if (defs.length === 0) {
     return data;

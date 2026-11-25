@@ -56,6 +56,7 @@ export type { JailMapData } from "../schema/jail-map.ts";
 export type {
   MeleeAffinity,
   Monster,
+  MonsterDefinition,
   MonsterFlags,
   MonsterSpellKind,
   MonsterSpellRule,
