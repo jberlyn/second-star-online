@@ -1202,7 +1202,7 @@ describe("removing content in use from a running game", () => {
     const god = await make("God", "administrator");
     saveNpcFile(db, { npc: "Agavar", text: "BIO|Hi\rSEL|Ruby Ring:9:3\rSEL|Ale:2:5" }, "acc", "t");
     const u = service.usage("item", "Ruby Ring", game.contentWorld);
-    expect(u.ok && u.value.uses.some((x) => x.where.includes("(NPC Editor save)"))).toBe(true);
+    expect(u.ok && u.value.uses.some((x) => x.where.includes("(live save)"))).toBe(true);
     service.draftRemoval(
       ADMIN(god),
       {

@@ -2619,39 +2619,6 @@ body {
   border-bottom: 1px solid #fff;
 }
 
-/* ---- the NPC editor (frame 311) ---------------------------------------------------------- */
-.npced-list {
-  /* A Director scroll field: the text box with its scroll bar to the right, always shown. */
-  overflow-y: scroll;
-  font:
-    bold 10px Arial,
-    Helvetica,
-    sans-serif;
-  color: #fff;
-  line-height: 12px;
-  cursor: default;
-  user-select: none;
-}
-.npced-row.on {
-  background: #000080;
-  color: #fff;
-}
-.npced-script {
-  overflow-y: scroll;
-  resize: none;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  outline: none;
-  background: transparent;
-  white-space: pre-wrap;
-  font:
-    bold 12px Arial,
-    Helvetica,
-    sans-serif;
-  color: #fff;
-}
-
 /* The map header (the map-header field on sprite 299, 319×16 at (139, 426);
    Arial 12 white, centred, a 1 px shadow (text-styles.jsonl WorldEdit #45). */
 .map-header {

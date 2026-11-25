@@ -140,6 +140,8 @@ export const CONTROL_PANEL_PERMISSIONS: readonly Permission[] = [
   "characterView",
   "activityLog",
   "contentEditor",
+  // The NPCs page (issue #32).
+  "npcEditor",
 ];
 
 /** Whether `role` may open the Control Panel (it holds a permission with a page there). */

@@ -102,7 +102,7 @@ import { createMailScreen } from "./ui/mail.ts";
 import { createMenuBar, MENU_BAR_H } from "./ui/menubar.ts";
 import { createMonstersPage } from "./ui/monsters-page.ts";
 import { createNewspaper } from "./ui/newspaper.ts";
-import { createNpcEditor, type NpcEditor } from "./ui/npceditor.ts";
+import { createNpcsPage } from "./ui/npcs-page.ts";
 import { createPaintUi } from "./ui/paint.ts";
 import { createPanel, type Tab } from "./ui/panel.ts";
 import { type Ghost, ghostTile, placementClick } from "./ui/placement.ts";
@@ -257,11 +257,10 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
   /** Your role's permissions as the server last sent them (it still checks every request). */
   let permissions: ReadonlySet<string> = new Set();
   let editor: WorldEditor | null = null;
-  let npcEditor: NpcEditor | null = null;
-  /** The NPC file the editor last loaded or saved, and its revision (SAVE names it). */
-  let npcRevision: { name: string; revision: string } | null = null;
-  /** Which editor, or the Control Panel, is up; each opens from the others. */
-  let editing: "world" | "npc" | "controlPanel" | null = null;
+  /** Which editor, or the Control Panel, is up; each opens from the other. */
+  let editing: "world" | "controlPanel" | null = null;
+  /** A Control Panel page to show once the Control Panel opens (Admin → NPC Editor). */
+  let controlPanelPage: string | null = null;
 
   /** The title screen is the screen showing (the menu bar hides Game there). */
   let atTitle = false;
@@ -285,9 +284,13 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         conn.send({ t: "editOpen" });
       }
     },
+    // The NPC Editor window is retired (issue #32): its menu item opens the NPCs page.
     npcEditor: () => {
-      if (editing !== "npc") {
-        conn.send({ t: "npcEditOpen" });
+      if (editing === "controlPanel") {
+        controlPanel.go("npcs");
+      } else {
+        controlPanelPage = "npcs";
+        conn.send({ t: "controlPanelOpen" });
       }
     },
     controlPanel: () => {
@@ -729,6 +732,14 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     openContent: () => controlPanel.go("content"),
     openContentRow: (row) => controlPanel.go("content", () => contentPage.openRow(row)),
     body: (saved) => contentPage.monsterBody(saved),
+    openNpc: (name) => controlPanel.go("npcs", () => npcsPage.open(name)),
+    canOpenNpc: () => permissions.has("npcEditor"),
+  });
+  const npcsPage = createNpcsPage({
+    view: (seq, name) => send({ t: "contentNpcs", seq, ...(name !== undefined ? { name } : {}) }),
+    save: (seq, name, text, expect) => send({ t: "contentNpcSave", seq, name, text, expect }),
+    openMonster: (name) => controlPanel.go("monsters", () => monstersPage.open(name)),
+    canOpenMonster: () => permissions.has("contentEditor"),
   });
   const controlPanel = createControlPanel({
     pages: [
@@ -798,8 +809,19 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         changes: () => monstersPage.changes(),
         discard: () => monstersPage.discard(),
       },
+      {
+        id: "npcs",
+        title: "NPCs",
+        group: "Game",
+        permission: "npcEditor",
+        el: npcsPage.el,
+        onShow: () => npcsPage.onShow(),
+        changes: () => npcsPage.changes(),
+        discard: () => npcsPage.discard(),
+      },
     ],
-    // The classic editors, until their Control Panel pages arrive (#32, #33).
+    // The classic World Editor, until its Control Panel page arrives (#33). The NPC Editor's place
+    // is the NPCs page in the sidebar (#32).
     links: [
       {
         id: "worldEditor",
@@ -807,13 +829,6 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         group: "Classic tools",
         permission: "worldEditor",
         run: menuActions.worldEditor,
-      },
-      {
-        id: "npcEditor",
-        title: "NPC Editor",
-        group: "Classic tools",
-        permission: "npcEditor",
-        run: menuActions.npcEditor,
       },
     ],
     actions: {
@@ -1372,6 +1387,9 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         if (!permissions.has("activityLog")) {
           activityPage.reset();
         }
+        if (!permissions.has("npcEditor")) {
+          npcsPage.reset();
+        }
         if (!permissions.has("contentEditor")) {
           contentPage.reset();
           balancePage.reset();
@@ -1421,6 +1439,9 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
       case "contentMonsters":
       case "contentNpcFile":
         monstersPage.receive(msg);
+        return;
+      case "contentNpcs":
+        npcsPage.receive(msg);
         return;
       case "content":
         // The content sync fetches and installs the store; nothing else to do here.
@@ -1526,38 +1547,10 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
           charMenu.close();
           showControlPanel();
         }
-        return;
-      case "npcEditor":
-        if (!npcEditor) {
-          npcEditor = createNpcEditor(assets, {
-            load: (name) => send({ t: "npcLoad", name }),
-            // SAVE names the revision LOAD (or the last SAVE) showed for that file.
-            save: (name, text) =>
-              send({
-                t: "npcSave",
-                name,
-                text,
-                ...(npcRevision && npcRevision.name.toLowerCase() === name.toLowerCase()
-                  ? { expect: npcRevision.revision }
-                  : {}),
-              }),
-          });
+        if (controlPanelPage) {
+          controlPanel.go(controlPanelPage);
+          controlPanelPage = null;
         }
-        if (editing !== "npc") {
-          leaveEditing();
-          editing = "npc";
-          releaseAll(input, sink);
-          sign.close();
-          charMenu.close();
-          show(npcEditor.screen);
-        }
-        return;
-      case "npcScript":
-        npcRevision = { name: msg.name, revision: msg.revision };
-        npcEditor?.showScript(msg.text);
-        return;
-      case "npcRevision":
-        npcRevision = { name: msg.name, revision: msg.revision };
         return;
       case "npcClosed":
         // An NPC editor save changed this NPC: its windows close, so the edit applies at once.
@@ -1782,6 +1775,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     balancePage.reset();
     itemsPage.reset();
     monstersPage.reset();
+    npcsPage.reset();
     playerSettingsWin.window.close();
     inFlightPrefsId = null;
     ignores = [];

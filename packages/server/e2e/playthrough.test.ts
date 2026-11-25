@@ -185,21 +185,25 @@ describe("the playthrough", () => {
       king.inbox.some((m) => m.t === "permissions" && m.permissions.includes("worldEditor")),
     ).toBe(true);
 
-    // NPC Editor: Smithy becomes a trainer (the file is the NPC).
-    king.send({ t: "npcEditOpen" });
-    await king.waitFor((m) => m.t === "npcEditor");
+    // The NPCs page: Smithy becomes a trainer (the file is the NPC).
+    king.send({ t: "controlPanelOpen" });
+    await king.waitFor((m) => m.t === "controlPanel");
     king.clear();
-    king.send({ t: "npcLoad", name: "Smithy" });
-    const smithy = await king.waitFor((m) => m.t === "npcScript");
+    king.send({ t: "contentNpcs", seq: 1, name: "Smithy" });
+    const smithy = await king.waitFor((m) => m.t === "contentNpcs");
     king.clear();
     king.send({
-      t: "npcSave",
-      expect: smithy.t === "npcScript" ? smithy.revision : "",
+      t: "contentNpcSave",
+      seq: 2,
+      expect: smithy.t === "contentNpcs" ? (smithy.view.npc?.revision ?? null) : null,
       name: "Smithy",
       text: ["BIO|Name: Smithy", "BIO|Class: Trainer", "TRN|Grunt:100"].join("\r"),
     });
-    const saved = await king.waitFor((m) => m.t === "alert");
-    expect(saved).toEqual({ t: "alert", text: "NPC has been successfully saved." });
+    const saved = await king.waitFor((m) => m.t === "contentNpcs");
+    expect(saved).toMatchObject({
+      t: "contentNpcs",
+      result: { ok: true, text: "Saved Smithy's NPC file: it is live now." },
+    });
 
     // World Editor: the four maps.
     king.send({ t: "editOpen" });

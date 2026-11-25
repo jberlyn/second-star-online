@@ -29,7 +29,6 @@ import { createControlPanel } from "../src/ui/control-panel.ts";
 import { confirmBox, createTable, formField } from "../src/ui/control-panel-kit.ts";
 import { createFriendsWindow } from "../src/ui/friends.ts";
 import { createImWindows } from "../src/ui/im.ts";
-import { createNpcEditor } from "../src/ui/npceditor.ts";
 import { createPanel } from "../src/ui/panel.ts";
 import { createPlayerSettingsWindow } from "../src/ui/player-settings.ts";
 import { creationScreen, loginScreen, titleScreen } from "../src/ui/screens.ts";
@@ -446,8 +445,6 @@ function buildAll(): HTMLElement[] {
     el.hidden = false;
   }
   holder([createSignPanel(fakeAssets).el]);
-  // The NPC editor (frame 311).
-  holder(createNpcEditor(fakeAssets, noop).screen.items.map((i) => i.el));
 
   const alertRoot = holder([]);
   void showAlert(alertRoot, "Hello");

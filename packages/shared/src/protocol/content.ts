@@ -463,6 +463,28 @@ export const contentItemSetSchema = z.strictObject({
     .optional(),
 });
 
+/** Asks for the NPCs page's view (issue #32), with `name` the NPC file open. */
+export const contentNpcsSchema = z.strictObject({
+  t: z.literal("contentNpcs"),
+  seq,
+  name: z.string().trim().min(1).max(80).optional(),
+});
+
+/**
+ * The NPCs page's save (issue #32): the whole file's text, checked as the NPC Editor's SAVE is, and
+ * live at once. `expect` is the revision the page showed (null: it had no file).
+ */
+export const contentNpcSaveSchema = z.strictObject({
+  t: z.literal("contentNpcSave"),
+  seq,
+  name: z.string().trim().min(1).max(80),
+  text: z.string().max(30_000),
+  expect: z
+    .string()
+    .regex(/^[0-9a-f]{16}$/)
+    .nullable(),
+});
+
 /** Asks for the Monsters page's view (issue #31, stage 4), with `name` the monster open. */
 export const contentMonstersSchema = z.strictObject({
   t: z.literal("contentMonsters"),
@@ -1062,6 +1084,48 @@ export interface ContentMonstersView {
   monsterDraft: number;
 }
 
+/** One name on the NPCs page's list (issue #32). */
+export interface NpcListEntry {
+  name: string;
+  /** It has an NPC file (an empty one counts). */
+  file: boolean;
+  /** On an editor's NPC list. */
+  npc: boolean;
+  /** A monster species of that name exists. */
+  species: boolean;
+  /** Its file sells or buys, banks, trains, or drops loot. */
+  shop: boolean;
+  banker: boolean;
+  trainer: boolean;
+  loot: boolean;
+}
+
+/** The NPC file open on the NPCs page (issue #32). */
+export interface ContentNpcView {
+  name: string;
+  exists: boolean;
+  /** The file's revision, null with no file: what a save names as `expect`. */
+  revision: string | null;
+  /** The file as LOAD shows it: live shop stock and gold written in. */
+  text: string;
+  /** A monster species of that name exists (the Monsters page edits its stats). */
+  species: boolean;
+}
+
+/** The NPCs page's view (issue #32). */
+export interface ContentNpcsView {
+  npcs: NpcListEntry[];
+  npc: ContentNpcView | null;
+  choices: {
+    /** Item names, for shop lines and loot. */
+    items: string[];
+    /** The classes a trainer can promote to. */
+    classes: string[];
+    /** Monster spell tags. */
+    spellTags: string[];
+  };
+}
+
 /** A monster's NPC file as the Monsters page edits it (issue #31, stage 3). */
 export interface ContentNpcFileView {
   /** The file's name (the store's spelling), or the monster's when it has no file yet. */
@@ -1253,6 +1317,13 @@ export type ContentServerMsg =
       seq: number;
       view: ContentItemsView;
       result?: { ok: boolean; text: string; problems?: ContentProblemView[] };
+    }
+  /** The NPCs page's view, after a `contentNpcs` ask or with a `contentNpcSave`'s answer. */
+  | {
+      t: "contentNpcs";
+      seq: number;
+      view: ContentNpcsView;
+      result?: { ok: boolean; text: string };
     }
   /** The Monsters page's view, after a `contentMonsters` ask or with a change's answer. */
   | {

@@ -7489,51 +7489,6 @@
     "errors": []
   },
   {
-    "action": "npc-editor-select-monster",
-    "tag": "DIV",
-    "events": ["click"],
-    "hidden": false,
-    "changed": false,
-    "calls": [],
-    "errors": []
-  },
-  {
-    "action": "npc-editor-select-npc",
-    "tag": "DIV",
-    "events": ["click"],
-    "hidden": false,
-    "changed": false,
-    "calls": [],
-    "errors": []
-  },
-  {
-    "action": "npc-editor-script",
-    "tag": "TEXTAREA",
-    "events": [],
-    "hidden": false,
-    "changed": false,
-    "calls": [],
-    "errors": []
-  },
-  {
-    "action": "npc-editor-load",
-    "tag": "BUTTON",
-    "events": ["click"],
-    "hidden": false,
-    "changed": false,
-    "calls": [],
-    "errors": []
-  },
-  {
-    "action": "npc-editor-save",
-    "tag": "BUTTON",
-    "events": ["click"],
-    "hidden": false,
-    "changed": false,
-    "calls": [],
-    "errors": []
-  },
-  {
     "action": "alert-dismiss",
     "tag": "DIV",
     "events": ["keydown"],

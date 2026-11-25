@@ -1031,7 +1031,7 @@ export class ContentService {
     return contentRows(this.db);
   }
 
-  /** The NPCs with an NPC Editor save, which is laid over their content row (the save plays). */
+  /** The NPCs with an NPCs page save, which is laid over their content row (the save plays). */
   npcEditorSaves(): Set<string> {
     return new Set(loadNpcFiles(this.db).map((f) => f.npc.toLowerCase()));
   }
@@ -1191,7 +1191,7 @@ export class ContentService {
 
   /**
    * The draft's pre-publish checks: schemas, then key rules and cross-references. The answer is
-   * kept until the draft, the published store or the NPC Editor's saves change, so the Content
+   * kept until the draft, the published store or the live NPC file saves change, so the Content
    * page can ask for it on every refresh without running the trial install each time.
    */
   check(draft: readonly DraftRow[] = this.draft()): ContentProblem[] {
@@ -1216,7 +1216,7 @@ export class ContentService {
   private checked: { key: string; problems: ContentProblem[] } | null = null;
 
   /**
-   * The NPC Editor's saves, which play instead of their NPC's content row. Player shops' files are
+   * The live NPC file saves, which play instead of their NPC's content row. Player shops' files are
    * in the same table but are world data (a player's stock and prices), handled with the copies
    * players hold, not checked as content.
    */
@@ -1226,7 +1226,7 @@ export class ContentService {
   }
 
   /**
-   * The NPC Editor's saves as the waiting cleanups will leave them: shop and drop lines naming a
+   * The live NPC file saves as the waiting cleanups will leave them: shop and drop lines naming a
    * removed item go or name its replacement (as the content's NPC file rows did), and a removed
    * NPC's save goes with it. A save the cleanup deletes has `text: null`.
    */
@@ -1337,7 +1337,7 @@ export class ContentService {
       this.npcSaves().some((f) => f.npc.toLowerCase() === (ref.key as string).toLowerCase())
     ) {
       return fail(
-        `${ref.key}'s NPC file has a live save (from the NPC Editor or the Monsters page), which plays instead of this row: change it there.`,
+        `${ref.key}'s NPC file has a live save (from the NPCs page or the Monsters page), which plays instead of this row: change it there.`,
       );
     }
     // An NPC file gets the NPC Editor's handling: display names become keys, then its checks.
@@ -3685,7 +3685,7 @@ export class ContentService {
       h.update(`${a.kind}\u0000${a.key}\u0000${a.updatedAt}\u0000${rowHash(a.action)}\n`);
     }
     // So do the live NPC file saves the publish's cleanup would change or delete (issue #31): one
-    // saved since (the Monsters page, the NPC Editor) changes the revision, so a publish never acts
+    // saved since (the Monsters page, the NPCs page) changes the revision, so a publish never acts
     // on a file newer than the one its author reviewed.
     // And the live saves of the NPC files the draft changes as rows.
     const rows = new Set(
@@ -3794,8 +3794,8 @@ export class ContentService {
         this.writePublish(changes, actor, now, summary, nextCopy.hash, (got) => {
           id = got;
         });
-        // The NPC Editor's saves get the content's cleanup, before the game lays them again; each
-        // keeps the text it had as a version, as an NPC Editor save does.
+        // The live NPC file saves get the content's cleanup, before the game lays them again; each
+        // keeps the text it had as a version, as an NPCs page save does.
         for (const f of this.npcSavesAfter(actions)) {
           if (f.text !== f.was) {
             insertNpcFileVersion(this.db, { npc: f.npc, text: f.was }, actor.accountId, now);
@@ -4255,11 +4255,11 @@ export class ContentService {
         key: entry.name,
         name: entry.display ?? entry.name,
         retired: entry.retired === true,
-        // The NPC Editor's saves play instead of their rows, so their lines are listed too.
+        // The live NPC file saves play instead of their rows, so their lines are listed too.
         uses: usesOf(withNpcSaves(data, saves), kind, entry.name, spellings).map((u) => {
           const v = useView(u);
           return u.row.dataset === "npcFiles" && savedNpcs.has(String(u.row.key).toLowerCase())
-            ? { ...v, where: `${v.where} (NPC Editor save)` }
+            ? { ...v, where: `${v.where} (live save)` }
             : v;
         }),
         world: world ? world.usage(kind, spellings) : [],
@@ -4610,7 +4610,7 @@ export class ContentService {
       const action = actions.find(
         (a) => a.kind === kind && a.key.toLowerCase() === d.key?.toLowerCase(),
       );
-      // NPC Editor saves as the waiting cleanups will leave them, as the publish checks them.
+      // NPCs page saves as the waiting cleanups will leave them, as the publish checks them.
       const left = usesOf(withNpcSaves(next, savesAfter), kind, d.key, spellings);
       const lines = action
         ? actionLines(action, places)

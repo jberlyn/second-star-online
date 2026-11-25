@@ -226,6 +226,10 @@ describe("Only server systems create items", () => {
       contentMonsters: ["name:string"],
       contentMonsterSet: ["name:string", "display:string", "copyFrom:string", "expect:string"],
       contentMonsterSpells: ["expect:string"],
+      // The NPCs page (issue #32): a whole NPC file's text, checked by the server as the NPC
+      // Editor's SAVE is (npcEditor permission).
+      contentNpcs: ["name:string"],
+      contentNpcSave: ["name:string", "text:string", "expect:string"],
       // A monster's NPC file sections (issue #31): the server checks each loot item and spell tag,
       // and writes the file through the NPC Editor's own check.
       contentNpcFile: ["name:string"],
@@ -283,9 +287,6 @@ describe("Only server systems create items", () => {
         "map.mobs[].name:string",
         "map.items[].name:string",
       ],
-      npcLoad: ["name:string"],
-      // The revision LOAD showed (SSO): 16 hex digits, matched against the file as it stands.
-      npcSave: ["name:string", "text:string", "expect:string"],
       roleSave: ["role.id:string", "role.name:string", "role.permissions[]:string"],
       roleDelete: ["id:string"],
       roleAssign: ["name:string", "role:string"],
@@ -342,17 +343,17 @@ describe("File editor and path-based file access removed", () => {
     ]);
     const types = messages.map((m) => m.t);
     // 1.6's file transfer, file editor and character loading/viewing have no message. What the
-    // names match: two editor loads, the Control Panel's player hub (a character by name, read
+    // names match: the World Editor's load, the Control Panel's player hub (a character by name, read
     // through the server for a role with characterView, never a file), a guild page, closing a
     // painting, a newspaper, the profile. The hub's editor (characterEditor) changes a character
     // through the server's own checks, never by writing a file. The Content page's overview
     // (contentEditor) reads the content store's draft and history, not a file. Its upload ticket
     // (issue #29) carries nothing: an upload is stored under the hash of its bytes, never a path.
     // The Monsters page's NPC file sections (issue #31) name an NPC file by monster name, never a
-    // path, and write it through the NPC Editor's checks.
+    // path, and write it through the NPC file check. (The NPC Editor's load went with its window,
+    // issue #32; the NPCs page names an NPC by name too.)
     expect(types.filter((t) => /file|transfer|char|view|load/i.test(t))).toEqual([
       "editLoad",
-      "npcLoad",
       "contentOverview",
       "contentUploadTicket",
       "contentNpcFile",
@@ -376,7 +377,7 @@ describe("File editor and path-based file access removed", () => {
     // The loads that remain address data by id: map coordinates and an NPC's name.
     expect(fields("editLoad")).toEqual(["mx:number", "my:number"]);
     expect(fields("newspaperLoad")).toEqual([]);
-    expect(fields("npcLoad")).toEqual(["name:string"]);
+    expect(fields("contentNpcs")).toEqual(["seq:number", "name:string"]);
     expect(
       inGameSchema.safeParse({ t: "editLoad", mx: 1000, my: 992, path: "maps/x1000y992.txt" })
         .success,

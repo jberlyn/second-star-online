@@ -197,18 +197,105 @@ export interface NpcLoot {
 }
 
 /**
- * The three parts of an NPC file the Monsters page edits, as the game reads them: the drop lines
- * (every line containing `INV|`, as the loot roll reads them; a shopkeeper's stock is `SEL|`, a
- * different tag), the monster spells it casts (`SPL|<tag>` lines) and its flags (`FLG|<flag>`).
- * `spells` and `flags` are the text after the tag.
+ * A whole NPC file as the game reads it, section by section (issue #32): each list holds one entry
+ * per line of its tag, in the file's order. `bio`, `profile`, `chatter`, `banker`, `spells` and
+ * `flags` are the text after the tag. `loot` is every line containing `INV|` (as the loot roll reads
+ * them); a shopkeeper's stock is `sells`.
  */
-export interface NpcSections {
+export interface NpcModel {
+  bio: string[];
+  profile: string[];
+  chatter: string[];
+  sells: { item: string; price: number; stock: number }[];
+  buys: { item: string; price: number }[];
+  gold: number[];
+  trains: { cls: string; price: number }[];
+  banker: string[];
   loot: NpcLoot[];
   spells: string[];
   flags: string[];
 }
 
-type SectionKind = keyof NpcSections;
+/** The three parts the Monsters page edits (issue #31). */
+export type NpcSections = Pick<NpcModel, "loot" | "spells" | "flags">;
+
+type SectionKind = keyof NpcModel;
+type SectionValue = NpcModel[SectionKind][number];
+
+/** Each section: its tag, how a line reads as an entry, and how an entry is written. */
+const SECTIONS: Record<
+  SectionKind,
+  { tag: string; read(data: string): SectionValue; write(v: SectionValue): string }
+> = {
+  bio: { tag: "BIO", read: (d) => d, write: (v) => v as string },
+  profile: { tag: "PRO", read: (d) => d, write: (v) => v as string },
+  chatter: { tag: "RND", read: (d) => d, write: (v) => v as string },
+  sells: {
+    tag: "SEL",
+    read: (d) => {
+      const p = d.split(":");
+      return { item: p[0] ?? "", price: int(p[1]) ?? 0, stock: int(p[2]) ?? 0 };
+    },
+    write: (v) => {
+      const x = v as NpcModel["sells"][number];
+      return `${x.item}:${x.price}:${x.stock}`;
+    },
+  },
+  buys: {
+    tag: "BUY",
+    read: (d) => {
+      const p = d.split(":");
+      return { item: p[0] ?? "", price: int(p[1]) ?? 0 };
+    },
+    write: (v) => {
+      const x = v as NpcModel["buys"][number];
+      return `${x.item}:${x.price}`;
+    },
+  },
+  gold: { tag: "GLD", read: (d) => int(d) ?? 0, write: (v) => String(v) },
+  trains: {
+    tag: "TRN",
+    read: (d) => parseTrn(d),
+    write: (v) => {
+      const x = v as NpcModel["trains"][number];
+      return `${x.cls}:${x.price}`;
+    },
+  },
+  banker: { tag: "BNK", read: (d) => d, write: (v) => v as string },
+  loot: {
+    tag: "INV",
+    read: (d) => {
+      const p = d.split(":");
+      return { item: p[0] ?? "", oneIn: int(p[1]) ?? 0 };
+    },
+    write: (v) => {
+      const x = v as NpcLoot;
+      return `${x.item}:${x.oneIn}`;
+    },
+  },
+  spells: { tag: "SPL", read: (d) => d, write: (v) => v as string },
+  flags: { tag: "FLG", read: (d) => d, write: (v) => v as string },
+};
+
+const KINDS = Object.keys(SECTIONS) as SectionKind[];
+const KIND_OF_TAG = new Map(KINDS.map((k) => [SECTIONS[k].tag, k]));
+
+/** An empty model. */
+export function emptyNpcModel(): NpcModel {
+  return {
+    bio: [],
+    profile: [],
+    chatter: [],
+    sells: [],
+    buys: [],
+    gold: [],
+    trains: [],
+    banker: [],
+    loot: [],
+    spells: [],
+    flags: [],
+  };
+}
 
 /** A line and the line ending after it ("" for a last line with none). */
 interface NpcSegment {
@@ -235,112 +322,154 @@ function segmentsOf(text: string): NpcSegment[] {
 }
 
 /**
- * The sections a line is read as: a line can contain `INV|` anywhere and still be a tag line. A
- * tag line other than `INV|`, `SPL|` or `FLG|` that contains `INV|` (a Bio saying "INV|") is read
- * by its own reader too, so it counts as two (`"other"`): the page cannot edit it apart.
+ * The section a line is read as, null for one no section holds (an `OWN|` line, a blank line, an
+ * unknown tag), or "mixed" for a line the game reads two ways: a tag line other than `INV|` that
+ * also contains `INV|` (a Bio saying "INV|") is read by its own reader and as loot.
  */
-function kindsOf(line: string): (SectionKind | "other")[] {
-  const kinds: (SectionKind | "other")[] = [];
+function kindOfLine(line: string): SectionKind | "mixed" | null {
   const tag = TAG_RX.exec(line)?.[1];
-  if (lingoContains(line, "INV|")) {
-    kinds.push("loot");
-    if (tag !== undefined && tag !== "INV" && tag !== "SPL" && tag !== "FLG") {
-      kinds.push("other");
-    }
+  const loot = lingoContains(line, "INV|");
+  if (loot && tag !== undefined && tag !== "INV") {
+    return "mixed";
   }
-  if (tag === "SPL") {
-    kinds.push("spells");
-  } else if (tag === "FLG") {
-    kinds.push("flags");
+  if (loot) {
+    return "loot";
   }
-  return kinds;
+  return tag === undefined ? null : (KIND_OF_TAG.get(tag) ?? null);
 }
 
-const lootOf = (line: string): NpcLoot => {
-  const parts = (line.split("|")[1] ?? "").split(":");
-  return { item: parts[0] ?? "", oneIn: int(parts[1]) ?? 0 };
-};
-
-type SectionValue = NpcLoot | string;
-
-const sectionValue = (kind: SectionKind, line: string): SectionValue =>
-  kind === "loot" ? lootOf(line) : line.slice(4);
-
-const sameValue = (a: SectionValue, b: SectionValue): boolean =>
-  typeof a === "string" || typeof b === "string"
-    ? a === b
-    : a.item === b.item && a.oneIn === b.oneIn;
-
-/** The line a new section entry is written as. */
-export function npcSectionLine(kind: SectionKind, v: SectionValue): string {
-  if (kind === "loot") {
-    const l = v as NpcLoot;
-    return `INV|${l.item}:${l.oneIn}`;
-  }
-  return `${kind === "spells" ? "SPL" : "FLG"}|${v as string}`;
+/** The entry a line holds, for its section. */
+function entryOf(kind: SectionKind, line: string): SectionValue {
+  // The loot roll reads the part after the first "|" wherever the tag is.
+  const data = kind === "loot" ? (line.split("|")[1] ?? "") : line.slice(4);
+  return SECTIONS[kind].read(data);
 }
 
 /**
- * A file's sections, and the lines (1-based) the game reads as two sections at once (an `SPL|` or
- * `FLG|` line that also contains `INV|`), which the page cannot edit apart.
+ * Whether a section line has the fields its tag takes, each number whole: only such a line is kept
+ * as it was for an equal entry. A malformed one (`SEL|Apple:10`, `GLD|100a`) reads as zeros, so an
+ * entry saved from the form is written afresh rather than keeping the broken text.
  */
-export function npcSections(text: string): NpcSections & { mixed: number[] } {
-  const s: NpcSections & { mixed: number[] } = { loot: [], spells: [], flags: [], mixed: [] };
+function wellFormed(kind: SectionKind, line: string): boolean {
+  const data = kind === "loot" ? (line.split("|")[1] ?? "") : line.slice(4);
+  const p = data.split(":");
+  const n = (v: string | undefined) => v !== undefined && int(v) !== null;
+  switch (kind) {
+    case "sells":
+      return p.length === 3 && n(p[1]) && n(p[2]);
+    case "buys":
+      return (p.length === 2 || p.length === 3) && n(p[1]);
+    case "gold":
+      return n(data);
+    case "trains":
+    case "loot":
+      return p.length === 2 && n(p[1]);
+    default:
+      return true;
+  }
+}
+
+const sameEntry = (a: SectionValue, b: SectionValue): boolean =>
+  typeof a === "object" && typeof b === "object" ? rowEq(a, b) : a === b;
+
+function rowEq(a: object, b: object): boolean {
+  const ka = Object.keys(a);
+  return (
+    ka.length === Object.keys(b).length &&
+    ka.every((k) => (a as Record<string, unknown>)[k] === (b as Record<string, unknown>)[k])
+  );
+}
+
+/** The line a new entry is written as. */
+export function npcEntryLine(kind: SectionKind, v: SectionValue): string {
+  return `${SECTIONS[kind].tag}|${SECTIONS[kind].write(v)}`;
+}
+
+/** One line of the file as the structured editor shows it: its section, or why it has none. */
+export interface NpcLineInfo {
+  /** 1-based. */
+  line: number;
+  text: string;
+  kind: SectionKind | "mixed" | null;
+}
+
+/**
+ * A file as its sections, the lines (1-based) the game reads two ways (which the editor cannot edit
+ * apart), and every line with the section it is in (null: kept as it is, `OWN|`, blank or unknown).
+ */
+export function npcModel(text: string): NpcModel & { mixed: number[]; lines: NpcLineInfo[] } {
+  const m = { ...emptyNpcModel(), mixed: [] as number[], lines: [] as NpcLineInfo[] };
   segmentsOf(text).forEach((seg, i) => {
-    const kinds = kindsOf(seg.line);
-    if (kinds.length > 1) {
-      s.mixed.push(i + 1);
-    }
-    for (const k of kinds) {
-      if (k !== "other") {
-        (s[k] as SectionValue[]).push(sectionValue(k, seg.line));
+    const kind = kindOfLine(seg.line);
+    m.lines.push({ line: i + 1, text: seg.line, kind });
+    if (kind === "mixed") {
+      m.mixed.push(i + 1);
+      // Still read as the game reads it (a drop line, and its tag's section when it has one), so a
+      // check of what plays sees it; the editor only refuses to write it.
+      (m.loot as SectionValue[]).push(entryOf("loot", seg.line));
+      const tagKind = KIND_OF_TAG.get(TAG_RX.exec(seg.line)?.[1] ?? "");
+      if (tagKind && tagKind !== "loot") {
+        (m[tagKind] as SectionValue[]).push(entryOf(tagKind, seg.line));
       }
+      return;
+    }
+    if (kind) {
+      (m[kind] as SectionValue[]).push(entryOf(kind, seg.line));
     }
   });
-  return s;
+  return m;
 }
 
 /**
- * The file with its sections replaced by `next`; every other line, and every line ending, stays
- * as it was. An entry equal to one the file has keeps that line's text exactly (so an unchanged
- * file comes back byte for byte, odd spacing included); a new entry is written in the tag's form.
- * New lines go after the section's last line, or at the end of the file when it has none. Throws
- * when the file has a line read as two sections (`npcSections().mixed`).
+ * The file with the sections `next` names replaced; every other line, and every line ending, stays
+ * as it was. An entry equal to one the file has keeps that line's text exactly (so an unchanged file
+ * comes back byte for byte, odd spacing included); a new entry is written in its tag's form. Entries
+ * keep their section's lines in order: the first entry takes the section's first line, and so on;
+ * new lines go after the section's last line, or at the end of the file when it has none. Throws when
+ * the file has a line read two ways (`npcModel().mixed`).
  */
-export function withNpcSections(text: string, next: NpcSections): string {
+export function withNpcModel(text: string, next: Partial<NpcModel>): string {
   const segs = segmentsOf(text);
   const nl = segs.find((s) => s.end !== "")?.end ?? "\r";
   const trailing = segs.length > 0 && (segs.at(-1) as NpcSegment).end !== "";
-  const kindOf = segs.map((s) => {
-    const kinds = kindsOf(s.line);
-    if (kinds.length > 1) {
+  const kindAt = segs.map((s) => {
+    const kind = kindOfLine(s.line);
+    if (kind === "mixed") {
       throw new Error("a line is read as two sections");
     }
-    return (kinds[0] as SectionKind | undefined) ?? null;
+    // A section not being replaced keeps its lines as they are.
+    return kind && next[kind] !== undefined ? kind : null;
   });
-  const KINDS: SectionKind[] = ["loot", "spells", "flags"];
+  const changing = KINDS.filter((k) => next[k] !== undefined);
   const texts = new Map<SectionKind, string[]>();
   const lastAt = new Map<SectionKind, number>();
-  for (const k of KINDS) {
-    const at = kindOf.flatMap((kk, i) => (kk === k ? [i] : []));
-    const old = at.map((i) => sectionValue(k, (segs[i] as NpcSegment).line));
+  for (const k of changing) {
+    const at = kindAt.flatMap((kk, i) => (kk === k ? [i] : []));
+    const old = at.map((i) => entryOf(k, (segs[i] as NpcSegment).line));
     const used = new Set<number>();
     texts.set(
       k,
       (next[k] as SectionValue[]).map((v) => {
-        const j = old.findIndex((o, ix) => !used.has(ix) && sameValue(o, v));
+        const j = old.findIndex(
+          (o, ix) =>
+            !used.has(ix) &&
+            sameEntry(o, v) &&
+            wellFormed(k, (segs[at[ix] as number] as NpcSegment).line),
+        );
         if (j >= 0) {
           used.add(j);
           return (segs[at[j] as number] as NpcSegment).line;
         }
-        return npcSectionLine(k, v);
+        return npcEntryLine(k, v);
       }),
     );
     if (at.length > 0) {
       lastAt.set(k, at.at(-1) as number);
     }
   }
-  const out: NpcSegment[] = [];
+  /** Each line out, and whether it is the file's own last line or a new one (its ending follows the file's). */
+  const out: (NpcSegment & { tail: boolean })[] = [];
+  const lastIx = segs.length - 1;
   const rank = new Map<SectionKind, number>();
   const extras = (k: SectionKind, from: number) => {
     const rest = (texts.get(k) as string[]).slice(from);
@@ -352,44 +481,48 @@ export function withNpcSections(text: string, next: NpcSections): string {
       last.end = nl;
     }
     for (const line of rest) {
-      out.push({ line, end: nl });
+      out.push({ line, end: nl, tail: true });
     }
   };
   segs.forEach((seg, i) => {
-    const k = kindOf[i];
+    const k = kindAt[i];
     if (!k) {
-      out.push({ ...seg });
+      out.push({ ...seg, tail: i === lastIx });
       return;
     }
     const r = rank.get(k) ?? 0;
     rank.set(k, r + 1);
     const t = texts.get(k) as string[];
     if (r < t.length) {
-      out.push({ line: t[r] as string, end: seg.end });
+      out.push({ line: t[r] as string, end: seg.end, tail: i === lastIx });
     }
     if (lastAt.get(k) === i) {
       extras(k, r + 1);
     }
   });
-  for (const k of KINDS) {
+  for (const k of changing) {
     if (!lastAt.has(k)) {
       extras(k, 0);
     }
   }
+  // The file's ending follows its own last line. A blank line that is now last (the lines after it
+  // went) keeps its ending, so it is never lost: a blank line is only its ending.
   const last = out.at(-1);
-  if (last) {
+  if (last && (last.tail || last.line !== "")) {
     last.end = trailing ? last.end || nl : "";
   }
   return out.map((s) => s.line + s.end).join("");
 }
 
-/**
- * What LOAD's display routine does to the file text: lossless display preserving all lines
- * (including `OWN|`, empty lines, lines past `NPC_MAX_LINES`, and every first character). Returns
- * CR-delimited text, preserving whether the file has a trailing line ending.
- */
-export function showNpcScript(text: string): string {
-  return npcLines(text).join("\r");
+/** A file's loot, spells and flags (the Monsters page's sections), and its lines read two ways. */
+export function npcSections(text: string): NpcSections & { mixed: number[] } {
+  const m = npcModel(text);
+  return { loot: m.loot, spells: m.spells, flags: m.flags, mixed: m.mixed };
+}
+
+/** The file with its loot, spells and flags replaced (`withNpcModel`). */
+export function withNpcSections(text: string, next: NpcSections): string {
+  return withNpcModel(text, { loot: next.loot, spells: next.spells, flags: next.flags });
 }
 
 /** A shop ledger's lines, as the economy keeps them (keyed by file line). */
@@ -446,16 +579,6 @@ onContent((c) => {
   NPC_EDITOR_MONSTERS = c.monsters.editorLists.npcEditor.monsters;
   NPC_EDITOR_NPCS = c.monsters.editorLists.npcEditor.npcs;
 });
-
-/** The list spelling of a name the editor may load and save (comparison ignores case), or null. */
-export function npcEditorName(name: string): string | null {
-  const want = name.toLowerCase();
-  return (
-    NPC_EDITOR_MONSTERS.find((n) => n.toLowerCase() === want) ??
-    NPC_EDITOR_NPCS.find((n) => n.toLowerCase() === want) ??
-    null
-  );
-}
 
 // ---- the editor's checks ----
 
@@ -657,17 +780,6 @@ export function checkNpcFile(
 
 /** The editor's alerts. */
 export const NPC_EDIT_TEXT = {
-  /** The NPC was created. */
-  saved: "NPC has been successfully saved.",
   /** SSO: a refused save. */
   refused: (why: string) => `The NPC was not saved. ${why}`,
-  /** SSO: a SAVE over a file with no LOAD of it first. */
-  unloaded:
-    "The NPC was not saved: LOAD its file first, so your save starts from what it holds now.",
-  /** SSO: a SAVE from a LOAD older than the file. */
-  stale:
-    "The NPC was not saved: its file changed since you loaded it (another admin, the Monsters page or a publish). LOAD it again and redo your edit.",
-  /** SSO: LOAD of a file the save check would refuse for its length. */
-  tooLong: (lines: number) =>
-    `This file has ${lines} lines. An NPC file holds at most ${NPC_MAX_LINES} lines, so remove ${lines - NPC_MAX_LINES} before saving.`,
 } as const;

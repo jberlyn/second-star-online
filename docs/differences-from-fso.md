@@ -29,8 +29,8 @@ An entry uses this shape; `Pinned by` is optional:
 
 | Section | Entries |
 |---|---:|
-| [Design changes](#design-changes) | 82 |
-| [Fixed bugs](#fixed-bugs) | 307 |
+| [Design changes](#design-changes) | 83 |
+| [Fixed bugs](#fixed-bugs) | 306 |
 | [Kept on purpose](#kept-on-purpose) | 12 |
 | [Server authority and exploits](#server-authority-and-exploits) | 138 |
 | [Not in SSO](#not-in-sso) | 40 |
@@ -40,7 +40,7 @@ By system (the code folder that holds the change):
 
 | System | Bugs fixed | Server authority and exploits |
 |---|---:|---:|
-| admin | [15](#admin) | [25](#server-side-admin) |
+| admin | [14](#admin) | [25](#server-side-admin) |
 | casino | [16](#casino) | [3](#server-side-casino) |
 | chat | [12](#chat) | [7](#server-side-chat) |
 | combat | [28](#combat) | [7](#server-side-combat) |
@@ -181,8 +181,17 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** The Control Panel is part of the client, using the same login and session. It opens for a role holding a permission with a Control Panel page (today Server Settings, Characters, the Activity Log and Content; see [Staff look characters up in a player hub, not their files](#staff-look-characters-up-in-a-player-hub-not-their-files), [The server logs what players do with items, gold and their time](#the-server-logs-what-players-do-with-items-gold-and-their-time) and [Operators change the game's content live, from the Control Panel](#operators-change-the-games-content-live-from-the-control-panel)); the server checks again and logs a refused request to the cheat log. Opening it leaves the map like the editors do: everyone there sees you go, trades, shops and held actions are cancelled and nothing on it ticks for you. Moving between the Control Panel and the classic editors never puts you back on the map in between. The classic menu bar belongs to the 800×600 frame, so it is not shown in the Control Panel. A page with unsaved changes asks before Return to Game, another page or an editor. The Server Settings window became the Control Panel's Server Settings page. Roles also get a permission for editing characters, which the player hub's Edit tab uses, and one for editing content, which the Content page uses.
 - **Why:** Admin work needs full-page tables and forms that do not fit a floating window scaled with the game, and the Control Panel is where content, character and log tools will go (issue #22).
 - **In the code:** `packages/client/src/ui/control-panel.ts` (`createControlPanel`), `packages/client/src/ui/control-panel-kit.ts`, `packages/server/src/systems/admin/control-panel.ts` (`openControlPanel`), `packages/server/src/systems/admin/worldedit.ts` (`leaveForEditor`, `mayEdit`), `packages/shared/src/rules/admin/permissions.ts` (`canOpenControlPanel`)
-- **Pinned by:** `a player gets nothing; an admin leaves the room, stops ticking and gets the Control Panel`; `moving between the Control Panel and the editors never puts the admin back on the map`; `a player's controlPanelOpen is refused and written to the cheat log`; `a role that loses its Control Panel permissions is sent back to the game` (packages/server/tests/control-panel.test.ts); `the Control Panel replaces the game and its menu bar; Return to Game brings the game back`; `floating windows open over the Control Panel at their own size, and IMs are counted`; `unsaved changes ask before Return to Game, another page or a classic tool` (packages/client/tests/control-panel.test.ts); `every role that held every permission gets the new ones; the seeded roles match the defaults` (packages/server/tests/roles.test.ts)
+- **Pinned by:** `a player gets nothing; an admin leaves the room, stops ticking and gets the Control Panel`; `moving between the Control Panel and the World Editor never puts the admin back on the map`; `a player's controlPanelOpen is refused and written to the cheat log`; `a role that loses its Control Panel permissions is sent back to the game` (packages/server/tests/control-panel.test.ts); `the Control Panel replaces the game and its menu bar; Return to Game brings the game back`; `floating windows open over the Control Panel at their own size, and IMs are counted`; `unsaved changes ask before Return to Game, another page or a classic tool` (packages/client/tests/control-panel.test.ts); `every role that held every permission gets the new ones; the seeded roles match the defaults` (packages/server/tests/roles.test.ts)
 
+
+#### NPC files are edited on the Control Panel's NPCs page
+- **Kind:** World content
+- **What you notice:** Admin → NPC Editor opens the Control Panel's **NPCs** page: every NPC file in a searchable list (shopkeepers, bankers, trainers, those that drop loot), and the open one as forms, one per section (Bio, profile, chatter, what it sells and buys, its till, banker, trainer, loot, spells and flags), with item and class pickers, or as its text. Switching between the two carries the edit across, and the server's own check runs as you type. Saving applies at once, as the NPC Editor's always did.
+- **1.6:** The NPC Editor (frame 311) was two name lists and one text field with LOAD and SAVE: an operator wrote the file's tagged lines by hand.
+- **SSO:** The forms write only the lines their section holds; every other line (`OWN|`, blank lines, an unknown tag) stays where it is, and an unchanged entry keeps its line exactly, so a file round-trips byte for byte. A line read two ways (a drop line inside a Bio line) opens the file as text. The frame-311 window and its LOAD and SAVE messages are gone. The Monsters page links to a monster's whole NPC file.
+- **Why:** Operators should not need to know the line syntax to run a shop or give a monster loot.
+- **In the code:** `packages/client/src/ui/npcs-page.ts`; `packages/shared/src/rules/admin/npcfile.ts` (`npcModel`, `withNpcModel`); `packages/server/src/systems/admin/npcpage.ts`
+- **Pinned by:** `every Classic file reads as the game reads it, and comes back byte for byte` (packages/shared/tests/admin/npcfile-model.test.ts); `a sell added in the sections saves the whole file, other lines kept, with its revision`; `the text view carries the sections' edit, and back; a refused line is shown as you type` (packages/client/tests/npcs-page.test.ts); `Admin holds Control Panel, World Editor, NPC Editor, Return To Game, then the three Assassin items; Admin Chat is on Chat; NPC Editor opens the Control Panel's NPCs page` (packages/client/tests/admin-menu.test.ts)
 #### Roster chat commands for operators
 - **Kind:** World content
 - **What you notice:** An administrator can inspect or change the four monster roster slots with `/roster`; the World Editor can also set them.
@@ -515,7 +524,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** The server fills the Friends lines at entry and Return To Game and keeps them current while the window is closed; the menu opens the window.
 - **Why:** A window popping up at every login gets in the way, and the list is one menu item away.
 - **In the code:** `packages/server/src/systems/social/friends.ts` (`friendsEntry`), `packages/client/src/ui/gamemenu.ts` (`desktopMenus`)
-- **Pinned by:** `divergence: game entry fills the Friends window but opens it at no size; a player's bio opens the Bio window` (packages/client/tests/npceditor.test.ts)
+- **Pinned by:** `divergence: game entry fills the Friends window but opens it at no size; a player's bio opens the Bio window` (packages/client/tests/admin-menu.test.ts)
 
 #### Buddy and ignore lists per account on the server
 - **Kind:** Platform
@@ -876,23 +885,14 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **In the code:** `packages/shared/src/rules/admin/worldedit.ts` (`exitFieldsAfterLoad`)
 - **Pinned by:** `loading a map without an exit resets the exit fields so saving does not recreate a stale exit` (packages/shared/tests/admin/worldedit.test.ts); `loading a map with no exit resets the exit fields so saving does not recreate a stale exit` (packages/client/tests/worldeditor.test.ts)
 
-#### NPC editor LOAD displays complete script text losslessly
+#### An NPC file shows every line, and a save never writes over a change it has not seen
 - **Kind:** Bug fixed
-- **What you notice:** Loading an NPC in the NPC Editor displays every line losslessly, including `OWN|`, empty lines, lines past 100, and all first characters; save validation and limits still apply on save.
-- **1.6:** LOAD dropped empty lines, truncated at 100 lines, and stripped any leading character other than `T P B S R G F I` (turning `OWN|` into `WN|`).
-- **SSO:** `showNpcScript` returns all lines losslessly without truncation or character stripping. A file over 100 lines also brings an alert that SAVE refuses more than 100 and how many lines to remove.
-- **Why:** Prevents silent data loss when inspecting and re-saving NPC scripts.
-- **In the code:** `packages/shared/src/rules/admin/npcfile.ts` (`showNpcScript`); `packages/server/src/systems/admin/npcedit.ts` (`loadNpc`)
-- **Pinned by:** `lossless display: preserves OWN|, all first characters, empty lines, and >100 lines` (packages/shared/tests/admin/npcfile.test.ts); `LOAD's reply displays lossless complete text including OWN|, empty lines, and >100 lines` (packages/client/tests/npceditor.test.ts); `SSO: a file over the save limit loads in full with a warning that SAVE will refuse it` (packages/server/tests/npcedit.test.ts)
-
-#### NPC editor SAVE never writes over a file it has not loaded
-- **Kind:** Bug fixed
-- **What you notice:** SAVE on an NPC whose file exists needs a LOAD of that file first, and is refused if the file changed since (another admin, the Control Panel's Monsters page or a content publish saved it): LOAD it again and redo the edit. Saving twice in a row after one LOAD works. A file that does not exist yet can still be made without a LOAD.
-- **1.6:** SAVE wrote the field's text over the file whatever it held, so an admin who had not loaded it, or loaded it before someone else's save, silently put back old lines.
-- **SSO:** LOAD's reply carries the file's revision (a hash of its text; shop sales do not change it), SAVE names it, and each save answers with the new one. The Monsters page's loot, spells and flags save the same way.
-- **Why:** Two editors now write NPC files (the NPC Editor and the Monsters page), so a save must never undo a change its author has not seen.
-- **In the code:** `packages/server/src/systems/admin/npcedit.ts` (`saveNpc`, `npcRevisionOf`); `packages/server/src/systems/admin/npcsections.ts` (`saveNpcSections`); `packages/client/src/app.ts` (`npcRevision`)
-- **Pinned by:** `a SAVE naming no revision makes a file that does not exist, but never replaces one` and `a SAVE from a LOAD older than the file is refused, either way round` (packages/server/tests/npcedit.test.ts); `a monster's NPC file sections need the Content page's permission and save as the NPC Editor does (issue #31)` (packages/server/tests/admin.test.ts)
+- **What you notice:** The Control Panel's NPCs page shows an NPC's whole file, `OWN|` and blank lines included, with its shop's live stock and gold. Saving over a file someone changed since you opened it (another admin, the Monsters page or a content publish) is refused: open it again and redo the edit.
+- **1.6:** The NPC Editor's LOAD dropped empty lines, cut the file at 100 lines and stripped any leading character other than `T P B S R G F I` (turning `OWN|` into `WN|`), and SAVE wrote the field's text over the file whatever it held, so an admin who loaded it before someone else's save silently put back old lines.
+- **SSO:** The page shows the file as the server holds it, every line kept. Each open carries the file's revision (a hash of its text; shop sales do not change it), and a save names it; a file that does not exist yet needs none. The Monsters page's loot, spells and flags save the same way.
+- **Why:** Prevents silent data loss when inspecting and re-saving NPC files, and two pages now write them.
+- **In the code:** `packages/server/src/systems/admin/npcpage.ts` (`npcPageFile`, `saveNpcPage`); `packages/server/src/systems/admin/npcsections.ts` (`saveNpcSections`); `packages/server/src/systems/admin/npcedit.ts` (`npcFileRevision`)
+- **Pinned by:** `the open file is LOAD's, live stock written in, with the file's revision` and `a save applies at once; a stale one, a bad line or an unknown name is refused` (packages/server/tests/npc-page.test.ts); `a save from an open older than the file is refused; a new file names none` (packages/server/tests/npcedit.test.ts); `a monster's NPC file sections need the Content page's permission and save as the NPC Editor does (issue #31)` (packages/server/tests/admin.test.ts)
 
 #### Unauthorized staff chat shows a refusal and clears input
 - **Kind:** Bug fixed
@@ -1783,7 +1783,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** Bug fixed
 - **What you notice:** The Fire, Water and Wind God books cost their listed price, and the gold goes into the shopkeeper's till. Selling to a shopkeeper pays from its till; one whose till is empty says "<Name> says "I'm sorry but I can't afford to buy that."" and you keep the item. Gold handed to a shopkeeper always goes into its till.
 - **1.6:** Only a shopkeeper with a `GLD|` line among its first 80 lines charged or paid: one without gave goods away (after checking you could afford them) and took sold items for nothing. A gift counted only with a `GLD|` line among the first 60 lines.
-- **SSO:** No `GLD|` line means a till of 0. Purchases fill it, sales pay from it, and gifts add to it. Once it holds gold, the file the NPC editor loads (and a player shop's rewrite) shows a `GLD|` line. The `GLD|` line counts wherever it is, so the NPC editor no longer warns about its position.
+- **SSO:** No `GLD|` line means a till of 0. Purchases fill it, sales pay from it, and gifts add to it. Once it holds gold, the file the NPCs page shows (and a player shop's rewrite) shows a `GLD|` line. The `GLD|` line counts wherever it is, so the NPC editor no longer warns about its position.
 - **Why:** A listed price should be charged, a sale should never take an item for nothing, and the line limits were 1.6 reader windows with no gameplay purpose.
 - **In the code:** `packages/server/src/systems/economy/shop.ts` (`ledgerFromTemplate`, `npcBuy`, `npcSell`); `packages/server/src/systems/economy/intents.ts` (`giveGoldToNpc`); `packages/shared/src/rules/admin/npcfile.ts` (`liveNpcText`, `checkNpcFile`)
 - **Pinned by:** `bug fixed: a shopkeeper with no GLD line charges the price into a till that starts at 0`; `bug fixed: a shopkeeper with no GLD line pays from its till, refusing while it is empty` (packages/server/tests/economy.test.ts); `bug fixed: ledgers: GLD| counts wherever it is, and no GLD| is a till of 0`; `bug fixed: gold given goes into the till wherever GLD| is, or into a till from 0 without one` (packages/server/tests/npcedit.test.ts); `bug fixed: a till filled without a GLD| line shows as one in the live file` (packages/shared/tests/admin/npcfile.test.ts); `bug fixed: the Fire God's book costs its 100 gold, though he keeps no gold line` (packages/server/e2e/npcs-shops-trade.test.ts)
@@ -1792,7 +1792,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** Bug fixed
 - **What you notice:** The Smithy sells the Fortress Guild Hall Deed. Any item on a shop list can be bought, whatever line of the shop's file it sits on, and buying one item never takes another's stock.
 - **1.6:** The buy routine shared one counter between two nested loops, so a non-crystal sale line at file line 17 or later always answered "out of stock" (and stalled the server for up to its stock count), and lines past 80 could not be bought. A match below line 17 jumped ahead, which also stopped a prefix match from taking Trout Fillet's stock.
-- **SSO:** The purchase uses the chosen line alone: its price, its stock and its item. The NPC editor no longer warns about sale lines from line 17 or after line 80.
+- **SSO:** The purchase uses the chosen line alone: its price, its stock and its item. A save no longer warns about sale lines from line 17 or after line 80.
 - **Why:** Items a shop lists should be for sale.
 - **In the code:** `packages/server/src/systems/economy/shop.ts` (`npcBuy`); `packages/shared/src/rules/admin/npcfile.ts` (`checkNpcFile`)
 - **Pinned by:** `bug fixed: the Fortress Guild Hall Deed (Smithy line 17) can be bought`; `buying Trout takes only Trout's stock, not Trout Fillet's` (packages/server/tests/economy.test.ts); `warned: inert tags only; no line is outside a reader's window` (packages/shared/tests/admin/npcfile.test.ts)
@@ -2734,7 +2734,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** Edit Newspaper sits on the Game menu, and the server loads and saves the player's own paper.
 - **Why:** The Newspaper Kit was useless to the players who bought it.
 - **In the code:** `packages/server/src/systems/mail/newspapers.ts` (`newspaperLoadIntent`, `newspaperSaveIntent`), `packages/client/src/ui/gamemenu.ts` (`desktopMenus`)
-- **Pinned by:** `bug fixed: a player saves to their own paper, loads it, and their stand shows it` (packages/server/tests/art-news.test.ts); `the Game and Chat items: Open Friend's List, Send Instant Message, Edit Newspaper, the four rooms, Clear Chat Text` (packages/client/tests/npceditor.test.ts)
+- **Pinned by:** `bug fixed: a player saves to their own paper, loads it, and their stand shows it` (packages/server/tests/art-news.test.ts); `the Game and Chat items: Open Friend's List, Send Instant Message, Edit Newspaper, the four rooms, Clear Chat Text` (packages/client/tests/admin-menu.test.ts)
 
 #### Closing the mail list closes its panes
 - **Kind:** Bug fixed
@@ -3780,12 +3780,12 @@ Changes that move authority from the client to the server and close exploits tha
 
 #### NPC editor checks its files
 - **Kind:** Exploit closed
-- **What you notice:** An administrator selects a listed NPC in the editor; invalid files are refused with a reason, and a successful save warns about lines that have no effect in play.
+- **What you notice:** An administrator opens an NPC on the Control Panel's NPCs page; invalid files are refused with a reason, shown as you type, and a successful save warns about lines that have no effect in play.
 - **1.6:** Anyone could load a file by an unchecked NPC name. Save was gated by the client and an immortals-name lookup, and wrote arbitrary field content under the supplied name. Saving or loading before selecting a name used a leftover or empty name. A backtick truncated text and `*` or `^` broke the NPC bundle; item names, numbers and tags were unchecked.
-- **SSO:** Load and save require an administrator in the editor and a name on its monster or NPC list; selecting no name sends nothing. The server checks each line and refuses backticks, `*`, `^`, tags other than the twelve upper-case tags used by the archive, second `|` separators, malformed or out-of-range numbers on `SEL|`, `BUY|`, `INV|`, `GLD|` and `TRN|` lines, unknown items, a second `GLD|`, more than 100 lines or lines over 255 characters. `INV|` chances start at 1; other numeric fields start at 0, and the inventory line accepts gold, crystals and fixtures as well as catalogue items and archived spellings. After “NPC has been successfully saved.”, warnings identify inert `FLG|` and `SPL|` values, and `TRN|` classes without a promotion branch. Each save versions the previous file.
+- **SSO:** Opening and saving need the NPC Editor permission and a name that is an NPC file, an editor-list name or a species, never a player shop's file. The server checks each line and refuses backticks, `*`, `^`, tags other than the twelve upper-case tags used by the archive, second `|` separators, malformed or out-of-range numbers on `SEL|`, `BUY|`, `INV|`, `GLD|` and `TRN|` lines, unknown items, a second `GLD|`, more than 100 lines or lines over 255 characters. `INV|` chances start at 1; other numeric fields start at 0, and the inventory line accepts gold, crystals and fixtures as well as catalogue items and archived spellings. After a save, warnings identify inert `FLG|` and `SPL|` values, and `TRN|` classes without a promotion branch. Each save versions the previous file.
 - **Why:** Server validation prevents arbitrary file access and invalid data; warnings make silent original rules visible to operators.
-- **In the code:** `packages/server/src/systems/admin/npcedit.ts` (`loadNpc`, `saveNpc`), `packages/shared/src/rules/admin/npcfile.ts` (`checkNpcFile`)
-- **Pinned by:** `refused: backtick, * and ^`; `refused: unknown or lower-case tags, a second |, more than 100 lines, long lines`; `refused: unknown items, bad numbers, two GLD| lines`; `accepted: archived spellings, N Gold, N crystals, fixtures, BUY's ignored third field`; `warned: inert tags only; no line is outside a reader's window` (packages/shared/tests/admin/npcfile.test.ts); `a list name with no file loads empty; unlisted names, no name and players outside the editor get nothing`; `a refused save says why and changes nothing`; `a save replaces the file, drops the ledger, closes the NPC's windows and lists warnings under the alert`; `a save writes the file and its old version and drops the stored ledger; a restart loads it`; `a player's npcSave is ignored` (packages/server/tests/npcedit.test.ts)
+- **In the code:** `packages/server/src/systems/admin/npcpage.ts` (`npcPageName`, `saveNpcPage`), `packages/shared/src/rules/admin/npcfile.ts` (`checkNpcFile`)
+- **Pinned by:** `refused: backtick, * and ^`; `refused: unknown or lower-case tags, a second |, more than 100 lines, long lines`; `refused: unknown items, bad numbers, two GLD| lines`; `accepted: archived spellings, N Gold, N crystals, fixtures, BUY's ignored third field`; `warned: inert tags only; no line is outside a reader's window` (packages/shared/tests/admin/npcfile.test.ts); `a list name with no file opens empty; a player shop's file and no name open nothing`; `a refused save says why and changes nothing`; `a save replaces the file, drops the ledger, closes the NPC's windows and lists warnings under the alert`; `a save writes the file and its old version and drops the stored ledger; a restart loads it`; `a player's NPC file save is ignored` (packages/server/tests/npcedit.test.ts)
 
 #### Only server systems create items
 - **Kind:** Exploit closed
@@ -3820,16 +3820,16 @@ Changes that move authority from the client to the server and close exploits tha
 - **1.6:** The server reread NPC files on each buy, sale, gift and kill, but clients kept the map's copy for Bio, shop buttons, chatter and flags until the next map load. An open shop list remained unchanged; a buy used the name and the client-supplied price.
 - **SSO:** The server holds NPC files, so a save changes all uses immediately. Open Bio windows and shop lists for that NPC close because their lines may no longer exist. A player shop's `set` and `remove` close them too when they move lines.
 - **Why:** Per-client NPC copies were a peer-to-peer artefact; a stale list could otherwise buy by a line number the file no longer contains.
-- **In the code:** `packages/server/src/systems/admin/npcedit.ts` (`saveNpc`, `closeNpcWindows`), `packages/server/src/systems/economy/playershop.ts` (`shopCommand`)
+- **In the code:** `packages/server/src/systems/admin/npcpage.ts` (`saveNpcPage`), `packages/server/src/systems/admin/npcedit.ts` (`closeNpcWindows`), `packages/server/src/systems/economy/playershop.ts` (`shopCommand`)
 - **Pinned by:** `divergence: set closes the shopkeeper's open lists and Bio windows` (packages/server/tests/playershop-db.test.ts); `a save applies at once: flags, drops, an empty file` (packages/server/tests/npcedit.test.ts)
 
 #### Inert admin tools
 - **Kind:** Architecture
 - **What you notice:** The inaccessible original monster-drop editor, minimap and other inert tools are absent; monster drops can still be edited as NPC `INV|` lines.
 - **1.6:** SaveMonDrops, RPG, LoadMiniMap and ClearChest had no server handler. The big world map and AdminWarp movie were unreachable; the monster-drop editor's destination label did not exist, the minimap lacked its members and renderer, and the World Editor's weather list was off stage.
-- **SSO:** These inert tools are not implemented and rain is not offered. The NPC editor supplies monster-drop editing through `INV|` lines.
+- **SSO:** These inert tools are not implemented and rain is not offered. The Control Panel's NPCs and Monsters pages edit monster drops as `INV|` lines.
 - **Why:** Original features that never worked remain omitted.
-- **In the code:** `packages/server/src/systems/admin/npcedit.ts` (`saveNpc`)
+- **In the code:** `packages/server/src/systems/admin/npcpage.ts` (`saveNpcPage`)
 - **Pinned by:** `SSO: 1.6's inert admin tools have no message: SaveMonDrops, RPG, LoadMiniMap, ClearChest` (packages/shared/tests/ledger-pins-a.test.ts); `a save applies at once: flags, drops, an empty file` (packages/server/tests/npcedit.test.ts); `the Slime's drops are its INV| lines: INV|5 Gold:1 always drops 5 Gold` (packages/server/e2e/npc-editor.test.ts)
 
 #### Admin set-class tool
@@ -3926,7 +3926,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **Kind:** Architecture
 - **What you notice:** The Control Panel's **Content** page lists every item, monster, NPC file, spell, rule and text table, and changes, adds or removes them in a shared draft that goes live for every player at once when published, without a restart. A publish can be undone as a whole. An item or monster can be renamed for players (its `display`) or drawn with another's art (its `sprite`) while every copy players hold keeps working.
 - **1.6:** Content was the server's and client's text files and Director casts. Changing it meant editing files by hand and restarting, with nothing checked, and a renamed item broke every copy already held.
-- **SSO:** The 1.6 content ships in each release as the Classic pack, read from the release and never copied into the database; the operator's changes are a layer on top, stored per row with the pack row each was based on, so a release's fixes reach every row the operator has not changed and a changed row the release also changed shows a notice. Before anything goes live it is checked against the schemas, the key and name rules, the skills characters are saved with and the references between rows (NPC Editor saves included), then tried out in every rule. The client bundles no content: it fetches the published store by its hash at start and after each publish. An item's key never changes; players see its display name. It needs the `contentEditor` permission (administrators by default), and every publish, undo and pack-update answer is in the audit log.
+- **SSO:** The 1.6 content ships in each release as the Classic pack, read from the release and never copied into the database; the operator's changes are a layer on top, stored per row with the pack row each was based on, so a release's fixes reach every row the operator has not changed and a changed row the release also changed shows a notice. Before anything goes live it is checked against the schemas, the key and name rules, the skills characters are saved with and the references between rows (live NPC file saves included), then tried out in every rule. The client bundles no content: it fetches the published store by its hash at start and after each publish. An item's key never changes; players see its display name. It needs the `contentEditor` permission (administrators by default), and every publish, undo and pack-update answer is in the audit log.
 - **Why:** Running a server means fixing and adding content without a code change or a restart, and without being able to break saved characters (issue #27).
 - **In the code:** `packages/server/src/content/service.ts` (`ContentService`), `packages/server/src/content/validate.ts` (`checkStore`), `packages/server/src/content/rows.ts`, `packages/shared/src/content/store.ts` (`content`, `onContent`), `packages/client/src/content.ts` (`createContentSync`), `packages/client/src/ui/content-page.ts`
 - **Pinned by:** `a published edit changes the store, and the publish swaps it in`; `undoes a publish as a whole`; `a changed row the operator customised keeps their version and shows a notice` (packages/server/tests/content-store.test.ts); `a publish swaps the store in, and the rules see it` (packages/client/tests/content.test.ts)
@@ -4126,7 +4126,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** Data is addressed by ID rather than arbitrary paths, and the character-viewing message is gone. Staff look characters up in the Control Panel's player hub instead (see [Staff look characters up in a player hub, not their files](#staff-look-characters-up-in-a-player-hub-not-their-files)), which never sends a password. Server Settings is a plain SSO page in the Control Panel, which took the File Editor's place on the Admin menu; the original had no settings screen. Each page is saved on its own: Save validates the page's values in the browser and again on the server, refuses the whole save with the error on the setting, and applies successful changes to everyone online immediately, as `/Refresh` does. Leaving a page, or the Control Panel page, with unsaved changes asks first and discards them. Revert reloads server values. Server infrastructure (save interval, reconnect grace, connections per address) is set with `SSO_*` environment variables instead.
 - **Why:** Arbitrary server file reads and writes let a client expose or alter data. Explanations remain visible rather than relying on hover.
 - **In the code:** `packages/client/src/ui/settings.ts` (`createSettingsPanel`), `packages/server/src/settings.ts` (`applySettingValues`)
-- **Pinned by:** `Settings: an administrator's save is stored, audited and applied at once; rules go to everyone`; `Settings: a bad value refuses the whole save with its key and label` (packages/server/tests/admin.test.ts); `Save sends only the open page's values; Revert asks again`; `leaving a page with unsaved changes asks; Keep editing stays, Discard goes`; `leaving with unsaved changes asks; Keep editing stays, Discard goes on` (packages/client/tests/settings.test.ts); `server infrastructure is not a setting: no row, and stored values are ignored` (packages/server/tests/world.test.ts); `SSO: no client message carries a file path or asks to view a character` (packages/shared/tests/ledger-pins-e.test.ts); `SSO: an NPC Editor load names an NPC by id; a path names nothing and reads nothing` (packages/server/tests/ledger-pins-e.test.ts)
+- **Pinned by:** `Settings: an administrator's save is stored, audited and applied at once; rules go to everyone`; `Settings: a bad value refuses the whole save with its key and label` (packages/server/tests/admin.test.ts); `Save sends only the open page's values; Revert asks again`; `leaving a page with unsaved changes asks; Keep editing stays, Discard goes`; `leaving with unsaved changes asks; Keep editing stays, Discard goes on` (packages/client/tests/settings.test.ts); `server infrastructure is not a setting: no row, and stored values are ignored` (packages/server/tests/world.test.ts); `SSO: no client message carries a file path or asks to view a character` (packages/shared/tests/ledger-pins-e.test.ts); `SSO: the NPCs page names an NPC by name; a path names nothing and reads nothing` (packages/server/tests/ledger-pins-e.test.ts)
 
 #### IP bans and lookups use the socket
 - **Kind:** Exploit closed

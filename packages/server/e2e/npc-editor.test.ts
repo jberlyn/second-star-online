@@ -32,21 +32,23 @@ const make = (name: string): CreateMsg => ({
 /** `random(n)` answers n: no spawns, moves, monster attacks, chatter or pushes. */
 const rng: Rng = { random: (n) => (n >= 1 ? n : 0) };
 
-type Alert = Extract<ServerMsg, { t: "alert" }>;
-type Script = Extract<ServerMsg, { t: "npcScript" }>;
+type Npcs = Extract<ServerMsg, { t: "contentNpcs" }>;
 type Shop = Extract<ServerMsg, { t: "shop" }>;
 const deltas = (bot: Bot): DeltaEvent[] =>
   bot.inbox.flatMap((m) => (m.t === "delta" ? m.events : []));
-/** SAVE as the editor does it: LOAD the file first, then SAVE naming the revision LOAD showed. */
+/** A save as the NPCs page does it: open the file, then save naming the revision it showed. */
 async function loadAndSave(bot: Bot, name: string, text: string): Promise<void> {
-  bot.send({ t: "npcLoad", name });
-  const s = await bot.waitFor((m): m is Script => m.t === "npcScript" && m.name === name);
+  bot.send({ t: "contentNpcs", seq: 1, name });
+  const s = await bot.waitFor((m): m is Npcs => m.t === "contentNpcs" && m.view.npc?.name === name);
   bot.clear();
-  bot.send({ t: "npcSave", name, text, expect: s.revision });
+  bot.send({ t: "contentNpcSave", seq: 2, name, text, expect: s.view.npc?.revision ?? null });
 }
+/** The save's answer. */
+const saved = (bot: Bot) =>
+  bot.waitFor((m): m is Npcs => m.t === "contentNpcs" && m.result !== undefined);
 const goldOf = (bot: Bot) => bot.inbox.flatMap((m) => (m.t === "inv" ? [m.inv.gold] : [])).at(-1);
 
-describe("the NPC editor", () => {
+describe("the NPCs page (the NPC Editor's successor, issue #32)", () => {
   let server: TestServer;
   let alice: Bot;
   let bob: Bot;
@@ -118,21 +120,21 @@ describe("the NPC editor", () => {
     expect(goldOf(bob)).toBe(970);
   });
 
-  test("only an administrator opens the NPC editor; Bob sees Alice leave", async () => {
+  test("only an administrator opens the NPCs page; Bob sees Alice leave", async () => {
     bob.clear();
-    bob.send({ t: "npcEditOpen" });
+    bob.send({ t: "contentNpcs", seq: 1, name: "Amber" });
     await settle();
-    expect(bob.inbox.some((m) => m.t === "npcEditor")).toBe(false);
-    alice.send({ t: "npcEditOpen" });
-    await alice.waitFor((m) => m.t === "npcEditor");
+    expect(bob.inbox.some((m) => m.t === "contentNpcs")).toBe(false);
+    alice.send({ t: "controlPanelOpen" });
+    await alice.waitFor((m) => m.t === "controlPanel");
     await bob.waitFor((m) => m.t === "delta" && m.events.some((e) => e.e === "leave"));
   });
 
-  test("LOAD shows Amber's file with the live stock", async () => {
+  test("the NPCs page shows Amber's file with the live stock", async () => {
     alice.clear();
-    alice.send({ t: "npcLoad", name: "Amber" });
-    const s = await alice.waitFor((m): m is Script => m.t === "npcScript");
-    expect(s.text.split("\r")).toEqual([
+    alice.send({ t: "contentNpcs", seq: 1, name: "Amber" });
+    const s = await alice.waitFor((m): m is Npcs => m.t === "contentNpcs");
+    expect(s.view.npc?.text.split("\r")).toEqual([
       "BIO|Name: Amber",
       "BIO|Class: Casino Manager",
       "GLD|107537454",
@@ -152,8 +154,8 @@ describe("the NPC editor", () => {
     alice.clear();
     bob.clear();
     await loadAndSave(alice, "Amber", "SEL|Fire:5:10\n");
-    const a = await alice.waitFor((m): m is Alert => m.t === "alert");
-    expect(a.text).toBe('The NPC was not saved. Line 1: "Fire" is not an item.');
+    const a = await saved(alice);
+    expect(a.result?.text).toBe('The NPC was not saved. Line 1: "Fire" is not an item.');
     expect(bob.inbox.some((m) => m.t === "npcClosed")).toBe(false);
     expect(loadNpcFiles(server.db)).toEqual([]);
   });
@@ -161,8 +163,8 @@ describe("the NPC editor", () => {
   test("a save replaces Amber's file: Bob's shop closes; reopened, it sells at the new price", async () => {
     alice.clear();
     await loadAndSave(alice, "Amber", "BIO|Name: Amber\nGLD|5\nSEL|Apple:7:2\nBUY|Apple:3\n");
-    const a = await alice.waitFor((m): m is Alert => m.t === "alert");
-    expect(a.text).toBe("NPC has been successfully saved.");
+    const a = await saved(alice);
+    expect(a.result?.text).toBe("Saved Amber's NPC file: it is live now.");
     await bob.waitFor((m) => m.t === "npcClosed");
     expect(npcFileVersions(server.db, "Amber")[0]).toContain("SEL|Apple:10:10028");
     bob.clear();
@@ -179,7 +181,7 @@ describe("the NPC editor", () => {
   test("the Slime's drops are its INV| lines: INV|5 Gold:1 always drops 5 Gold", async () => {
     alice.clear();
     await loadAndSave(alice, "Slime", "INV|5 Gold:1\n");
-    await alice.waitFor((m) => m.t === "alert");
+    await saved(alice);
     bob.clear();
     bob.send({ t: "attack", seq: 1, held: true });
     await tick(12 * 15);
@@ -194,12 +196,12 @@ describe("the NPC editor", () => {
     alice.clear();
     const lines = [...Array.from({ length: 20 }, () => "BIO|Name: Amber"), "RND|Hello"];
     await loadAndSave(alice, "Amber", lines.join("\n"));
-    const a = await alice.waitFor((m): m is Alert => m.t === "alert");
-    expect(a.text).toBe("NPC has been successfully saved.");
+    const a = await saved(alice);
+    expect(a.result?.text).toBe("Saved Amber's NPC file: it is live now.");
     expect(server.game.world.npcs.get("amber")?.chatter).toEqual(["Hello"]);
   });
 
-  test("the World Editor opens from the NPC editor; Return To Game puts Alice back", async () => {
+  test("the World Editor opens from the Control Panel; Return To Game puts Alice back", async () => {
     alice.clear();
     bob.clear();
     alice.send({ t: "editOpen" });

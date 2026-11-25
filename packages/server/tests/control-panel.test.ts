@@ -24,7 +24,6 @@ import { migrate } from "../src/persistence/migrations.ts";
 import { saveRole } from "../src/persistence/roles.ts";
 import { applyRole } from "../src/systems/admin/commands.ts";
 import { openControlPanel } from "../src/systems/admin/control-panel.ts";
-import { openNpcEditor } from "../src/systems/admin/npcedit.ts";
 import { closeEditor, openEditor } from "../src/systems/admin/worldedit.ts";
 import { offerTrade, openTrade } from "../src/systems/economy/trade.ts";
 import { dueGives } from "../src/systems/inventory/items.ts";
@@ -61,6 +60,8 @@ describe("who may open the Control Panel", () => {
     expect(canOpenControlPanel(ADMINISTRATOR)).toBe(true);
     expect(canOpenControlPanel(roleWith("settings"))).toBe(true);
     expect(canOpenControlPanel(roleWith("worldEditor", "drop"))).toBe(false);
+    // The NPCs page (issue #32) is the NPC Editor's: that permission alone opens the Control Panel.
+    expect(canOpenControlPanel(roleWith("npcEditor"))).toBe(true);
   });
 
   test("the administrator holds the Control Panel's permissions", () => {
@@ -110,13 +111,11 @@ describe("opening and leaving", () => {
     expect([admin.map.name, admin.x, admin.y]).toEqual(["x1000y992", 6, 6]);
   });
 
-  test("moving between the Control Panel and the editors never puts the admin back on the map", () => {
+  test("moving between the Control Panel and the World Editor never puts the admin back on the map", () => {
     const { world, map, admin } = scene();
     openControlPanel(world, admin, casino);
     const steps = [
       openEditor(world, admin, () => map, { mx: 1000, my: 992 }, casino),
-      openControlPanel(world, admin, casino),
-      openNpcEditor(world, admin, casino),
       openControlPanel(world, admin, casino),
     ];
     expect(admin.editing).toBe("controlPanel");
@@ -131,6 +130,11 @@ describe("opening and leaving", () => {
     openControlPanel(world, admin, casino);
     // Still holding a Control Panel permission: stays.
     expect(applyRole(world, admin, roleWith("settings")).some((o) => o.msg.t === "snapshot")).toBe(
+      false,
+    );
+    expect(admin.editing).toBe("controlPanel");
+    // Only the NPC Editor's permission: stays too (the NPCs page).
+    expect(applyRole(world, admin, roleWith("npcEditor")).some((o) => o.msg.t === "snapshot")).toBe(
       false,
     );
     expect(admin.editing).toBe("controlPanel");

@@ -140,8 +140,6 @@ export function mayEdit(role: Player["role"], editing: Editing): boolean {
   switch (editing) {
     case "world":
       return can(role, "worldEditor");
-    case "npc":
-      return can(role, "npcEditor");
     case "controlPanel":
       return canOpenControlPanel(role);
   }

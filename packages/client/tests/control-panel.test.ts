@@ -537,18 +537,13 @@ describe("switching between the game and the Control Panel", () => {
     app.stop();
   });
 
-  test("a classic editor opens from the Control Panel; its Admin menu goes back to the Control Panel", () => {
+  test("the World Editor opens from the Control Panel; NPC files are the NPCs page (issue #32)", () => {
     const { root, c, app } = start([...PERMISSIONS]);
     c.onMessage({ t: "controlPanel" });
-    click(root.querySelector('[data-link="npcEditor"]'));
-    expect(c.sent.at(-1)).toEqual({ t: "npcEditOpen" });
-    c.onMessage({ t: "npcEditor" });
-    expect(root.querySelector(".control-panel")).toBeNull();
-    expect(root.querySelector(".npced-script")).not.toBeNull();
-    menuClick(root, "Admin", "Control Panel");
-    expect(c.sent.at(-1)).toEqual({ t: "controlPanelOpen" });
-    c.onMessage({ t: "controlPanel" });
-    expect(root.querySelector(".control-panel")?.isConnected).toBe(true);
+    // The NPC Editor window is retired: the sidebar's NPCs page is its place, no Classic tools link.
+    expect(root.querySelector('[data-link="npcEditor"]')).toBeNull();
+    click(root.querySelector('[data-link="worldEditor"]'));
+    expect(c.sent.at(-1)).toEqual({ t: "editOpen" });
     app.stop();
   });
 });

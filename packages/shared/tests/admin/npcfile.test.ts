@@ -15,11 +15,9 @@ import {
   NPC_EDITOR_MONSTERS,
   NPC_EDITOR_NPCS,
   NPC_SPELL_TAGS,
-  npcEditorName,
   npcLootItemOk,
   npcShopItemOk,
   parseNpcFile,
-  showNpcScript,
 } from "../../src/rules/admin/npcfile.ts";
 
 /** `n` filler lines, then `line`, so `line` sits at file line n + 1. */
@@ -61,30 +59,6 @@ describe("the readers read the whole file (parseNpcFile)", () => {
   test("the 13 SPL| tags the monster casters test", () => {
     expect(NPC_SPELL_TAGS).toHaveLength(13);
     expect(NPC_SPELL_TAGS).toEqual(monstersData.casting.spells.map((s) => s.tag));
-  });
-});
-
-describe("LOAD's ShowNPCScript", () => {
-  test("lossless display: preserves OWN|, all first characters, empty lines, and >100 lines", () => {
-    expect(showNpcScript("")).toBe("");
-    expect(showNpcScript("OWN|king\r\rbio|lower\r\nSEL|Knife:5:7")).toBe(
-      "OWN|king\r\rbio|lower\rSEL|Knife:5:7",
-    );
-    const long = Array.from({ length: 105 }, (_, i) => `BIO|${i + 1}`).join("\r");
-    const shown = showNpcScript(long).split("\r");
-    expect(shown).toHaveLength(105);
-    expect(shown.at(-1)).toBe("BIO|105");
-    expect(checkNpcFile(editorLines(showNpcScript(long))).error).toBe(
-      "An NPC file holds at most 100 lines.",
-    );
-  });
-
-  test("repeated LOAD preserves trailing line endings without adding blank lines", () => {
-    for (const text of ["", "OWN|king", "BIO|hello\r\r", "BIO|hello\r\n\r\nOWN|king\n"]) {
-      const normalized = text.replace(/\r\n|\r|\n/g, "\r");
-      expect(showNpcScript(text)).toBe(normalized);
-      expect(showNpcScript(showNpcScript(text))).toBe(normalized);
-    }
   });
 });
 
@@ -223,8 +197,5 @@ describe("the editor's lists (T/285084_MONed, T/207780_NPCed)", () => {
     expect([NPC_EDITOR_MONSTERS.length, NPC_EDITOR_NPCS.length]).toEqual([36, 56]);
     expect(NPC_EDITOR_MONSTERS).toEqual(monstersData.editorLists.npcEditor.monsters);
     expect(NPC_EDITOR_NPCS).toEqual(monstersData.editorLists.npcEditor.npcs);
-    expect(npcEditorName("cril")).toBe("Cril");
-    expect(npcEditorName("Cuche")).toBeNull(); // a player shop's file: not on the lists
-    expect(npcEditorName("")).toBeNull();
   });
 });

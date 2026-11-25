@@ -926,7 +926,7 @@ describe("third review fixes", () => {
     expect(bad.ok).toBe(false);
     // An NPC with an NPC Editor save: the row says the save is what plays.
     saveNpcFile(db, { npc: file.name, text: file.text }, "acc", "now");
-    expect(rowDetailOf(service, ref)?.note).toContain("NPC Editor");
+    expect(rowDetailOf(service, ref)?.note).toContain("live save");
     installContent(buildContentStore(classic.data as ContentData));
   });
 });

@@ -272,7 +272,8 @@ import {
   noteUnknownName,
   unnoteCreate,
 } from "./systems/admin/login-limits.ts";
-import { closeNpcWindows, loadNpc, openNpcEditor, saveNpc } from "./systems/admin/npcedit.ts";
+import { closeNpcWindows } from "./systems/admin/npcedit.ts";
+import { npcPageView, saveNpcPage } from "./systems/admin/npcpage.ts";
 import { npcFileView, saveNpcSections } from "./systems/admin/npcsections.ts";
 import {
   applySave,
@@ -526,9 +527,6 @@ const EDITOR_INTENTS = new Set([
   "editLoad",
   "editSave",
   "editClose",
-  "npcEditOpen",
-  "npcLoad",
-  "npcSave",
   "settingsOpen",
   "settingsSave",
   "settingsClose",
@@ -542,6 +540,9 @@ const EDITOR_INTENTS = new Set([
   "characterEdit",
   "characterUndo",
   ...CONTENT_INTENTS,
+  // The NPCs page (issue #32).
+  "contentNpcs",
+  "contentNpcSave",
   "assassinGame",
   // IM, Away and chat rooms are their own windows (MIAWs), usable over the editors.
   "im",
@@ -570,9 +571,9 @@ const ADMIN_INTENTS: Readonly<Record<string, { permission: Permission; reason: s
   editOpen: { permission: "worldEditor", reason: "Attempted Admin Access" },
   editLoad: { permission: "worldEditor", reason: "Attempted Admin Access" },
   editSave: { permission: "worldEditor", reason: "Attempted Admin Access" },
-  npcEditOpen: { permission: "npcEditor", reason: "Attempting to get Admin access" },
-  npcLoad: { permission: "npcEditor", reason: "Attempting to get Admin access" },
-  npcSave: { permission: "npcEditor", reason: "Attempting to get Admin access" },
+  // The Control Panel's NPCs page (issue #32): the NPC Editor's permission.
+  contentNpcs: { permission: "npcEditor", reason: "Attempting to get Admin access" },
+  contentNpcSave: { permission: "npcEditor", reason: "Attempting to get Admin access" },
   settingsOpen: { permission: "settings", reason: "Attempted Admin Access" },
   settingsSave: { permission: "settings", reason: "Attempted Admin Access" },
   roleSave: { permission: "settings", reason: "Attempted Admin Access" },
@@ -600,9 +601,6 @@ const ADMIN_INTENTS: Readonly<Record<string, { permission: Permission; reason: s
 function editingOk(p: Player, t: string): boolean {
   if (t === "editLoad" || t === "editSave") {
     return p.editing === "world";
-  }
-  if (t === "npcLoad" || t === "npcSave") {
-    return p.editing === "npc";
   }
   return true;
 }
@@ -1047,24 +1045,6 @@ export function createGame(deps: GameDeps): Game {
     return saved ? { npc, gold: saved.gold, lines: saved.lines, dirty: false } : null;
   };
   /**
-   * NPC editor SAVE: the file, the version it replaced and the dropped ledger are written
-   * together.
-   */
-  const npcSave = (p: Player, name: string, text: string, expect?: string) => {
-    const r = saveNpc(world, p, name, text, ledgerOf, expect);
-    const save = r.save;
-    if (save) {
-      const now = isoNow();
-      db.transaction(() => {
-        insertNpcFileVersion(db, { npc: save.npc, text: save.previous }, p.accountId, now);
-        saveNpcFile(db, { npc: save.npc, text: save.text }, p.accountId, now);
-        deleteShop(db, save.npc);
-        insertAudit(db, { actor: p.accountId, command: "npcSave", target: save.npc }, now);
-      })();
-    }
-    deliver(r.out);
-  };
-  /**
    * A monster's NPC file sections saved from the Monsters page (issue #31): written as an NPC
    * Editor save is (the file, the version it replaced, the dropped ledger and an audit line).
    */
@@ -1091,6 +1071,33 @@ export function createGame(deps: GameDeps): Game {
       t: "contentNpcFile",
       seq,
       view: npcFileView(world, name),
+      result: { ok: r.ok, text: r.text },
+    });
+  };
+  /** The NPCs page's save (issue #32), written as an NPC Editor save is. */
+  const npcPageSave = (
+    p: Player,
+    seq: number,
+    name: string,
+    text: string,
+    expect: string | null,
+  ) => {
+    const r = saveNpcPage(world, name, text, expect, ledgerOf);
+    const save = r.save;
+    if (save) {
+      const now = isoNow();
+      db.transaction(() => {
+        insertNpcFileVersion(db, { npc: save.npc, text: save.previous }, p.accountId, now);
+        saveNpcFile(db, { npc: save.npc, text: save.text }, p.accountId, now);
+        deleteShop(db, save.npc);
+        insertAudit(db, { actor: p.accountId, command: "npcSave", target: save.npc }, now);
+      })();
+    }
+    deliver(r.out);
+    send(p.id, {
+      t: "contentNpcs",
+      seq,
+      view: npcPageView(world, ledgerOf, name),
       result: { ok: r.ok, text: r.text },
     });
   };
@@ -2806,6 +2813,19 @@ export function createGame(deps: GameDeps): Game {
         cheat(p.name, p.ip, gate.reason);
         return;
       }
+      // The NPCs page (issue #32): a whole NPC file, saved live as the NPC Editor does.
+      if (msg.t === "contentNpcs") {
+        send(p.id, {
+          t: "contentNpcs",
+          seq: msg.seq,
+          view: npcPageView(world, ledgerOf, msg.name),
+        });
+        return;
+      }
+      if (msg.t === "contentNpcSave") {
+        npcPageSave(p, msg.seq, msg.name, msg.text, msg.expect);
+        return;
+      }
       // A monster's NPC file sections (issue #31) save live, as the NPC Editor does.
       if (msg.t === "contentNpcFile") {
         const view = npcFileView(world, msg.name);
@@ -3006,9 +3026,6 @@ export function createGame(deps: GameDeps): Game {
             deliver(friendsEntry(world, p));
           }
           return;
-        case "npcEditOpen":
-          deliver(openNpcEditor(world, p, casinoDeps));
-          return;
         // The Control Panel: any of its permissions opens it; 1.6 had none, so the World Editor's
         // reason is logged, as for Server Settings.
         case "controlPanelOpen":
@@ -3017,12 +3034,6 @@ export function createGame(deps: GameDeps): Game {
             return;
           }
           deliver(openControlPanel(world, p, casinoDeps));
-          return;
-        case "npcLoad":
-          deliver(loadNpc(world, p, msg.name, ledgerOf));
-          return;
-        case "npcSave":
-          npcSave(p, msg.name, msg.text, msg.expect);
           return;
         case "move":
           setHeld(p, msg.held, msg.turn, msg.scheduled);

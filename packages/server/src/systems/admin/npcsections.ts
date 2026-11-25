@@ -3,11 +3,11 @@
  * (`INV|`), the monster spells it casts (`SPL|`) and its flags (`FLG|`), read and written in
  * structured form.
  *
- * - They live in the monster's NPC file, so a save takes the NPC Editor's path: it applies at once,
+ * - They live in the monster's NPC file, so a save takes the NPCs page's path: it applies at once,
  *   outside the draft, keeps the file it replaced as a version, and starts the NPC's shop again from
- *   the saved file (with the live stock written in, as an NPC Editor save of LOAD's text does).
+ *   the saved file (with the live stock written in, as an NPCs page save does).
  * - Every other line of the file, and every line ending, stays as it was (`withNpcSections`).
- * - A save names the revision of the file it was made from: one the NPC Editor, a publish or another
+ * - A save names the revision of the file it was made from: one the NPCs page, a publish or another
  *   page changed since is refused. Shop sales do not change the revision.
  * - A file is attached (made) only for a monster the content has; an existing file of any name can
  *   be edited.
@@ -101,7 +101,7 @@ export interface NpcSectionsSave {
 
 /**
  * A save of the sections. The caller writes `save` (file, the version it replaced, the dropped shop
- * ledger and an audit line) in one transaction, as for an NPC Editor save.
+ * ledger and an audit line) in one transaction, as for an NPCs page save.
  */
 export function saveNpcSections(
   world: World,
@@ -118,7 +118,7 @@ export function saveNpcSections(
   const revision = e.text === null ? null : npcFileRevision(e.text);
   if (revision !== expect) {
     return refuse(
-      `${e.name}'s NPC file changed since you opened it (an NPC Editor save or a publish): open it again before saving.`,
+      `${e.name}'s NPC file changed since you opened it (an NPCs page save or a publish): open it again before saving.`,
     );
   }
   const tags = content().monsters.casting.spells.map((x) => x.tag.toLowerCase());
@@ -140,11 +140,11 @@ export function saveNpcSections(
   if (badChance) {
     return refuse(`Loot: the chance for ${badChance.item} is a whole number from 1.`);
   }
-  // The save is made from the file as LOAD shows it, live stock written in, as the NPC Editor's is.
+  // The save is made from the file as LOAD shows it, live stock written in, as the NPCs page's is.
   const live = e.text === null ? "" : npcFileNow(world, e.name, ledgerOf);
   if (npcSections(live).mixed.length > 0) {
     return refuse(
-      `Line ${npcSections(live).mixed[0]} of ${e.name}'s NPC file is read as two sections at once: fix it in the NPC Editor first.`,
+      `Line ${npcSections(live).mixed[0]} of ${e.name}'s NPC file is read as two sections at once: fix it as text on the NPCs page first.`,
     );
   }
   const text = withNpcSections(live, {

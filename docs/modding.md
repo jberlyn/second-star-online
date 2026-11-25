@@ -343,7 +343,7 @@ Every species row needs an `hp`. Its `attack` may be `null`: the species never m
 ### Adding a monster or NPC
 
 1. Add a species record to `monsters.json` `monsters` (`bodyInMainChars: true` when its body has art).
-2. Add its NPC file in `npc-files.json` (or via the NPC Editor; no file means it never moves and has no Bio).
+2. Add its NPC file in `npc-files.json` (or on the Control Panel's NPCs page; no file means it never moves and has no Bio).
 3. Add its name to `editorLists.worldEditor` (`monsters` or `npcs`) and the matching list in `editorLists.npcEditor`.
 4. Add a `skillCaps.byBody` row if it uses a new body number (default is `85`).
 5. Add rows to `rules` or `casting.neverCasts` if it needs a behaviour its name does not already match, and add body art if it uses a new body.
@@ -421,11 +421,11 @@ That is Classic's Overlord as its tables play it (wide, walking toward players, 
 
 Body `32` is the Wolf's, so the Frost Wolf reuses its art; a body with no art in the atlases would leave the monster invisible (its `<body>-f2-s` key is also missing from the generated `packages/data/packs/classic/data/rects.json`, which is a quick way to check). Body numbers run from 1 to 9999 everywhere (monsters, `bindings.json` and uploads); a running server's operators can upload a body of their own on the Content page instead, from the monster's row or the Bodies section, and the server numbers it from 1000 (see [Bodies](running-a-server.md#bodies)).
 
-`npc-files.json` is not only a seed: the server loads it at every start as the base NPC store, then applies the `npc_files` rows saved by the NPC Editor on top. So a rebuilt image changes every NPC that has no saved NPC Editor edit, on existing servers too.
+`npc-files.json` is not only a seed: the server loads it at every start as the base NPC store, then applies the `npc_files` rows saved on the Control Panel's NPCs page (and the Monsters page) on top. So a rebuilt image changes every NPC that has no saved NPC Editor edit, on existing servers too.
 
 ### Shops and other NPC lines
 
-An NPC's shop is lines in its NPC file (`npc-files.json`, or the NPC Editor on a running server), one `TAG|data` per line:
+An NPC's shop is lines in its NPC file (`npc-files.json`, or the Control Panel's NPCs page on a running server), one `TAG|data` per line:
 
 - `SEL|<item>:<price>:<stock>`: an item the NPC sells, at `price` gold, with `stock` left (the server lowers it as players buy).
 - `BUY|<item>:<price>`: an item the NPC buys from players for `price` gold.
@@ -433,7 +433,7 @@ An NPC's shop is lines in its NPC file (`npc-files.json`, or the NPC Editor on a
 - `TRN|<class>:<price>`: a class promotion the NPC trains.
 - The other tags: `BIO|` and `PRO|` (Bio window), `INV|` (monster drops), `RND|` (chatter), `FLG|` (`Still`, `Passive`), `SPL|` (monster spells), `BNK|` (banker) and `OWN|`.
 
-The NPC Editor checks these forms when you save; see the [economy guide](guides/economy.md) for how shops trade.
+The NPCs page checks these forms as you type and when you save; see the [economy guide](guides/economy.md) for how shops trade.
 
 ## Other content files
 

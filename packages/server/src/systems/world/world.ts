@@ -296,7 +296,7 @@ export interface CharacterState {
 }
 
 /** Where an admin off the map is: the World Editor, the NPC editor or the Control Panel. */
-export type Editing = "world" | "npc" | "controlPanel";
+export type Editing = "world" | "controlPanel";
 
 export interface Player {
   id: string;

@@ -1504,31 +1504,6 @@
     "hidden": 0,
     "disabled": 0
   },
-  "npc-editor-load": {
-    "count": 1,
-    "hidden": 0,
-    "disabled": 0
-  },
-  "npc-editor-save": {
-    "count": 1,
-    "hidden": 0,
-    "disabled": 0
-  },
-  "npc-editor-script": {
-    "count": 1,
-    "hidden": 0,
-    "disabled": 0
-  },
-  "npc-editor-select-monster": {
-    "count": 1,
-    "hidden": 0,
-    "disabled": 0
-  },
-  "npc-editor-select-npc": {
-    "count": 1,
-    "hidden": 0,
-    "disabled": 0
-  },
   "paint-draw": {
     "count": 1,
     "hidden": 0,

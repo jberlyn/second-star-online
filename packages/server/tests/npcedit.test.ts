@@ -21,7 +21,6 @@ import {
   NPC_EDITOR_NPCS,
   rollLoot,
   type ServerMsg,
-  showNpcScript,
 } from "@secondstaronline/shared";
 
 import { createGame, type Game } from "../src/game.ts";
@@ -30,13 +29,8 @@ import { type Db, openDatabase } from "../src/persistence/database.ts";
 import { loadShop } from "../src/persistence/economy.ts";
 import { migrate } from "../src/persistence/migrations.ts";
 import { loadNpcFiles, npcFileVersions } from "../src/persistence/npcfiles.ts";
-import {
-  loadNpc,
-  npcFileRevision,
-  npcRevisionOf,
-  openNpcEditor,
-  saveNpc,
-} from "../src/systems/admin/npcedit.ts";
+import { npcFileRevision, npcRevisionOf } from "../src/systems/admin/npcedit.ts";
+import { npcPageFile, saveNpcPage } from "../src/systems/admin/npcpage.ts";
 import { openEditor } from "../src/systems/admin/worldedit.ts";
 import { giveGoldToNpc } from "../src/systems/economy/intents.ts";
 import { ledgerFromTemplate, type ShopLedger } from "../src/systems/economy/shop.ts";
@@ -56,6 +50,9 @@ const imm = (map: WorldMap, x = 6, y = 6) => {
 
 /** The ledger an NPC has now, without making one (as the game's `ledgerOf`). */
 const ledgerOf = (world: World) => (npc: string) => world.shops.get(npc) ?? null;
+/** The revision an editor opened the file at (null: no file). */
+const rev = (world: World, name: string) =>
+  npcFileNamed(world.npcs, name) ? npcRevisionOf(world, name) : null;
 
 function scene() {
   const map = testMap("x1000y992");
@@ -120,13 +117,13 @@ describe("the NPC file store (packages/data npcfiles)", () => {
     }
   });
 
-  test("every list NPC's original file re-saves as LOAD shows it (no refusal)", () => {
+  test("every list NPC's original file re-saves as the NPCs page shows it (no refusal)", () => {
     for (const f of npcFilesData.files) {
       const listed = [...NPC_EDITOR_MONSTERS, ...NPC_EDITOR_NPCS].some(
         (n) => n.toLowerCase() === f.name.toLowerCase(),
       );
       if (listed) {
-        const c = checkNpcFile(editorLines(showNpcScript(f.text)));
+        const c = checkNpcFile(editorLines(f.text));
         expect([f.name, c.error]).toEqual([f.name, null]);
       }
     }
@@ -142,26 +139,9 @@ describe("the NPC file store (packages/data npcfiles)", () => {
   });
 });
 
-describe("opening the editor", () => {
-  test("a player gets nothing; an administrator leaves the map; the World Editor opens from it without leaving again", () => {
-    const { world, map, p, i } = scene();
-    expect(openNpcEditor(world, p, casino)).toEqual([]);
-    const out = openNpcEditor(world, i, casino);
-    expect(out.some((o) => o.to === "p" && o.msg.t === "delta")).toBe(true);
-    expect(out.some((o) => o.to === "imm" && o.msg.t === "npcEditor")).toBe(true);
-    expect(i.editing).toBe("npc");
-    expect(world.rooms.get(map.name)?.players).toEqual([p]);
-    const we = openEditor(world, i, () => map, { mx: 1000, my: 992 }, casino);
-    expect(we.map((o) => o.msg.t)).toEqual(["editor"]);
-    expect(i.editing).toBe("world");
-    expect(openNpcEditor(world, i, casino).map((o) => o.msg.t)).toEqual(["npcEditor"]);
-  });
-});
-
-describe("LOAD", () => {
-  test("the file with the shop's live stock and gold written in", () => {
-    const { world, i } = scene();
-    openNpcEditor(world, i, casino);
+describe("the file as an editor shows it (the NPCs page)", () => {
+  test("the file with the shop's live stock and gold written in, with the file's revision", () => {
+    const { world } = scene();
     const amber = npcFileNamed(world.npcs, "Amber");
     if (!amber) {
       throw new Error("Amber");
@@ -173,74 +153,37 @@ describe("LOAD", () => {
       apple.stock = 10028;
     }
     world.shops.set("Amber", live);
-    const out = loadNpc(world, i, "amber", ledgerOf(world));
-    expect(out).toEqual([
-      {
-        to: "imm",
-        msg: {
-          t: "npcScript",
-          name: "Amber",
-          text: "BIO|Name: Amber\rBIO|Class: Casino Manager\rGLD|107537454\rSEL|Apple:10:10028\rBUY|Apple:5\rSEL|Ale:10:9604\rBUY|Ale:5\rSEL|Pie:10:5771\rBUY|Pie:5",
-          // The file's revision, not the live stock's: a sale does not make a LOAD stale.
-          revision: npcFileRevision(amber.text),
-        },
-      },
-    ]);
-  });
-
-  test("a list name with no file loads empty; unlisted names, no name and players outside the editor get nothing", () => {
-    const { world, p, i } = scene();
-    expect(loadNpc(world, i, "Amber", ledgerOf(world))).toEqual([]); // not in the editor
-    openNpcEditor(world, i, casino);
-    expect(loadNpc(world, i, "Oraku", ledgerOf(world))[0]?.msg).toEqual({
-      t: "npcScript",
-      name: "Oraku",
-      text: "",
-      revision: npcFileRevision(""),
+    expect(npcPageFile(world, "amber", ledgerOf(world))).toEqual({
+      name: "Amber",
+      exists: true,
+      text: "BIO|Name: Amber\rBIO|Class: Casino Manager\rGLD|107537454\rSEL|Apple:10:10028\rBUY|Apple:5\rSEL|Ale:10:9604\rBUY|Ale:5\rSEL|Pie:10:5771\rBUY|Pie:5",
+      // The file's revision, not the live stock's: a sale does not make an open file stale.
+      revision: npcFileRevision(amber.text),
+      species: true,
     });
-    expect(loadNpc(world, i, "Cuche", ledgerOf(world))).toEqual([]); // a player shop's file
-    expect(loadNpc(world, i, "", ledgerOf(world))).toEqual([]);
-    expect(loadNpc(world, p, "Amber", ledgerOf(world))).toEqual([]);
   });
-});
 
-describe("LOAD of a long file", () => {
-  test("SSO: a file over the save limit loads in full with a warning that SAVE will refuse it", () => {
-    const { world, i } = scene();
-    openNpcEditor(world, i, casino);
-    const text = Array.from({ length: 103 }, (_, n) => `BIO|Line ${n + 1}`).join("\r");
-    setNpcFile(world.npcs, "Amber", text);
-    const out = loadNpc(world, i, "Amber", ledgerOf(world));
-    expect(out.map((o) => o.msg)).toEqual([
-      { t: "npcScript", name: "Amber", text, revision: npcFileRevision(text) },
-      {
-        t: "alert",
-        text: "This file has 103 lines. An NPC file holds at most 100 lines, so remove 3 before saving.",
-      },
-    ]);
-    // At the limit there is no warning.
-    setNpcFile(world.npcs, "Amber", text.split("\r").slice(0, 100).join("\r"));
-    expect(loadNpc(world, i, "Amber", ledgerOf(world)).map((o) => o.msg.t)).toEqual(["npcScript"]);
+  test("a list name with no file opens empty; a player shop's file and no name open nothing", () => {
+    const { world } = scene();
+    expect(npcPageFile(world, "Oraku", ledgerOf(world))).toMatchObject({
+      name: "Oraku",
+      exists: false,
+      text: "",
+      revision: null,
+    });
+    setNpcFile(world.npcs, "Cuche", "SEL|Apple:5:1");
+    world.playerShops.set("cuche", {} as never);
+    expect(npcPageFile(world, "Cuche", ledgerOf(world))).toBeNull();
+    expect(npcPageFile(world, "", ledgerOf(world))).toBeNull();
   });
 });
 
 describe("SAVE", () => {
   test("a refused save says why and changes nothing", () => {
     const { world, i } = scene();
-    openNpcEditor(world, i, casino);
-    const r = saveNpc(
-      world,
-      i,
-      "Amber",
-      "SEL|Fire:5:10\n",
-      ledgerOf(world),
-      npcRevisionOf(world, "Amber"),
-    );
+    const r = saveNpcPage(world, "Amber", "SEL|Fire:5:10\n", rev(world, "Amber"), ledgerOf(world));
     expect(r.save).toBeNull();
-    expect(r.out[0]?.msg).toEqual({
-      t: "alert",
-      text: 'The NPC was not saved. Line 1: "Fire" is not an item.',
-    });
+    expect(r.text).toBe('The NPC was not saved. Line 1: "Fire" is not an item.');
     expect(npcFileNamed(world.npcs, "Amber")?.sells).toHaveLength(3);
   });
 
@@ -250,7 +193,6 @@ describe("SAVE", () => {
     p.bio = { slot: 1, npc: "Amber" };
     p.keyLock = true;
     world.shops.set("Amber", { npc: "Amber", gold: 1, lines: [], dirty: true });
-    openNpcEditor(world, i, casino);
     const text = [
       ...Array.from({ length: 20 }, () => "BIO|x"),
       "RND|Hello",
@@ -258,7 +200,7 @@ describe("SAVE", () => {
       "GLD|9",
       "",
     ].join("\n");
-    const r = saveNpc(world, i, "amber", text, ledgerOf(world), npcRevisionOf(world, "amber"));
+    const r = saveNpcPage(world, "amber", text, rev(world, "amber"), ledgerOf(world));
     expect(r.save?.npc).toBe("Amber");
     expect(r.save?.text.split("\r")).toHaveLength(23);
     expect(r.save?.previous).toContain("GLD|1"); // LOAD's view of the old file, live gold
@@ -267,33 +209,28 @@ describe("SAVE", () => {
     expect(p.bio).toBeNull();
     expect(p.keyLock).toBe(false);
     expect(r.out).toContainEqual({ to: "p", msg: { t: "npcClosed" } });
-    expect(r.out.at(-1)?.msg).toEqual({
-      t: "alert",
-      text: "NPC has been successfully saved.",
-    });
+    expect(r.text).toBe("Saved Amber's NPC file: it is live now.");
   });
 
   test("a save applies at once: flags, drops, an empty file", () => {
     const { world, map, i } = scene();
-    openNpcEditor(world, i, casino);
     const author = player("a", map, 1, 1);
     const slime = stand(map, 1, "Slime", 9, 9);
     expect(authorPath(world.npcs, slime, author, rngByN({ 10: [1] }))).not.toBeNull();
-    saveNpc(world, i, "Slime", "FLG|Still", ledgerOf(world), npcRevisionOf(world, "Slime"));
+    saveNpcPage(world, "Slime", "FLG|Still", rev(world, "Slime"), ledgerOf(world));
     expect(authorPath(world.npcs, slime, author, rngByN({ 10: [1] }))).toBeNull();
     expect(hasFlag(world.npcs, "slime", "Still")).toBe(true);
-    saveNpc(world, i, "Wolf", "INV|5 Gold:1", ledgerOf(world), npcRevisionOf(world, "Wolf"));
+    saveNpcPage(world, "Wolf", "INV|5 Gold:1", rev(world, "Wolf"), ledgerOf(world));
     expect(rollLoot(npcFileNamed(world.npcs, "Wolf")?.loot ?? null, rngByN())).toBe("5 Gold");
     expect(npcData(world.npcs, "Andero")).not.toBeNull();
-    saveNpc(world, i, "Andero", "", ledgerOf(world), npcRevisionOf(world, "Andero"));
+    saveNpcPage(world, "Andero", "", rev(world, "Andero"), ledgerOf(world));
     expect(npcData(world.npcs, "Andero")).toBeNull(); // EMPTY: no Bio, never moves
-    saveNpc(world, i, "Oraku", "BIO|Name: Oraku", ledgerOf(world), npcRevisionOf(world, "Oraku"));
+    saveNpcPage(world, "Oraku", "BIO|Name: Oraku", rev(world, "Oraku"), ledgerOf(world));
     expect(npcData(world.npcs, "Oraku")?.bio).toEqual(["Name: Oraku"]);
   });
 
   test("bug fixed: gold given goes into the till wherever GLD| is, or into a till from 0 without one", () => {
     const { world, map, p, i } = scene();
-    openNpcEditor(world, i, casino);
     stand(map, 1, "Amber", 5, 4);
     const room = world.rooms.get(map.name) as Room;
     const ctx = (): ItemCtx => ({
@@ -315,25 +252,23 @@ describe("SAVE", () => {
       giveGoldToNpc(ctx(), room, who, 10);
       return world.shops.get("Amber")?.gold;
     };
-    saveNpc(
+    saveNpcPage(
       world,
-      i,
       "Amber",
       [...Array.from({ length: 60 }, () => "BIO|x"), "GLD|50"].join("\n"),
+      rev(world, "Amber"),
       ledgerOf(world),
-      npcRevisionOf(world, "Amber"),
     );
     expect(give(p)).toBe(60);
-    saveNpc(
+    saveNpcPage(
       world,
-      i,
       "Amber",
       [...Array.from({ length: 59 }, () => "BIO|x"), "GLD|50"].join("\n"),
+      rev(world, "Amber"),
       ledgerOf(world),
-      npcRevisionOf(world, "Amber"),
     );
     expect(give(p)).toBe(60);
-    saveNpc(world, i, "Amber", "BIO|x", ledgerOf(world), npcRevisionOf(world, "Amber"));
+    saveNpcPage(world, "Amber", "BIO|x", rev(world, "Amber"), ledgerOf(world));
     expect(give(p)).toBe(10);
   });
 });
@@ -427,18 +362,23 @@ describe("persistence (real SQL)", () => {
     g.intent(id, { t: "buy", line: 4, count: 3 });
     expect(loadShop(db, "Amber")?.lines.find((l) => l.line === 4)?.stock).toBe(10028);
 
-    g.intent(id, { t: "npcEditOpen" });
-    g.intent(id, { t: "npcLoad", name: "Amber" });
-    const loaded = sent.filter((m) => m.msg.t === "npcScript").at(-1)?.msg;
-    expect(loaded).toMatchObject({ t: "npcScript", name: "Amber" });
-    expect(loaded && "text" in loaded ? loaded.text : "").toContain("SEL|Apple:10:10028");
+    g.intent(id, { t: "controlPanelOpen" });
+    g.intent(id, { t: "contentNpcs", seq: 1, name: "Amber" });
+    const loaded = sent.filter((m) => m.msg.t === "contentNpcs").at(-1)?.msg;
+    const file = loaded?.t === "contentNpcs" ? loaded.view.npc : null;
+    expect(file?.name).toBe("Amber");
+    expect(file?.text).toContain("SEL|Apple:10:10028");
     g.intent(id, {
-      t: "npcSave",
+      t: "contentNpcSave",
+      seq: 2,
       name: "Amber",
       text: "BIO|Name: Amber\nGLD|5\nSEL|Apple:7:2\n",
-      expect: (loaded as { revision: string }).revision,
+      expect: file?.revision ?? null,
     });
-    expect(sent.at(-1)?.msg).toEqual({ t: "alert", text: "NPC has been successfully saved." });
+    expect(sent.at(-1)?.msg).toMatchObject({
+      t: "contentNpcs",
+      result: { ok: true, text: "Saved Amber's NPC file: it is live now." },
+    });
     expect(loadNpcFiles(db)).toEqual([
       { npc: "Amber", text: "BIO|Name: Amber\rGLD|5\rSEL|Apple:7:2" },
     ]);
@@ -449,69 +389,53 @@ describe("persistence (real SQL)", () => {
     g = game();
     g.enter(id, false);
     g.intent(id, { t: "mapReady" });
-    g.intent(id, { t: "npcEditOpen" });
-    g.intent(id, { t: "npcLoad", name: "amber" });
-    expect(sent.filter((m) => m.msg.t === "npcScript").at(-1)?.msg).toEqual({
-      t: "npcScript",
+    g.intent(id, { t: "controlPanelOpen" });
+    g.intent(id, { t: "contentNpcs", seq: 3, name: "amber" });
+    const again = sent.filter((m) => m.msg.t === "contentNpcs").at(-1)?.msg;
+    expect(again?.t === "contentNpcs" ? again.view.npc : null).toEqual({
       name: "Amber",
+      exists: true,
       text: "BIO|Name: Amber\rGLD|5\rSEL|Apple:7:2",
       revision: npcFileRevision("BIO|Name: Amber\rGLD|5\rSEL|Apple:7:2"),
+      species: true,
     });
   });
 
-  test("a player's npcSave is ignored", async () => {
+  test("a player's NPC file save is ignored", async () => {
     const g = game();
     const id = await makeAdministrator(g);
     db.run("UPDATE accounts SET role = NULL");
     g.enter(id, false);
     g.intent(id, { t: "mapReady" });
-    g.intent(id, { t: "npcEditOpen" });
-    g.intent(id, { t: "npcSave", name: "Amber", text: "GLD|1" });
+    g.intent(id, { t: "contentNpcSave", seq: 1, name: "Amber", text: "GLD|1", expect: null });
     expect(loadNpcFiles(db)).toEqual([]);
   });
 });
 
-describe("SAVE names the revision LOAD showed (SSO)", () => {
-  test("a SAVE naming no revision makes a file that does not exist, but never replaces one", () => {
-    const { world, i } = scene();
-    openNpcEditor(world, i, casino);
-    const over = saveNpc(world, i, "Amber", "BIO|Mine.", ledgerOf(world));
-    expect(over.save).toBeNull();
-    expect(over.out.map((o) => o.msg)).toEqual([{ t: "alert", text: NPC_EDIT_TEXT.unloaded }]);
-    expect(npcFileNamed(world.npcs, "Oraku")).toBeNull();
-    expect(saveNpc(world, i, "Oraku", "BIO|New.", ledgerOf(world)).save).not.toBeNull();
-  });
-
-  test("a SAVE from a LOAD older than the file is refused, either way round", () => {
-    const { world, i } = scene();
-    openNpcEditor(world, i, casino);
-    const loaded = loadNpc(world, i, "Amber", ledgerOf(world))[0]?.msg;
-    if (loaded?.t !== "npcScript") {
-      throw new Error("LOAD");
-    }
+describe("a save names the revision the file was opened at (SSO)", () => {
+  test("a save from an open older than the file is refused; a new file names none", () => {
+    const { world } = scene();
+    const opened = npcPageFile(world, "Amber", ledgerOf(world));
     // The Monsters page (or another admin) saves the file meanwhile.
     setNpcFile(world.npcs, "Amber", "BIO|Changed elsewhere.");
-    const stale = saveNpc(world, i, "Amber", "BIO|Mine.", ledgerOf(world), loaded.revision);
+    const stale = saveNpcPage(
+      world,
+      "Amber",
+      "BIO|Mine.",
+      opened?.revision ?? null,
+      ledgerOf(world),
+    );
     expect(stale.save).toBeNull();
-    expect(stale.out.map((o) => o.msg)).toEqual([{ t: "alert", text: NPC_EDIT_TEXT.stale }]);
+    expect(stale.text).toContain("changed since you opened it");
     expect(npcFileNamed(world.npcs, "Amber")?.text).toBe("BIO|Changed elsewhere.");
-    // A fresh LOAD saves, and its answer carries the revision the next SAVE names.
-    const again = loadNpc(world, i, "Amber", ledgerOf(world))[0]?.msg;
-    if (again?.t !== "npcScript") {
-      throw new Error("LOAD");
-    }
-    const ok = saveNpc(world, i, "Amber", "BIO|Mine.", ledgerOf(world), again.revision);
-    expect(ok.save).not.toBeNull();
-    const next = ok.out.find((o) => o.msg.t === "npcRevision")?.msg;
-    expect(next).toEqual({
-      t: "npcRevision",
-      name: "Amber",
-      revision: npcFileRevision("BIO|Mine."),
-    });
-    // The next SAVE, naming that revision, goes through without another LOAD.
+    // Naming no revision never replaces a file; a file that does not exist is made.
+    expect(saveNpcPage(world, "Amber", "BIO|Mine.", null, ledgerOf(world)).ok).toBe(false);
+    expect(npcFileNamed(world.npcs, "Oraku")).toBeNull();
+    expect(saveNpcPage(world, "Oraku", "BIO|New.", null, ledgerOf(world)).save).not.toBeNull();
+    // Opened again, it saves.
+    const again = npcPageFile(world, "Amber", ledgerOf(world));
     expect(
-      saveNpc(world, i, "Amber", "BIO|Mine again.", ledgerOf(world), npcFileRevision("BIO|Mine."))
-        .save,
+      saveNpcPage(world, "Amber", "BIO|Mine.", again?.revision ?? null, ledgerOf(world)).save,
     ).not.toBeNull();
   });
 });

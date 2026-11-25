@@ -237,7 +237,7 @@ describe("admin commands, roles, bans and settings", () => {
   });
 
   test("a forged NPC editor save is refused and shows in /CheatFile", async () => {
-    bob.send({ t: "npcSave", name: "Cril", text: "GLD|1" });
+    bob.send({ t: "contentNpcSave", seq: 1, name: "Cril", text: "GLD|1", expect: null });
     await settle();
     alice.clear();
     await say(alice, "/CheatFile");

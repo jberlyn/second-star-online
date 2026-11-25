@@ -14,7 +14,6 @@ import {
   installContent,
   MODERATION_TEXT,
   MODERATOR,
-  NPC_EDIT_TEXT,
   PERMISSIONS,
   type Permission,
   type RoleDef,
@@ -1539,6 +1538,48 @@ describe("bans, settings and the logs in the game (real SQLite)", () => {
     ).toHaveLength(3);
   });
 
+  test("the NPCs page needs the NPC Editor's permission and saves as the NPC Editor does (issue #32)", async () => {
+    const { game, make } = await start();
+    const alice = await make("Alice", "administrator");
+    const bob = await make("Bob");
+    sent.length = 0;
+    game.intent(bob.characterId, { t: "contentNpcs", seq: 1, name: "Amber" });
+    game.intent(bob.characterId, {
+      t: "contentNpcSave",
+      seq: 2,
+      name: "Amber",
+      text: "GLD|1",
+      expect: null,
+    });
+    expect(sent.filter((o) => o.to === bob.characterId && o.msg.t.startsWith("content"))).toEqual(
+      [],
+    );
+    expect(
+      recentCheats(db, 2).filter(
+        (c) => c.name === "Bob" && c.reason === "Attempting to get Admin access",
+      ),
+    ).toHaveLength(2);
+    game.intent(alice.characterId, { t: "controlPanelOpen" });
+    sent.length = 0;
+    game.intent(alice.characterId, { t: "contentNpcs", seq: 3, name: "amber" });
+    const v = sent.find((o) => o.msg.t === "contentNpcs")?.msg;
+    if (v?.t !== "contentNpcs" || !v.view.npc) {
+      throw new Error("a view");
+    }
+    game.intent(alice.characterId, {
+      t: "contentNpcSave",
+      seq: 4,
+      name: "Amber",
+      text: "BIO|Name: Amber\nGLD|5",
+      expect: v.view.npc.revision,
+    });
+    expect(sent.find((o) => o.msg.t === "contentNpcs" && o.msg.seq === 4)?.msg).toMatchObject({
+      result: { ok: true },
+    });
+    expect(loadNpcFiles(db).find((f) => f.npc === "Amber")?.text).toBe("BIO|Name: Amber\rGLD|5");
+    expect(recentAudit(db, 1).map((r) => `${r.command} ${r.target}`)).toEqual(["npcSave Amber"]);
+  });
+
   test("the Monsters page's intents need the Content page's permission (issue #31)", async () => {
     const { game, make } = await start();
     const bob = await make("Bob");
@@ -1620,12 +1661,13 @@ describe("bans, settings and the logs in the game (real SQLite)", () => {
     expect(sent.find((o) => o.msg.t === "contentNpcFile" && o.msg.seq === 5)?.msg).toMatchObject({
       result: { ok: false },
     });
-    // The NPC Editor and the Monsters page each refuse to save over the other's newer save.
-    game.intent(alice.characterId, { t: "editClose" });
-    game.intent(alice.characterId, { t: "npcEditOpen" });
-    game.intent(alice.characterId, { t: "npcLoad", name: "Orc" });
-    const loaded = sent.findLast((o) => o.msg.t === "npcScript")?.msg as { revision: string };
-    game.intent(alice.characterId, { t: "controlPanelOpen" });
+    // The NPCs page and the Monsters page each refuse to save over the other's newer save.
+    sent.length = 0;
+    game.intent(alice.characterId, { t: "contentNpcs", seq: 8, name: "Orc" });
+    const opened = sent.find((o) => o.msg.t === "contentNpcs")?.msg;
+    const loaded = {
+      revision: opened?.t === "contentNpcs" ? (opened.view.npc?.revision ?? null) : null,
+    };
     sent.length = 0;
     game.intent(alice.characterId, { t: "contentNpcFile", seq: 6, name: "Orc" });
     const now = sent.find((o) => o.msg.t === "contentNpcFile")?.msg as {
@@ -1641,19 +1683,16 @@ describe("bans, settings and the logs in the game (real SQLite)", () => {
     expect(sent.find((o) => o.msg.t === "contentNpcFile" && o.msg.seq === 7)?.msg).toMatchObject({
       result: { ok: true },
     });
-    game.intent(alice.characterId, { t: "editClose" });
-    game.intent(alice.characterId, { t: "npcEditOpen" });
     sent.length = 0;
     game.intent(alice.characterId, {
-      t: "npcSave",
+      t: "contentNpcSave",
+      seq: 9,
       name: "Orc",
       text: "INV|Long Sword:2",
       expect: loaded.revision,
     });
-    expect(texts(sent, alice.characterId)).toEqual([]);
-    expect(sent.find((o) => o.msg.t === "alert")?.msg).toEqual({
-      t: "alert",
-      text: NPC_EDIT_TEXT.stale,
+    expect(sent.find((o) => o.msg.t === "contentNpcs")?.msg).toMatchObject({
+      result: { ok: false },
     });
     expect(loadNpcFiles(db).find((f) => f.npc === view.view?.name)?.text).not.toContain(
       "Long Sword",
@@ -1858,7 +1897,13 @@ describe("bans, settings and the logs in the game (real SQLite)", () => {
     const alice = await make("Alice", "administrator");
     const bob = await make("Bob");
     game.intent(bob.characterId, { t: "settingsSave", values: { jailSentence: 60 } });
-    game.intent(bob.characterId, { t: "npcSave", name: "Cril", text: "GLD|1" });
+    game.intent(bob.characterId, {
+      t: "contentNpcSave",
+      seq: 1,
+      name: "Cril",
+      text: "GLD|1",
+      expect: null,
+    });
     // An administrator's editor SAVE from outside the editor is no honest client's either.
     game.intent(alice.characterId, { t: "editLoad", mx: 1, my: 1 });
     expect(game.settings.jailSentence).toBe(600);

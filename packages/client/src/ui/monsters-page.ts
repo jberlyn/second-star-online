@@ -66,6 +66,10 @@ export interface MonstersPageActions {
   openContentRow(row: ContentRowRef): void;
   /** #29's body panel (null with no art). */
   body(saved: () => void): MonsterBodyPanel | null;
+  /** Opens the monster's whole NPC file on the NPCs page (issue #32). */
+  openNpc?(name: string): void;
+  /** Whether the NPCs page may be opened (its permission). */
+  canOpenNpc?(): boolean;
 }
 
 /** The answers the server sends the page. */
@@ -422,7 +426,7 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
   const npcHelp = document.createElement("p");
   npcHelp.className = "balance-stale";
   npcHelp.textContent =
-    "These live in the monster's NPC file and save at once, for everyone, like an NPC Editor save: they do not wait for the draft.";
+    "These live in the monster's NPC file and save at once, for everyone, like an NPCs page save: they do not wait for the draft.";
   const npcBody = document.createElement("fieldset");
   npcBody.className = "items-rules";
   const npcStatus = statusLine();
@@ -455,8 +459,15 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
   });
   const npcButtons = document.createElement("div");
   npcButtons.className = "content-buttons";
+  const npcWholeBtn = panelButton("monsters-npc-whole", "Open the whole NPC file", () => {
+    if (shown) {
+      actions.openNpc?.(shown.name);
+    }
+  });
   npcButtons.append(npcSaveBtn, npcUndoBtn);
-  npcBox.append(npcTitle, npcHelp, npcBody, npcButtons, npcStatus);
+  // The link has its own rule: it shows whenever the NPCs page may be opened, a file read two ways
+  // included (that is where it is fixed).
+  npcBox.append(npcTitle, npcHelp, npcBody, npcButtons, npcWholeBtn, npcStatus);
 
   form.append(title, tags, noticeLine, stale, identity, rules, buttons, status, npcBox);
 
@@ -1243,7 +1254,7 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
     if (v.mixed.length > 0) {
       const p = document.createElement("p");
       p.className = "balance-stale";
-      p.textContent = `Line ${v.mixed.join(", ")} of its NPC file is read two ways at once (a drop line inside another line): change it in the NPC Editor before editing these here.`;
+      p.textContent = `Line ${v.mixed.join(", ")} of its NPC file is read two ways at once (a drop line inside another line): fix it on the NPCs page (Open the whole NPC file, then edit it as text) before editing these here.`;
       npcBody.replaceChildren(p);
       return;
     }
@@ -1386,6 +1397,10 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
   const updateNpc = () => {
     npcSaveBtn.textContent =
       npcShown?.exists === false ? "Attach an NPC file now" : "Save the NPC file now";
+    npcWholeBtn.hidden =
+      actions.openNpc === undefined ||
+      actions.canOpenNpc?.() === false ||
+      shown?.published !== true;
     const usable = shown?.published === true && npcShown !== null && npcShown.mixed.length === 0;
     npcButtons.hidden = !usable;
     // A monster with no file can attach an empty one.

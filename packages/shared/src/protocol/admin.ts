@@ -92,27 +92,6 @@ export const editCloseSchema = z.strictObject({ t: z.literal("editClose") });
  */
 export const controlPanelOpenSchema = z.strictObject({ t: z.literal("controlPanelOpen") });
 
-/** A name from the editor's two lists (`NPCed`, `MONed`; the server checks it). */
-const npcName = z.string().max(40);
-
-/** Admin menu → NPC Editor. */
-export const npcEditOpenSchema = z.strictObject({ t: z.literal("npcEditOpen") });
-
-/** LOAD, which loads the named NPC file. */
-export const npcLoadSchema = z.strictObject({ t: z.literal("npcLoad"), name: npcName });
-
-/** SAVE, which saves the NPC file: the field's text. */
-export const npcSaveSchema = z.strictObject({
-  t: z.literal("npcSave"),
-  name: npcName,
-  text: z.string().max(30_000),
-  /** The revision LOAD showed (`npcScript.revision`); a save naming another is refused. */
-  expect: z
-    .string()
-    .regex(/^[0-9a-f]{16}$/)
-    .optional(),
-});
-
 /**
  * The Control Panel's Server Settings page opens, and its Revert: the settings as the server holds
  * them (SSO's typed settings forms in place of the File Editor).
@@ -395,27 +374,9 @@ export type AdminServerMsg =
    */
   | { t: "editor"; editing: true; map: EditorMap; exists: boolean }
   | { t: "editor"; editing: false }
-  /** The NPC editor opens (frame 311, `go("NPC Editor")`). */
-  | { t: "npcEditor" }
   /** The Control Panel opens. Return to Game closes it with `editor` (`editing: false`). */
   | { t: "controlPanel" }
-  /**
-   * LOAD's reply: the file as the server holds it, CR-separated; "" when there is
-   * none. The client shows it through `showNpcScript`.
-   */
-  | {
-      t: "npcScript";
-      name: string;
-      text: string;
-      /**
-       * The file's revision (SSO): SAVE names it, so a save over a file someone changed since LOAD
-       * (the Monsters page, a publish, another admin) is refused.
-       */
-      revision: string;
-    }
-  /** A SAVE went through: the file's new revision, for the next SAVE without a LOAD (SSO). */
-  | { t: "npcRevision"; name: string; revision: string }
-  /** An NPC editor save changed this NPC's file: its Bio window and shop list close (SSO). */
+  /** A save changed this NPC's file (the NPCs page): its Bio window and shop list close (SSO). */
   | { t: "npcClosed" }
   /**
    * The Server Settings window: its pages, every setting with its value, the roles and the staff

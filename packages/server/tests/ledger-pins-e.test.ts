@@ -152,16 +152,17 @@ describe("Server-side roles, admin commands and editors", () => {
     expect(sent.at(-1)?.msg.t).toBe("alert");
     game.intent(al, { t: "editClose" });
 
-    game.intent(al, { t: "npcEditOpen" });
-    game.intent(al, { t: "npcLoad", name: "Amber" });
-    const loaded = sent.findLast((o) => o.msg.t === "npcScript")?.msg as { revision: string };
+    game.intent(al, { t: "controlPanelOpen" });
+    game.intent(al, { t: "contentNpcs", seq: 1, name: "Amber" });
+    const opened = sent.findLast((o) => o.msg.t === "contentNpcs")?.msg;
     game.intent(al, {
-      t: "npcSave",
+      t: "contentNpcSave",
+      seq: 2,
       name: "Amber",
       text: "BIO|Name: Amber\nGLD|5\n",
-      expect: loaded.revision,
+      expect: opened?.t === "contentNpcs" ? (opened.view.npc?.revision ?? null) : null,
     });
-    expect(sent.at(-1)?.msg).toEqual({ t: "alert", text: "NPC has been successfully saved." });
+    expect(sent.at(-1)?.msg).toMatchObject({ t: "contentNpcs", result: { ok: true } });
 
     expect(
       recentAudit(db, 50).map((r) => [r.actor, r.command, r.target, r.before, r.after]),
@@ -188,11 +189,10 @@ describe("Server-side roles, admin commands and editors", () => {
 });
 
 describe("File editor and path-based file access removed", () => {
-  test("SSO: an NPC Editor load names an NPC by id; a path names nothing and reads nothing", async () => {
+  test("SSO: the NPCs page names an NPC by name; a path names nothing and reads nothing", async () => {
     const { sent, game, make } = await adminGame();
     const al = await make("Al", "administrator");
-    game.intent(al, { t: "npcEditOpen" });
-    sent.length = 0;
+    game.intent(al, { t: "controlPanelOpen" });
     for (const name of [
       "../NPCs/Amber",
       "NPCs/Amber.txt",
@@ -200,11 +200,12 @@ describe("File editor and path-based file access removed", () => {
       "..\\Amber",
       "Amber.txt",
     ]) {
-      game.intent(al, { t: "npcLoad", name });
+      sent.length = 0;
+      game.intent(al, { t: "contentNpcs", seq: 1, name });
+      expect(sent.at(-1)?.msg).toMatchObject({ t: "contentNpcs", view: { npc: null } });
     }
-    expect(sent).toEqual([]);
-    game.intent(al, { t: "npcLoad", name: "Amber" });
-    expect(sent.at(-1)?.msg).toMatchObject({ t: "npcScript", name: "Amber" });
+    game.intent(al, { t: "contentNpcs", seq: 2, name: "Amber" });
+    expect(sent.at(-1)?.msg).toMatchObject({ t: "contentNpcs", view: { npc: { name: "Amber" } } });
   });
 });
 
