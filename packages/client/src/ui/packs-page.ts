@@ -338,11 +338,15 @@ export function createPacksPage(
     }
   };
 
-  const list = (title: string, rows: readonly string[], words = (r: string) => r) => {
+  const list = (title: string, rows: readonly string[], words = (r: string) => r, note = "") => {
     const d = document.createElement("details");
     d.className = "items-more";
     const s = action(document.createElement("summary"), "packs-more-toggle");
     s.textContent = `${title} (${rows.length})`;
+    d.append(s);
+    if (note) {
+      d.append(help(note));
+    }
     const ul = document.createElement("ul");
     ul.append(
       ...rows.map((r) => {
@@ -351,7 +355,7 @@ export function createPacksPage(
         return li;
       }),
     );
-    d.append(s, ul);
+    d.append(ul);
     return d;
   };
 
@@ -396,18 +400,20 @@ export function createPacksPage(
     if (p.overYourChanges.length > 0) {
       kids.push(
         list(
-          "Things you've changed yourself: if you install it, your change stays; if you add it to your changes, the pack's replaces yours",
+          "Things you've changed yourself",
           p.overYourChanges,
           rowText,
+          "If you install it as a pack, your change stays on top. If you add it to your changes, the pack's version replaces yours.",
         ),
       );
     }
     if (p.overTheDraft.length > 0) {
       kids.push(
         list(
-          "Things with unpublished changes now: adding it to your changes replaces them",
+          "Things with unpublished changes",
           p.overTheDraft,
           rowText,
+          "Adding it to your changes replaces these unpublished changes.",
         ),
       );
     }
@@ -473,7 +479,8 @@ export function createPacksPage(
       }),
     );
     buttons.append(left, right);
-    preview.replaceChildren(...kids, install, merge, buttons);
+    // The choices in the order of their buttons.
+    preview.replaceChildren(...kids, merge, install, buttons);
   };
 
   const check = async () => {

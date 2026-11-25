@@ -64,12 +64,18 @@ import { action, gameInput } from "./action.ts";
 import { createArtUploader, postUpload } from "./art-uploads.ts";
 import { createBodies, createBodyArtPicker } from "./body-art.ts";
 import {
+  DATASET_TEXT,
   drawRemovals,
   drawUsage,
   type RemovalPlan,
   removalForm,
   removalHeadline,
+  rowName,
+  words,
 } from "./content-usage.ts";
+
+export { rowName };
+
 import {
   confirmBox,
   confirmChoice,
@@ -101,6 +107,11 @@ export interface ContentPageActions {
     expect?: string,
   ): void;
   discard(seq: number, ref: ContentRowRef, expect?: string): void;
+  /**
+   * Opens a change on its own editor page (`editorFor`); false when no page fits or may be opened,
+   * and the change opens here, as JSON.
+   */
+  openEditor?(ref: ContentRowRef): boolean;
   /** `logoutEveryone`: log every other player out while it publishes (issue #40). */
   publish(seq: number, summary: string, draftRev: string, logoutEveryone: boolean): void;
   undo(seq: number, id: string): void;
@@ -373,61 +384,43 @@ const STATUS_TEXT: Record<ContentRowStatus, string> = {
   removed: "Removed",
 };
 
-/** What each dataset holds, in words. */
-const DATASET_TEXT: Record<string, string> = {
-  attPower: "Attack power",
-  bindings: "Game bindings",
-  casino: "Casino",
-  classes: "Classes and skills",
-  craft: "Crafting",
-  gather: "Gathering",
-  help: "Help",
-  houses: "Houses and vehicles",
-  itemRules: "Item rule tables",
+/** The editor pages a change can be opened on. */
+export type EditorPage = "items" | "monsters" | "skills" | "gathering" | "balance" | "npcs";
+
+const EDITOR_TEXT: Record<EditorPage, string> = {
   items: "Items",
   monsters: "Monsters",
-  quests: "Quests",
-  social: "Social",
-  spells: "Spells",
-  tiles: "Tiles",
-  npcFiles: "NPC files",
-  rects: "Picture positions",
-  art: "Pictures and sounds",
+  skills: "Skills",
+  gathering: "Gathering",
   balance: "Balance",
+  npcs: "NPCs",
 };
 
-/** The rows most often met, named as the editor pages name them ("Item: Ale"). */
-const ROW_TEXT: Record<string, string> = {
-  "items/items": "Item",
-  "items/definitions": "Item rules",
-  "monsters/monsters": "Monster",
-  "monsters/definitions": "Monster rules",
-  "spells/spells": "Spell",
-  "npcFiles/files": "NPC file",
-  "classes/skills": "Skill",
-  "houses/vehicles": "Vehicle",
-  "houses/deeds": "Deed",
-  "art/items": "Item picture",
-  "art/paperdoll": "Worn picture",
-  "art/bodies": "Monster body",
-  "art/fx": "Spell effect",
-  "art/tiles": "Tile picture",
-  "art/sounds": "Sound",
-  "tiles/catalogue": "Tile",
-};
-
-/** `spellEffects` → `spell effects`. */
-const words = (id: string) => id.replace(/([a-z0-9])([A-Z])/g, "$1 $2").toLowerCase();
-
-/** A row in words: "Item: Ale", "Balance › spell effects › Firebolt". */
-export function rowName(r: ContentRowRef): string {
-  const named = ROW_TEXT[`${r.dataset}/${r.part}`];
-  if (named && r.key !== null) {
-    return `${named}: ${r.key}`;
+/**
+ * The editor page a row is edited on, with the record to open there (null: the page itself), or
+ * null when only the JSON editor edits it.
+ */
+export function editorFor(r: ContentRowRef): { page: EditorPage; key: string | null } | null {
+  const keyed = (page: EditorPage) => (r.key === null ? null : { page, key: r.key });
+  if (r.dataset === "items" && (r.part === "items" || r.part === "definitions")) {
+    return keyed("items");
   }
-  const area = DATASET_TEXT[r.dataset] ?? r.dataset;
-  const part = r.part === r.dataset ? "" : ` › ${words(r.part)}`;
-  return `${area}${part}${r.key === null ? "" : ` › ${r.key}`}`;
+  if (r.dataset === "monsters" && (r.part === "monsters" || r.part === "definitions")) {
+    return keyed("monsters");
+  }
+  if (r.dataset === "classes" && r.part === "skills") {
+    return keyed("skills");
+  }
+  if (r.dataset === "npcFiles" && r.part === "files") {
+    return keyed("npcs");
+  }
+  if (r.dataset === "gather") {
+    return { page: "gathering", key: null };
+  }
+  if (r.dataset === "balance") {
+    return { page: "balance", key: null };
+  }
+  return null;
 }
 
 /** `items/items/Ale` back to its row (a history line names rows by their path). */
@@ -691,14 +684,26 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
     empty:
       "Nothing to publish: there are no unpublished changes. Make changes on the Items, Monsters or other editor pages.",
     key: refLabel,
-    open: { id: "content-draft-open", run: (d) => openRow(d) },
+    // A change opens on its own editor page when it has one; the JSON editor is the fallback.
+    open: {
+      id: "content-draft-open",
+      run: (d) => {
+        if (!(editorFor(d) && actions.openEditor?.(refOf(d)))) {
+          openRow(d);
+        }
+      },
+    },
     columns: [
       {
         label: "What",
         cell: (d) => {
           const s = document.createElement("span");
           s.textContent = rowName(d);
-          s.title = refLabel(d);
+          const page = editorFor(d);
+          s.title =
+            page && actions.openEditor
+              ? `${refLabel(d)}: opens on the ${EDITOR_TEXT[page.page]} page`
+              : refLabel(d);
           return s;
         },
       },
@@ -707,13 +712,25 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
       { label: "When (UTC)", cell: (d) => when(d.updatedAt) },
       {
         label: "",
-        cell: (d) =>
-          panelButton("content-draft-discard", "Cancel this change", () => {
-            resultSeq = next();
-            resultInEditor = false;
-            afterResult = refreshAll;
-            actions.discard(resultSeq, refOf(d), d.revision);
-          }),
+        cell: (d) => {
+          const box = document.createElement("div");
+          box.className = "content-buttons";
+          // Where the row opens on an editor page, the raw data stays one click away.
+          if (editorFor(d) && actions.openEditor) {
+            const json = panelButton("content-draft-json", "Edit as JSON", () => openRow(d));
+            json.classList.add("content-link");
+            box.append(json);
+          }
+          box.append(
+            panelButton("content-draft-discard", "Cancel this change", () => {
+              resultSeq = next();
+              resultInEditor = false;
+              afterResult = refreshAll;
+              actions.discard(resultSeq, refOf(d), d.revision);
+            }),
+          );
+          return box;
+        },
       },
     ],
   });

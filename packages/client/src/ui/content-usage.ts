@@ -23,6 +23,99 @@ import type {
 import { action, gameInput } from "./action.ts";
 import { confirmBox, formField, panelButton } from "./control-panel-kit.ts";
 
+/** What each dataset holds, in words. */
+export const DATASET_TEXT: Record<string, string> = {
+  attPower: "Attack power",
+  bindings: "Game bindings",
+  casino: "Casino",
+  classes: "Classes and skills",
+  craft: "Crafting",
+  gather: "Gathering",
+  help: "Help",
+  houses: "Houses and vehicles",
+  itemRules: "Item rule tables",
+  items: "Items",
+  monsters: "Monsters",
+  quests: "Quests",
+  social: "Social",
+  spells: "Spells",
+  tiles: "Tiles",
+  npcFiles: "NPC files",
+  rects: "Picture positions",
+  art: "Pictures and sounds",
+  balance: "Balance",
+};
+
+/** The rows most often met, named as the editor pages name them ("Item: Ale"). */
+const ROW_TEXT: Record<string, string> = {
+  "items/items": "Item",
+  "items/definitions": "Item rules",
+  "monsters/monsters": "Monster",
+  "monsters/definitions": "Monster rules",
+  "spells/spells": "Spell",
+  "npcFiles/files": "NPC file",
+  "classes/skills": "Skill",
+  "houses/vehicles": "Vehicle",
+  "houses/deeds": "Deed",
+  "art/items": "Item picture",
+  "art/paperdoll": "Worn picture",
+  "art/bodies": "Monster body",
+  "art/fx": "Spell effect",
+  "art/tiles": "Tile picture",
+  "art/sounds": "Sound",
+  "tiles/catalogue": "Tile",
+};
+
+/** `spellEffects` → `spell effects`. */
+export const words = (id: string) => id.replace(/([a-z0-9])([A-Z])/g, "$1 $2").toLowerCase();
+
+/** A row in words: "Item: Ale", "Balance › spell effects › Firebolt". */
+export function rowName(r: ContentRowRef): string {
+  const named = ROW_TEXT[`${r.dataset}/${r.part}`];
+  if (named && r.key !== null) {
+    return `${named}: ${r.key}`;
+  }
+  const area = DATASET_TEXT[r.dataset] ?? r.dataset;
+  const part = r.part === r.dataset ? "" : ` › ${words(r.part)}`;
+  return `${area}${part}${r.key === null ? "" : ` › ${r.key}`}`;
+}
+
+/** Where in a row a reference sits, in words: `cook.recipes[3].output` → `cook › recipes 4 › output`. */
+export function placeText(at: string): string {
+  if (/^line \d+$/.test(at)) {
+    return at;
+  }
+  return at
+    .split(".")
+    .filter((x) => x !== "")
+    .map((seg) => {
+      const m = /^([^[]*)((?:\[\d+\])*)$/.exec(seg);
+      if (!m) {
+        return seg;
+      }
+      const nums = [...(m[2] ?? "").matchAll(/\[(\d+)\]/g)].map((n) => Number(n[1]) + 1);
+      // A bare list index (a list row's `[16]`) is its entry: "entry 17".
+      const name = words(m[1] ?? "") || "entry";
+      return [name, ...nums.map(String)].join(" ");
+    })
+    .join(" › ");
+}
+
+/**
+ * A reference in words: "Amber's NPC file, line 6", "Crafting › stations › cook: cook › recipes
+ * 4 › output". `where` is the server's `<row> → <place>`; only the place after the arrow is used.
+ */
+export function useText(use: { row: ContentRowRef; where: string }): string {
+  const arrow = use.where.indexOf(" → ");
+  const at = arrow >= 0 ? use.where.slice(arrow + 3) : "";
+  const r = use.row;
+  const row =
+    r.dataset === "npcFiles" && r.part === "files" && r.key !== null
+      ? `${r.key}'s NPC file`
+      : rowName(r);
+  return at ? `${row}, ${placeText(at)}` : row;
+}
+
 /** A removal as the `contentRemove` intent carries it (without its `t` and `seq`). */
 export interface RemovalPlan {
   kind: "item" | "monster" | "vehicle";
@@ -184,7 +277,9 @@ export function drawUsage(
       const b = action(document.createElement("button"), "content-use-open");
       b.type = "button";
       b.className = "content-link";
-      b.textContent = use.where;
+      b.textContent = useText(use);
+      // The row's own path, for anyone who knows the files.
+      b.title = use.where;
       b.addEventListener("click", () => on.openRow(use.row));
       li.append(b);
       if (use.name.toLowerCase() !== u.key.toLowerCase()) {
@@ -227,13 +322,17 @@ export function removalForm(
   const head = document.createElement("h4");
   head.className = "content-usage-title";
   head.textContent = `Remove ${u.name}`;
-  box.append(head);
+  const intro = document.createElement("p");
+  intro.className = "items-intro";
+  intro.textContent =
+    "Choose what happens to everything that uses it. Nothing changes for players until you publish.";
+  box.append(head, intro);
   const removable = u.uses.filter((x) => x.removable).length;
   const contentSel = choice(
     "content-removal-content",
     [
-      ["remove", "Remove the entries that name it"],
-      ["replace", "Replace it with another"],
+      ["remove", "Take out the lines that name it"],
+      ["replace", "Use another one instead"],
       ["leave", "Leave them for me to fix"],
     ],
     "remove",
@@ -241,9 +340,9 @@ export function removalForm(
   if (u.uses.length > 0) {
     box.append(
       formField(
-        "References in content",
+        "Where content names it",
         contentSel,
-        `${plural(u.uses.length, "row entry", "row entries")} name it: ${removable} can be removed with the recipe, shop line, drop or list entry that holds ${removable === 1 ? "it" : "them"}${u.uses.length > removable ? `; ${u.uses.length - removable} can only be replaced, and stop the publish until then` : ""}.`,
+        `${plural(u.uses.length, "place names", "places name")} it: ${removable} can be taken out with the recipe, shop line, drop or list entry that holds ${removable === 1 ? "it" : "them"}${u.uses.length > removable ? `; ${u.uses.length - removable} can only be swapped for another, and publishing waits until they are` : ""}.`,
       ),
     );
   }
@@ -254,9 +353,12 @@ export function removalForm(
     [
       ...(u.retired
         ? []
-        : ([["retire", "Retire it: copies stay, no more can be made"]] as ["retire", string][])),
-      ["purge", "Purge every copy"],
-      ["replace", "Replace every copy with another item"],
+        : ([["retire", "Retire it: players keep their copies, no new ones can be made"]] as [
+            "retire",
+            string,
+          ][])),
+      ["purge", "Delete every copy"],
+      ["replace", "Swap every copy for another item"],
     ],
     u.retired ? "purge" : "retire",
   );
@@ -267,16 +369,16 @@ export function removalForm(
   refund.step = "1";
   refund.value = "0";
   const refundRow = formField(
-    "Gold back for each purged copy",
+    "Gold back for each deleted copy",
     refund,
     "Given to each character for every copy taken from their bag, gear or vault.",
   );
   if (u.kind === "item" && copies > 0) {
     box.append(
       formField(
-        "Copies in the world",
+        "Copies players have",
         copiesSel,
-        `${plural(copies, "copy", "copies")} exist. Retiring keeps them working; purging cannot be undone, even by undoing the publish.`,
+        `${plural(copies, "copy", "copies")} exist. Retiring keeps them working; deleting them can't be undone, even by undoing the publish.`,
       ),
       refundRow,
     );
@@ -284,15 +386,15 @@ export function removalForm(
   const spawnsSel = choice(
     "content-removal-spawns",
     [
-      ["remove", "Clear its roster slots"],
-      ["replace", "Spawn another monster instead"],
+      ["remove", "Stop it appearing there"],
+      ["replace", "Put another monster there instead"],
     ],
     "remove",
   );
   const liveSel = choice(
     "content-removal-live",
     [
-      ["despawn", "Despawn them when published"],
+      ["despawn", "Remove them when you publish"],
       ["leave", "Leave them until they die"],
     ],
     "despawn",
@@ -300,17 +402,17 @@ export function removalForm(
   const fileSel = choice(
     "content-removal-npcfile",
     [
-      ["delete", "Remove it with the NPC"],
-      ["keep", "Keep it, unattached"],
+      ["delete", "Delete it too"],
+      ["keep", "Keep it"],
     ],
     "delete",
   );
   if (u.kind === "monster") {
     if (u.world.some((p) => p.place === "spawn")) {
-      box.append(formField("Roster slots", spawnsSel));
+      box.append(formField("Where it appears on maps", spawnsSel));
     }
     if (u.world.some((p) => p.place === "live")) {
-      box.append(formField("Alive now", liveSel));
+      box.append(formField("Ones alive now", liveSel));
     }
     if (u.npcFile) {
       box.append(formField("Its NPC file", fileSel));
@@ -339,12 +441,12 @@ export function removalForm(
   replacement.maxLength = 80;
   const replaceRow = formField(
     u.kind === "item"
-      ? "Replace with item"
+      ? "The item to use instead"
       : u.kind === "vehicle"
-        ? "Replace with vehicle"
-        : "Replace with monster",
+        ? "The vehicle to use instead"
+        : "The monster to use instead",
     replacement,
-    "Its key or the name players see.",
+    "Its ID or the name players see.",
   );
   box.append(replaceRow);
   const error = document.createElement("p");
@@ -401,38 +503,49 @@ export function removalForm(
   };
   const buttons = document.createElement("div");
   buttons.className = "content-buttons";
-  buttons.append(
-    panelButton(
-      "content-removal-submit",
-      "Add the removal to the draft",
-      () => {
-        error.textContent = "";
-        const p = plan();
-        if (!p) {
-          return;
-        }
-        if (p.copies !== "purge") {
+  const submit = panelButton(
+    "content-removal-submit",
+    "Remove it",
+    () => {
+      error.textContent = "";
+      const p = plan();
+      if (!p) {
+        return;
+      }
+      if (p.copies !== "purge") {
+        on.submit(p);
+        return;
+      }
+      // Purging is the strong option: it says what goes, and that no undo brings it back.
+      const who = u.characters;
+      void confirmBox(host, {
+        text: `Delete every copy of ${u.name}? When you publish, ${plural(copies, "copy", "copies")}${who > 0 ? ` (${plural(who, "character")} among the holders)` : ""} ${copies === 1 ? "is" : "are"} deleted from bags, gear, vaults, containers, the ground and player shops. Undoing the publish brings the item back, not the copies.`,
+        confirm: "Delete every copy",
+        cancel: "Keep them",
+        danger: true,
+      }).then((yes) => {
+        if (yes) {
           on.submit(p);
-          return;
         }
-        // Purging is the strong option: it says what goes, and that no undo brings it back.
-        const who = u.characters;
-        void confirmBox(host, {
-          text: `Purge ${u.name}? When the draft is published, ${plural(copies, "copy", "copies")}${who > 0 ? ` (${plural(who, "character")} among the holders)` : ""} ${copies === 1 ? "is" : "are"} deleted from bags, gear, vaults, containers, the ground and player shops. Undoing the publish brings the item back, not the copies.`,
-          confirm: "Purge every copy",
-          cancel: "Keep them",
-          danger: true,
-        }).then((yes) => {
-          if (yes) {
-            on.submit(p);
-          }
-        });
-      },
-      "danger",
-    ),
+      });
+    },
+    "danger",
+  );
+  // Retiring keeps the item for the copies players hold: the button says which it does.
+  const label = () => {
+    submit.textContent =
+      u.kind === "item" && copies > 0 && copiesSel.value === "retire" ? "Retire it" : "Remove it";
+  };
+  copiesSel.addEventListener("change", label);
+  label();
+  const note = document.createElement("p");
+  note.className = "control-panel-field-help";
+  note.textContent = "It goes with your other unpublished changes.";
+  buttons.append(
+    submit,
     panelButton("content-removal-cancel", "Cancel", () => on.cancel()),
   );
-  box.append(error, buttons);
+  box.append(error, buttons, note);
   return box;
 }
 

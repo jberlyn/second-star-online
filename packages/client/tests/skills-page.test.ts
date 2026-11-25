@@ -555,4 +555,69 @@ describe("the plain-language form", () => {
     model.dispatchEvent(new Event("change"));
     expect(curve.closest<HTMLElement>(".control-panel-field")?.hidden).toBe(false);
   });
+
+  describe("restoring the original", () => {
+    const pack = {
+      display: "",
+      hidden: false,
+      progression: null,
+      order: 1,
+      starts: { "1": 20, "3": null },
+      grants: [],
+      curve: null,
+    };
+    test("an original skill shows no restore buttons; a changed one does", () => {
+      const original = open({ pack, differs: false });
+      expect(tags(original.p.el)).toContain("Original");
+      expect(q<HTMLButtonElement>(original.p.el, "[data-action='skills-revert']").hidden).toBe(
+        true,
+      );
+      expect(q<HTMLButtonElement>(original.p.el, "[data-action='skills-pack-basics']").hidden).toBe(
+        true,
+      );
+      document.body.replaceChildren();
+      const changed = open({ pack, differs: true, row: { skill: "Slash", display: "Slashing" } });
+      expect(tags(changed.p.el)).toContain("Changed by you");
+      const revert = q<HTMLButtonElement>(changed.p.el, "[data-action='skills-revert']");
+      expect(revert.hidden).toBe(false);
+      revert.click();
+      expect(changed.calls.set.at(-1)).toEqual({
+        key: "Slash",
+        op: "revert",
+        expect: "aaaaaaaaaaaaaaaa",
+      });
+    });
+
+    test("Restore this tab puts that tab's fields back to the pack's, to be saved", () => {
+      const { p, calls } = open({
+        pack,
+        differs: true,
+        row: { skill: "Slash", display: "Slashing", hidden: true },
+        starts: [
+          { code: 1, label: "Fighter", value: 30 },
+          { code: 3, label: "Ranger", value: null },
+        ],
+      });
+      // Starting values differ too, but only Basics is restored.
+      const basics = q<HTMLButtonElement>(p.el, "[data-action='skills-pack-basics']");
+      expect(basics.hidden).toBe(false);
+      basics.click();
+      expect(q<HTMLInputElement>(p.el, "[data-action='skills-display']").value).toBe("");
+      expect(q<HTMLButtonElement>(p.el, "[data-action='skills-pack-basics']").hidden).toBe(true);
+      expect(q<HTMLButtonElement>(p.el, "[data-action='skills-pack-starts']").hidden).toBe(false);
+      q<HTMLButtonElement>(p.el, "[data-action='skills-save']").click();
+      expect(calls.set.at(-1)?.data).toMatchObject({
+        display: "",
+        hidden: false,
+        starts: { "1": 30, "3": null },
+      });
+    });
+
+    test("a skill of your own has nothing to restore", () => {
+      const { p } = open({ pack: null, inPack: false }, { state: "yours" });
+      expect(tags(p.el)).toContain("Added by you");
+      expect(q<HTMLButtonElement>(p.el, "[data-action='skills-revert']").hidden).toBe(true);
+      expect(p.el.querySelector("[data-action='skills-pack-basics']")).toBeNull();
+    });
+  });
 });

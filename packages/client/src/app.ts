@@ -91,7 +91,7 @@ import { createCharMenu } from "./ui/charmenu.ts";
 import { createChatInput, createChatLog } from "./ui/chat.ts";
 import { createChatRoomWindow } from "./ui/chatroom.ts";
 import { createCheckersWindow } from "./ui/checkers.ts";
-import { createContentPage } from "./ui/content-page.ts";
+import { createContentPage, editorFor } from "./ui/content-page.ts";
 import { createControlPanel } from "./ui/control-panel.ts";
 import { createFriendsWindow } from "./ui/friends.ts";
 import { desktopMenus, type MenuActions, type MenuState } from "./ui/gamemenu.ts";
@@ -723,6 +723,30 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         if (controlPanel.page === "characters") {
           charactersPage.openHub(name);
         }
+      },
+      // A change opens on its own editor page, when the role may use it.
+      openEditor: (ref) => {
+        const to = editorFor(ref);
+        const allowed = to?.page === "npcs" ? "npcEditor" : "contentEditor";
+        if (!to || !permissions.has(allowed)) {
+          return false;
+        }
+        const key = to.key;
+        controlPanel.go(to.page, () => {
+          if (key === null) {
+            return;
+          }
+          if (to.page === "items") {
+            itemsPage.open(key);
+          } else if (to.page === "monsters") {
+            monstersPage.open(key);
+          } else if (to.page === "skills") {
+            skillsPage.open(key);
+          } else if (to.page === "npcs") {
+            npcsPage.open(key);
+          }
+        });
+        return true;
       },
     },
     assets,

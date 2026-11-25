@@ -1583,34 +1583,39 @@ body {
   border-radius: 4px;
 }
 /* On a wide screen an editor page fills the window: the list and the form scroll on their own,
-   so the list never scrolls away and the form's tabs and Save bar stay in view. */
+   so the list never scrolls away and the form's tabs and Save bar stay in view. The World page
+   too: its map list on the left, the map and its tabs on the right (the canvas scrolls sideways
+   in its own box when the form is narrower than the map). */
 @media (min-width: 900px) {
-  .control-panel-main > .items-page:not(.world-page) {
+  .control-panel-main > .items-page {
     display: flex;
     flex-direction: column;
     height: 100%;
   }
-  .control-panel-main > .items-page:not(.world-page) > * {
+  .control-panel-main > .items-page > * {
     flex: none;
   }
-  .control-panel-main > .items-page:not(.world-page) > .items-layout {
+  .control-panel-main > .items-page > .items-layout {
     flex: 1 1 auto;
     min-height: 0;
     flex-wrap: nowrap;
   }
-  .items-page:not(.world-page) .items-list-box {
+  .items-page .items-list-box {
     display: flex;
     flex-direction: column;
     max-height: 100%;
     overflow-y: auto;
   }
-  .items-page:not(.world-page) .items-list-box > .items-list {
+  .items-page .items-list-box > .items-list {
     flex: 1 1 auto;
     max-height: none;
   }
-  .items-page:not(.world-page) .items-form {
+  .items-page .items-form {
     max-height: 100%;
     overflow-y: auto;
+  }
+  .world-page .items-form {
+    min-width: 0;
   }
 }
 /* The World page (ui/world-page.ts): the map canvas, its tile palette and the saved versions. */

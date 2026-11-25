@@ -110,6 +110,76 @@ describe("Skills page changes", () => {
     }
   });
 
+  test("Restore the original puts a changed pack skill back to the pack's, published or not", () => {
+    const s = service();
+    try {
+      const v = skillsView(s, "Punch").skill;
+      if (!v) {
+        throw new Error("Punch");
+      }
+      expect(v.pack?.display).toBe(v.row.display ?? "");
+      expect(v.differs).toBe(false);
+      const saved = draftSkillChange(s, ADMIN, {
+        key: "Punch",
+        op: "set",
+        data: { display: "Boxing", order: 1, starts: { "1": 15 }, grants: [4] },
+        expect: v.fingerprint,
+      });
+      expect(saved.ok).toBe(true);
+      expect(s.publish(ADMIN, s.draftRev(), "").ok).toBe(true);
+      const changed = skillsView(s, "Punch").skill;
+      expect(changed?.differs).toBe(true);
+      // A stale revert is refused.
+      const stale = draftSkillChange(s, ADMIN, {
+        key: "Punch",
+        op: "revert",
+        expect: v.fingerprint,
+      });
+      expect(stale.ok ? "" : stale.error).toContain("changed since you opened it");
+      const r = draftSkillChange(s, ADMIN, {
+        key: "Punch",
+        op: "revert",
+        expect: changed?.fingerprint ?? "",
+      });
+      expect(r.ok ? r.value : r.error).toBe("Boxing plays the original again once published.");
+      // Its own rows revert; the order goes back to the pack's.
+      expect(s.draft().every((d) => d.op === "revert")).toBe(true);
+      expect(skillsView(s, "Punch").skill?.differs).toBe(false);
+      expect(s.publish(ADMIN, s.draftRev(), "").ok).toBe(true);
+      const c = content().classes;
+      expect(c.skills.find((x) => x.skill === "Punch")?.display).toBe(
+        classic.classes.skills.find((x) => x.skill === "Punch")?.display,
+      );
+      expect(c.startClasses.find((x) => x.code === 1)?.skills.Punch).toBe(
+        classic.classes.startClasses.find((x) => x.code === 1)?.skills.Punch,
+      );
+      expect(s.operatorRows()).toEqual([]);
+      // Nothing left to restore.
+      const again = draftSkillChange(s, ADMIN, {
+        key: "Punch",
+        op: "revert",
+        expect: skillsView(s, "Punch").skill?.fingerprint ?? "",
+      });
+      expect(again.ok ? "" : again.error).toContain("already plays the original");
+    } finally {
+      installContent(classic);
+    }
+  });
+
+  test("a skill of your own has no original to restore", () => {
+    const s = service();
+    const made = draftSkillChange(s, ADMIN, { key: "Juggling", op: "create", data: {} });
+    expect(made.ok).toBe(true);
+    const v = skillsView(s, "Juggling").skill;
+    expect(v?.pack).toBeNull();
+    const r = draftSkillChange(s, ADMIN, {
+      key: "Juggling",
+      op: "revert",
+      expect: v?.fingerprint ?? "",
+    });
+    expect(r.ok ? "" : r.error).toContain("no original to restore");
+  });
+
   test("a change that brings a new problem is refused, and the draft is as it was", () => {
     const s = service();
     const v = skillsView(s, "Thrust").skill;

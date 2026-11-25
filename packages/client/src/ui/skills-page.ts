@@ -46,7 +46,7 @@ import { canonical } from "./items-page.ts";
 /** A Skills page change as the page sends it. */
 export interface SkillChange {
   key: string;
-  op: "set" | "create" | "discard";
+  op: "set" | "create" | "discard" | "revert";
   data?: SkillForm;
   expect?: string;
 }
@@ -414,6 +414,38 @@ function formOf(
   };
 }
 
+/** The form fields each tab holds ("Restore this tab to the original" puts these back). */
+const TAB_FIELDS: Record<string, readonly (keyof ReturnType<typeof formOf>)[]> = {
+  basics: ["display", "hidden", "order"],
+  starts: ["starts", "grants"],
+  rises: ["progression", "curve"],
+};
+
+/** The pack's form as the parts of a skill's view `formOf` reads. */
+function packViewOf(pack: NonNullable<ContentSkillView["pack"]>): Pick<
+  ContentSkillView,
+  "row" | "order" | "starts" | "promotions" | "curve"
+> & {
+  promotions: ContentSkillView["promotions"];
+} {
+  return {
+    row: {
+      skill: "",
+      ...(pack.display ? { display: pack.display } : {}),
+      ...(pack.hidden ? { hidden: true } : {}),
+      ...(pack.progression ? { progression: pack.progression } : {}),
+    } as ContentSkillView["row"],
+    order: pack.order,
+    starts: Object.entries(pack.starts).map(([code, value]) => ({
+      code: Number(code),
+      label: "",
+      value,
+    })),
+    promotions: pack.grants.map((code) => ({ code, name: "", grants: true })),
+    curve: pack.curve ? { ...pack.curve, sharedWith: [] } : null,
+  };
+}
+
 export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
   const el = document.createElement("div");
   el.className = "skills-page items-page balance-page plain-editor";
@@ -604,6 +636,13 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
     status.textContent = "";
     update();
   });
+  const revertBtn = panelButton("skills-revert", "Restore the original", () => {
+    if (shown) {
+      send({ key: shown.skill, op: "revert", expect: shown.fingerprint });
+    }
+  });
+  revertBtn.title =
+    "Puts its name, starting values and how it goes up back to the pack's once published.";
   const dropBtn = panelButton("skills-discard", "Cancel unpublished changes", () => {
     if (shown) {
       send({ key: shown.skill, op: "discard", expect: shown.fingerprint });
@@ -636,7 +675,7 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
   mainButtons.append(saveBtn, undoBtn);
   const resetButtons = document.createElement("div");
   resetButtons.className = "content-buttons items-reset-buttons";
-  resetButtons.append(dropBtn);
+  resetButtons.append(revertBtn, dropBtn);
   const buttons = document.createElement("div");
   buttons.className = "items-actions";
   buttons.append(mainButtons, resetButtons);
@@ -766,6 +805,9 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
     saveBtn.disabled = busy || !d;
     undoBtn.hidden = !d;
     undoBtn.disabled = busy;
+    // A pack's skill that plays something else (in the draft) can go back to the pack's.
+    revertBtn.hidden = !(shown?.pack && shown.differs);
+    revertBtn.disabled = busy;
     dropBtn.hidden = !shown?.pending;
     dropBtn.title = shown?.published
       ? "Takes this skill's changes out of the draft: players keep what they have now."
@@ -802,6 +844,32 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
     h.className = "balance-row-title";
     h.textContent = titleText;
     sec.append(h, intro(help), ...children);
+    const pack = shown?.pack;
+    const keys = TAB_FIELDS[id];
+    if (pack && keys) {
+      const foot = document.createElement("div");
+      foot.className = "items-group-foot";
+      const restore = panelButton(`skills-pack-${id}`, "Restore this tab to the original", () => {
+        const from = formOf({ ...(shown as ContentSkillView), ...packViewOf(pack) });
+        for (const k of keys) {
+          (work as Record<string, unknown>)[k] = structuredClone(from[k]);
+        }
+        if (
+          keys.includes("curve") &&
+          canonical(work.curve) !== canonical(formOf(shown as ContentSkillView).curve)
+        ) {
+          curveEdit = {
+            edited: work.curve !== null,
+            expect: work.curve ? (view?.curveFingerprints[work.curve.name] ?? null) : null,
+          };
+        }
+        drawForm();
+        edited();
+      });
+      restore.classList.add("items-restore");
+      foot.append(document.createElement("span"), restore);
+      sec.append(foot);
+    }
     return sec;
   };
   /** Marks the tabs that hold settings of the skill's own (a dot on the tab). */
@@ -811,10 +879,21 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
       starts: Object.values(work.starts ?? {}).some((x) => x !== null) || work.grants.length > 0,
       rises: work.progression !== null,
     };
+    const pack = shown?.pack;
+    const original = pack && shown ? formOf({ ...shown, ...packViewOf(pack) }) : null;
     for (const sec of groups.querySelectorAll<HTMLElement>(":scope > .items-group")) {
       const u = String(used[sec.dataset.group ?? ""] === true);
       if (sec.dataset.used !== u) {
         sec.dataset.used = u;
+      }
+      const restore = sec.querySelector<HTMLButtonElement>(
+        ":scope > .items-group-foot > .items-restore",
+      );
+      if (restore && original) {
+        // Shown only where the form differs from what the pack plays.
+        restore.hidden = (TAB_FIELDS[sec.dataset.group ?? ""] ?? []).every(
+          (k) => canonical(work[k]) === canonical(original[k]),
+        );
       }
     }
   };
@@ -1689,7 +1768,8 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
     const t: [string, string][] = [
       state === "yours"
         ? ["Added by you", "changed"]
-        : state === "edited" || v.pending
+        : // Against the pack's form when the server says (start values and grants count too).
+          (v.differs ?? (state === "edited" || v.pending))
           ? ["Changed by you", "changed"]
           : ["Original", "original"],
     ];

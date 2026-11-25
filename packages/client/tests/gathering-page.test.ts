@@ -433,4 +433,82 @@ describe("the plain-language form", () => {
     expect(regrowthName("DoVeg")).toBe("Veg");
     expect(regrowthName("trees")).toBe("Trees");
   });
+
+  describe("restoring the original", () => {
+    /** The page with node 1 changed from the pack's (xp and its drop chance), and its form open. */
+    const changed = () => {
+      const t = page();
+      const v = VIEW();
+      const node = v.nodes[0];
+      if (!node) {
+        throw new Error("no node");
+      }
+      node.pack = {
+        node: { ...node.node },
+        yield: { kind: "chance", item: "Logs", chance: 5 },
+        regrows: "trees",
+      };
+      node.node = { ...node.node, xp: 7 };
+      node.differs = true;
+      v.counter.pack = v.counter.rows;
+      v.counter.differs = false;
+      t.p.receive({ t: "contentGathering", seq: t.seq(), view: v });
+      q<HTMLButtonElement>(t.p.el, "[data-action='gathering-open-node']").click();
+      return t;
+    };
+    const tagText = (root: ParentNode) =>
+      [...root.querySelectorAll(".items-form-head .balance-tag")].map((x) => x.textContent);
+
+    test("a changed tile says so and offers its restores only where it differs", () => {
+      const { p } = changed();
+      expect(tagText(p.el)).toEqual(["Changed by you"]);
+      expect(q<HTMLButtonElement>(p.el, "[data-action='gathering-revert']").hidden).toBe(false);
+      expect(q<HTMLButtonElement>(p.el, "[data-action='gathering-pack-skill']").hidden).toBe(false);
+      expect(q<HTMLButtonElement>(p.el, "[data-action='gathering-pack-drops']").hidden).toBe(false);
+      expect(q<HTMLButtonElement>(p.el, "[data-action='gathering-pack-tile']").hidden).toBe(true);
+      expect(q<HTMLButtonElement>(p.el, "[data-action='gathering-pack-tool']").hidden).toBe(true);
+    });
+
+    test("Restore this tab copies the pack's fields into the form, to be saved", () => {
+      const { p, sent } = changed();
+      q<HTMLButtonElement>(p.el, "[data-action='gathering-pack-drops']").click();
+      expect(q<HTMLButtonElement>(p.el, "[data-action='gathering-pack-drops']").hidden).toBe(true);
+      q<HTMLButtonElement>(p.el, "[data-action='gathering-save']").click();
+      const data = sent.at(-1)?.data as { node: { xp?: number }; yieldTable?: unknown };
+      // The drops are the pack's again; the skill tab's XP is still the change.
+      expect(data.yieldTable).toEqual({ kind: "chance", item: "Logs", chance: 5 });
+      expect(data.node.xp).toBe(7);
+    });
+
+    test("Restore the original saves the pack's node, drop table and regrowth", () => {
+      const { p, sent } = changed();
+      q<HTMLButtonElement>(p.el, "[data-action='gathering-revert']").click();
+      expect(sent.at(-1)).toMatchObject({
+        op: "node",
+        index: 0,
+        expect: "aaaaaaaaaaaaaaaa",
+        data: {
+          regrows: "trees",
+          yieldTable: { kind: "chance", item: "Logs", chance: 5 },
+          yieldExpect: "2222222222222222",
+        },
+      });
+      expect(
+        (sent.at(-1)?.data as { node?: { xp?: number } } | undefined)?.node?.xp,
+      ).toBeUndefined();
+    });
+
+    test("an unchanged part is Original with nothing to restore; a tile of your own has no original", () => {
+      const t = changed();
+      q<HTMLButtonElement>(t.p.el, "[data-action='gathering-open-counter']").click();
+      // The tile's form has no changes, so the counter opens.
+      expect(tagText(t.p.el)).toEqual(["Original"]);
+      expect(q<HTMLButtonElement>(t.p.el, "[data-action='gathering-revert']").hidden).toBe(true);
+      document.body.replaceChildren();
+      const own = page();
+      q<HTMLButtonElement>(own.p.el, "[data-action='gathering-open-node']").click();
+      expect(tagText(own.p.el)).toEqual(["Added by you"]);
+      expect(own.p.el.querySelector("[data-action='gathering-pack-tile']")).toBeNull();
+    });
+  });
 });

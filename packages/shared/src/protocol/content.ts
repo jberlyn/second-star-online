@@ -28,6 +28,7 @@ import type {
   MonsterSpellRule,
   ProgressionData,
   Skill,
+  SkillProgression,
   StatTable,
   XpSettings,
   YieldTable,
@@ -631,7 +632,8 @@ const pageExpect = z
  * One Skills page change (issue #38). `set` writes the skill (`data`: its display name, whether it
  * is hidden, its progression, its place on the Skills page, its start values by start class, the
  * promotions that grant it, and its curve); `create` adds skill `key` (a permanent key, never
- * renamed) from `data`; `discard` drops the draft's changes to it. `expect` is the skill as the
+ * renamed) from `data`; `discard` drops the draft's changes to it; `revert` puts a pack's skill
+ * back to what the pack plays for it (each row its form writes) once published. `expect` is the skill as the
  * page last showed it (`ContentSkillView.fingerprint`); `create` names none. The server checks
  * `data` field by field and refuses a change that brings a new problem.
  */
@@ -639,7 +641,7 @@ export const contentSkillSetSchema = z.strictObject({
   t: z.literal("contentSkillSet"),
   seq,
   key: z.string().trim().min(1).max(40),
-  op: z.enum(["set", "create", "discard"]),
+  op: z.enum(["set", "create", "discard", "revert"]),
   data: z.unknown().optional(),
   expect: pageExpect,
 });
@@ -1328,6 +1330,21 @@ export interface ContentSkillView {
   fingerprint: string;
   /** A pack update changed it under the operator's change. */
   notice: { packName: string; packVersion: string; note: string } | null;
+  /**
+   * What the pack plays for its form (as a save would send it), or null for a skill of the
+   * operator's own: "Restore the original" and each tab's restore read it.
+   */
+  pack?: {
+    display: string;
+    hidden: boolean;
+    progression: SkillProgression | null;
+    order: number;
+    starts: Record<string, number | null>;
+    grants: number[];
+    curve: { name: string; curve: Curve } | null;
+  } | null;
+  /** Its form differs from the pack's (the draft's, so unpublished changes count). */
+  differs?: boolean;
 }
 
 /** The Skills page's view: the list, the open skill, and what the previews read. */
@@ -1395,21 +1412,43 @@ export interface GatheringNodeView {
   regrows: string | null;
   /** The node as shown, for `contentGatheringSet`'s `expect`. */
   fingerprint: string;
+  /**
+   * The pack's node for the same tile (its fields, yield table and regrowth), or null for a node
+   * of the operator's own: "Restore the original" and each tab's restore read it.
+   */
+  pack?: { node: HarvestNode; yield: YieldTable | null; regrows: string | null } | null;
+  /** It plays something other than the pack's node (in the draft). */
+  differs?: boolean;
 }
 
 /** The Gathering page's view (issue #38). */
 export interface ContentGatheringView {
   nodes: GatheringNodeView[];
   /** The hits a tool takes per success, by the skill (`gathering.counterTable`). */
-  counter: { rows: { gt: number; value: number }[]; fingerprint: string };
+  counter: {
+    rows: { gt: number; value: number }[];
+    fingerprint: string;
+    /** The pack's rows, and whether the draft's differ. */
+    pack?: { gt: number; value: number }[];
+    differs?: boolean;
+  };
   /** Fishing (null: the world has none). */
   fishing: {
     data: NonNullable<GatherData["gathering"]["fishing"]> | null;
     fingerprint: string;
     skill: string | null;
+    /** The pack's fishing (null: none), and whether the draft's differs. */
+    pack?: NonNullable<GatherData["gathering"]["fishing"]> | null;
+    differs?: boolean;
   };
   /** Farming (null: the world has none). */
-  farming: { data: NonNullable<GatherData["gathering"]["farming"]> | null; fingerprint: string };
+  farming: {
+    data: NonNullable<GatherData["gathering"]["farming"]> | null;
+    fingerprint: string;
+    /** The pack's farming (null: none), and whether the draft's differs. */
+    pack?: NonNullable<GatherData["gathering"]["farming"]> | null;
+    differs?: boolean;
+  };
   /** The regrowth checks: their handlers and how often each runs. */
   /**
    * The regrowth checks: their handlers, how often each runs, and whether it drops farming produce

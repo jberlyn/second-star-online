@@ -55,7 +55,7 @@ const PREVIEW: ContentPackPreview = {
   merge: { problems: [] },
 };
 
-function page() {
+function page(preview: ContentPackPreview = PREVIEW) {
   const sent: unknown[] = [];
   const posts: { url: string; ticket: string | null }[] = [];
   const p = createPacksPage(
@@ -76,7 +76,7 @@ function page() {
         url,
         ticket: new Headers(init?.headers).get("x-upload-ticket"),
       });
-      return new Response(JSON.stringify({ ok: true, preview: PREVIEW }), { status: 200 });
+      return new Response(JSON.stringify({ ok: true, preview }), { status: 200 });
     },
   );
   document.body.append(p.el);
@@ -162,5 +162,24 @@ describe("the Packs page", () => {
     const status = t.p.el.querySelector(".balance-status");
     expect(status?.textContent).toBe("Choose a pack file first.");
     expect(check?.nextElementSibling).toBe(status);
+  });
+
+  test("the preview explains the two choices in the order of their buttons, with short fold titles", async () => {
+    const t = page({ ...PREVIEW, overYourChanges: ["items/items/Long Sword"] });
+    const input = t.p.el.querySelector<HTMLInputElement>('[data-action="packs-import-file"]');
+    Object.defineProperty(input, "files", {
+      value: [new File(["{}"], "frost-1.1.0.ssopack.json")],
+    });
+    t.p.el.querySelector<HTMLButtonElement>('[data-action="packs-import-check"]')?.click();
+    await new Promise((r) => setTimeout(r, 10));
+    const heads = [...t.p.el.querySelectorAll(".packs-choice h4")].map((h) => h.textContent);
+    expect(heads).toEqual(["Add it to my unpublished changes", "Update Frost to v1.1.0"]);
+    const summaries = [...t.p.el.querySelectorAll(".packs-preview summary")].map(
+      (s) => s.textContent,
+    );
+    expect(summaries).toContain("Things you've changed yourself (1)");
+    expect(t.p.el.querySelector(".packs-preview")?.textContent).toContain(
+      "If you install it as a pack, your change stays on top.",
+    );
   });
 });

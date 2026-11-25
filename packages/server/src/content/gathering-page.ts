@@ -20,7 +20,7 @@ import {
 } from "@secondstaronline/shared";
 
 import type { DraftRow } from "../persistence/content.ts";
-import { type RowRef, rowHash, sameRow } from "./rows.ts";
+import { type RowRef, rowHash, rowValue, sameRow } from "./rows.ts";
 import type { ContentActor, ContentResult, ContentService } from "./service.ts";
 import { capsOf } from "./skills-page.ts";
 
@@ -57,6 +57,34 @@ function nodeFingerprint(g: Gather, index: number): string | null {
   });
 }
 
+/**
+ * The pack's node a draft node stands for: the one at the same place with the same tile, else the
+ * first with its tile (a node is known by the tile it harvests); -1 for a node of the operator's own.
+ */
+function packIndexOf(pack: Gather, node: { tile: string }, index: number): number {
+  const same = pack.harvest[index];
+  if (same && lingoEq(same.tile, node.tile)) {
+    return index;
+  }
+  return pack.harvest.findIndex((n) => lingoEq(n.tile, node.tile));
+}
+
+/** A node with its yield table and regrowth, as "Restore the original" puts it back. */
+function nodeWhole(g: Gather, index: number) {
+  const node = g.harvest[index];
+  if (!node) {
+    return null;
+  }
+  return {
+    node,
+    yield:
+      node.yield !== undefined && Object.hasOwn(g.yields, node.yield)
+        ? (g.yields[node.yield] ?? null)
+        : null,
+    regrows: regrowsOf(g, node),
+  };
+}
+
 /** A yield table as the page loaded it (null: the name has none). */
 const yieldFingerprint = (t: unknown) => (t === undefined || t === null ? null : rowHash(t));
 
@@ -74,6 +102,7 @@ export function gatheringView(service: ContentService): ContentGatheringView {
   const draft = service.draft();
   const d = service.draftContent(draft);
   const g = d.gather;
+  const pack = service.packContent().gather;
   const compiled = compileDefinitions(d);
   const sounds = service.soundArtView();
   const p = d.classes.progression;
@@ -91,19 +120,34 @@ export function gatheringView(service: ContentService): ContentGatheringView {
         .filter((i) => i >= 0),
       regrows: regrowsOf(g, node),
       fingerprint: nodeFingerprint(g, index) ?? "",
+      ...(() => {
+        const original = nodeWhole(pack, packIndexOf(pack, node, index));
+        return original
+          ? {
+              pack: structuredClone(original),
+              differs: rowHash(original) !== rowHash(nodeWhole(g, index)),
+            }
+          : { pack: null, differs: false };
+      })(),
     })),
     counter: {
       rows: structuredClone(g.gathering.counterTable),
       fingerprint: counterFingerprint(g),
+      pack: structuredClone(pack.gathering.counterTable),
+      differs: rowHash(pack.gathering.counterTable) !== rowHash(g.gathering.counterTable),
     },
     fishing: {
       data: structuredClone(g.gathering.fishing ?? null),
       fingerprint: fishingFingerprint(g),
       skill: d.bindings.skills.fishing ?? null,
+      pack: structuredClone(pack.gathering.fishing ?? null),
+      differs: rowHash(pack.gathering.fishing ?? null) !== rowHash(g.gathering.fishing ?? null),
     },
     farming: {
       data: structuredClone(g.gathering.farming ?? null),
       fingerprint: farmingFingerprint(g),
+      pack: structuredClone(pack.gathering.farming ?? null),
+      differs: rowHash(pack.gathering.farming ?? null) !== rowHash(g.gathering.farming ?? null),
     },
     regrowth: {
       roll: g.gathering.regrowth.roll,
@@ -353,7 +397,26 @@ export function draftGatheringChange(
   const d = service.draftContent(draft);
   const g = d.gather;
   const stale = "It changed since you opened it: look at it again before saving.";
-  const write = (rows: Rows, ok: string, what: string): ContentResult<string> => {
+  const pack = service.packContent();
+  const operator = service.operatorRows();
+  /**
+   * A row put back to exactly the pack's value is no change of the operator's: their row reverts
+   * (or the draft's change to it goes), so "Restore the original" leaves nothing behind.
+   */
+  const settle = (rows: Rows): Rows =>
+    rows.flatMap((r) => {
+      if (r.op !== "set" || rowHash(r.data) !== rowHash(rowValue(pack, r.ref) ?? null)) {
+        return [r];
+      }
+      if (operator.some((x) => sameRow(x, r.ref))) {
+        return [{ ref: r.ref, op: "revert", data: null }];
+      }
+      return draft.some((x) => sameRow(x, r.ref))
+        ? [{ ref: r.ref, op: "discard", data: null }]
+        : [];
+    });
+  const write = (planned: Rows, ok: string, what: string): ContentResult<string> => {
+    const rows = settle(planned);
     if (rows.length === 0) {
       return fail(`${what} already plays that: nothing to save.`);
     }
@@ -362,6 +425,11 @@ export function draftGatheringChange(
       return r.problems
         ? fail(`${what} was not saved.`, gatheringFieldProblems(r.problems))
         : fail(r.error);
+    }
+    // Every row back to the pack's: it plays the original again, not a change of yours.
+    if (rows.every((x) => x.op === "revert" || x.op === "discard")) {
+      const later = rows.some((x) => x.op === "revert") ? " once published" : "";
+      return { ok: true, value: `${what} plays the original again${later}.` };
     }
     return { ok: true, value: ok };
   };

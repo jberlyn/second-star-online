@@ -609,6 +609,7 @@ function skillView(
       rowHash(formFields(service.publishedContent(), row.skill)) !==
         rowHash(formFields(d, row.skill)),
     fingerprint: skillFingerprint(service, row.skill, draft) ?? "",
+    ...packFormOf(service.packContent(), d, row.skill),
     notice: notice
       ? {
           packName: notice.packName,
@@ -755,6 +756,39 @@ function publishedForm(published: ContentData, d: ContentData, key: string): Ski
   };
 }
 
+/**
+ * What the pack plays for skill `key`'s form, as the page fills it (null for a skill of the
+ * operator's own), and whether the draft's form differs from it.
+ */
+function packFormOf(
+  pack: ContentData,
+  d: ContentData,
+  key: string,
+): Pick<ContentSkillView, "pack" | "differs"> {
+  const ps = formState(pack, key);
+  if (!ps) {
+    return { pack: null, differs: false };
+  }
+  const pubStarts = new Map(ps.starts);
+  const packForm = {
+    display: ps.row.display ?? "",
+    hidden: ps.row.hidden === true,
+    progression: ps.row.progression ? structuredClone(ps.row.progression) : null,
+    order: ps.order,
+    starts: Object.fromEntries(
+      d.classes.startClasses.map((sc) => [String(sc.code), pubStarts.get(sc.code) ?? null]),
+    ),
+    grants: ps.grants.filter((code) =>
+      d.classes.classes.some((c) => c.code === code && c.promotion),
+    ),
+    curve: ps.curve ? { name: ps.curve.name, curve: structuredClone(ps.curve.curve) } : null,
+  };
+  return {
+    pack: packForm,
+    differs: rowHash(formFields(pack, key)) !== rowHash(formFields(d, key)),
+  };
+}
+
 /** The skill's form fields in `d`, for whether the draft changes them. */
 function formFields(d: ContentData, key: string) {
   const st = formState(d, key);
@@ -883,11 +917,19 @@ function formRows(
 export function draftSkillChange(
   service: ContentService,
   actor: ContentActor,
-  change: { key: string; op: "set" | "create" | "discard"; data?: unknown; expect?: string },
+  change: {
+    key: string;
+    op: "set" | "create" | "discard" | "revert";
+    data?: unknown;
+    expect?: string;
+  },
 ): ContentResult<string> {
   const draft = service.draft();
   const d = service.draftContent(draft);
-  const parsed = change.op === "discard" ? null : skillFormSchema.safeParse(change.data ?? {});
+  const parsed =
+    change.op === "discard" || change.op === "revert"
+      ? null
+      : skillFormSchema.safeParse(change.data ?? {});
   if (parsed && !parsed.success) {
     return fail(
       "The skill was not saved.",
@@ -930,6 +972,9 @@ export function draftSkillChange(
   const label = row.display ?? key;
   if (skillFingerprint(service, key, draft) !== change.expect) {
     return fail(`${label} changed since you opened it: look at it again before saving.`);
+  }
+  if (change.op === "revert") {
+    return revertSkill(service, actor, d, draft, key, label);
   }
   if (change.op === "discard") {
     const published = service.publishedContent();
@@ -991,6 +1036,54 @@ export function draftSkillChange(
       : fail(r.error);
   }
   return { ok: true, value: `${label} is in the draft.` };
+}
+
+/**
+ * Puts a pack's skill back to what the pack plays for it: each row its form writes goes back to
+ * the pack's value (a row of the operator's own reverts, a draft change that only held it is
+ * dropped), and a row other skills' changes share keeps theirs.
+ */
+function revertSkill(
+  service: ContentService,
+  actor: ContentActor,
+  d: ContentData,
+  draft: readonly DraftRow[],
+  key: string,
+  label: string,
+): ContentResult<string> {
+  const pack = service.packContent();
+  const back = publishedForm(pack, d, key);
+  if (!back) {
+    return fail(`${label} is yours, not the pack's: there is no original to restore.`);
+  }
+  const plan = formRows(d, key, back, false);
+  if (typeof plan === "string") {
+    return fail(plan);
+  }
+  const operator = service.operatorRows();
+  const rows: { ref: RowRef; op: DraftRow["op"] | "discard"; data: unknown }[] = [];
+  for (const r of plan) {
+    const original =
+      sameRow(r.ref, ORDER) && pack.classes.skillOrder === undefined
+        ? skillPageOrder(pack.classes).map((x) => x.skill)
+        : rowValue(pack, r.ref);
+    if (rowHash(r.data) !== rowHash(original ?? null)) {
+      rows.push(r);
+    } else if (operator.some((x) => sameRow(x, r.ref))) {
+      rows.push({ ref: r.ref, op: "revert", data: null });
+    } else if (draft.some((x) => sameRow(x, r.ref))) {
+      rows.push({ ref: r.ref, op: "discard", data: null });
+    }
+  }
+  if (rows.length === 0) {
+    return fail(`${label} already plays the original.`);
+  }
+  const r = service.draftChange(actor, rows);
+  return r.ok
+    ? { ok: true, value: `${label} plays the original again once published.` }
+    : r.problems
+      ? fail(`${label} was not restored.`, skillFieldProblems(key, r.problems, indexOf(d, key)))
+      : fail(r.error);
 }
 
 // ---- removal -------------------------------------------------------------------------------

@@ -77,6 +77,31 @@ export interface GatheringPage {
 type NodeWork = { node: HarvestNode; yieldTable: YieldTable | null; regrows: string | null };
 
 /**
+ * The fields each tab holds, by part ("Restore this tab to the original" puts these back). A
+ * node's `@regrows` and `@yieldTable` are the form's own, beside its node fields.
+ */
+const TAB_FIELDS: Record<string, Record<string, readonly string[]>> = {
+  node: {
+    tile: ["tile", "becomes", "under", "@regrows"],
+    tool: ["can", "tools", "tier"],
+    skill: ["skill", "requires", "gains", "xp"],
+    drops: ["yield", "treasure", "@yieldTable"],
+    sounds: ["hitSound", "successSound"],
+  },
+  fishing: {
+    fishing: ["waterTiles", "antiMacroStart", "stoppedText"],
+    catches: ["bands"],
+    bites: ["fishCheck"],
+  },
+  farming: {
+    seeds: ["seedTest", "seeds"],
+    watering: ["wateringSkill", "watering"],
+    crops: ["produce"],
+  },
+  counter: { counter: ["*"] },
+};
+
+/**
  * A node save as the server takes it: the yield table only when the form edited it (with its
  * revision as loaded), a `bySkill` left with no rows left out.
  */
@@ -360,7 +385,9 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
   title.className = "content-section-title";
   const subtitle = document.createElement("p");
   subtitle.className = "control-panel-field-help items-form-id";
-  header.append(title, subtitle);
+  const tags = document.createElement("div");
+  tags.className = "balance-tags";
+  header.append(title, subtitle, tags);
   const stale = document.createElement("p");
   stale.className = "balance-stale";
   stale.hidden = true;
@@ -419,12 +446,49 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
     },
     "danger",
   );
+  const revertBtn = panelButton("gathering-revert", "Restore the original", () => {
+    const pack = packOf();
+    if (!view || !pack || part === null) {
+      return;
+    }
+    if (part === "node") {
+      const n = view.nodes[openIndex];
+      if (!n) {
+        return;
+      }
+      const original = pack.value as NodeWork;
+      send(
+        {
+          op: "node",
+          index: openIndex,
+          data: nodePayload(structuredClone(original), {
+            edited: original.yieldTable !== null,
+            expect:
+              original.node.yield !== undefined
+                ? (view.yieldFingerprints[original.node.yield] ?? null)
+                : null,
+          }),
+          expect: n.fingerprint,
+        },
+        "node",
+      );
+    } else {
+      const fp =
+        part === "counter"
+          ? view.counter.fingerprint
+          : part === "fishing"
+            ? view.fishing.fingerprint
+            : view.farming.fingerprint;
+      send({ op: part, data: structuredClone(pack.value), expect: fp }, part);
+    }
+  });
+  revertBtn.title = "Puts it back to what the pack plays, as an unpublished change.";
   const mainButtons = document.createElement("div");
   mainButtons.className = "content-buttons";
   mainButtons.append(saveBtn, undoBtn);
   const otherButtons = document.createElement("div");
   otherButtons.className = "content-buttons items-reset-buttons";
-  otherButtons.append(removeBtn);
+  otherButtons.append(revertBtn, removeBtn);
   const buttons = document.createElement("div");
   buttons.className = "items-actions";
   buttons.append(mainButtons, otherButtons);
@@ -498,7 +562,11 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
     undoBtn.disabled = busy;
     removeBtn.hidden = !(part === "node" && openIndex >= 0);
     removeBtn.disabled = busy;
-    otherButtons.hidden = removeBtn.hidden;
+    const original = packOf();
+    revertBtn.hidden = !(original && original.differs);
+    revertBtn.disabled = busy;
+    otherButtons.hidden = removeBtn.hidden && revertBtn.hidden;
+    drawTags();
     discardAll.hidden = !view?.pending;
     empty.hidden = !form.hidden || !view;
     const shownFp =
@@ -515,8 +583,144 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
   };
   const edited = () => {
     status.textContent = "";
+    markRestores();
     update();
     drawPreview();
+  };
+
+  /**
+   * What the pack plays for the part open (a node: its node, yield table and regrowth), and
+   * whether the draft differs from it; null for a node of the operator's own or nothing open.
+   */
+  const packOf = (): { value: unknown; differs: boolean } | null => {
+    if (!view || part === null) {
+      return null;
+    }
+    if (part === "node") {
+      const n = view.nodes[openIndex];
+      return n?.pack
+        ? {
+            value: { node: n.pack.node, yieldTable: n.pack.yield, regrows: n.pack.regrows },
+            differs: n.differs === true,
+          }
+        : null;
+    }
+    const p = view[part];
+    return p.pack === undefined ? null : { value: p.pack, differs: p.differs === true };
+  };
+  /** A field of the form (`@x`: the node form's own; `*`: the whole part), from `from`. */
+  const fieldOf = (from: unknown, key: string): unknown => {
+    if (key === "*") {
+      return from;
+    }
+    const o = from as Record<string, unknown> | null;
+    if (part === "node") {
+      return key.startsWith("@") ? o?.[key.slice(1)] : (o?.node as Record<string, unknown>)?.[key];
+    }
+    return o?.[key];
+  };
+  const drawTags = () => {
+    const t: [string, string][] = [];
+    const original = packOf();
+    if (part === "node" && openIndex === -1) {
+      t.push(["New: not saved yet", "pending"]);
+    } else if (part !== null && view) {
+      const own =
+        part === "node"
+          ? !original
+          : original !== null && original.value === null && fixedWork !== null;
+      t.push(
+        own
+          ? ["Added by you", "changed"]
+          : original?.differs
+            ? ["Changed by you", "changed"]
+            : ["Original", "original"],
+      );
+    }
+    tags.replaceChildren(
+      ...t.map(([x, kind]) => {
+        const s = document.createElement("span");
+        s.className = `balance-tag items-tag-${kind}`;
+        s.textContent = x;
+        return s;
+      }),
+    );
+  };
+  /** Adds "Restore this tab to the original" to each tab that has fields the pack sets. */
+  const addRestores = () => {
+    const original = packOf();
+    const fields = TAB_FIELDS[part ?? ""] ?? {};
+    if (!original || part === null) {
+      return;
+    }
+    for (const sec of body.querySelectorAll<HTMLElement>(":scope > .items-group")) {
+      const id = sec.dataset.group ?? "";
+      const keys = fields[id];
+      if (!keys) {
+        continue;
+      }
+      const foot = document.createElement("div");
+      foot.className = "items-group-foot";
+      const restore = panelButton(
+        `gathering-pack-${id}`,
+        "Restore this tab to the original",
+        () => {
+          const from = original.value;
+          if (part === "node") {
+            for (const k of keys) {
+              const v = structuredClone(fieldOf(from, k));
+              if (k === "@regrows") {
+                work.regrows = (v as string | null) ?? null;
+              } else if (k === "@yieldTable") {
+                work.yieldTable = (v as YieldTable | null) ?? null;
+                const name = (from as NodeWork).node.yield;
+                yieldEdit = {
+                  edited: work.yieldTable !== null,
+                  expect: name !== undefined ? (view?.yieldFingerprints[name] ?? null) : null,
+                };
+              } else if (v === undefined) {
+                delete (work.node as Record<string, unknown>)[k];
+              } else {
+                (work.node as Record<string, unknown>)[k] = v;
+              }
+            }
+            invalid.clear();
+            drawNode();
+          } else {
+            if (keys.includes("*") || fixedWork === null || from === null) {
+              fixedWork = structuredClone(from);
+            } else {
+              for (const k of keys) {
+                (fixedWork as Record<string, unknown>)[k] = structuredClone(fieldOf(from, k));
+              }
+            }
+            invalid.clear();
+            drawFixed();
+          }
+          edited();
+        },
+      );
+      restore.classList.add("items-restore");
+      foot.append(document.createElement("span"), restore);
+      sec.append(foot);
+    }
+    markRestores();
+  };
+  /** Shows each tab's restore only where the form differs from the pack. */
+  const markRestores = () => {
+    const original = packOf();
+    const fields = TAB_FIELDS[part ?? ""] ?? {};
+    const now = part === "node" ? work : fixedWork;
+    for (const b of body.querySelectorAll<HTMLButtonElement>(
+      ":scope > .items-group > .items-group-foot > .items-restore",
+    )) {
+      const id = b.closest<HTMLElement>(".items-group")?.dataset.group ?? "";
+      b.hidden =
+        !original ||
+        (fields[id] ?? []).every(
+          (k) => canonical(fieldOf(now, k)) === canonical(fieldOf(original.value, k)),
+        );
+    }
   };
 
   // ---- small controls ----
@@ -1395,6 +1599,7 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
     );
 
     body.replaceChildren(tileTab, toolTab, skillTab, dropsTab, soundsTab, oddsTab);
+    addRestores();
     drawPreview();
     update();
   };
@@ -1627,6 +1832,7 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
         ),
       );
     }
+    addRestores();
     update();
   };
 

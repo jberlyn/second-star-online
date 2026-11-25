@@ -123,6 +123,77 @@ describe("Gathering page changes", () => {
     }
   });
 
+  test("a node knows the pack's node; saving the pack's back reverts your rows", () => {
+    const s = service();
+    try {
+      const v = gatheringView(s);
+      const tree = v.nodes.find((n) => n.node.can === "Chop");
+      if (!tree?.yield || tree.yield.kind !== "chance" || !tree.pack) {
+        throw new Error("no tree");
+      }
+      expect(tree.differs).toBe(false);
+      expect(tree.pack.node).toEqual(tree.node);
+      expect(v.counter.differs).toBe(false);
+      const changed = draftGatheringChange(s, ADMIN, {
+        op: "node",
+        index: tree.index,
+        data: {
+          node: { ...tree.node, xp: 7 },
+          yieldTable: { ...tree.yield, chance: 2 },
+          yieldExpect: v.yieldFingerprints[tree.node.yield ?? ""],
+        },
+        expect: tree.fingerprint,
+      });
+      expect(changed.ok).toBe(true);
+      expect(s.publish(ADMIN, s.draftRev(), "").ok).toBe(true);
+      const v2 = gatheringView(s);
+      const now = v2.nodes[tree.index];
+      expect(now?.differs).toBe(true);
+      // "Restore the original": the pack's node saved back, with its expect.
+      const restored = draftGatheringChange(s, ADMIN, {
+        op: "node",
+        index: tree.index,
+        data: {
+          node: tree.pack.node,
+          yieldTable: tree.pack.yield,
+          yieldExpect: v2.yieldFingerprints[tree.node.yield ?? ""],
+          regrows: tree.pack.regrows,
+        },
+        expect: now?.fingerprint ?? "",
+      });
+      expect(restored.ok ? restored.value : restored.error).toBe(
+        `Node ${tree.index + 1} plays the original again once published.`,
+      );
+      // Rows equal to the pack's revert, leaving no change of yours once published.
+      expect(
+        s
+          .draft()
+          .map((d) => `${d.part}:${d.op}`)
+          .sort(),
+      ).toEqual(["harvest:revert", "yields:revert"]);
+      expect(gatheringView(s).nodes[tree.index]?.differs).toBe(false);
+      expect(s.publish(ADMIN, s.draftRev(), "").ok).toBe(true);
+      expect(s.operatorRows().filter((r) => r.dataset === "gather")).toEqual([]);
+    } finally {
+      installContent(classic);
+    }
+  });
+
+  test("a node of your own has no pack node", () => {
+    const s = service();
+    const v = gatheringView(s);
+    const tree = v.nodes.find((n) => n.node.can === "Chop");
+    if (!tree) {
+      throw new Error("no tree");
+    }
+    const r = draftGatheringChange(s, ADMIN, {
+      op: "newNode",
+      data: { node: { ...tree.node, tile: "Z9", becomes: "Z8" } },
+    });
+    expect(r.ok ? r.value : r.error).toContain("is in the draft");
+    expect(gatheringView(s).nodes.at(-1)?.pack).toBeNull();
+  });
+
   test("a change that brings a new problem is refused and leaves the draft as it was", () => {
     const s = service();
     const v = gatheringView(s);

@@ -18,12 +18,13 @@ import type {
 import type { Assets } from "../src/assets.ts";
 import {
   createContentPage,
+  editorFor,
   lineDiff,
   makeItemPanels,
   refLabel,
   rowName,
 } from "../src/ui/content-page.ts";
-import { removalHeadline } from "../src/ui/content-usage.ts";
+import { placeText, removalForm, removalHeadline, useText } from "../src/ui/content-usage.ts";
 
 const overview = (over: Partial<ContentOverview> = {}): ContentOverview => ({
   draft: [],
@@ -62,7 +63,7 @@ const ale: ContentRowDetail = {
   draft: null,
 };
 
-function page(assets?: Assets) {
+function page(assets?: Assets, more: { openEditor?: (r: unknown) => boolean } = {}) {
   const sent: { kind: string; seq: number; args: unknown[] }[] = [];
   const rec =
     (kind: string) =>
@@ -99,6 +100,7 @@ function page(assets?: Assets) {
       soundArt: rec("soundArt"),
       sound: rec("sound"),
       openCharacter: (name: string) => sent.push({ kind: "openCharacter", seq: 0, args: [name] }),
+      ...more,
     },
     assets,
   );
@@ -1719,5 +1721,134 @@ describe("the plain-language page", () => {
     });
     expect(p.el.textContent).toContain("Item: Ale, Casino › slots");
     expect(p.el.textContent).toContain("Undo this publish");
+  });
+});
+
+describe("references and changes in plain words", () => {
+  test("a reference reads as words, with its path kept for the tooltip", () => {
+    expect(placeText("cook.recipes[2].output")).toBe("cook › recipes 3 › output");
+    expect(placeText("line 6")).toBe("line 6");
+    expect(placeText("[16]")).toBe("entry 17");
+    expect(
+      useText({
+        row: { dataset: "npcFiles", part: "files", key: "Amber" },
+        where: "npcFiles/files/Amber → line 6",
+      }),
+    ).toBe("Amber's NPC file, line 6");
+    expect(
+      useText({
+        row: { dataset: "craft", part: "stations", key: null },
+        where: "craft/stations → cook.recipes[2].output",
+      }),
+    ).toBe("Crafting › stations, cook › recipes 3 › output");
+    expect(useText({ row: { dataset: "items", part: "items", key: "Ale" }, where: "x" })).toBe(
+      "Item: Ale",
+    );
+  });
+
+  test("each change knows the editor page it opens on", () => {
+    expect(editorFor({ dataset: "items", part: "definitions", key: "Ale" })).toEqual({
+      page: "items",
+      key: "Ale",
+    });
+    expect(editorFor({ dataset: "monsters", part: "monsters", key: "Orc" })?.page).toBe("monsters");
+    expect(editorFor({ dataset: "classes", part: "skills", key: "parry" })?.page).toBe("skills");
+    expect(editorFor({ dataset: "npcFiles", part: "files", key: "Amber" })?.page).toBe("npcs");
+    expect(editorFor({ dataset: "gather", part: "harvest", key: null })).toEqual({
+      page: "gathering",
+      key: null,
+    });
+    expect(editorFor({ dataset: "balance", part: "regen", key: null })?.page).toBe("balance");
+    expect(editorFor({ dataset: "casino", part: "slots", key: null })).toBeNull();
+  });
+
+  const withChanges = (openEditor?: (r: unknown) => boolean) => {
+    const h = page(undefined, openEditor ? { openEditor } : {});
+    h.p.onShow();
+    h.p.receive({
+      t: "contentOverview",
+      seq: h.last("overview")?.seq ?? 0,
+      overview: overview({
+        draft: [
+          {
+            dataset: "items",
+            part: "items",
+            key: "Ale",
+            op: "set",
+            author: "A",
+            updatedAt: "2026-11-22T01:02:03.000Z",
+          },
+          {
+            dataset: "casino",
+            part: "slots",
+            key: null,
+            op: "set",
+            author: "A",
+            updatedAt: "2026-11-22T01:02:03.000Z",
+          },
+        ],
+      }),
+    });
+    return h;
+  };
+
+  test("clicking a change opens it on its editor page, with Edit as JSON beside it", () => {
+    const opened: unknown[] = [];
+    const h = withChanges((r) => {
+      opened.push(r);
+      return true;
+    });
+    const rowsOf = () => [
+      ...h.p.el.querySelectorAll<HTMLElement>('[data-action="content-draft-open"]'),
+    ];
+    (rowsOf()[0] as HTMLElement).click();
+    expect(opened).toEqual([{ dataset: "items", part: "items", key: "Ale" }]);
+    expect(h.last("row")).toBeUndefined();
+    // Only the change with an editor page offers Edit as JSON; it opens the JSON editor.
+    const json = [
+      ...h.p.el.querySelectorAll<HTMLButtonElement>('[data-action="content-draft-json"]'),
+    ];
+    expect(json).toHaveLength(1);
+    json[0]?.click();
+    expect(h.last("row")?.args).toEqual([{ dataset: "items", part: "items", key: "Ale" }]);
+    // A change no editor page covers opens as JSON.
+    (rowsOf()[1] as HTMLElement).click();
+    expect(opened).toHaveLength(1);
+    expect(h.last("row")?.args).toEqual([{ dataset: "casino", part: "slots", key: null }]);
+  });
+
+  test("a change opens as JSON when its editor page can't be opened", () => {
+    const h = withChanges(() => false);
+    (h.p.el.querySelector('[data-action="content-draft-open"]') as HTMLElement).click();
+    expect(h.last("row")?.args).toEqual([{ dataset: "items", part: "items", key: "Ale" }]);
+  });
+});
+
+describe("the removal form in plain words", () => {
+  test("the button says whether it retires or removes the item", () => {
+    const host = document.createElement("div");
+    document.body.append(host);
+    const usage: ContentUsageView = {
+      kind: "item",
+      key: "Ale",
+      name: "Ale",
+      retired: false,
+      uses: [],
+      world: [{ place: "bag", count: 3, holders: ["Al"], holderCount: 1 }],
+      npcFile: false,
+      pending: false,
+      characters: 1,
+    };
+    const form = removalForm(usage, host, { submit: () => {}, cancel: () => {} });
+    host.append(form);
+    const submit = form.querySelector<HTMLButtonElement>('[data-action="content-removal-submit"]');
+    expect(submit?.textContent).toBe("Retire it");
+    const copies = form.querySelector<HTMLSelectElement>('[data-action="content-removal-copies"]');
+    if (copies) {
+      copies.value = "purge";
+      copies.dispatchEvent(new Event("change"));
+    }
+    expect(submit?.textContent).toBe("Remove it");
+    expect(form.textContent).toContain("Nothing changes for players until you publish.");
   });
 });
