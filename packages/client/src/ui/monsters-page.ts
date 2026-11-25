@@ -193,7 +193,7 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
   el.append(
     pageHeading(
       "Monsters",
-      "Pick a monster to change how tough it is, how it behaves and what it gives. Saving puts your changes in the draft: players get them once you publish on the Content page. Loot and spells save straight away.",
+      "Pick a monster to change how tough it is, how it behaves and what it gives. Saving puts your changes with the other unpublished changes: players get them once you publish them on the Publish Changes page. Loot and spells save straight away.",
     ),
   );
   const draftLine = document.createElement("div");
@@ -386,10 +386,9 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
   noticeLine.append(
     noticeText,
     " ",
-    panelButton("monsters-notice", "Review it on the Content page", () => {
-      if (shown) {
-        actions.openContentRow({ dataset: "monsters", part: "definitions", key: shown.name });
-      }
+    panelButton("monsters-notice", "Review it under Publish Changes", () => {
+      // Pack updates are answered with the unpublished changes.
+      actions.openContent();
     }),
   );
   const stale = document.createElement("p");
@@ -420,7 +419,7 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
   const removeHelp = document.createElement("p");
   removeHelp.className = "control-panel-field-help";
   removeHelp.textContent =
-    "Opens the Content page, which shows where the monster is used (maps, NPC files) first.";
+    "Shows everywhere the creature is used (maps, NPC files) first, then asks what happens to each.";
   removeBox.append(removeBtn, removeHelp);
   // The picture: a tab of its own, saved by the body panel's own buttons.
   const bodyBox = document.createElement("section");

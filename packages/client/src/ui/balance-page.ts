@@ -487,7 +487,7 @@ export function createBalancePage(
     }
     if (v.notice) {
       tags.push([
-        `${v.notice.packName} ${v.notice.packVersion} changed this: review it on the Content page`,
+        `${v.notice.packName} ${v.notice.packVersion} changed this: review it under Publish Changes`,
         "pending",
       ]);
     }
@@ -897,7 +897,7 @@ export function createBalancePage(
             label.textContent = `${e.label}: `;
             const now = document.createElement("span");
             elsewhereNow.set(`${g.id}:${i}`, now);
-            const open = panelButton("balance-open-row", "Change it on the Content page", () =>
+            const open = panelButton("balance-open-row", "Change it on its page", () =>
               actions.openContentRow(e.row),
             );
             open.dataset.row = `${e.row.dataset}/${e.row.part}`;

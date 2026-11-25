@@ -27,6 +27,11 @@ export interface PanelPage {
   group: string;
   /** Your role needs this to see the page (the server checks every request again). */
   permission: Permission;
+  /**
+   * A role with this permission doesn't see the page in the sidebar: it reaches the same editor
+   * as a tab of another page (the NPCs page is a tab of Creatures & NPCs for a content editor).
+   */
+  unless?: Permission;
   el: HTMLElement;
   /** Runs each time the page is shown: ask the server for what it lists. */
   onShow?(): void;
@@ -202,7 +207,8 @@ export function createControlPanel(opts: ControlPanelOptions): ControlPanel {
   let current: PanelPage | null = null;
   /** The page to come back to when the Control Panel opens again. */
   let last: string | null = null;
-  const allowed = () => opts.pages.filter((p) => opts.can(p.permission));
+  const allowed = () =>
+    opts.pages.filter((p) => opts.can(p.permission) && !(p.unless && opts.can(p.unless)));
 
   /** Runs `go` now, or once the operator agrees to drop the open page's changes. */
   const guard = (go: () => void, what: string) => {
@@ -319,7 +325,7 @@ export function createControlPanel(opts: ControlPanelOptions): ControlPanel {
     refresh() {
       fillRooms();
       drawSidebar();
-      if (current && !opts.can(current.permission)) {
+      if (current && !allowed().includes(current)) {
         // A page you may no longer use drops what it held, even with changes.
         closeQuestions();
         current.discard?.();

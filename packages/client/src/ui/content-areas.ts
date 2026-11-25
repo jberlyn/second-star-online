@@ -13,7 +13,7 @@
  *
  * `HOMES` maps each part to its page, so a change listed on the Content page opens there.
  */
-import type { AreaPart, AreaTab } from "./content-area-page.ts";
+import type { AreaPart, AreaTab, RecordPanelLike } from "./content-area-page.ts";
 
 const p = (
   dataset: string,
@@ -151,13 +151,16 @@ export const CREATURE_RULE_TABS: AreaTab[] = [
   },
 ];
 
-/** The Spells page. */
-export const SPELL_TABS = (amounts: AreaTab): AreaTab[] => [
+/** The Spells page. `effect` is the cast-effect picture panel each spell shows. */
+export const SPELL_TABS = (amounts: AreaTab, effect?: () => RecordPanelLike | null): AreaTab[] => [
   {
     kind: "records",
     label: "Spells",
     help: "Each spell players can learn and cast: its cost, its picture and sound, and what it does.",
-    part: p("spells", "spells", "Spells", "", { noun: "spell" }),
+    part: p("spells", "spells", "Spells", "", {
+      noun: "spell",
+      ...(effect ? { panel: effect } : {}),
+    }),
   },
   amounts,
   {
@@ -402,6 +405,21 @@ export type ContentHome =
   | "balance"
   | "pictures"
   | "npcs";
+
+/** Each page's title, as the sidebar says it. */
+export const HOME_TITLES: Record<ContentHome, string> = {
+  items: "Items",
+  monsters: "Creatures & NPCs",
+  spells: "Spells",
+  skills: "Skills & Classes",
+  gathering: "Gathering & Crafting",
+  houses: "Houses & Vehicles",
+  quests: "Quests",
+  community: "Community",
+  balance: "Game Rules",
+  pictures: "Pictures & Sounds",
+  npcs: "NPCs",
+};
 
 /** Each page's tabs as data, to find a part's home. */
 const NO_PANEL: AreaTab = {

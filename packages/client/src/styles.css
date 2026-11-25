@@ -1672,6 +1672,62 @@ body {
   .world-page .items-form {
     min-width: 0;
   }
+  /* An area page (ui/content-area-page.ts): the tab showing fills what is left under the tabs. A
+     list beside a form, or an editor page shown as a tab, fills it exactly; cards scroll. */
+  .control-panel-main > .content-area-page {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+  .control-panel-main > .content-area-page > * {
+    flex: none;
+  }
+  .control-panel-main > .content-area-page > .content-area-tabs {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+  }
+  .content-area-tab.content-area-fill {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    box-sizing: border-box;
+  }
+  .content-area-tab.content-area-fill > * {
+    flex: none;
+  }
+  .content-area-fill > .items-page,
+  .content-area-fill > .content-area-records {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+  .content-area-fill > .items-page {
+    display: flex;
+    flex-direction: column;
+  }
+  .content-area-fill > .items-page > * {
+    flex: none;
+  }
+  .content-area-fill > .items-page > .items-layout,
+  .content-area-fill > .content-area-records {
+    flex: 1 1 auto;
+    min-height: 0;
+    flex-wrap: nowrap;
+  }
+  .content-area-records .items-list-box {
+    display: flex;
+    flex-direction: column;
+    max-height: 100%;
+    overflow-y: auto;
+  }
+  .content-area-records .items-list-box > .items-list {
+    flex: 1 1 auto;
+    max-height: none;
+  }
+  .content-area-records .items-form {
+    max-height: 100%;
+    overflow-y: auto;
+  }
 }
 /* The World page (ui/world-page.ts): the map canvas, its tile palette and the saved versions. */
 .world-canvas-box {
@@ -4508,4 +4564,11 @@ body {
 }
 .schema-form-field > .control-panel-field-label {
   display: block;
+}
+.schema-form-block-title:empty {
+  display: none;
+}
+.content-diff-lines {
+  margin: 4px 0;
+  padding-left: 18px;
 }

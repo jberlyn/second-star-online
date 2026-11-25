@@ -1558,6 +1558,8 @@ export interface ContentItemsView {
   otherDraft: number;
   /** Draft changes to items' catalogue rows and definitions. */
   itemDraft: number;
+  /** One item definition's shape as JSON Schema: the form draws its rarer parts from it. */
+  definitionSchema?: unknown;
 }
 
 /** A problem a check found, and where. */

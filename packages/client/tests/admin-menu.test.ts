@@ -78,7 +78,44 @@ describe("the Admin, Game and Chat menus (menu 502)", () => {
     c.onMessage({ t: "controlPanel" });
     expect(c.sent).toContainEqual({ t: "contentNpcs", seq: expect.any(Number) });
     expect(root.querySelector(".npcs-page")?.isConnected).toBe(true);
+    // For a content editor it is the Talk & Shops tab of Creatures & NPCs, shown.
+    expect(root.querySelector('.control-panel-link[aria-current="page"]')?.textContent).toBe(
+      "Creatures & NPCs",
+    );
+    expect(
+      root
+        .querySelector(".npcs-page")
+        ?.closest(".content-area-tab")
+        ?.classList.contains("control-panel-tab-hidden"),
+    ).toBe(false);
     app.stop();
+  });
+
+  test("the NPCs page is in the sidebar only for a role without the content editor", () => {
+    window.innerWidth = 1024;
+    window.innerHeight = 768;
+    const pagesFor = (permissions: string[]) => {
+      const root = document.createElement("div");
+      document.body.append(root);
+      const c = conn();
+      const app = runApp(root, fakeAssets, c);
+      c.onMessage(welcome);
+      c.onMessage({ t: "permissions", permissions } as ServerMsg);
+      c.onMessage(SNAPSHOT);
+      c.onMessage({ t: "controlPanel" });
+      const pages = [...root.querySelectorAll<HTMLElement>(".control-panel-link")].map(
+        (a) => a.dataset.page,
+      );
+      app.stop();
+      root.remove();
+      return pages;
+    };
+    // An NPC Editor alone keeps its page.
+    expect(pagesFor(["npcEditor"])).toEqual(["npcs"]);
+    // A content editor edits NPC files on the Talk & Shops tab of Creatures & NPCs.
+    const editor = pagesFor(["npcEditor", "contentEditor"]);
+    expect(editor).not.toContain("npcs");
+    expect(editor).toContain("monsters");
   });
 
   test("the Admin menu shows only for an administrator on the desktop", () => {

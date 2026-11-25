@@ -76,6 +76,8 @@ import {
 
 export { rowName };
 
+import { HOME_TITLES, homeOf } from "./content-areas.ts";
+import { plainChanges } from "./content-diff.ts";
 import {
   confirmBox,
   confirmChoice,
@@ -240,7 +242,11 @@ export interface ContentPage {
    * through this page. Null with no art to draw it.
    */
   monsterBody(saved: () => void): MonsterBodyPanel | null;
-  /** Unsaved JSON in the row editor. */
+  /** The Spells page's cast-effect panel. Null with no art to draw it. */
+  spellEffect(saved: () => void): RecordPanel | null;
+  /** The Pictures & Sounds page: every picture and sound, one kind at a time. */
+  readonly artEl: HTMLElement;
+  /** Picture work set up and not yet saved. */
   changes(): number;
   discard(): void;
   reset(): void;
@@ -257,6 +263,19 @@ export interface ItemPanels {
   show(key: string, force?: boolean): void;
   clear(): void;
   /** A picture or frames set up and not yet saved to the draft. */
+  pending(): boolean;
+}
+
+/**
+ * A picture panel for one record of an editor page (a creature's body, a spell's cast effect):
+ * #29's panel, made once, talking to the server through this page.
+ */
+export interface RecordPanel {
+  readonly el: HTMLElement;
+  /** Shows the record's picture (the draft's); one holding unsaved work is kept unless `force`. */
+  show(key: string, force?: boolean): void;
+  clear(): void;
+  /** Work set up and not yet saved to the draft. */
   pending(): boolean;
 }
 
@@ -384,45 +403,6 @@ const STATUS_TEXT: Record<ContentRowStatus, string> = {
   removed: "Removed",
 };
 
-/** The editor pages a change can be opened on. */
-export type EditorPage = "items" | "monsters" | "skills" | "gathering" | "balance" | "npcs";
-
-const EDITOR_TEXT: Record<EditorPage, string> = {
-  items: "Items",
-  monsters: "Monsters",
-  skills: "Skills",
-  gathering: "Gathering",
-  balance: "Balance",
-  npcs: "NPCs",
-};
-
-/**
- * The editor page a row is edited on, with the record to open there (null: the page itself), or
- * null when only the JSON editor edits it.
- */
-export function editorFor(r: ContentRowRef): { page: EditorPage; key: string | null } | null {
-  const keyed = (page: EditorPage) => (r.key === null ? null : { page, key: r.key });
-  if (r.dataset === "items" && (r.part === "items" || r.part === "definitions")) {
-    return keyed("items");
-  }
-  if (r.dataset === "monsters" && (r.part === "monsters" || r.part === "definitions")) {
-    return keyed("monsters");
-  }
-  if (r.dataset === "classes" && r.part === "skills") {
-    return keyed("skills");
-  }
-  if (r.dataset === "npcFiles" && r.part === "files") {
-    return keyed("npcs");
-  }
-  if (r.dataset === "gather") {
-    return { page: "gathering", key: null };
-  }
-  if (r.dataset === "balance") {
-    return { page: "balance", key: null };
-  }
-  return null;
-}
-
 /** `items/items/Ale` back to its row (a history line names rows by their path). */
 function refFromLabel(label: string): ContentRowRef {
   const [dataset = "", part = "", ...rest] = label.split("/");
@@ -451,69 +431,29 @@ export function entryOf(
 /** `2026-11-22T09:15:03.120Z` → `2026-11-22 09:15`. */
 const when = (iso: string) => `${iso.slice(0, 10)} ${iso.slice(11, 16)}`;
 
-/** Pretty JSON, or "(none)". */
-export function pretty(v: unknown): string {
-  return v === null || v === undefined ? "(none)" : JSON.stringify(v, null, 2);
-}
-
-/**
- * A line diff of two texts (longest common subsequence): each line of the result is kept,
- * added or removed. Small inputs only (one row's JSON).
- */
-export function lineDiff(a: string, b: string): { kind: "same" | "add" | "del"; text: string }[] {
-  const x = a.split("\n");
-  const y = b.split("\n");
-  const n = x.length;
-  const m = y.length;
-  const lcs: number[][] = Array.from({ length: n + 1 }, () => new Array<number>(m + 1).fill(0));
-  for (let i = n - 1; i >= 0; i--) {
-    for (let j = m - 1; j >= 0; j--) {
-      const row = lcs[i] as number[];
-      row[j] =
-        x[i] === y[j]
-          ? ((lcs[i + 1] as number[])[j + 1] as number) + 1
-          : Math.max((lcs[i + 1] as number[])[j] as number, row[j + 1] as number);
-    }
-  }
-  const out: { kind: "same" | "add" | "del"; text: string }[] = [];
-  let i = 0;
-  let j = 0;
-  while (i < n && j < m) {
-    if (x[i] === y[j]) {
-      out.push({ kind: "same", text: x[i] as string });
-      i++;
-      j++;
-    } else if (((lcs[i + 1] as number[])[j] as number) >= ((lcs[i] as number[])[j + 1] as number)) {
-      out.push({ kind: "del", text: x[i] as string });
-      i++;
-    } else {
-      out.push({ kind: "add", text: y[j] as string });
-      j++;
-    }
-  }
-  for (; i < n; i++) {
-    out.push({ kind: "del", text: x[i] as string });
-  }
-  for (; j < m; j++) {
-    out.push({ kind: "add", text: y[j] as string });
-  }
-  return out;
-}
-
-/** A `<pre>` showing how `b` differs from `a`, line by line. */
-function diffBlock(label: string, a: unknown, b: unknown): HTMLElement {
+/** How `b` differs from `a`, one plain line per value that differs. */
+function diffBlock(ref: ContentRowRef, label: string, a: unknown, b: unknown): HTMLElement {
   const box = document.createElement("figure");
   box.className = "content-diff";
   const cap = document.createElement("figcaption");
   cap.textContent = label;
-  const pre = document.createElement("pre");
-  for (const line of lineDiff(pretty(a), pretty(b))) {
-    const span = document.createElement("span");
-    span.className = `content-diff-${line.kind}`;
-    span.textContent = `${line.kind === "add" ? "+ " : line.kind === "del" ? "- " : "  "}${line.text}\n`;
-    pre.append(span);
+  const ul = document.createElement("ul");
+  ul.className = "content-diff-lines";
+  const lines =
+    b === null || b === undefined
+      ? [{ where: "", what: "removed" }]
+      : plainChanges(ref.dataset, ref.part, a, b);
+  for (const c of lines.length > 0 ? lines : [{ where: "", what: "nothing" }]) {
+    const li = document.createElement("li");
+    if (c.where) {
+      const w = document.createElement("strong");
+      w.textContent = `${c.where}: `;
+      li.append(w);
+    }
+    li.append(c.what);
+    ul.append(li);
   }
-  box.append(cap, pre);
+  box.append(cap, ul);
   return box;
 }
 
@@ -553,8 +493,8 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
   root.className = "content-page plain-editor";
   root.append(
     pageHeading(
-      "Content",
-      "Review the changes made on the editor pages and publish them to players. Changes from every admin wait here, unpublished, until someone publishes them: players get them at once, with no restart. The other tabs hold pictures and sounds, the publish history, and an advanced editor for anything the other pages don't cover.",
+      "Publish Changes",
+      "Changes saved on the other pages wait here, unpublished, until someone publishes them: players get them at once, with no restart. Click a change to see it on its page. History lists every publish, with Undo.",
     ),
   );
 
@@ -563,7 +503,6 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
   let overview: ContentOverview | null = null;
   /** The answers we wait for, by kind. */
   let overviewSeq = -1;
-  let listSeq = -1;
   let rowSeq = -1;
   let resultSeq = -1;
   let usageSeq = -1;
@@ -589,31 +528,6 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
   };
   root.append(status);
 
-  // ---- installed packs ------------------------------------------------------------------------
-  const packs = section(
-    "Installed packs",
-    "The content your world is built from, in the order it loads. Your own changes sit on top: a pack update never overwrites them.",
-  );
-  const packTable = createTable<ContentOverview["packs"][number]>({
-    label: "Installed packs",
-    empty: "No packs are installed.",
-    key: (p) => p.id,
-    columns: [
-      { label: "Pack", cell: (p) => p.name },
-      { label: "Version", cell: (p) => `v${p.version}` },
-      {
-        label: "Source",
-        cell: (p) => (p.source === "release" ? "Ships with the server" : "Imported"),
-      },
-      {
-        label: "",
-        cell: (p) =>
-          p.updatedFrom ? `Updated from v${p.updatedFrom} when the server last started` : "",
-      },
-    ],
-  });
-  packs.body.append(packTable.el);
-
   // ---- pack updates ---------------------------------------------------------------------------
   const notices = section(
     "Pack updates waiting for you",
@@ -634,8 +548,8 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
         const diffs = document.createElement("div");
         diffs.className = "content-diffs";
         diffs.append(
-          diffBlock(`What ${n.packName} changed`, n.was, n.now),
-          diffBlock(`Yours, against ${n.packName}'s new version`, n.now, n.yours),
+          diffBlock(n, `What ${n.packName} changed`, n.was, n.now),
+          diffBlock(n, `How yours differs from ${n.packName}'s new version`, n.now, n.yours),
         );
         const buttons = document.createElement("div");
         buttons.className = "content-buttons";
@@ -688,7 +602,7 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
     open: {
       id: "content-draft-open",
       run: (d) => {
-        if (!(editorFor(d) && actions.openEditor?.(refOf(d)))) {
+        if (!actions.openEditor?.(refOf(d))) {
           openRow(d);
         }
       },
@@ -699,11 +613,8 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
         cell: (d) => {
           const s = document.createElement("span");
           s.textContent = rowName(d);
-          const page = editorFor(d);
-          s.title =
-            page && actions.openEditor
-              ? `${refLabel(d)}: opens on the ${EDITOR_TEXT[page.page]} page`
-              : refLabel(d);
+          const home = homeOf(d.dataset, d.part);
+          s.title = home ? `Opens on the ${HOME_TITLES[home]} page` : "";
           return s;
         },
       },
@@ -715,12 +626,6 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
         cell: (d) => {
           const box = document.createElement("div");
           box.className = "content-buttons";
-          // Where the row opens on an editor page, the raw data stays one click away.
-          if (editorFor(d) && actions.openEditor) {
-            const json = panelButton("content-draft-json", "Edit as JSON", () => openRow(d));
-            json.classList.add("content-link");
-            box.append(json);
-          }
           box.append(
             panelButton("content-draft-discard", "Cancel this change", () => {
               resultSeq = next();
@@ -791,81 +696,11 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
   let removals = drawRemovals([]);
   draft.body.append(draftTable.el, checks, removals, publishRow);
 
-  // ---- rows -----------------------------------------------------------------------------------
+  // ---- where it is used ----------------------------------------------------------------------
   const rows = section(
-    "Edit as JSON (advanced)",
-    "Everything the game stores, as raw data. The editor pages are the easy way to change items, monsters, skills, gathering, NPCs and balance; use this for anything they don't cover. Saving puts the change with the other unpublished changes.",
+    "Where it is used",
+    "An item, a creature or a vehicle, with every place that uses it. Removing one asks what happens to each of them.",
   );
-  const datasetSel = action(document.createElement("select"), "content-dataset");
-  const partSel = action(document.createElement("select"), "content-part");
-  const filter = gameInput("content-filter");
-  filter.type = "search";
-  filter.placeholder = "Search this part";
-  const pickers = document.createElement("div");
-  pickers.className = "content-pickers";
-  const addBtn = panelButton("content-add", "+ Add a row", () => addRow());
-  pickers.append(
-    formField("Area", datasetSel),
-    formField("Part", partSel),
-    formField("Search", filter),
-    addBtn,
-  );
-  let listing: ContentListing | null = null;
-  const rowTable = createTable<ContentListing["rows"][number]>({
-    label: "Rows",
-    empty: "Nothing here matches.",
-    key: (r) => r.key ?? "",
-    open: {
-      id: "content-row-open",
-      run: (r) => listing && openRow({ dataset: listing.dataset, part: listing.part, key: r.key }),
-    },
-    columns: [
-      {
-        label: "Row",
-        cell: (r) => r.key ?? (listing ? rowName({ ...listing, key: null }) : ""),
-      },
-      { label: "State", cell: (r) => STATUS_TEXT[r.status] },
-      { label: "Unpublished", cell: (r) => (r.draft ? OP_TEXT[r.draft] : "") },
-    ],
-  });
-  rows.body.append(pickers, rowTable.el);
-
-  const drawList = () => {
-    const f = filter.value.trim().toLowerCase();
-    rowTable.setRows(
-      (listing?.rows ?? []).filter((r) => f === "" || (r.key ?? "").toLowerCase().includes(f)),
-    );
-    addBtn.hidden = !listing?.keyField;
-  };
-  filter.addEventListener("input", drawList);
-
-  const fillParts = () => {
-    const ds = overview?.datasets.find((d) => d.id === datasetSel.value);
-    const keep = partSel.value;
-    partSel.replaceChildren(
-      ...(ds?.parts ?? []).map((p) => {
-        const o = document.createElement("option");
-        o.value = p.part;
-        o.textContent = p.keyed ? `${words(p.part)} (${p.rows} rows)` : words(p.part);
-        return o;
-      }),
-    );
-    if (ds?.parts.some((p) => p.part === keep)) {
-      partSel.value = keep;
-    }
-  };
-  const askList = () => {
-    if (!datasetSel.value || !partSel.value) {
-      return;
-    }
-    listSeq = next();
-    actions.list(listSeq, datasetSel.value, partSel.value);
-  };
-  datasetSel.addEventListener("change", () => {
-    fillParts();
-    askList();
-  });
-  partSel.addEventListener("change", askList);
 
   // ---- item pictures (issue #29) --------------------------------------------------------------
   /** Draft changes waiting for their result, by seq (the picture picker's saves). */
@@ -1040,29 +875,10 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
         },
         saved() {
           refreshAll();
-          const ref = editing;
-          // Frames or a picture set up in a row panel stay as they are.
-          if (!ref || rowPickerPending()) {
-            return;
-          }
-          const itemRow = ref.dataset === "items" && ref.part === "items";
-          if (!editor.hidden && json.value !== loaded && !itemRow) {
-            // Another row's unsaved JSON stays as it is; picture changes never touch it.
-            return;
-          }
-          if (!editor.hidden && json.value !== loaded) {
-            // Unsaved JSON in the editor stays; only the picture panel catches up.
-            editorState.textContent = `${editorState.textContent?.replace(/ The draft changed this row's picture.*$/, "") ?? ""} The draft changed this row's picture: your unsaved JSON is kept, and saving it writes your version.`;
-            if (ref.key !== null) {
-              showPicker(ref.key);
-            }
-          } else {
-            openRow(ref);
-          }
+          refreshRow();
         },
       }
     : null;
-  const picker = artOptions ? createItemArtPicker(artOptions) : null;
   const wornOptions = artOptions
     ? {
         ...artOptions,
@@ -1085,7 +901,6 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
         },
       }
     : null;
-  const wornPicker = wornOptions ? createWornArtPicker(wornOptions) : null;
   const bodyOptions = artOptions
     ? {
         ...artOptions,
@@ -1093,7 +908,8 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
           return awaitResult((s) => actions.body(s, change));
         },
         saved() {
-          bodySaved(false);
+          refreshAll();
+          refreshRow();
         },
         slice(sheet: string) {
           return new Promise<
@@ -1116,17 +932,14 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
         },
       }
     : null;
-  const bodyPicker = bodyOptions
-    ? createBodyArtPicker({ ...bodyOptions, saved: () => bodySaved(true) })
-    : null;
   const fxOptions = artOptions
     ? {
         ...artOptions,
         apply(change: FxChange) {
           return awaitResult((s) => actions.fx(s, change));
         },
-        saved(spells: string[]) {
-          fxSaved(false, spells);
+        saved(_spells: string[]) {
+          refreshAll();
         },
         slice(sheet: string, layout: FxSheetLayout) {
           return new Promise<
@@ -1154,17 +967,6 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
         },
         saved() {
           refreshAll();
-          // The tiles are section rows: one open in the editor catches up unless its JSON (or a
-          // row panel) holds unsaved work.
-          const ref = editing;
-          if (!ref || ref.dataset !== "tiles" || rowPickerPending()) {
-            return;
-          }
-          if (editor.hidden || json.value === loaded) {
-            openRow(ref);
-          } else {
-            editorState.textContent = `${editorState.textContent?.replace(/ The draft changed the tiles.*$/, "") ?? ""} The draft changed the tiles: your unsaved JSON is kept, and saving it writes your version.`;
-          }
         },
         slice(sheet: string, transparency: "alpha" | "green") {
           return new Promise<TileCut>((resolve) => {
@@ -1213,183 +1015,9 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
         },
         saved() {
           refreshAll();
-          // An art/sounds row open in the editor catches up unless its JSON (or a row panel) holds
-          // unsaved work.
-          const ref = editing;
-          if (!ref || ref.dataset !== "art" || ref.part !== "sounds" || rowPickerPending()) {
-            return;
-          }
-          if (ref.key !== null && (editor.hidden || json.value === loaded)) {
-            openRow(ref);
-          }
         },
       }
     : null;
-  const fxPicker = fxOptions
-    ? createFxArtPicker({ ...fxOptions, saved: (spells: string[]) => fxSaved(true, spells) })
-    : null;
-  /** Whether any row panel holds work not yet saved to the draft. */
-  function rowPickerPending(): boolean {
-    return (
-      (picker?.pending() ?? false) ||
-      (wornPicker?.pending() ?? false) ||
-      (bodyPicker?.pending() ?? false) ||
-      (fxPicker?.pending() ?? false)
-    );
-  }
-  /**
-   * An effect change is in the draft: the page refreshes, and the open row catches up, unless that
-   * would lose something: a new row not yet saved (no key), unsaved JSON (only the effect panel
-   * catches up), or frames set up in the row's effect panel when the save came from elsewhere.
-   */
-  function fxSaved(fromRowPanel: boolean, spells: string[]): void {
-    refreshAll();
-    const ref = editing;
-    if (!ref || ref.key === null || ref.dataset !== "spells" || ref.part !== "spells") {
-      return;
-    }
-    // Only a change to the open spell's own row catches the row up, and never over work set up
-    // in a row panel.
-    const key = ref.key.toLowerCase();
-    if (!spells.some((x) => x.toLowerCase() === key) || rowPickerPending()) {
-      // The row's own Effect panel still catches up (a save in the section changes the upload it
-      // shows, and its fingerprint), unless work is set up in it.
-      if (!fxPicker?.pending()) {
-        showFxPicker(ref.key);
-      }
-      return;
-    }
-    const spellRow = ref.dataset === "spells" && ref.part === "spells";
-    if (!editor.hidden && json.value !== loaded) {
-      if (spellRow) {
-        editorState.textContent = `${editorState.textContent?.replace(/ The draft changed this row's effect.*$/, "") ?? ""} The draft changed this row's effect: your unsaved JSON is kept, and saving it writes your version.`;
-        showFxPicker(ref.key);
-      }
-    } else {
-      openRow(ref);
-    }
-  }
-  /** Shows the effect panel for the spell row open in the editor (the draft's version of it). */
-  let fxSeq = 0;
-  function showFxPicker(key: string): void {
-    if (!fxPicker) {
-      return;
-    }
-    const mine = ++fxSeq;
-    // The run chosen before stays chosen, even when the row was reloaded (which clears the panel).
-    const was = fxPicker.current() ?? fxPicker.remembered();
-    void askFxArt()
-      .then((view) => {
-        if (mine !== fxSeq || !editing || editing.key?.toLowerCase() !== key.toLowerCase()) {
-          return;
-        }
-        const spell = view.spells.find((sp) => sp.name.toLowerCase() === key.toLowerCase());
-        if (spell) {
-          // The run chosen before stays chosen.
-          const run =
-            was?.kind === "spell" && was.spell.toLowerCase() === key.toLowerCase()
-              ? was.run
-              : undefined;
-          fxPicker.show({ kind: "spell", spell: key, ...(run !== undefined ? { run } : {}) }, view);
-        } else {
-          fxPicker.clear();
-        }
-        effects?.setView(view);
-      })
-      .catch(() => {
-        if (mine === fxSeq) {
-          fxPicker.clear();
-        }
-      });
-  }
-  /**
-   * A body change is in the draft: the page refreshes, and the open row catches up, unless that
-   * would lose something: a new row not yet saved (no key), unsaved JSON (only the body panel
-   * catches up), or frames set up in the row's body panel when the save came from elsewhere.
-   */
-  function bodySaved(fromRowPanel: boolean): void {
-    refreshAll();
-    const ref = editing;
-    if (!ref || ref.key === null) {
-      return;
-    }
-    // Frames or a picture set up in any row panel stay as they are.
-    if (rowPickerPending()) {
-      return;
-    }
-    const monsterRow = ref.dataset === "monsters" && ref.part === "monsters";
-    if (!editor.hidden && json.value !== loaded) {
-      if (monsterRow) {
-        editorState.textContent = `${editorState.textContent?.replace(/ The draft changed this row's body.*$/, "") ?? ""} The draft changed this row's body: your unsaved JSON is kept, and saving it writes your version.`;
-        showBodyPicker(ref.key);
-      }
-    } else {
-      openRow(ref);
-    }
-  }
-  /** Shows the body panel for the monster row open in the editor (the draft's version of it). */
-  let bodySeq = 0;
-  function showBodyPicker(key: string): void {
-    if (!bodyPicker) {
-      return;
-    }
-    const mine = ++bodySeq;
-    void askBodyArt()
-      .then((view) => {
-        if (mine !== bodySeq || !editing || editing.key?.toLowerCase() !== key.toLowerCase()) {
-          return;
-        }
-        if (view.monsters.some((m) => m.name.toLowerCase() === key.toLowerCase())) {
-          bodyPicker.show({ kind: "monster", monster: key }, view);
-        } else {
-          bodyPicker.clear();
-        }
-        bodies?.setView(view);
-      })
-      .catch(() => {
-        if (mine === bodySeq) {
-          bodyPicker.clear();
-        }
-      });
-  }
-  /** Shows the picker for the item row open in the editor (the draft's version of it). */
-  let pickerSeq = 0;
-  function showPicker(key: string): void {
-    if (!picker) {
-      return;
-    }
-    const mine = ++pickerSeq;
-    void askItemArt()
-      .then((view) => {
-        const item = view.items.find((i) => i.name.toLowerCase() === key.toLowerCase());
-        if (mine !== pickerSeq || !editing || editing.key?.toLowerCase() !== key.toLowerCase()) {
-          return;
-        }
-        if (item) {
-          picker.show(item, view);
-        } else {
-          picker.clear();
-        }
-        pictures?.setView(view);
-      })
-      .catch(() => picker.clear());
-    if (wornPicker) {
-      void askWornArt()
-        .then((view) => {
-          if (mine !== pickerSeq || !editing || editing.key?.toLowerCase() !== key.toLowerCase()) {
-            return;
-          }
-          // Only an item that is worn has a worn picture.
-          if (view.items.some((i) => i.name.toLowerCase() === key.toLowerCase())) {
-            wornPicker.show({ kind: "item", item: key }, view);
-          } else {
-            wornPicker.clear();
-          }
-          wornLayers?.setView(view);
-        })
-        .catch(() => wornPicker.clear());
-    }
-  }
   /** The Items page's panels, once made. */
   let itemPanelsMade: ItemPanels | null = null;
   function itemPanels(saved: () => void): ItemPanels | null {
@@ -1465,17 +1093,71 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
     };
     return monsterBodyMade;
   }
-  function hidePicker(): void {
-    pickerSeq += 1;
-    bodySeq += 1;
-    fxSeq += 1;
-    picker?.clear();
-    wornPicker?.clear();
-    bodyPicker?.clear();
-    fxPicker?.clear();
+  /** The Spells page's effect panel (a spell's cast picture), once made. */
+  let spellEffectMade: RecordPanel | null = null;
+  function spellEffect(saved: () => void): RecordPanel | null {
+    if (spellEffectMade || !fxOptions) {
+      return spellEffectMade;
+    }
+    let justSaved = false;
+    const panel = createFxArtPicker(
+      {
+        ...fxOptions,
+        saved: (_spells: string[]) => {
+          justSaved = true;
+          refreshAll();
+          saved();
+        },
+      },
+      "spells-effect",
+    );
+    let mine = 0;
+    let shown: string | null = null;
+    spellEffectMade = {
+      el: panel.el,
+      show(spell: string, force = false) {
+        const at = ++mine;
+        const other = shown === null || shown.toLowerCase() !== spell.toLowerCase();
+        // The run chosen before stays chosen while the same spell is shown.
+        const was = other ? null : (panel.current() ?? panel.remembered());
+        shown = spell;
+        const keep = !force && !other && !justSaved && panel.pending();
+        justSaved = false;
+        if (keep) {
+          return;
+        }
+        void askFxArt()
+          .then((view) => {
+            if (at !== mine || shown === null) {
+              return;
+            }
+            if (view.spells.some((x) => x.name.toLowerCase() === spell.toLowerCase())) {
+              const run =
+                was?.kind === "spell" && was.spell.toLowerCase() === spell.toLowerCase()
+                  ? was.run
+                  : undefined;
+              panel.show({ kind: "spell", spell, ...(run !== undefined ? { run } : {}) }, view);
+            } else {
+              panel.clear();
+            }
+          })
+          .catch(() => {
+            if (at === mine) {
+              panel.clear();
+            }
+          });
+      },
+      clear() {
+        mine += 1;
+        shown = null;
+        panel.clear();
+      },
+      pending: () => panel.pending(),
+    };
+    return spellEffectMade;
   }
 
-  // ---- the row editor -------------------------------------------------------------------------
+  // ---- the row view: where it is used, and removing it ----------------------------------------
   const editor = document.createElement("div");
   editor.className = "content-editor";
   editor.hidden = true;
@@ -1483,20 +1165,19 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
   editorTitle.className = "content-editor-title";
   const editorState = document.createElement("p");
   editorState.className = "content-editor-state";
-  const packView = document.createElement("details");
-  packView.className = "content-editor-pack";
-  const packSummary = document.createElement("summary");
-  packSummary.textContent = "Show the original (the pack's version)";
-  const packPre = document.createElement("pre");
-  packView.append(packSummary, packPre);
-  const json = action(document.createElement("textarea"), "content-json");
-  json.className = "content-json";
-  json.spellcheck = false;
-  json.rows = 18;
   const editorError = document.createElement("div");
   editorError.className = "content-editor-error";
   editorError.setAttribute("role", "alert");
-  const saveBtn = panelButton("content-save", "Save changes", () => saveRow(), "primary");
+  const openPageBtn = panelButton(
+    "content-open-page",
+    "Change it on its page",
+    () => {
+      if (editing) {
+        actions.openEditor?.(editing);
+      }
+    },
+    "primary",
+  );
   const removeBtn = panelButton("content-remove", "Remove…", () => removeRow(), "danger");
   const revertBtn = panelButton("content-revert", "Restore the original", () => revertRow());
   const discardBtn = panelButton("content-discard", "Cancel unpublished change", () => {
@@ -1510,34 +1191,17 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
   const closeBtn = panelButton("content-close", "Close", () => closeEditor());
   const editorButtons = document.createElement("div");
   editorButtons.className = "content-buttons";
-  editorButtons.append(saveBtn, removeBtn, revertBtn, discardBtn, closeBtn);
+  editorButtons.append(openPageBtn, removeBtn, revertBtn, discardBtn, closeBtn);
   const usageBox = document.createElement("div");
   usageBox.className = "content-usage-box";
   const removalBox = document.createElement("div");
   removalBox.className = "content-removal-box";
-  editor.append(
-    editorTitle,
-    editorState,
-    usageBox,
-    removalBox,
-    packView,
-    picker?.el ?? document.createElement("div"),
-    wornPicker?.el ?? document.createElement("div"),
-    bodyPicker?.el ?? document.createElement("div"),
-    fxPicker?.el ?? document.createElement("div"),
-    formField("Its data (JSON)", json, 'Its ID never changes: to rename it, set "display".'),
-    editorError,
-    editorButtons,
-  );
+  editor.append(editorTitle, editorState, usageBox, removalBox, editorError, editorButtons);
   rows.body.append(editor);
 
-  /** The row being edited (null while adding a new one before it has a key). */
+  /** The row shown. */
   let editing: ContentRowRef | null = null;
-  /** The edited row's own key field (null for a whole field): not the list on screen's. */
-  let editingKeyField: string | null = null;
-  /** The JSON as it was loaded, to tell whether it changed. */
-  let loaded = "";
-  /** The open row's revision as it was loaded, for a row that carries one (a balance row). */
+  /** The shown row's revision as it was loaded, sent back with a change to it. */
   let editingRevision: string | undefined;
 
   const showError = (text: string, problems: readonly ContentProblemView[] = []) => {
@@ -1547,7 +1211,7 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
     }
   };
 
-  /** The usage report of the row open in the editor, once it has come. */
+  /** The usage report of the row shown, once it has come. */
   let usage: ContentUsageView | null = null;
 
   function askUsage(r: ContentRowRef): void {
@@ -1565,80 +1229,46 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
 
   function openRow(r: ContentRowRef): void {
     const ref = refOf(r);
-    // The row editor is on its own tab: opening a row (from a link on another page, the
-    // unpublished changes or the history) shows it.
-    showTab("rows");
     // A usage report still on its way belongs to the row being left.
     usageSeq = -1;
     usage = null;
     usageBox.replaceChildren();
     removalBox.replaceChildren();
     editing = ref;
-    editingKeyField = null;
     editingRevision = undefined;
-    hidePicker();
     editor.hidden = false;
+    // The row is on its own tab: opening one (from a link on another page, the unpublished
+    // changes or the history) shows it.
+    showTab("rows");
     editorTitle.textContent = rowName(ref);
-    editorTitle.title = refLabel(ref);
     editorState.textContent = "Loading…";
-    json.value = "";
-    loaded = "";
     showError("");
     rowSeq = next();
     actions.row(rowSeq, ref);
   }
 
-  function addRow(): void {
-    if (!listing?.keyField) {
-      return;
+  /** The row shown catches up with the draft (after a change made elsewhere). */
+  function refreshRow(): void {
+    if (editing && !editor.hidden && removalBox.childElementCount === 0) {
+      openRow(editing);
     }
-    // A new row has no usage report, and the last row's removal form goes with it.
-    usage = null;
-    usageSeq = -1;
-    usageBox.replaceChildren();
-    removalBox.replaceChildren();
-    editing = { dataset: listing.dataset, part: listing.part, key: null };
-    editingKeyField = listing.keyField;
-    editingRevision = undefined;
-    hidePicker();
-    editor.hidden = false;
-    json.readOnly = false;
-    saveBtn.hidden = false;
-    editorTitle.textContent = `New row in ${rowName({ ...listing, key: null })}`;
-    editorState.textContent = `Its "${listing.keyField}" is its ID, which never changes.`;
-    packView.hidden = true;
-    json.value = `{\n  "${listing.keyField}": ""\n}`;
-    loaded = json.value;
-    showError("");
-    removeBtn.hidden = true;
-    revertBtn.hidden = true;
-    discardBtn.hidden = true;
-    json.focus();
   }
 
   function showRow(d: ContentRowDetail): void {
-    editingKeyField = d.keyField;
     editingRevision = d.revision;
     editorTitle.textContent = rowName(d);
-    editorTitle.title = refLabel(d);
     const parts = [d.status ? STATUS_TEXT[d.status] : "Not published yet"];
     if (d.draft) {
       parts.push(`unpublished change (${OP_TEXT[d.draft.op].toLowerCase()}, by ${d.draft.author})`);
     }
     if (d.readOnly) {
-      parts.push("built from the pictures: it can't be changed here");
+      parts.push("built from the pictures: it can't be changed");
     }
     if (d.note) {
       parts.push(d.note);
     }
     editorState.textContent = parts.join(", ");
-    packView.hidden = d.pack === null;
-    packPre.textContent = pretty(d.pack);
-    const shown = d.draft?.op === "set" ? d.draft.data : (d.published ?? d.pack);
-    json.value = pretty(shown);
-    json.readOnly = d.readOnly;
-    loaded = json.value;
-    saveBtn.hidden = d.readOnly;
+    openPageBtn.hidden = d.readOnly || homeOf(d.dataset, d.part) === null || !actions.openEditor;
     removeBtn.hidden = d.readOnly || d.keyField === null || d.published === null;
     // Worded as the editor pages word it.
     const kind = entryOf(d)?.kind;
@@ -1646,7 +1276,7 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
       kind === "item"
         ? "Remove or retire this item…"
         : kind === "monster"
-          ? "Remove this monster…"
+          ? "Remove this creature…"
           : kind === "vehicle"
             ? "Remove this vehicle…"
             : "Remove…";
@@ -1655,28 +1285,6 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
     }
     revertBtn.hidden = d.readOnly || d.pack === null || d.status === "pack" || d.status === null;
     discardBtn.hidden = d.draft === null;
-    // An item's picture, as the draft has it (one the draft removes has none to pick).
-    if (d.dataset === "items" && d.part === "items" && d.key !== null && d.draft?.op !== "remove") {
-      showPicker(d.key);
-    } else if (
-      d.dataset === "monsters" &&
-      d.part === "monsters" &&
-      d.key !== null &&
-      d.draft?.op !== "remove"
-    ) {
-      hidePicker();
-      showBodyPicker(d.key);
-    } else if (
-      d.dataset === "spells" &&
-      d.part === "spells" &&
-      d.key !== null &&
-      d.draft?.op !== "remove"
-    ) {
-      hidePicker();
-      showFxPicker(d.key);
-    } else {
-      hidePicker();
-    }
   }
 
   function closeEditor(): void {
@@ -1686,49 +1294,8 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
     removalBox.replaceChildren();
     editor.hidden = true;
     editing = null;
-    editingKeyField = null;
     editingRevision = undefined;
-    hidePicker();
-    loaded = "";
-    json.value = "";
-  }
-
-  function saveRow(): void {
-    if (!editing) {
-      return;
-    }
-    let data: unknown;
-    try {
-      data = JSON.parse(json.value);
-    } catch (e) {
-      showError(`That is not valid JSON: ${(e as Error).message}`);
-      return;
-    }
-    let ref = editing;
-    if (ref.key === null && editingKeyField) {
-      const k = (data as Record<string, unknown> | null)?.[editingKeyField];
-      if (typeof k !== "string" && typeof k !== "number") {
-        showError(`The row needs its "${editingKeyField}".`);
-        return;
-      }
-      // The key travels in the message, which takes 1 to 80 characters: say so here rather than
-      // send a message the server must drop.
-      const key = String(k);
-      if (key.trim() === "" || key.length > 80) {
-        showError(`Its "${editingKeyField}" is its key: 1 to 80 characters.`);
-        return;
-      }
-      ref = { ...ref, key: String(k) };
-    }
-    showError("");
-    const saved = ref;
-    resultSeq = next();
-    resultInEditor = true;
-    afterResult = () => {
-      refreshAll();
-      openRow(saved);
-    };
-    actions.draft(resultSeq, ref, "set", data, ref === editing ? editingRevision : undefined);
+    showTab("publish");
   }
 
   function removeRow(): void {
@@ -2013,12 +1580,17 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
   };
 
   // ---- tabs: one job at a time, publishing first ---------------------------------------------
-  type Tab = "publish" | "art" | "history" | "packs" | "problems" | "rows";
+  type Tab = "publish" | "art" | "history" | "problems" | "rows";
   const TABS: readonly (readonly [Tab, string, HTMLElement[]])[] = [
     ["publish", "Unpublished changes", [notices.el, draft.el]],
+    ["history", "History", [history.el]],
+    ["problems", "Find problems", [problemsSection.el]],
+    // Shown while a row is open (a link from another page, or a change with no page of its own).
+    ["rows", "Where it is used", [rows.el]],
+    // On the Pictures & Sounds page (`artEl`), not a tab here.
     [
       "art",
-      "Pictures and sounds",
+      "",
       [
         picturesSection.el,
         wornSection.el,
@@ -2029,17 +1601,13 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
         artSection.el,
       ],
     ],
-    ["history", "History", [history.el]],
-    ["packs", "Packs", [packs.el]],
-    ["problems", "Find problems", [problemsSection.el]],
-    ["rows", "Edit as JSON (advanced)", [rows.el]],
   ];
   let tab: Tab = "publish";
   const strip = document.createElement("div");
   strip.className = "control-panel-tabs content-tabs";
   strip.setAttribute("role", "tablist");
   strip.setAttribute("aria-label", "Content");
-  const tabButtons = TABS.map(([id, label]) => {
+  const tabButtons = TABS.filter(([id]) => id !== "art").map(([id, label]) => {
     const b = action(document.createElement("button"), "content-tab");
     b.type = "button";
     b.className = "control-panel-tab";
@@ -2052,8 +1620,9 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
   strip.append(...tabButtons);
   // Arrow keys, Home and End move between tabs, choosing as they go.
   strip.addEventListener("keydown", (e) => {
-    const i = TABS.findIndex(([id]) => id === tab);
-    const n = TABS.length;
+    const shown = tabButtons.filter((b) => !b.hidden);
+    const i = shown.findIndex((b) => b.dataset.tab === tab);
+    const n = shown.length;
     const to =
       e.key === "ArrowRight"
         ? (i + 1) % n
@@ -2068,8 +1637,8 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
       return;
     }
     e.preventDefault();
-    showTab(TABS[to]?.[0] ?? tab);
-    tabButtons[to]?.focus();
+    showTab((shown[to]?.dataset.tab as Tab | undefined) ?? tab);
+    shown[to]?.focus();
   });
 
   // Pictures and sounds: one kind at a time, picked from a list.
@@ -2102,25 +1671,34 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
       "To change one item's or monster's picture, the Items and Monsters pages are easier.",
     ),
   );
-  artSel.addEventListener("change", () => showTab("art"));
+  artSel.addEventListener("change", () => showArt());
 
-  /** Shows one tab's sections (and, on Pictures and sounds, the kind picked). */
+  /** Shows the kind of pictures and sounds picked (the Pictures & Sounds page). */
+  function showArt(): void {
+    for (const [label, el] of artParts) {
+      el.classList.toggle("control-panel-tab-hidden", label !== artSel.value);
+    }
+  }
+
+  /** Shows one tab's sections. */
   function showTab(id: Tab): void {
     tab = id;
     for (const [t, , els] of TABS) {
+      if (t === "art") {
+        continue;
+      }
       for (const sec of els) {
-        let on = t === id;
-        if (on && t === "art") {
-          on = artParts.some(([label, el]) => el === sec && label === artSel.value);
-        }
-        sec.classList.toggle("control-panel-tab-hidden", !on);
+        sec.classList.toggle("control-panel-tab-hidden", t !== id);
       }
     }
-    artPick.classList.toggle("control-panel-tab-hidden", id !== "art");
     for (const b of tabButtons) {
       const on = b.dataset.tab === id;
       b.setAttribute("aria-selected", String(on));
       b.tabIndex = on ? 0 : -1;
+      // The row's tab is there only while a row is open.
+      if (b.dataset.tab === "rows") {
+        b.hidden = editor.hidden;
+      }
     }
   }
 
@@ -2139,10 +1717,15 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
     }
   }
 
-  root.append(
-    strip,
-    notices.el,
-    draft.el,
+  root.append(strip, notices.el, draft.el, history.el, problemsSection.el, rows.el);
+  // The Pictures & Sounds page: one kind at a time, picked from a list.
+  const artRoot = document.createElement("div");
+  artRoot.className = "content-page content-art-page plain-editor";
+  artRoot.append(
+    pageHeading(
+      "Pictures & Sounds",
+      "Every picture and sound the game uses: item pictures, worn pictures, creature bodies, spell effects, tiles and sounds. Upload your own to replace them. To change one item's, creature's or spell's picture, its own page is easier.",
+    ),
     artPick,
     picturesSection.el,
     wornSection.el,
@@ -2151,24 +1734,19 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
     tilesSection.el,
     soundsSection.el,
     artSection.el,
-    history.el,
-    packs.el,
-    problemsSection.el,
-    rows.el,
   );
   showTab("publish");
+  showArt();
 
   function refreshAll(): void {
     overviewSeq = next();
     actions.overview(overviewSeq);
-    askList();
     refreshPictures();
   }
 
   function drawOverview(o: ContentOverview): void {
     overview = o;
     markTabs(o);
-    packTable.setRows(o.packs);
     drawNotices(o.notices);
     draftTable.setRows(o.draft);
     checks.replaceChildren();
@@ -2190,31 +1768,16 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
     publishBtn.disabled = o.draft.length === 0 || o.problems.length > 0;
     publishBtn.textContent = o.draft.length > 1 ? `Publish ${o.draft.length} changes` : "Publish";
     historyTable.setRows(o.history);
-    if (datasetSel.options.length === 0) {
-      datasetSel.replaceChildren(
-        ...o.datasets.map((d) => {
-          const opt = document.createElement("option");
-          opt.value = d.id;
-          const name = DATASET_TEXT[d.id] ?? d.id;
-          opt.textContent = d.readOnly ? `${name} (read-only)` : name;
-          return opt;
-        }),
-      );
-      // Items is where most people start.
-      if (o.datasets.some((d) => d.id === "items")) {
-        datasetSel.value = "items";
-      }
-      fillParts();
-      askList();
-    }
   }
 
   return {
     el: root,
+    artEl: artRoot,
     onShow: refreshAll,
     openRow,
     itemPanels,
     monsterBody,
+    spellEffect,
     onHide: () => sounds?.stop(),
     receive(msg) {
       switch (msg.t) {
@@ -2306,13 +1869,6 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
           }
           return;
         case "contentList":
-          if (msg.seq === listSeq) {
-            listing = msg.listing;
-            if (msg.error) {
-              say(msg.error);
-            }
-            drawList();
-          }
           return;
         case "contentRow":
           if (msg.seq === rowSeq) {
@@ -2359,9 +1915,6 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
           if (msg.seq === resultSeq) {
             if (msg.ok) {
               say(msg.text);
-              if (resultInEditor) {
-                loaded = json.value;
-              }
               afterResult();
             } else if (resultInEditor && !editor.hidden) {
               showError(msg.text, msg.problems ?? []);
@@ -2379,13 +1932,9 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
       }
     },
     changes: () =>
-      (!editor.hidden && json.value !== loaded ? 1 : 0) +
-      (picker?.pending() ? 1 : 0) +
-      (wornPicker?.pending() ? 1 : 0) +
       (wornLayers?.pending() ? 1 : 0) +
-      (bodyPicker?.pending() ? 1 : 0) +
       (bodies?.pending() ? 1 : 0) +
-      (fxPicker?.pending() ? 1 : 0) +
+      (spellEffectMade?.pending() ? 1 : 0) +
       (effects?.pending() ? 1 : 0) +
       (tiles?.pending() ? 1 : 0) +
       (sounds?.pending() ? 1 : 0),
@@ -2400,7 +1949,6 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
     },
     reset() {
       overview = null;
-      listing = null;
       // Answers still awaited belong to the session that ended.
       for (const wait of resultWaits.values()) {
         wait({ ok: false, text: "The session ended." });
@@ -2437,8 +1985,6 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
       sounds?.reset();
       problemsBody.replaceChildren();
       closeEditor();
-      datasetSel.replaceChildren();
-      partSel.replaceChildren();
       say("");
     },
   };

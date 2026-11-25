@@ -44,7 +44,7 @@ describe("a vehicle's usage", () => {
     );
     const opened: string[] = [];
     const box = drawUsage(boat, { openRow: () => {}, openCharacter: (n) => opened.push(n) });
-    expect(box.innerText ?? box.textContent).toContain("Aboard: 2 characters");
+    expect(box.textContent).toContain("Aboard: 2 characters");
     (box.querySelector('[data-action="content-holder-open"]') as HTMLButtonElement).click();
     expect(opened).toEqual(["Ann"]);
   });

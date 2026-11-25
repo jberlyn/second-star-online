@@ -273,7 +273,7 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
   el.append(
     pageHeading(
       "Gathering",
-      "Choose what players can harvest with tools, and how fishing and farming work. Saving puts your changes in the draft: players get them once you publish on the Content page.",
+      "Choose what players can harvest with tools, and how fishing and farming work. Saving puts your changes with the other unpublished changes: players get them once you publish them on the Publish Changes page.",
     ),
   );
   const draftLine = document.createElement("div");

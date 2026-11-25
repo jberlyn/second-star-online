@@ -32,6 +32,7 @@ import { definesBehaviours } from "@secondstaronline/shared";
 
 import { action, noAutofill } from "./action.ts";
 import type { ItemPanels } from "./content-page.ts";
+import { contentWords } from "./content-words.ts";
 import {
   formActions,
   pageHeading,
@@ -39,6 +40,7 @@ import {
   sectionTabs,
   sourcesNote,
 } from "./control-panel-kit.ts";
+import { FormError, type FormWords, type JsonSchema, schemaForm } from "./schema-form.ts";
 
 /** An Items page change as the page sends it. */
 export interface ItemChange {
@@ -363,7 +365,7 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
   el.append(
     pageHeading(
       "Items",
-      "Pick an item to change how it works in the game. Saving puts your changes in the draft: players get them once you publish on the Content page.",
+      "Pick an item to change how it works in the game. Saving puts your changes with the other unpublished changes: players get them once you publish them on the Publish Changes page.",
     ),
   );
   const draftLine = document.createElement("div");
@@ -515,10 +517,9 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
   noticeLine.append(
     noticeText,
     " ",
-    panelButton("items-notice", "Review it on the Content page", () => {
-      if (shown) {
-        actions.openContentRow({ dataset: "items", part: "definitions", key: shown.name });
-      }
+    panelButton("items-notice", "Review it under Publish Changes", () => {
+      // Pack updates are answered with the unpublished changes.
+      actions.openContent();
     }),
   );
   const stale = document.createElement("p");
@@ -547,7 +548,8 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
   removeBox.className = "items-remove";
   const removeHelp = document.createElement("p");
   removeHelp.className = "control-panel-field-help";
-  removeHelp.textContent = "Opens the Content page, which shows where the item is used first.";
+  removeHelp.textContent =
+    "Shows everywhere the item is used first, then asks what happens to each.";
   removeBox.append(removeBtn, removeHelp);
   // The pictures: a tab of their own, saved by their own buttons.
   const pictures = document.createElement("section");
@@ -633,6 +635,22 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
   let renameNext: string | null = null;
   /** Fields whose text does not read (their errors). */
   const invalid = new Map<HTMLElement, string>();
+  /** An item definition's shape, from the server: the rarer parts' forms are drawn from it. */
+  let defSchema: JsonSchema | null = null;
+  /** The schema at `path` in a definition (each step a property), or null. */
+  const schemaAt = (path: readonly string[]): JsonSchema | null => {
+    let sch: JsonSchema | null = defSchema;
+    for (const k of path) {
+      const props = sch?.properties ?? sch?.anyOf?.find((x) => x.properties)?.properties;
+      sch = props?.[k] ?? null;
+    }
+    return sch;
+  };
+  /** Words borrowed from the rule table holding the same thing (`prefix` is its path there). */
+  const wordsVia = (dataset: string, part: string, prefix: string[]): FormWords => {
+    const w = contentWords(dataset, part);
+    return { field: (path) => w.field([...prefix, ...path]), names: w.names };
+  };
   let panels: ItemPanels | null | undefined;
 
   /** Forgets the errors of fields no longer on the page (redrawn from the working definition). */
@@ -1220,31 +1238,58 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
     );
 
     // ---- Weapon ----
-    const tiers = noAutofill(action(document.createElement("textarea"), "items-tiers"));
-    tiers.rows = 4;
-    tiers.value =
-      work.attack && (work.attack as Obj).blocks
-        ? JSON.stringify((work.attack as Obj).blocks, null, 1)
-        : "";
-    tiers.addEventListener("input", () => {
-      const t = tiers.value.trim();
-      if (t === "") {
-        invalid.delete(tiers);
-        put(work, ["attack", "blocks"], undefined);
-      } else {
-        try {
-          const v = JSON.parse(t) as unknown;
-          if (!Array.isArray(v)) {
-            throw new Error("a list");
-          }
-          invalid.delete(tiers);
-          put(work, ["attack", "blocks"], v);
-        } catch {
-          invalid.set(tiers, "Skill bonuses: a JSON list of blocks");
-        }
+    /**
+     * A rarer part of the definition at `path` as a form drawn from its shape (a skill book, the
+     * skill bonuses): ticked on to give the item one, off to leave it out.
+     */
+    const formAt = (path: string[], label: string, id: string, w: FormWords): HTMLElement => {
+      const inner = schemaAt(path);
+      const box = document.createElement("div");
+      box.className = "items-schema-form";
+      if (!inner) {
+        box.textContent = "Loading…";
+        return box;
       }
-      edited();
-    });
+      const wrapper: JsonSchema = {
+        type: "object",
+        properties: { [label]: inner },
+        required: [],
+        additionalProperties: false,
+      };
+      const v = at(work, path);
+      const form = schemaForm(
+        wrapper,
+        v === undefined ? {} : { [label]: v },
+        {
+          field: (p) => (p.length === 1 ? { label } : w.field(p.slice(1))),
+          names: w.names,
+        },
+        {
+          id,
+          onInput: () => {
+            try {
+              const read = form.value() as Record<string, unknown>;
+              invalid.delete(box);
+              put(work, path, read[label]);
+            } catch (e) {
+              if (!(e instanceof FormError)) {
+                throw e;
+              }
+              invalid.set(box, e.message);
+            }
+            edited();
+          },
+        },
+      );
+      box.append(form.el);
+      return box;
+    };
+    const tiers = formAt(
+      ["attack", "blocks"],
+      "Skill bonuses",
+      "items-tiers",
+      wordsVia("attPower", "attPower", ["skillBlocks"]),
+    );
     const rollColumns = (label: string): Column[] => [
       { key: "flat", label, kind: "range", min: -9999, max: 9999, maxSpread: 9999 },
       {
@@ -1328,9 +1373,9 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
           fresh: () => ({ flat: 1, randomN: 6 }),
         }),
         labelled(
-          "Skill bonuses (JSON)",
+          "Skill bonuses",
           tiers,
-          'Damage added as the wielder\'s skills rise, block by block: [{"tiers":[{"subWeapon":null,"when":["Slash > 10"],"op":"add","value":1}]}]. Copying an existing weapon is the easy way to get these.',
+          "Damage added as the wielder's skills rise, step by step. Copying an existing weapon is the easy way to get these.",
         ),
       ),
     );
@@ -1520,33 +1565,6 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
       );
     const flagAt = (path: string[], label: string, id: string) =>
       check(at(work, path) === true, label, id, (on) => put(work, path, on ? true : undefined));
-    /** A field holding JSON (an object or a list) at `path`; empty leaves it out. */
-    const jsonAt = (path: string[], label: string, id: string, list: boolean) => {
-      const area = noAutofill(action(document.createElement("textarea"), id));
-      area.rows = 2;
-      const v = at(work, path);
-      area.value = v === undefined ? "" : JSON.stringify(v);
-      area.addEventListener("input", () => {
-        const t = area.value.trim();
-        if (t === "") {
-          invalid.delete(area);
-          put(work, path, undefined);
-        } else {
-          try {
-            const parsed = JSON.parse(t) as unknown;
-            if (list !== Array.isArray(parsed) || parsed === null || typeof parsed !== "object") {
-              throw new Error("shape");
-            }
-            invalid.delete(area);
-            put(work, path, parsed);
-          } catch {
-            invalid.set(area, `${label}: JSON ${list ? "list" : "object"}`);
-          }
-        }
-        edited();
-      });
-      return area;
-    };
     const use = group(
       "use",
       "When used",
@@ -1601,9 +1619,14 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
           "For a spell book: the Mysticism a player needs to learn its spell.",
         ),
         labelled(
-          "Skill book (JSON)",
-          jsonAt(["use", "skillBook"], "Skill book", "items-skill-book", false),
-          'Reading it teaches a skill and uses it up: {"skill":"Fishing","points":[{"op":"add","value":"1 + random(5)"}],"upTo":77}. Leave it empty if it is not a skill book.',
+          "Skill book",
+          formAt(
+            ["use", "skillBook"],
+            "Skill book",
+            "items-skill-book",
+            wordsVia("itemRules", "use", ["skillBooks", "[]"]),
+          ),
+          "Reading it teaches a skill and uses it up. Leave it off if it is not a skill book.",
         ),
       ),
     );
@@ -2055,6 +2078,7 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
 
   const show = (view: ContentItemsView) => {
     loading.hidden = true;
+    defSchema = (view.definitionSchema as JsonSchema | undefined) ?? defSchema;
     list = view.items;
     namesList.replaceChildren(
       ...list.map((i) => {

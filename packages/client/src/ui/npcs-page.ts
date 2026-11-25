@@ -36,6 +36,12 @@ export interface NpcsPageActions {
   openMonster(name: string): void;
   /** Whether the Monsters page may be opened (its permission). */
   canOpenMonster?(): boolean;
+  /**
+   * Whether a creature's loot, spells and behaviour are edited on the Creatures tab beside this
+   * page (a content editor's): the As a monster tab then stays out of the way, so each thing has
+   * one place. Its lines are kept as they are when the file is saved here.
+   */
+  lootElsewhere?(): boolean;
 }
 
 export interface NpcsAnswer {
@@ -514,6 +520,17 @@ export function createNpcsPage(actions: NpcsPageActions): NpcsPage {
       tabsUsed.push({ sec: s, used });
       return s;
     };
+    /** The As a monster tab, hidden where the Creatures tab edits the same lines. */
+    const asMonster = (
+      titleText: string,
+      help: string,
+      used: () => boolean,
+      ...kids: HTMLElement[]
+    ) => {
+      const s = sec(titleText, help, used, ...kids);
+      s.hidden = actions.lootElsewhere?.() === true;
+      return s;
+    };
     const more = (open: boolean, ...controls: HTMLElement[]) => {
       const box = document.createElement("details");
       box.className = "items-more";
@@ -791,7 +808,7 @@ export function createNpcsPage(actions: NpcsPageActions): NpcsPage {
           ],
         ),
       ),
-      sec(
+      asMonster(
         "As a monster",
         "For an NPC that is also a monster: what it drops when killed, the spells it casts, and how it moves and fights.",
         () => work.loot.length + work.spells.length + work.flags.length > 0,

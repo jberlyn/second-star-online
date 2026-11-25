@@ -225,6 +225,7 @@ import {
   type RowRef,
   rowHash,
   rowLabel,
+  rowSchema,
   rowsOf,
   rowValue,
   sameRow,
@@ -4034,6 +4035,7 @@ export class ContentService {
       item: item ? this.itemView(item.name, draft) : null,
       otherDraft: draft.length - itemRows.length,
       itemDraft: itemRows.length,
+      definitionSchema: rowSchema("items", "definitions"),
     };
   }
 

@@ -44,6 +44,16 @@ export interface AreaPart {
   noun?: string;
   /** Entries may not be added or removed here (another page does it, or the engine fixes them). */
   fixed?: boolean;
+  /** A picture panel shown above an entry's form (a spell's cast effect), saving on its own. */
+  panel?: () => RecordPanelLike | null;
+}
+
+/** A picture panel for one entry (content-page.ts's `RecordPanel`). */
+export interface RecordPanelLike {
+  readonly el: HTMLElement;
+  show(key: string, force?: boolean): void;
+  clear(): void;
+  pending(): boolean;
 }
 
 /** One tab of an area page. */
@@ -84,6 +94,8 @@ export interface AreaPage {
   discard(): void;
   /** A publish or undo went live: forms not being edited show what plays now. */
   published(): void;
+  /** Shows the tab with this label. */
+  showTab(label: string): void;
   /** Opens an entry of a records tab by its key (a link from another page). */
   open(dataset: string, part: string, key: string | null): void;
   reset(): void;
@@ -329,7 +341,7 @@ function rowEditor(
       answer(
         a.ok,
         a.ok ? "" : a.text,
-        "Saved with your unpublished changes. Publish them on the Content page.",
+        "Saved with your unpublished changes. Players get it once you publish it on the Publish Changes page.",
       );
       if (a.ok) {
         saved(key, false);
@@ -542,7 +554,20 @@ function recordsView(id: string, deps: AreaPageDeps, part: AreaPart): Records {
       }
     });
   });
-  formBox.append(head, editor.el);
+  // The entry's picture panel, made when the page is first drawn (it may need the art loaded).
+  let panel: RecordPanelLike | null | undefined;
+  const panelBox = document.createElement("div");
+  panelBox.className = "content-area-panel";
+  const getPanel = () => {
+    if (panel === undefined && part.panel) {
+      panel = part.panel();
+      if (panel) {
+        panelBox.append(panel.el);
+      }
+    }
+    return panel ?? null;
+  };
+  formBox.append(head, panelBox, editor.el);
   const empty = document.createElement("p");
   empty.className = "items-empty-form";
   empty.textContent = `Pick a ${part.noun ?? "entry"} from the list to see and change it.`;
@@ -599,6 +624,7 @@ function recordsView(id: string, deps: AreaPageDeps, part: AreaPart): Records {
   };
 
   const close = () => {
+    getPanel()?.clear();
     openKey = null;
     formBox.hidden = true;
     empty.hidden = false;
@@ -607,7 +633,7 @@ function recordsView(id: string, deps: AreaPageDeps, part: AreaPart): Records {
   };
 
   const guardOpen = async (key: string) => {
-    if (editor.dirty()) {
+    if (editor.dirty() || getPanel()?.pending()) {
       const yes = await confirmBox(el, {
         text: "You have unsaved changes. Leave them?",
         confirm: "Discard changes",
@@ -635,6 +661,7 @@ function recordsView(id: string, deps: AreaPageDeps, part: AreaPart): Records {
         formBox.hidden = false;
         empty.hidden = true;
         editor.show(row);
+        getPanel()?.show(key);
       })
       .catch((e: Error) => {
         empty.hidden = false;
@@ -651,6 +678,7 @@ function recordsView(id: string, deps: AreaPageDeps, part: AreaPart): Records {
         ? { ...(value as Record<string, unknown>), [keyField]: name }
         : value;
     openKey = null;
+    getPanel()?.clear();
     draw();
     title.textContent = name || `New ${part.noun ?? "entry"}`;
     copy.hidden = true;
@@ -713,7 +741,7 @@ function recordsView(id: string, deps: AreaPageDeps, part: AreaPart): Records {
     open: (key) => {
       void refresh().then(() => open(key));
     },
-    dirty: () => editor.dirty(),
+    dirty: () => editor.dirty() || getPanel()?.pending() === true,
   };
 }
 
@@ -738,7 +766,8 @@ export function createAreaPage(cfg: AreaConfig, deps: AreaPageDeps): AreaPage {
 
   for (const t of cfg.tabs) {
     const sec = document.createElement("section");
-    sec.className = "balance-row content-area-tab";
+    // A list beside a form, or another editor page, fills the window (each part scrolls alone).
+    sec.className = `balance-row content-area-tab${t.kind === "settings" ? "" : " content-area-fill"}`;
     sec.dataset.tab = t.label;
     const h = document.createElement("h2");
     h.className = "balance-row-title";
@@ -785,6 +814,10 @@ export function createAreaPage(cfg: AreaConfig, deps: AreaPageDeps): AreaPage {
         // Shown with the page; a publish reaches the editor from the app, not through here.
         load: (_force, shown) => {
           if (shown) {
+            // The editor may have been shown on a page of its own since (another role's).
+            if (t.el.parentElement !== sec) {
+              sec.append(t.el);
+            }
             t.onShow?.();
           }
         },
@@ -816,6 +849,7 @@ export function createAreaPage(cfg: AreaConfig, deps: AreaPageDeps): AreaPage {
         l.load(true);
       }
     },
+    showTab: (label) => tabs.select(label),
     open(dataset, part, key) {
       const tab = cfg.tabs.find(
         (t) =>

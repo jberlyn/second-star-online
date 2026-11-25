@@ -444,7 +444,7 @@ export function createPacksPage(
     merge.append(
       mergeHead,
       help(
-        "Everything in it becomes your own change, to look over and publish on the Content page like any other change. Best for a backup of this server, or content you'll keep editing.",
+        "Everything in it becomes your own change, to look over and publish on the Publish Changes page like any other change. Best for a backup of this server, or content you'll keep editing.",
       ),
     );
     if (p.merge.problems.length > 0) {

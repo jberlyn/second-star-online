@@ -452,7 +452,7 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
   el.append(
     pageHeading(
       "Skills",
-      "Pick a skill to change its name, who starts with it and how fast it goes up. Saving puts your changes in the draft: players get them once you publish on the Content page.",
+      "Pick a skill to change its name, who starts with it and how fast it goes up. Saving puts your changes with the other unpublished changes: players get them once you publish them on the Publish Changes page.",
     ),
   );
   const draftLine = document.createElement("div");
@@ -1741,7 +1741,7 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
         ...(v.bindings.length > 0
           ? [
               helpLine(
-                `The game's ${v.bindings.join(", ")} rule${v.bindings.length === 1 ? " uses" : "s use"} it, so it can't be removed. Point ${v.bindings.length === 1 ? "that rule" : "those rules"} at another skill on the Content page first.`,
+                `The game's ${v.bindings.join(", ")} rule${v.bindings.length === 1 ? " uses" : "s use"} it, so it can't be removed. Point ${v.bindings.length === 1 ? "that rule" : "those rules"} at another skill first, on the Skills the game uses tab.`,
               ),
             ]
           : []),
@@ -1871,7 +1871,7 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
     if (u.bindings.length > 0) {
       const b = document.createElement("p");
       b.className = "balance-stale";
-      b.textContent = `The ${u.bindings.join(", ")} binding${u.bindings.length === 1 ? " names" : "s name"} it: point ${u.bindings.length === 1 ? "it" : "them"} at another skill first (the Content page's bindings).`;
+      b.textContent = `The ${u.bindings.join(", ")} binding${u.bindings.length === 1 ? " names" : "s name"} it: point ${u.bindings.length === 1 ? "it" : "them"} at another skill first, on the Skills the game uses tab.`;
       lines.push(b);
     }
     const ul = document.createElement("ul");

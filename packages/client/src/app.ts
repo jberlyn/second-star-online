@@ -293,11 +293,14 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     shortcut: (act) => primaryKeyLabel(input.bindings, act),
   };
   /** Opens a Control Panel page, opening the Control Panel first when it is not up. */
-  const openPage = (page: string) => {
+  /** Then, on the page the Control Panel opens on (a tab to show). */
+  let controlPanelThen: (() => void) | undefined;
+  const openPage = (page: string, then?: () => void) => {
     if (editing === "controlPanel") {
-      controlPanel.go(page);
+      controlPanel.go(page, then);
     } else {
       controlPanelPage = page;
+      controlPanelThen = then;
       conn.send({ t: "controlPanelOpen" });
     }
   };
@@ -319,8 +322,12 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
       }
       openPage("world");
     },
-    // The NPC Editor window is retired (issue #32): its menu item opens the NPCs page.
-    npcEditor: () => openPage("npcs"),
+    // The NPC Editor window is retired (issue #32): its menu item opens the NPCs page, which is
+    // the Talk & Shops tab of Creatures & NPCs for a content editor.
+    npcEditor: () =>
+      permissions.has("contentEditor")
+        ? openPage("monsters", () => monstersArea.showTab("Talk & Shops"))
+        : openPage("npcs"),
     controlPanel: () => {
       if (editing !== "controlPanel") {
         conn.send({ t: "controlPanelOpen" });
@@ -776,7 +783,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     openContent: () => controlPanel.go("content"),
     openContentRow: (row) => controlPanel.go("content", () => contentPage.openRow(row)),
     body: (saved) => contentPage.monsterBody(saved),
-    openNpc: (name) => controlPanel.go("npcs", () => npcsPage.open(name)),
+    openNpc: (name) => openNpc(name),
     canOpenNpc: () => permissions.has("npcEditor"),
   });
   // The Skills and Gathering pages (issue #38).
@@ -794,16 +801,30 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     usage: (seq, key) => send({ t: "contentSkillUsage", seq, key }),
     remove: (seq, key, refs, expect) => send({ t: "contentSkillRemove", seq, key, refs, expect }),
     openContent: () => controlPanel.go("content"),
-    openContentRow: (row) => controlPanel.go("content", () => contentPage.openRow(row)),
-    openItem: (name) => controlPanel.go("items", () => itemsPage.open(name)),
-    openGathering: (node) => controlPanel.go("gathering", () => gatheringPage.open(node)),
+    openContentRow: (row) => {
+      openContentRow(row);
+    },
+    openItem: (name) =>
+      controlPanel.go("items", () => {
+        itemsArea.showTab("Items");
+        itemsPage.open(name);
+      }),
+    openGathering: (node) =>
+      controlPanel.go("gathering", () => {
+        gatheringArea.showTab("Gathering");
+        gatheringPage.open(node);
+      }),
   });
   const gatheringPage = createGatheringPage(
     {
       view: (seq) => send({ t: "contentGathering", seq }),
       set: (seq, change) => send({ t: "contentGatheringSet", seq, ...change }),
       openContent: () => controlPanel.go("content"),
-      openSkill: (key) => controlPanel.go("skills", () => skillsPage.open(key)),
+      openSkill: (key) =>
+        controlPanel.go("skills", () => {
+          skillsArea.showTab("Skills");
+          skillsPage.open(key);
+        }),
     },
     assets,
   );
@@ -817,8 +838,13 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
   const npcsPage = createNpcsPage({
     view: (seq, name) => send({ t: "contentNpcs", seq, ...(name !== undefined ? { name } : {}) }),
     save: (seq, name, text, expect) => send({ t: "contentNpcSave", seq, name, text, expect }),
-    openMonster: (name) => controlPanel.go("monsters", () => monstersPage.open(name)),
+    openMonster: (name) =>
+      controlPanel.go("monsters", () => {
+        monstersArea.showTab("Creatures");
+        monstersPage.open(name);
+      }),
     canOpenMonster: () => permissions.has("contentEditor"),
+    lootElsewhere: () => permissions.has("contentEditor"),
   });
   const worldPage = createWorldPage(
     {
@@ -895,7 +921,19 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
       title: "Creatures & NPCs",
       intro:
         "Every monster, animal and NPC: their stats, pictures, behaviour, rewards, loot and spells, and the rules all creatures share.",
-      tabs: [pageTab("Creatures", "Each creature and NPC.", monstersPage), ...CREATURE_RULE_TABS],
+      tabs: [
+        pageTab(
+          "Creatures",
+          "Each creature: its stats, picture, behaviour, rewards, and the loot and spells it has.",
+          monstersPage,
+        ),
+        pageTab(
+          "Talk & Shops",
+          "What each NPC says, sells and buys, and whether it runs a bank or trains players. These save straight away for everyone: there is nothing to publish.",
+          npcsPage,
+        ),
+        ...CREATURE_RULE_TABS,
+      ],
     },
     areaDeps,
   );
@@ -911,6 +949,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
           "What each spell effect deals or heals, and how long buffs last. A spell effect is shared: a spell, a staff's free fireball, a creature's cast and a map hazard running it all use these numbers, unless a spell sets its own.",
           spellNumbers,
         ),
+        () => contentPage.spellEffect(() => spellsArea.published()),
       ),
     },
     areaDeps,
@@ -1006,6 +1045,17 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
    * Opens a row on the page that edits it (a link from another page or from a change on the
    * Content page): false when no page does or the role may not open it.
    */
+  /** An NPC's file: the Talk & Shops tab, or the NPCs page for a role without the content editor. */
+  const openNpc = (name: string) => {
+    if (permissions.has("contentEditor")) {
+      controlPanel.go("monsters", () => {
+        monstersArea.showTab("Talk & Shops");
+        npcsPage.open(name);
+      });
+    } else {
+      controlPanel.go("npcs", () => npcsPage.open(name));
+    }
+  };
   const openContentRow = (row: ContentRowRef): boolean => {
     const home = homeOf(row.dataset, row.part);
     if (!home) {
@@ -1017,24 +1067,30 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     }
     const key = row.key;
     if (home === "pictures") {
-      controlPanel.go("content", () => contentPage.openRow(row));
+      controlPanel.go("pictures");
       return true;
     }
     controlPanel.go(home, () => {
-      if (home === "items" && key !== null) {
+      if (home === "items" && row.dataset === "items" && key !== null) {
+        itemsArea.showTab("Items");
         itemsPage.open(key);
-      } else if (home === "monsters" && key !== null && row.part !== "casting") {
-        monstersPage.open(key);
+      } else if (home === "monsters" && row.dataset === "monsters" && row.part !== "casting") {
+        monstersArea.showTab("Creatures");
+        if (key !== null) {
+          monstersPage.open(key);
+        }
       } else if (
         home === "skills" &&
         row.dataset === "classes" &&
-        row.part === "skills" &&
-        key !== null
+        (row.part === "skills" || row.part === "skillOrder")
       ) {
-        skillsPage.open(key);
-      } else if (home === "npcs" && key !== null) {
-        npcsPage.open(key);
-      } else if (home !== "npcs" && home !== "gathering") {
+        skillsArea.showTab("Skills");
+        if (key !== null && row.part === "skills") {
+          skillsPage.open(key);
+        }
+      } else if (home === "gathering" && row.dataset === "gather") {
+        gatheringArea.showTab("Gathering");
+      } else if (home !== "npcs") {
         areaPages[home]?.open(row.dataset, row.part, key);
       }
     });
@@ -1092,6 +1148,17 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         discard: () => area.discard(),
       })),
       {
+        id: "pictures",
+        title: "Pictures & Sounds",
+        group: "Game",
+        permission: "contentEditor",
+        el: contentPage.artEl,
+        onShow: () => contentPage.onShow(),
+        onHide: () => contentPage.onHide(),
+        changes: () => contentPage.changes(),
+        discard: () => contentPage.discard(),
+      },
+      {
         id: "content",
         title: "Publish Changes",
         group: "Game",
@@ -1127,6 +1194,8 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         title: "NPCs",
         group: "Game",
         permission: "npcEditor",
+        // A content editor has it as the Talk & Shops tab of Creatures & NPCs.
+        unless: "contentEditor",
         el: npcsPage.el,
         onShow: () => npcsPage.onShow(),
         changes: () => npcsPage.changes(),
@@ -1894,8 +1963,9 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
           showControlPanel();
         }
         if (controlPanelPage) {
-          controlPanel.go(controlPanelPage);
+          controlPanel.go(controlPanelPage, controlPanelThen);
           controlPanelPage = null;
+          controlPanelThen = undefined;
         }
         return;
       case "npcClosed":
