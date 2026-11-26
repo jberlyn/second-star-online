@@ -23,6 +23,7 @@ import type { HarvestNode, XpSettings, YieldTable } from "@secondstaronline/data
 import {
   type ContentGatheringView,
   type ContentProblemView,
+  content,
   type FishCatch,
   fishingPreview,
   type GatheringNodeView,
@@ -1384,7 +1385,7 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
         check(
           "gathering-requires-on",
           !!n.requires,
-          "Players need a skill or level before they can harvest it",
+          "Players need a skill, a level or a class before they can harvest it",
           (on) => {
             if (on) {
               n.requires = { needs: n.skill || "level", atLeast: 1 };
@@ -1399,6 +1400,8 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
         const r = n.requires;
         const needs = action(document.createElement("select"), "gathering-requires-needs");
         needs.append(option("level", "Character level"));
+        // A class (issue #15): the classes that may, ticked below.
+        needs.append(option("class", "A class"));
         for (const s of view?.skills ?? []) {
           needs.append(option(s.skill, s.display));
         }
@@ -1406,18 +1409,55 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
         needs.addEventListener("change", () => {
           r.needs = needs.value;
           edited();
+          drawReq();
         });
         const row = document.createElement("div");
         row.className = "items-list-row";
-        row.append(
-          labelled("Needs", needs),
-          labelled(
-            "At least",
-            int("gathering-requires-at", r.atLeast, 0, 1_000_000, false, "Needs at least", (v) => {
-              r.atLeast = v ?? 0;
-            }),
-          ),
-        );
+        if (r.needs === "class") {
+          const boxes = document.createElement("div");
+          boxes.className = "gathering-classes";
+          for (const k of content().classes.classes) {
+            boxes.append(
+              check(
+                `gathering-requires-class-${k.code}`,
+                (r.classes ?? []).includes(k.code),
+                k.name,
+                (on) => {
+                  const now = new Set(r.classes ?? []);
+                  if (on) {
+                    now.add(k.code);
+                  } else {
+                    now.delete(k.code);
+                  }
+                  if (now.size > 0) {
+                    r.classes = [...now].sort((a, b) => a - b);
+                  } else {
+                    delete r.classes;
+                  }
+                },
+              ),
+            );
+          }
+          row.append(labelled("Needs", needs), labelled("Classes", boxes));
+        } else {
+          row.append(
+            labelled("Needs", needs),
+            labelled(
+              "At least",
+              int(
+                "gathering-requires-at",
+                r.atLeast,
+                0,
+                1_000_000,
+                false,
+                "Needs at least",
+                (v) => {
+                  r.atLeast = v ?? 0;
+                },
+              ),
+            ),
+          );
+        }
         reqBox.append(
           row,
           labelled(

@@ -435,7 +435,7 @@ export function setPublishCleanup(
 
 /** A removed entry's world cleanup, waiting in the draft. */
 export interface DraftAction {
-  kind: "item" | "monster" | "vehicle";
+  kind: "item" | "monster" | "vehicle" | "class";
   key: string;
   action: unknown;
   authorAccountId: string;
@@ -447,7 +447,7 @@ export function draftActions(db: Db): DraftAction[] {
   return db
     .query<
       {
-        kind: "item" | "monster" | "vehicle";
+        kind: "item" | "monster" | "vehicle" | "class";
         entry_key: string;
         action: string;
         author_account_id: string;

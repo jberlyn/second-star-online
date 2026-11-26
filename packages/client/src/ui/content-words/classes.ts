@@ -38,15 +38,141 @@ const SOURCES: readonly (readonly [string, string, string])[] = [
 ];
 
 export const classesWords: WordBook = {
-  // Classes.
+  // Classes (issue #15): About, What it gives, Ways in.
   "classes.code": {
     label: "Class number",
     help: "The number characters are saved with. Can't change once saved.",
+    tab: "About",
   },
-  "classes.name": { label: "Name" },
+  "classes.name": { label: "Name", tab: "About" },
+  "classes.description": {
+    label: "Description",
+    help: "What players read about the class in their Class window. Giving any class a description (or a way in) turns the Class window on for players.",
+    long: true,
+    tab: "About",
+  },
+  "classes.icon": {
+    label: "Picture",
+    help: "An item whose picture is shown beside the class in the Class window.",
+    names: "item",
+    tab: "About",
+  },
+  "classes.inherits": {
+    label: "Starts from class",
+    help: "The class (by number) whose stat bonus, perks and training this one starts from. Whatever this class sets replaces that one's, kind by kind. Leave off to set everything here.",
+    names: "class",
+    tab: "What it gives",
+  },
   "classes.statBonus": {
     label: "Stat bonus",
     help: "Points added to a character's stats while in this class.",
+    tab: "What it gives",
+  },
+  "classes.perks": {
+    label: "Perks",
+    help: "Bonuses while in the class. Combat perks add to the faction's of the same kind.",
+    noun: "perk",
+    tab: "What it gives",
+  },
+  "classes.perks.[].kind": {
+    label: "Perk",
+    choices: {
+      spellPower: "Spell power",
+      melee: "Melee attack power",
+      defence: "Defence (taken off damage)",
+      regeneration: "Faster HP and SP (frames sooner)",
+      pvpParry: "Parry players (lower rolls parry more)",
+      pvpBlock: "Block players (lower rolls block more)",
+      monsterDodge: "Dodge monsters (lower rolls dodge more)",
+      hpPerLevel: "Full HP gained each level",
+      spPerLevel: "Full SP gained each level",
+    },
+  },
+  "classes.perks.[].value": {
+    label: "Amount",
+    help: "Use a minus number to take away. HP and SP each level replace the Balance page's.",
+  },
+  "classes.training": {
+    label: "How skills train",
+    help: "How high and how fast skills rise while in the class. A faction the character is in can only lower these limits.",
+    tab: "What it gives",
+  },
+  "classes.training.cap": {
+    label: "Highest any skill rises to",
+    help: "Leave off for the usual limits (the faction's, as in 1.6).",
+  },
+  "classes.training.percent": {
+    label: "Training speed (%)",
+    help: "100 is normal, 200 twice as fast, 50 half as fast, 0 never.",
+  },
+  "classes.training.skills": {
+    label: "Single skills",
+    help: "A skill's own limit or speed, over the class-wide ones.",
+    noun: "skill",
+  },
+  "classes.training.skills.[].skill": { label: "Skill", names: "skill" },
+  "classes.training.skills.[].cap": { label: "Rises to at most" },
+  "classes.training.skills.[].percent": { label: "Speed (%)" },
+  "classes.paths": {
+    label: "Ways in",
+    help: "How characters change into this class: from which classes, what they need, what it costs and what it gives.",
+    noun: "way in",
+    tab: "Ways in",
+  },
+  "classes.paths.[].from": {
+    label: "From classes",
+    help: "The classes (by number) a character must be in. A way back to an earlier class is a respec.",
+    noun: "class",
+    names: "class",
+  },
+  "classes.paths.[].where": {
+    label: "Where",
+    help: "At a trainer: an NPC whose Talk & Shops tab promotes players to this class (its price is charged too). In the Class window: players change from their Game menu.",
+    choices: { trainer: "At a trainer", anywhere: "In the Class window", both: "Either" },
+  },
+  "classes.paths.[].requires": {
+    label: "Needs",
+    help: "Every one must be met.",
+    noun: "requirement",
+  },
+  "classes.paths.[].requires.[].needs": {
+    label: "Skill or stat",
+    help: 'A skill, or "level", "HPmax" (full HP) or "SPmax" (full SP).',
+    names: "skill",
+  },
+  "classes.paths.[].requires.[].atLeast": { label: "At least" },
+  "classes.paths.[].gold": { label: "Gold it costs" },
+  "classes.paths.[].items": {
+    label: "Items it takes",
+    help: "Taken from the bag, unless kept (then only needed).",
+    noun: "item",
+  },
+  "classes.paths.[].items.[].item": { label: "Item", names: "item" },
+  "classes.paths.[].items.[].qty": { label: "How many" },
+  "classes.paths.[].items.[].keep": { label: "Kept (only needed)" },
+  "classes.paths.[].grants": { label: "Gives" },
+  "classes.paths.[].grants.skills": {
+    label: "Skills raised",
+    help: "Each raised to at least this; a higher skill keeps its value.",
+    noun: "skill",
+  },
+  "classes.paths.[].grants.skills.[].skill": { label: "Skill", names: "skill" },
+  "classes.paths.[].grants.skills.[].to": { label: "Raised to" },
+  "classes.paths.[].grants.items": { label: "Items", noun: "item" },
+  "classes.paths.[].grants.items.[].item": { label: "Item", names: "item" },
+  "classes.paths.[].grants.items.[].qty": { label: "How many" },
+  "classes.paths.[].grants.spells": {
+    label: "Spells",
+    help: "Added to the spellbook.",
+    noun: "spell",
+    names: "spell",
+  },
+  "classes.paths.[].grants.hpMax": { label: "Full HP raised to" },
+  "classes.paths.[].grants.spMax": { label: "Full SP raised to" },
+  "classes.paths.[].text": {
+    label: "Note for players",
+    help: "Shown with this way in the Class window.",
+    long: true,
   },
   "classes.statBonus.str": { label: "Strength" },
   "classes.statBonus.sta": { label: "Stamina" },
@@ -54,8 +180,9 @@ export const classesWords: WordBook = {
   "classes.statBonus.int": { label: "Intelligence" },
   "classes.statBonus.wis": { label: "Wisdom" },
   "classes.promotion": {
-    label: "Can be promoted to",
-    help: "Players in another class can change to this one.",
+    label: "1.6 promotion",
+    help: "1.6's way into this class, as the Classic classes have it: from a trainer, one requirement, skills raised to a roll of 1 to 10. Use Ways in for anything more.",
+    tab: "Ways in",
   },
   "classes.promotion.from": {
     label: "From classes",
@@ -99,6 +226,13 @@ export const classesWords: WordBook = {
     names: "skill",
   },
   "startClasses.skills.{}": { label: "Starting value" },
+  "startClasses.kit": {
+    label: "Starting kit",
+    help: "Items a new character of this class gets, after every character's starting bag (New characters).",
+    noun: "item",
+  },
+  "startClasses.kit.[].item": { label: "Item", names: "item" },
+  "startClasses.kit.[].qty": { label: "How many" },
 
   // Character creation.
   creation: { label: "Character creation" },

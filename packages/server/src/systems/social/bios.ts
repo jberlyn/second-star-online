@@ -31,6 +31,7 @@ export function bioSource(world: World, t: Player): BioSource {
     profile: t.char.profile,
     medals: medalField(t.char.skills),
     skills: t.char.skills,
+    classCode: t.char.classCode,
     hpMax: t.char.vitals.hpMax,
     spMax: t.char.vitals.spMax,
     // The `Guild` field names it; "Leader of" when the guild file holds `*<me>*`, which only its

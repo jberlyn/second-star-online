@@ -4,14 +4,14 @@
  * stored, so a class or a medal can be rebalanced and every character follows (a design change:
  * 1.6 added a promotion's and a medal's points to the stored stats for good).
  */
-import { content } from "../../content/store.ts";
+import { resolvedClass } from "./classes.ts";
 import { medalBonus } from "./medals.ts";
 
 export type StatKey = "str" | "sta" | "dex" | "int" | "wis";
 
-/** The stat points class `classCode` adds. */
+/** The stat points class `classCode` adds, with what it inherits (issue #15). */
 export function classStatBonus(classCode: number): Partial<Record<StatKey, number>> {
-  return content().classes.classes.find((c) => c.code === classCode)?.statBonus ?? {};
+  return resolvedClass(classCode).statBonus;
 }
 
 /** The allocated stats plus the class's and the held medals' points; `stats` is untouched. */

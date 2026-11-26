@@ -42,6 +42,19 @@ export const startClassSchema = z.strictObject({
   label: z.string().min(1).optional(),
   /** Each 0 to 100, as a skill can be (0: it never rises, as in 1.6). */
   skills: z.record(z.string(), z.number().int().min(0).max(100)),
+  /**
+   * The class's starting kit (issue #15): bag lines added after the world's starting bag
+   * (`bindings.json` `start.bag`), in order, as far as the bag's 15 lines go. Left out: none.
+   */
+  kit: z
+    .array(
+      z.strictObject({
+        item: z.string().min(1),
+        qty: z.number().int().min(1).max(1_000_000),
+      }),
+    )
+    .max(15)
+    .optional(),
 });
 
 const ruleSchema = z.strictObject({ rule: z.string() });
@@ -129,11 +142,117 @@ export const statBonusSchema = z.strictObject({
   wis: z.number().int().optional(),
 });
 
+/**
+ * What a class adds to its holders' play (issue #15), beside its `statBonus`. Each kind but the
+ * last two is added to the faction perk of the same name (`social.json` `factionRules`): the two
+ * stack. `hpPerLevel` and `spPerLevel` replace the Balance page's HP and SP gained each level.
+ */
+export const CLASS_PERKS = [
+  "spellPower",
+  "melee",
+  "defence",
+  "regeneration",
+  "pvpParry",
+  "pvpBlock",
+  "monsterDodge",
+  "hpPerLevel",
+  "spPerLevel",
+] as const;
+export type ClassPerkKind = (typeof CLASS_PERKS)[number];
+
+export const classPerkSchema = z.strictObject({
+  kind: z.enum(CLASS_PERKS),
+  value: z.number().int().min(-10_000).max(10_000),
+});
+
+/**
+ * How skills train in a class (issue #15): `cap` is the highest value a skill rises to while in it
+ * (a faction the character belongs to can only lower it), `percent` how fast it trains (100 is
+ * normal, 200 twice as fast, 0 never). `skills` set a skill's own, over the class-wide values.
+ */
+export const classTrainingSchema = z.strictObject({
+  cap: z.number().int().min(0).max(100).optional(),
+  percent: z.number().int().min(0).max(1000).optional(),
+  skills: z
+    .array(
+      z.strictObject({
+        skill: z.string().min(1),
+        cap: z.number().int().min(0).max(100).optional(),
+        percent: z.number().int().min(0).max(1000).optional(),
+      }),
+    )
+    .max(500)
+    .optional(),
+});
+
+/** What a path checks: a skill (by key), `level`, `HPmax` or `SPmax` at `atLeast` or more. */
+export const pathRequirementSchema = z.strictObject({
+  needs: z.string().min(1),
+  atLeast: z.number().int().min(0).max(1_000_000),
+});
+
+/**
+ * A way into a class (issue #15): from one of the `from` classes (by code), when every requirement
+ * holds, for `gold` and `items` (each taken unless `keep`: then only held), giving `grants`.
+ * `where`: at a trainer (an NPC whose file has `TRN|<class>:<price>`, the line's price charged too),
+ * from the player's Class window (`anywhere`), or both. Absent: at a trainer.
+ */
+export const classPathSchema = z.strictObject({
+  from: z.array(z.number().int().min(1)).min(1).max(100),
+  where: z.enum(["trainer", "anywhere", "both"]).optional(),
+  requires: z.array(pathRequirementSchema).max(20).optional(),
+  gold: z.number().int().min(0).max(2_000_000_000).optional(),
+  items: z
+    .array(
+      z.strictObject({
+        item: z.string().min(1),
+        qty: z.number().int().min(1).max(1_000_000),
+        keep: z.literal(true).optional(),
+      }),
+    )
+    .max(20)
+    .optional(),
+  grants: z
+    .strictObject({
+      /** Each skill raised to at least `to`; a higher skill keeps its value. */
+      skills: z
+        .array(z.strictObject({ skill: z.string().min(1), to: z.number().int().min(0).max(100) }))
+        .max(50)
+        .optional(),
+      items: z
+        .array(z.strictObject({ item: z.string().min(1), qty: z.number().int().min(1).max(1000) }))
+        .max(20)
+        .optional(),
+      /** Spells added to the spellbook, by name. */
+      spells: z.array(z.string().min(1)).max(50).optional(),
+      /** Full HP and SP raised to at least these. */
+      hpMax: z.number().int().min(1).max(1_000_000).optional(),
+      spMax: z.number().int().min(0).max(1_000_000).optional(),
+    })
+    .optional(),
+  /** What the Class window says about this path. */
+  text: z.string().max(500).optional(),
+});
+
 export const classSchema = z.strictObject({
   code: z.number().int().min(1),
   name: z.string().min(1),
+  /** What the player's Class window says about the class (issue #15). */
+  description: z.string().max(2000).optional(),
+  /** An item picture shown beside the class in the Class window. */
+  icon: z.string().min(1).optional(),
+  /**
+   * The class (by code) whose `statBonus`, perks and training this one starts from: its own
+   * replace them kind by kind (a stat, a perk kind, a skill's cap or speed). Followed up the chain.
+   */
+  inherits: z.number().int().min(1).optional(),
   statBonus: statBonusSchema.optional(),
-  promotion: promotionSchema.nullable(),
+  perks: z.array(classPerkSchema).max(50).optional(),
+  training: classTrainingSchema.optional(),
+  /** 1.6's promotion into this class (the Classic pack's rows). Absent or null: none. */
+  promotion: promotionSchema.nullable().optional(),
+  /** The ways into this class (issue #15), besides `promotion`. */
+  paths: z.array(classPathSchema).max(50).optional(),
 });
 
 /** The part of classes.json that `data:build` emits. */
@@ -174,7 +293,44 @@ export const classesDataSchema = z
       }
       ordered.add(skill);
     });
+    const classCodes = new Set(data.classes.map((c) => c.code));
     data.classes.forEach((c, i) => {
+      if (c.inherits !== undefined && !classCodes.has(c.inherits)) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["classes", i, "inherits"],
+          message: `class ${c.inherits} is not in classes`,
+        });
+      }
+      (c.training?.skills ?? []).forEach((row, j) => {
+        if (!names.has(row.skill)) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["classes", i, "training", "skills", j, "skill"],
+            message: `${row.skill} is not in skills`,
+          });
+        }
+      });
+      (c.paths ?? []).forEach((path, j) => {
+        path.from.forEach((code, k) => {
+          if (!classCodes.has(code)) {
+            ctx.addIssue({
+              code: "custom",
+              path: ["classes", i, "paths", j, "from", k],
+              message: `class ${code} is not in classes`,
+            });
+          }
+        });
+        (path.grants?.skills ?? []).forEach((g, k) => {
+          if (!names.has(g.skill)) {
+            ctx.addIssue({
+              code: "custom",
+              path: ["classes", i, "paths", j, "grants", "skills", k, "skill"],
+              message: `${g.skill} is not in skills`,
+            });
+          }
+        });
+      });
       c.promotion?.skillGrants.forEach((skill, j) => {
         if (!names.has(skill)) {
           ctx.addIssue({
@@ -216,6 +372,10 @@ export const classesDataSchema = z
   });
 
 export type Promotion = z.infer<typeof promotionSchema>;
+export type ClassRow = z.infer<typeof classSchema>;
+export type ClassPath = z.infer<typeof classPathSchema>;
+export type ClassPerk = z.infer<typeof classPerkSchema>;
+export type ClassTraining = z.infer<typeof classTrainingSchema>;
 export type Skill = z.infer<typeof skillSchema>;
 export type StartClass = z.infer<typeof startClassSchema>;
 export type SexRow = z.infer<typeof sexSchema>;

@@ -167,7 +167,7 @@ describe("the editor's checks", () => {
     expect(check("FLG|Aggressive", "SPL|Teleport", "TRN|Ninja:5").warnings).toEqual([
       "Line 1: only FLG|Still and FLG|Passive do anything.",
       'Line 2: no monster casts "Teleport".',
-      'Line 3: no class "Ninja" can be trained: 1.6 has no rule for it.',
+      'Line 3: no class "Ninja" can be trained: it has no way in at a trainer.',
     ]);
     // A class with a branch (any case) is fine.
     expect(check("TRN|Fire Mage:10000", "TRN|grunt:100").warnings).toEqual([]);

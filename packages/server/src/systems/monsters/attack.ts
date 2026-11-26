@@ -243,6 +243,7 @@ export function fighterOf(p: Player): Fighter {
     skillXp: p.char.skillXp,
     equip: p.char.equip,
     faction: p.char.faction,
+    classCode: p.char.classCode,
     attackBonus: p.attackBonus,
     blessBonus: p.spell.bless > 0 ? content().balance.buffs.blessBonus : 0,
     weakenPenalty: p.spell.weaken > 0 ? content().balance.buffs.weakenPenalty : 0,

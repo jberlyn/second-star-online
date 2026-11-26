@@ -312,8 +312,9 @@ export function saveSkillValues(
 }
 
 /**
- * A promotion: the class, the gold, the SPmax floor and the granted skills in one write, so a crash
- * never leaves the class without its charge. The class's stat points are calculated, not stored.
+ * A promotion: the class, the gold, the HP and SP floors and the granted skills in one write, so a
+ * crash never leaves the class without its charge (a path's items and spells follow with the
+ * inventory write). The class's stat points are calculated, not stored.
  */
 export function savePromotion(
   db: Db,
@@ -321,6 +322,7 @@ export function savePromotion(
   r: {
     classCode: number;
     gold: number;
+    hpMax: number;
     spMax: number;
     skills: readonly number[];
   },
@@ -328,8 +330,8 @@ export function savePromotion(
 ): void {
   db.transaction(() => {
     db.query(
-      "UPDATE characters SET class_code = ?, gold = ?, sp_max = ?, updated_at = ? WHERE id = ?",
-    ).run(r.classCode, r.gold, r.spMax, now, id);
+      "UPDATE characters SET class_code = ?, gold = ?, hp_max = ?, sp_max = ?, updated_at = ? WHERE id = ?",
+    ).run(r.classCode, r.gold, r.hpMax, r.spMax, now, id);
     writeSkills(db, id, r.skills);
   })();
 }

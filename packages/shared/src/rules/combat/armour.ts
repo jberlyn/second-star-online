@@ -8,7 +8,12 @@ import type { Equipment, Fighter } from "../core/fighter.ts";
 import { boundSkillIndex } from "../core/fighter.ts";
 import { lingoEq, type Rng } from "../core/lingo.ts";
 import { excepted, ruleMatches } from "../core/patterns.ts";
+import { classPerkBonus } from "../progression/classes.ts";
 import { factionPerk } from "../social/factions.ts";
+
+/** A dodge perk: the faction's and the class's (issue #15) added. */
+const perkOf = (f: Fighter, kind: "pvpParry" | "pvpBlock") =>
+  factionPerk(f.faction, kind) + classPerkBonus(f.classCode, kind);
 
 type SlotVar = "RingE" | "HeadE" | "BodyE" | "RightHandE" | "LeftHandE" | "FeetE";
 
@@ -86,7 +91,7 @@ export function elementalRows(
  * for both).
  */
 export function factionRows(power: number, f: Fighter): number {
-  return power - factionPerk(f.faction, "defence");
+  return power - factionPerk(f.faction, "defence") - classPerkBonus(f.classCode, "defence");
 }
 
 /**
@@ -156,14 +161,14 @@ function pvpDodge(
   const parry = boundSkillIndex("parry");
   if (
     parry !== undefined &&
-    pvpDodgeRoll(victim.skills[parry] ?? 0, factionPerk(victim.faction, "pvpParry"), rng) === 1
+    pvpDodgeRoll(victim.skills[parry] ?? 0, perkOf(victim, "pvpParry"), rng) === 1
   ) {
     return { kind: "parry" };
   }
   const block = boundSkillIndex("block");
   if (
     block !== undefined &&
-    pvpDodgeRoll(victim.skills[block] ?? 0, factionPerk(victim.faction, "pvpBlock"), rng) === 1
+    pvpDodgeRoll(victim.skills[block] ?? 0, perkOf(victim, "pvpBlock"), rng) === 1
   ) {
     return { kind: "block" };
   }

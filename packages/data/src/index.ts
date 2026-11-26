@@ -40,6 +40,11 @@ export type { CasinoData } from "../schema/casino.ts";
 export type { ChurchMapData } from "../schema/church-map.ts";
 export type {
   ClassesData,
+  ClassPath,
+  ClassPerk,
+  ClassPerkKind,
+  ClassRow,
+  ClassTraining,
   Creation,
   Promotion,
   SexRow,

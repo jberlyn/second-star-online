@@ -21,6 +21,7 @@ import {
 import { lingoContains, lingoEq, type Rng } from "../core/lingo.ts";
 import { excepted, ruleMatches } from "../core/patterns.ts";
 import { FACING_DELTA, type Facing } from "../movement/movement.ts";
+import { classPerkBonus } from "../progression/classes.ts";
 import { factionPerk } from "../social/factions.ts";
 import { armourRows, elementalRows, factionRows, randomAndDefense } from "./armour.ts";
 
@@ -313,7 +314,8 @@ export function monsterHitsPlayer(
   power = factionRows(power, f);
   power = randomAndDefense(power, defenseBonus, rng);
   // The perk `monsterDodge` lowers both rolls (Classic: an Adventurer's 10).
-  const dodge = factionPerk(f.faction, "monsterDodge");
+  const dodge =
+    factionPerk(f.faction, "monsterDodge") + classPerkBonus(f.classCode, "monsterDodge");
   // A world that binds no Parry (or Block) skill has no parrying (or blocking): no roll at all.
   const parry = boundSkillIndex("parry");
   if (parry !== undefined && dodgeRoll(f.skills[parry] ?? 0, dodge, rng) === 1) {

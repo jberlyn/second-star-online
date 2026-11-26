@@ -25,12 +25,14 @@ export const patternRow = { match: ruleMatchSchema, pattern: z.string().min(1) }
 export const toolCanSchema = z.enum(["Chop", "Mine", "Dig", "Fish", "Farm", "Water"]);
 
 /**
- * A requirement: a skill (by key) or, written exactly `level`, the level must reach `atLeast`. `text`
- * replaces the engine's refusal line.
+ * A requirement: a skill (by key) or, written exactly `level`, the level must reach `atLeast`.
+ * Written exactly `class` (issue #15), the character must be in one of `classes` (by code), and
+ * `atLeast` is not read. `text` replaces the engine's refusal line.
  */
 export const requirementSchema = z.strictObject({
   needs: z.string().min(1),
   atLeast: z.number().int().min(0).max(1_000_000),
+  classes: z.array(z.number().int().min(1)).min(1).max(100).optional(),
   text: z.string().min(1).optional(),
 });
 

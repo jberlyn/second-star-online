@@ -695,7 +695,7 @@ function checkForDead(
   v.exp += xpGained(xp, v.level, sp?.level);
   owner.vitalsDirty = true;
   // One line for each level gained.
-  for (let n = checkLevelUp(v); n > 0; n--) {
+  for (let n = checkLevelUp(v, owner.char.classCode); n > 0; n--) {
     tell(res.out, owner, LEVEL_UP_TEXT);
   }
   return true;

@@ -185,6 +185,7 @@ export {
 export * from "./rules/monsters/flags.ts";
 export * from "./rules/monsters/loot.ts";
 export * from "./rules/movement/movement.ts";
+export * from "./rules/progression/classes.ts";
 export * from "./rules/progression/creation.ts";
 export {
   SEXES,

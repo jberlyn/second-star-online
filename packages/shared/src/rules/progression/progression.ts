@@ -7,6 +7,7 @@ import { content } from "../../content/store.ts";
 import { gearBonus } from "../combat/gear.ts";
 import type { Equipment } from "../core/fighter.ts";
 import type { Rng } from "../core/lingo.ts";
+import { classPerk } from "./classes.ts";
 
 /**
  * A species' base kill XP for the kind of kill (`xpMelee` or `xpSpell`). A species that sets
@@ -171,15 +172,21 @@ export function expShown(
  * (1.6: 1 each); no heal. At the level cap `expNeeded` is 0 and no level is gained. Returns the
  * number of levels gained (a bug fixed: 1.6 reset the XP to 0 and gained at most one level a kill).
  */
-export function checkLevelUp(v: Vitals): number {
+export function checkLevelUp(
+  v: Vitals,
+  /** The class code (issue #15): its `hpPerLevel` and `spPerLevel` perks replace the row's. */
+  classCode?: number,
+): number {
   const l = content().balance.levels;
+  const hpPer = classPerk(classCode, "hpPerLevel") ?? l.hpPerLevel;
+  const spPer = classPerk(classCode, "spPerLevel") ?? l.spPerLevel;
   let levels = 0;
   while (v.exp >= v.expNeeded && v.expNeeded > 0) {
     v.exp -= v.expNeeded;
     v.level += 1;
     v.expNeeded = levelCost(v.level, l);
-    v.hpMax += l.hpPerLevel;
-    v.spMax += l.spPerLevel;
+    v.hpMax += hpPer;
+    v.spMax += spPer;
     levels += 1;
   }
   return levels;
@@ -192,12 +199,12 @@ export function checkLevelUp(v: Vitals): number {
  * its HP and SP max), so a character never holds more XP than its level takes. Returns the levels
  * gained; a Classic character's figures never change.
  */
-export function syncLevel(v: Vitals): number {
+export function syncLevel(v: Vitals, classCode?: number): number {
   if (v.level < 1) {
     return 0;
   }
   v.expNeeded = levelCost(v.level);
-  return checkLevelUp(v);
+  return checkLevelUp(v, classCode);
 }
 
 // ---- regen -----------------------------------------------------------------------------

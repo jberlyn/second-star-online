@@ -16,7 +16,7 @@
 import type { ContentListing, ContentRowDetail, ContentRowStatus } from "@secondstaronline/shared";
 
 import { action, noAutofill } from "./action.ts";
-import type { ContentRequests } from "./content-requests.ts";
+import type { ContentAnswer, ContentRequests } from "./content-requests.ts";
 import {
   confirmBox,
   formActions,
@@ -49,6 +49,15 @@ export interface AreaPart {
    * ones and deeds): Remove opens that form, with this label, instead of removing it outright.
    */
   removeVia?: { label: string; run(key: string): void };
+  /**
+   * Removing an entry asks its own question (a class: where its characters go, issue #15) and puts
+   * the removal in the draft itself; null when the operator kept it.
+   */
+  removeWith?: (
+    key: string,
+    host: HTMLElement,
+    requests: ContentRequests,
+  ) => Promise<ContentAnswer | null>;
   /** How an entry is listed, from its key (a class's name by its number); its key when left out. */
   labelOf?: (key: string) => string;
   /** A picture panel shown above an entry's form (a spell's cast effect), saving on its own. */
@@ -449,6 +458,25 @@ function rowEditor(
     }
     if (part.removeVia && row.key !== null) {
       part.removeVia.run(row.key);
+      return;
+    }
+    if (part.removeWith && row.key !== null) {
+      busy = true;
+      buttons();
+      try {
+        const a = await part.removeWith(row.key, box, deps.requests);
+        if (a === null) {
+          busy = false;
+          buttons();
+          return;
+        }
+        answer(a.ok, a.ok ? "" : a.text, a.ok ? a.text : "");
+        if (a.ok) {
+          saved(row.key, false);
+        }
+      } catch (e) {
+        answer(false, (e as Error).message, "");
+      }
       return;
     }
     const section = row.key === null;

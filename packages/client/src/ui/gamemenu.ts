@@ -27,6 +27,8 @@ export interface MenuState {
   can(permission: Permission): boolean;
   /** Primary bound key label for an action (shown right-aligned on menu items), or "". */
   shortcut(action: KeyAction): string;
+  /** The world uses the Class window (issue #15); absent: it does not. */
+  classWindow?(): boolean;
 }
 
 export type Room = "general" | "newPlayer" | "tradingPost" | "guild" | "admin";
@@ -42,6 +44,8 @@ export interface MenuActions {
   controlPanel(): void;
   playerSettings(): void;
   editNewspaper(): void;
+  /** Game ▸ Your Class (issue #15). */
+  openClass?(): void;
   returnToGame(): void;
   assassin(mode: AssassinMode): void;
 }
@@ -74,6 +78,11 @@ export function desktopMenus(state: MenuState, act: MenuActions): Menu[] {
     {
       title: "Game",
       items: [
+        // Your class and the ways out of it (issue #15), in a world that uses classes so.
+        {
+          ...item("Your Class", () => act.openClass?.()),
+          visible: () => play() && state.classWindow?.() === true,
+        },
         inGame("Open Friend's List", act.openFriends, "windowFriends"),
         inGame("Who's Online", act.openWho, "windowWho"),
         inGame("Send Instant Message", act.sendIm),

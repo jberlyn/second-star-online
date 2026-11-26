@@ -6,6 +6,7 @@ import type { SexRow as SexContentRow, StartClassRow } from "@secondstaronline/d
 
 import { content, onContent } from "../../content/store.ts";
 import { skillsFromKeys } from "../core/fighter.ts";
+import { BAG_SLOTS } from "../inventory/inventory.ts";
 import { clampHunger, levelCost } from "./progression.ts";
 
 /** A sex's code, as `classes.json` `creation.sexes` lists it (Classic: 1 Male, 2 Female). */
@@ -227,7 +228,10 @@ export function startingCharacter(c: CreationChoice): StartingCharacter {
     // At most the balance row's `hunger.max` (Classic: both 50,000).
     hunger: clampHunger(other.hunger),
     breakCount: other.breakCount,
-    bag: start.bag.map((l) => ({ item: l.item, qty: l.qty })),
+    // The world's starting bag, then the start class's kit (issue #15), as far as 15 lines go.
+    bag: [...start.bag, ...(startClass(c.classCode)?.kit ?? [])]
+      .slice(0, BAG_SLOTS)
+      .map((l) => ({ item: l.item, qty: l.qty })),
   };
 }
 

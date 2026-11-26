@@ -174,7 +174,7 @@ export function craftIntent(room: Room, p: Player, slot: number, _ctx: CraftCtx)
       facing: (station) => facing(room, p, station),
       keyLock: p.keyLock,
       itemPause: p.itemPause,
-      who: { level: p.char.vitals.level, skills: p.char.skills },
+      who: { level: p.char.vitals.level, skills: p.char.skills, classCode: p.char.classCode },
     },
     slot,
   );

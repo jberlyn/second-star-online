@@ -243,12 +243,19 @@ function trainerOf(d: ContentData, row: RowRef, path: JsonPath): SkillTrainer | 
     }
     case "classes/classes": {
       const c = d.classes.classes.find((x) => String(x.code) === row.key);
+      const name = c?.name ?? row.key;
       return {
         kind: "promotion",
         text:
-          path[1] === "skillGrants"
-            ? `Promotion to ${c?.name ?? row.key}: grants it`
-            : `Promotion to ${c?.name ?? row.key}: needs it`,
+          path[0] === "training"
+            ? `${name}: sets how it trains in the class`
+            : path[0] === "paths"
+              ? path[2] === "grants"
+                ? `A way into ${name}: grants it`
+                : `A way into ${name}: needs it`
+              : path[1] === "skillGrants"
+                ? `Promotion to ${name}: grants it`
+                : `Promotion to ${name}: needs it`,
         page: "content",
         row,
       };
@@ -315,6 +322,13 @@ function clearOf(row: RowRef, path: JsonPath): SkillUse["clear"] {
       // The skill from the row's list (a row left with none goes too).
       return { path: p.slice(0, 4), how: "entry" };
     case "classes/classes":
+      // Issue #15: a class's own training row, a path's requirement or grant, goes.
+      if (p[0] === "training") {
+        return { path: p.slice(0, 3), how: "entry" };
+      }
+      if (p[0] === "paths") {
+        return { path: p.slice(0, p[2] === "grants" ? 5 : 4), how: "entry" };
+      }
       return p[1] === "skillGrants" ? { path: p.slice(0, 3), how: "entry" } : null;
     case "classes/startClasses":
       return { path: p, how: "key" };

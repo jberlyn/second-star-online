@@ -155,6 +155,25 @@ describe("the Gathering page", () => {
     });
   });
 
+  test("a node can need a class: Classes ticked in place of At least (issue #15)", () => {
+    const { p, sent } = page();
+    q<HTMLButtonElement>(p.el, "[data-action='gathering-open-node']").click();
+    const on = q<HTMLInputElement>(p.el, "[data-action='gathering-requires-on']");
+    on.checked = true;
+    on.dispatchEvent(new Event("change"));
+    const needs = q<HTMLSelectElement>(p.el, "[data-action='gathering-requires-needs']");
+    needs.value = "class";
+    needs.dispatchEvent(new Event("change"));
+    expect(q(p.el, "[data-action='gathering-requires-at']")).toBeNull();
+    const ranger = q<HTMLInputElement>(p.el, "[data-action='gathering-requires-class-3']");
+    ranger.checked = true;
+    ranger.dispatchEvent(new Event("change"));
+    q<HTMLButtonElement>(p.el, "[data-action='gathering-save']").click();
+    expect(sent.at(-1)).toMatchObject({
+      data: { node: { requires: { needs: "class", atLeast: 1, classes: [3] } } },
+    });
+  });
+
   test("the preview gives each skill value and tool tier's swings, success and yield", () => {
     const { p } = page();
     q<HTMLButtonElement>(p.el, "[data-action='gathering-open-node']").click();

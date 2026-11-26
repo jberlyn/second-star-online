@@ -90,6 +90,58 @@ export interface ShopRow {
   line: number;
   item: string;
   price: number;
+  /**
+   * A trainer's row for a class with paths (issue #15): what it needs and whether the buyer has it,
+   * shown when the row is picked. Absent for 1.6's promotions, whose trainers say nothing more.
+   */
+  note?: string;
+}
+
+/** The player's Class window (issue #15): open it, or change class from it. */
+export const classOpenSchema = z.strictObject({ t: z.literal("classOpen") });
+export const classPromoteSchema = z.strictObject({
+  t: z.literal("classPromote"),
+  code: z.number().int().min(1).max(1_000_000),
+});
+
+/** One check of a way into a class, as the Class window lists it. */
+export interface ClassCheckView {
+  label: string;
+  met: boolean;
+}
+
+/** A class as the Class window shows it. */
+export interface ClassCardView {
+  code: number;
+  name: string;
+  description: string | null;
+  /** An item picture's name, or null. */
+  icon: string | null;
+  /** What the class gives, a line each ("+2 melee power"). */
+  perks: string[];
+}
+
+/** One way out of your class (issue #15). */
+export interface ClassWayView {
+  to: ClassCardView;
+  /** What the path says about itself, or null. */
+  text: string | null;
+  /** The trainers (NPC names) that teach it; empty for a path taken only from the window. */
+  trainers: string[];
+  /** The window's Change button may take it. */
+  here: boolean;
+  /** Each requirement, the gold and the items, in that order. */
+  checks: ClassCheckView[];
+  /** What it gives, a line each ("Slash raised to 20"). */
+  grants: string[];
+  /** Every check holds. */
+  ready: boolean;
+}
+
+/** The Class window's contents. */
+export interface ClassWindowView {
+  current: ClassCardView;
+  ways: ClassWayView[];
 }
 
 /** One offered line in the trade window. */
@@ -146,4 +198,6 @@ export type EconomyServerMsg =
    */
   | { t: "vault"; items: string[]; open: boolean; closed?: boolean }
   /** The trade window's state for you. */
-  | { t: "trade"; trade: TradeView | null };
+  | { t: "trade"; trade: TradeView | null }
+  /** Opens or refreshes the Class window (issue #15). */
+  | { t: "classWindow"; view: ClassWindowView };

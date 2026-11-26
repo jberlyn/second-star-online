@@ -169,6 +169,24 @@ export const contentRemoveSchema = z.strictObject({
   riders: z.enum(["land", "switch"]).optional(),
 });
 
+/** A class before its removal (issue #15): how many characters are in it. */
+export const contentClassUsageSchema = z.strictObject({
+  t: z.literal("contentClassUsage"),
+  seq,
+  code: z.number().int().min(1).max(1_000_000),
+});
+
+/**
+ * Puts a class's removal in the draft (issue #15): when it is published, every character in it
+ * moves to `moveTo`.
+ */
+export const contentClassRemoveSchema = z.strictObject({
+  t: z.literal("contentClassRemove"),
+  seq,
+  code: z.number().int().min(1).max(1_000_000),
+  moveTo: z.number().int().min(1).max(1_000_000),
+});
+
 /** The references nothing resolves: the Content problems list. */
 export const contentProblemsSchema = z.strictObject({ t: z.literal("contentProblems"), seq });
 
@@ -1004,7 +1022,8 @@ export interface ContentUsageView {
 
 /** A removal in the draft and what publishing it will do. */
 export interface ContentRemovalView {
-  kind: "item" | "monster" | "vehicle";
+  /** A class (issue #15) is named by its name. */
+  kind: "item" | "monster" | "vehicle" | "class";
   key: string;
   lines: string[];
   /** Places it is still used that the publish leaves (references, retired copies). */
@@ -1823,6 +1842,13 @@ export type ContentServerMsg =
   | { t: "contentList"; seq: number; listing: ContentListing | null; error?: string }
   | { t: "contentRow"; seq: number; row: ContentRowDetail | null; error?: string }
   | { t: "contentUsage"; seq: number; usage: ContentUsageView | null; error?: string }
+  /** A class before its removal (issue #15); null with `error` when there is none. */
+  | {
+      t: "contentClassUsage";
+      seq: number;
+      usage: { name: string; holders: number; pending: number | null } | null;
+      error?: string;
+    }
   | {
       t: "contentProblems";
       seq: number;

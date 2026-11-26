@@ -289,6 +289,26 @@ describe("the Items page", () => {
     expect(t.p.changes()).toBe(0);
   });
 
+  test("a requirement can need a class: picking it swaps At least for the classes (issue #15)", () => {
+    const t = opened();
+    t.act<HTMLButtonElement>("items-requires-add").click();
+    const needs = t.act<HTMLSelectElement>("items-requires-needs");
+    expect([...needs.options].map((o) => o.value)).toEqual(["level", "class", "Slash", "Thrust"]);
+    expect(t.act("items-requires-atLeast")).not.toBeNull();
+    needs.value = "class";
+    needs.dispatchEvent(new Event("change"));
+    expect(t.act("items-requires-atLeast")).toBeNull();
+    const ranger = t.act<HTMLInputElement>("items-requires-classes-3");
+    expect(ranger).not.toBeNull();
+    ranger.click();
+    ranger.dispatchEvent(new Event("change"));
+    t.act<HTMLButtonElement>("items-save").click();
+    const c = t.sent.at(-1)?.change as ItemChange;
+    expect((c.data as { requires?: unknown }).requires).toEqual([
+      { on: "equip", needs: "class", atLeast: 1, classes: [3] },
+    ]);
+  });
+
   test("the pack's rules for a group come back into the form", () => {
     const t = opened();
     t.type("items-strength", "40");

@@ -107,6 +107,9 @@ export interface ContentWorldStore {
   setInventoryQty(id: string, qty: number): void;
   /** How many characters have a value of the skill stored under `key` (issue #38). */
   skillHolders(key: string): number;
+  classHolderIds(code: number): string[];
+  setClassOf(id: string, code: number, now: string): void;
+  moveClass(from: number, to: number, now: string): number;
   saveShopFile(npc: string, text: string, ledger: ShopLedger, by: string, now: string): void;
 }
 
@@ -267,6 +270,8 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
       hull: p.hull,
       vehicle: p.vehicle,
       vehicleDirty: p.vehicleDirty,
+      // A class's removal moves its characters (issue #15).
+      classCode: p.char.classCode,
     }));
     // Writing the touched players flushes every pending save; a rollback undoes those writes, so
     // what was pending is pending again.
@@ -320,6 +325,7 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
         s.p.hull = s.hull;
         s.p.vehicle = s.vehicle;
         s.p.vehicleDirty = s.vehicleDirty;
+        s.p.char.classCode = s.classCode;
         s.p.invDirty = true;
         s.p.lookDirty = true;
       }
@@ -948,6 +954,35 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
   }
 
   /**
+   * A class's removal (issue #15): every character in it moves to `moveTo`, online ones in memory
+   * (their stat points follow the class) and the rest in the database, in the publish's
+   * transaction. Each online one is logged as a class change.
+   */
+  function applyClass(a: Extract<WorldAction, { kind: "class" }>): string[] {
+    const code = Number(a.key);
+    let online = 0;
+    const now = deps.now();
+    for (const p of world.players.values()) {
+      if (p.char.classCode === code) {
+        p.char.classCode = a.moveTo;
+        store.setClassOf(p.id, a.moveTo, now);
+        p.vitalsDirty = true;
+        p.invDirty = true;
+        touchedAll.add(p);
+        online += 1;
+        logActivity(world, p, "class", {
+          details: { from: a.name, to: a.moveToName, content: "class removed" },
+        });
+      }
+    }
+    // The rest, as saved (online ones are written above, so none is counted twice).
+    const n = online + store.moveClass(code, a.moveTo, now);
+    return n === 0
+      ? []
+      : [`${n} ${n === 1 ? "character" : "characters"} moved from ${a.name} to ${a.moveToName}`];
+  }
+
+  /**
    * A vehicle's removal (issue #44): riders land where they are (on foot, the vehicle gone) and
    * parked ones become their deed where they stand, or both switch to another vehicle. Each is
    * logged as an admin change, so the item reconciliation (issue #35) sees no unlogged difference.
@@ -1331,6 +1366,15 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
     skillHolders(key: string) {
       return store.skillHolders(key);
     },
+    classHolders(code: number) {
+      // Online players by memory, the rest as saved.
+      const online = [...world.players.values()];
+      const ids = new Set(online.map((p) => p.id));
+      return (
+        online.filter((p) => p.char.classCode === code).length +
+        store.classHolderIds(code).filter((id) => !ids.has(id)).length
+      );
+    },
     begin,
     tell(out) {
       if (undoLast) {
@@ -1351,7 +1395,9 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
             ? applyItem(a, actor, publishId)
             : a.kind === "vehicle"
               ? applyVehicle(a, actor, publishId)
-              : applyMonster(a)),
+              : a.kind === "class"
+                ? applyClass(a)
+                : applyMonster(a)),
         );
       }
       // Written with the publish, so a crash before the next save cannot leave the new content

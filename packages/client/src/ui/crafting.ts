@@ -37,7 +37,7 @@ export const CRAFTING_SIZE = { w: 420, h: 330 } as const;
 export const MAKE_ALL = 10_000;
 
 /** An item's bag picture, drawn at its own size (empty when the item has no art). */
-function picture(a: Assets, item: string, cls: string): HTMLCanvasElement {
+export function picture(a: Assets, item: string, cls: string): HTMLCanvasElement {
   const c = document.createElement("canvas");
   c.className = cls;
   const name = bagPicture(item);

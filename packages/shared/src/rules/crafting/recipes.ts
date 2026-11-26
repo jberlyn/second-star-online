@@ -11,6 +11,7 @@ import type { Recipe, RecipeStation } from "@secondstaronline/data";
 import { content } from "../../content/store.ts";
 import { skillDisplay, skillValue } from "../core/fighter.ts";
 import { lingoEq, type Rng } from "../core/lingo.ts";
+import { classListWords } from "../core/requirements.ts";
 import { type AddResult, type Bag, invAdd } from "../inventory/inventory.ts";
 import { masterworkChance, rollMasterwork } from "./masterwork.ts";
 import { lineAt, oddsAt, rollChance } from "./odds.ts";
@@ -75,6 +76,16 @@ export interface RecipeCrafter {
   skills: readonly number[];
   /** The recipes the crafter has learned, by name, lower case. */
   known: ReadonlySet<string>;
+  /** The crafter's class (issue #15), for a recipe only some classes may make. */
+  classCode?: number;
+}
+
+/** The crafter's class may make the recipe (issue #15): a recipe with no `classes`, any. */
+export function recipeForClass(recipe: Recipe, c: RecipeCrafter): boolean {
+  return (
+    recipe.classes === undefined ||
+    (c.classCode !== undefined && recipe.classes.includes(c.classCode))
+  );
 }
 
 /** How many of `item` the bag holds, over every line with exactly that name. */
@@ -146,6 +157,9 @@ export type RecipeState = "ready" | "missing" | "tool" | "level" | "unlearned";
 
 /** The first thing that stops a crafter making a recipe now, or "ready". */
 export function recipeState(recipe: Recipe, station: RecipeStation, c: RecipeCrafter): RecipeState {
+  if (!recipeForClass(recipe, c)) {
+    return "unlearned";
+  }
   if (recipe.book !== undefined && !c.known.has(recipe.name.toLowerCase())) {
     return "unlearned";
   }
@@ -179,6 +193,9 @@ export function recipeRefusal(
   station: RecipeStation,
   c: RecipeCrafter,
 ): string | null {
+  if (!recipeForClass(recipe, c)) {
+    return `Only ${classListWords(recipe.classes ?? [])} can make this.`;
+  }
   switch (recipeState(recipe, station, c)) {
     case "ready":
       return null;
@@ -247,6 +264,10 @@ export function stationRows(station: RecipeStation, c: RecipeCrafter): RecipeRow
   const tier = toolTier(station, c);
   const out: RecipeRow[] = [];
   for (const r of stationRecipes(station)) {
+    // A recipe for other classes is never listed (issue #15).
+    if (!recipeForClass(r, c)) {
+      continue;
+    }
     const state = recipeState(r, station, c);
     const hide = (r.aboveLevel ?? station.aboveLevel) === "hide";
     if (hide && (state === "level" || state === "unlearned")) {

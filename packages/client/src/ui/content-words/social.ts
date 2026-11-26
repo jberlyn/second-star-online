@@ -454,10 +454,25 @@ export const socialWords: WordBook = {
   "bios.firstTitle": { label: "Title for beginners", help: "Before any title below applies." },
   "bios.titles": {
     label: "Titles",
-    help: "A title applies when every skill test holds; the last one that applies wins.",
+    help: "A title applies when every skill test holds (and, with classes listed, the character is in one); the last one that applies wins.",
     noun: "title",
   },
   "bios.titles.[].tests": { label: "Skills needed", noun: "skill" },
+  "bios.titles.[].classes": {
+    label: "Only for classes",
+    help: "Class numbers: the title applies only to characters in one of them. Leave off for any class.",
+    noun: "class",
+    names: "class",
+  },
+  "bios.classLine": {
+    label: "The Class line shows",
+    help: "1.6 showed a title worked out from skills, never the class itself.",
+    choices: {
+      title: "The title (1.6)",
+      class: "The character's class",
+      both: "Both: class, then title",
+    },
+  },
   "bios.titles.[].tests.[].over": { label: "Above" },
   "bios.titles.[].title": { label: "Title" },
   "bios.score": { label: "Score" },

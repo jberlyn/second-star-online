@@ -3479,6 +3479,15 @@ body {
   font-weight: bold;
   padding-right: 1px;
 }
+/* A trainer's class with paths (issue #15): what it needs, under its name. */
+.shop-note {
+  grid-column: 1 / -1;
+  padding: 0 2px 2px 6px;
+  font-size: 10px;
+  line-height: 12px;
+  white-space: normal;
+  opacity: 0.85;
+}
 .shop-count {
   color: rgb(221, 221, 221);
   border-top: 0;
@@ -5176,4 +5185,48 @@ body {
 .crafting-lock {
   margin-right: 3px;
   vertical-align: -1px;
+}
+/* The Classes tab's preview (ui/class-preview.ts, issue #15). */
+.class-preview-list {
+  margin: 0 0 8px;
+  padding-left: 18px;
+}
+.class-tree {
+  margin: 0;
+  padding-left: 14px;
+}
+.class-tree ul {
+  padding-left: 16px;
+}
+.class-tree-marked {
+  font-weight: bold;
+  color: var(--ui-purple-pale);
+}
+/* The Class window (ui/class-window.ts, issue #15): the crafting window's look. */
+.class-row.class-ready .crafting-row-level {
+  color: #9fe09f;
+}
+.class-row.class-locked {
+  color: var(--ui-text-muted);
+}
+.class-description {
+  margin: 0 0 6px;
+  color: var(--ui-text-soft);
+  line-height: 1.35;
+}
+.class-description[hidden] {
+  display: none;
+}
+.class-section .crafting-needs li {
+  min-height: 16px;
+}
+.class-checks li.have {
+  color: #9fe09f;
+}
+.class-checks li > span.class-mark {
+  flex: 0 0 14px;
+  font-weight: bold;
+}
+.class-checks li > span:last-of-type {
+  flex: 1;
 }

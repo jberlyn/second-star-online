@@ -28,7 +28,8 @@ import type {
 import { content, onContent } from "../../content/store.ts";
 import { type Faction, SKILL_KEYS, skillDisplay, skillValue } from "../core/fighter.ts";
 import type { Rng } from "../core/lingo.ts";
-import { factionPerk } from "../social/factions.ts";
+import { factionPerk, ownFactionPerk } from "../social/factions.ts";
+import { classSkillCap, classTrainPercent, scaledRoll, scaledXp } from "./classes.ts";
 
 /** No skill rises past this. */
 export const SKILL_MAX = 100;
@@ -45,6 +46,8 @@ export interface Trainee {
   /** Each skill's running XP total, by skill index; read and raised for `xp`-model skills. */
   skillXp?: number[];
   faction: Faction;
+  /** The class code (issue #15): its skill caps and training speed. Absent: no class's. */
+  classCode?: number;
 }
 
 /** What a source passes besides the skill: values formulas read, and amounts that replace them. */
@@ -404,13 +407,20 @@ export function xpByKey(
   skills: readonly number[],
   xp: readonly number[] | undefined,
   faction: Faction,
+  /** The class code (issue #15): its caps. */
+  classCode?: number,
 ): Record<string, number> | null {
   let out: Record<string, number> | null = null;
   RESOLVED.forEach((r, i) => {
     const key = SKILL_KEYS[i];
     if (r.model === "xp" && key !== undefined) {
       out ??= {};
-      out[key] = heldXp(xp?.[i] ?? 0, skills[i] ?? 0, r.totals, capOf(r, faction));
+      out[key] = heldXp(
+        xp?.[i] ?? 0,
+        skills[i] ?? 0,
+        r.totals,
+        capOf(r, faction, undefined, classSkillCap(classCode, i)),
+      );
     }
   });
   return out;
@@ -442,18 +452,21 @@ export function formatXp(n: number): string {
 
 // ---- training ----------------------------------------------------------------------------
 
-/** A cap's value for a faction. */
-export function capValue(cap: Cap | undefined, f: Faction): number {
-  if (cap === undefined) {
-    return SKILL_MAX;
+/**
+ * A cap's value for a faction, with the class's cap for the skill (issue #15). Without a class cap,
+ * as 1.6: `faction` and `mage` read the faction perks (the world default outside a faction). With
+ * one, the class sets the ceiling and a faction can only lower it: a faction cap counts only when
+ * the character's own faction sets that perk, and a fixed cap still holds.
+ */
+export function capValue(cap: Cap | undefined, f: Faction, classCap?: number): number {
+  if (cap === "faction" || cap === "mage") {
+    const kind = cap === "faction" ? "skillCap" : "mageCap";
+    if (classCap === undefined) {
+      return factionPerk(f, kind);
+    }
+    return Math.min(classCap, ownFactionPerk(f, kind) ?? SKILL_MAX);
   }
-  if (cap === "faction") {
-    return factionPerk(f, "skillCap");
-  }
-  if (cap === "mage") {
-    return factionPerk(f, "mageCap");
-  }
-  return cap;
+  return Math.min(cap ?? SKILL_MAX, classCap ?? SKILL_MAX);
 }
 
 /**
@@ -462,12 +475,23 @@ export function capValue(cap: Cap | undefined, f: Faction): number {
  */
 export function levelCap(t: Trainee, i: number): number {
   const r = RESOLVED[i];
-  return r?.model === "xp" ? capOf(r, t.faction) : SKILL_MAX;
+  const classCap = classSkillCap(t.classCode, i);
+  return r?.model === "xp"
+    ? capOf(r, t.faction, undefined, classCap)
+    : Math.min(SKILL_MAX, classCap ?? SKILL_MAX);
 }
 
 /** An `xp` skill's level cap: 100, its curve's, and its own (or `over`, a source's own cap). */
-function capOf(r: Extract<Resolved, { model: "xp" }>, f: Faction, over?: number): number {
-  return Math.min(SKILL_MAX, r.curve.cap ?? SKILL_MAX, over ?? capValue(r.cap, f));
+function capOf(
+  r: Extract<Resolved, { model: "xp" }>,
+  f: Faction,
+  over?: number,
+  /** The class's cap for the skill (issue #15). */
+  classCap?: number,
+): number {
+  const own =
+    over === undefined ? capValue(r.cap, f, classCap) : Math.min(over, classCap ?? SKILL_MAX);
+  return Math.min(SKILL_MAX, r.curve.cap ?? SKILL_MAX, own);
 }
 
 /**
@@ -479,9 +503,18 @@ export function normaliseXp(
   skills: readonly number[],
   xp: readonly number[],
   faction: Faction,
+  /** The class code (issue #15): its caps. */
+  classCode?: number,
 ): number[] {
   return RESOLVED.map((r, i) =>
-    r.model === "xp" ? heldXp(xp[i] ?? 0, skills[i] ?? 0, r.totals, capOf(r, faction)) : 0,
+    r.model === "xp"
+      ? heldXp(
+          xp[i] ?? 0,
+          skills[i] ?? 0,
+          r.totals,
+          capOf(r, faction, undefined, classSkillCap(classCode, i)),
+        )
+      : 0,
   );
 }
 
@@ -578,13 +611,24 @@ function trainChance(
   const roll = s.roll;
   const v = t.skills[i] ?? 0;
   // No skill rises past 100, whatever a cap says.
-  const cap = Math.min(SKILL_MAX, extra.cap ?? capValue(s.cap, t.faction));
+  // A class's cap and speed (issue #15) join the source's: Classic's classes set none.
+  const classCap = classSkillCap(t.classCode, i);
+  const cap = Math.min(
+    SKILL_MAX,
+    extra.cap === undefined
+      ? capValue(s.cap, t.faction, classCap)
+      : Math.min(extra.cap, classCap ?? SKILL_MAX),
+  );
   if (!chanceRolls(source, s, v, cap)) {
+    return 0;
+  }
+  const percent = classTrainPercent(t.classCode, i);
+  if (percent <= 0) {
     return 0;
   }
   const reading: Reading = { t, skill: v, tier: extra.tier ?? 0, damage: extra.damage ?? 0 };
   // The roll comes first; what 1.6 tested after it is tested after it.
-  const hit = rng.random(evalFormula(roll, reading, rng)) === 1;
+  const hit = rng.random(scaledRoll(evalFormula(roll, reading, rng), percent)) === 1;
   if (!hit || !chanceCounts(source, s, v, cap, extra.monsterCap, requirementMet(t, s))) {
     return 0;
   }
@@ -606,7 +650,7 @@ export function addXp(
   if (r?.model !== "xp" || !t.skillXp) {
     return 0;
   }
-  const cap = Math.min(upTo, capOf(r, t.faction, over));
+  const cap = Math.min(upTo, capOf(r, t.faction, over, classSkillCap(t.classCode, i)));
   let level = t.skills[i] ?? 0;
   const gain = Math.trunc(amount);
   if (level >= cap || !(gain > 0)) {
@@ -648,7 +692,7 @@ function trainXp(
     return 0;
   }
   const level = t.skills[i] ?? 0;
-  if (level >= capOf(r, t.faction, extra.cap)) {
+  if (level >= capOf(r, t.faction, extra.cap, classSkillCap(t.classCode, i))) {
     return 0;
   }
   let amount = extra.xp;
@@ -659,6 +703,8 @@ function trainXp(
     const reading: Reading = { t, skill: level, tier: extra.tier ?? 0, damage: extra.damage ?? 0 };
     amount = evalFormula(s.xp, reading, rng);
   }
+  // A class's speed (issue #15) scales what an action gives.
+  amount = scaledXp(amount, classTrainPercent(t.classCode, i));
   return addXp(t, i, amount, SKILL_MAX, extra.cap);
 }
 

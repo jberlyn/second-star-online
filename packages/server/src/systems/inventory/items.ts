@@ -222,6 +222,7 @@ export function useIntent(ctx: ItemCtx, room: Room, p: Player, slot: number): Ou
   const needs = itemRequirementRefusal(line.item, "use", {
     level: p.char.vitals.level,
     skills: p.char.skills,
+    classCode: p.char.classCode,
   });
   if (needs !== null) {
     io.tell(p, needs);

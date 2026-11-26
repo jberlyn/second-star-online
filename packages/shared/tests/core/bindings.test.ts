@@ -234,6 +234,7 @@ describe("the special bodies", () => {
           giveBio({
             name: "Ann",
             sex: 1,
+            classCode: 1,
             level: 1,
             profile: "",
             medals: "",

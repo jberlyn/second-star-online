@@ -32,15 +32,38 @@ export let BIO_TEXT: ReturnType<typeof bioTextOf>;
 /** Every character receives this last name at creation. */
 export let LAST_NAME: typeof B.lastName;
 
-/** The bio's title: "Adventurer", then each row in order whose tests all hold. */
-export function bioTitle(skills: readonly number[]): string {
+/**
+ * The bio's title: "Adventurer", then each row in order whose tests all hold (and, for a row with
+ * `classes`, whose classes hold the character's: issue #15).
+ */
+export function bioTitle(skills: readonly number[], classCode?: number): string {
   let title = B.firstTitle;
   for (const row of B.titles) {
-    if (row.tests.every((t) => skillValue(skills, t.skill) > t.over)) {
+    if (
+      row.tests.every((t) => skillValue(skills, t.skill) > t.over) &&
+      (row.classes === undefined || (classCode !== undefined && row.classes.includes(classCode)))
+    ) {
       title = row.title;
     }
   }
   return title;
+}
+
+/**
+ * What the Bio's "Class:" line shows (issue #15), by the world's `classLine`: the title (1.6), the
+ * class's name, or both ("Barbarian, Grunt"). A class the world no longer has shows the title.
+ */
+export function bioClassLine(skills: readonly number[], classCode: number): string {
+  const title = bioTitle(skills, classCode);
+  const cls = content().classes.classes.find((c) => c.code === classCode)?.name;
+  switch (B.classLine ?? "title") {
+    case "class":
+      return cls ?? title;
+    case "both":
+      return cls === undefined || lingoEq(cls, title) ? title : `${cls}, ${title}`;
+    default:
+      return title;
+  }
 }
 
 /**
@@ -73,6 +96,8 @@ export interface BioSource {
   /** The held medals, `id-id-…`, from the skills (`medalField`). */
   medals: string;
   skills: readonly number[];
+  /** The class code (issue #15): the "Class:" line and class titles. */
+  classCode: number;
   hpMax: number;
   spMax: number;
   /** The guild and whether the target leads it (the guild record contains `*<me>*`). */
@@ -111,7 +136,7 @@ export function giveBio(s: BioSource): BioItems {
   const faction = factionByKey(s.faction)?.bio ?? "";
   return [
     `${s.name} ${LAST_NAME}`,
-    bioTitle(s.skills),
+    bioClassLine(s.skills, s.classCode),
     String(s.sex),
     String(s.level),
     s.profile,

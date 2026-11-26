@@ -14,7 +14,7 @@ import { z } from "zod";
 
 import { tierFields } from "./attpower.ts";
 import { spellAmountOverrideSchema } from "./balance.ts";
-import { patternRow } from "./common.ts";
+import { patternRow, requirementSchema } from "./common.ts";
 
 const int = z.number().int();
 
@@ -122,6 +122,11 @@ export const spellSchema = z.strictObject({
    * effect its runs hit as, for hits from this spell only. Absent = the effect's amounts.
    */
   amount: spellAmountOverrideSchema.optional(),
+  /**
+   * What casting it needs (issue #15): a skill, the level or a class, each refused with "You need
+   * … to cast this." (or the row's `text`). Absent: nothing beyond 1.6's checks.
+   */
+  requires: z.array(requirementSchema).max(10).optional(),
   /** Create Food's choices, one taken at random. Read only by the Create Food effect. */
   creates: z.array(spellCreatesSchema).min(1).optional(),
   fx: z.array(spellFxSchema),

@@ -15,6 +15,8 @@
  */
 import { content, hasContent } from "@secondstaronline/shared";
 
+import { classPreview } from "./class-preview.ts";
+import { removeClass } from "./class-removal.ts";
 import type { AreaPart, AreaTab, RecordPanelLike } from "./content-area-page.ts";
 import { masterworkPreview } from "./masterwork-preview.ts";
 import { recipePreview } from "./recipe-preview.ts";
@@ -190,7 +192,12 @@ export const CLASS_TABS: AreaTab[] = [
     kind: "records",
     label: "Classes",
     help: "The classes characters belong to and are promoted to.",
-    part: p("classes", "classes", "Classes", "", { noun: "class", labelOf: className }),
+    part: p("classes", "classes", "Classes", "", {
+      noun: "class",
+      labelOf: className,
+      preview: classPreview,
+      removeWith: removeClass,
+    }),
   },
   {
     kind: "records",

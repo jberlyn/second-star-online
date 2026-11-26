@@ -119,6 +119,11 @@ export const recipeSchema = z
     tierBonus: z.number().min(0).max(100).optional(),
     /** Percent quicker for each tier the tool is above the recipe's lowest. */
     tierSpeed: z.number().min(0).max(90).optional(),
+    /**
+     * The only classes (by code) that may make it (issue #15): the window leaves it out for every
+     * other class. Left out: any class.
+     */
+    classes: z.array(z.number().int().min(1)).min(1).max(100).optional(),
     /** The skill it needs and trains. */
     skill: z.string().min(1),
     /** The skill level it needs. */

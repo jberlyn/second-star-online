@@ -40,6 +40,7 @@ import {
   isGoldName,
   isUniqueContainer,
 } from "../inventory/inventory.ts";
+import { classPerk } from "../progression/classes.ts";
 import {
   headsOf,
   STAT_MAX,
@@ -343,8 +344,11 @@ export function deriveEdit(
   if (after.level !== current.level && Number.isInteger(after.level)) {
     const d = after.level - current.level;
     after.expNeeded = expNeededAt(after.level, levels);
-    after.hpMax = Math.max(1, current.hpMax + d * levels.hpPerLevel);
-    after.spMax = Math.max(0, current.spMax + d * levels.spPerLevel);
+    // The class's per-level perks (issue #15) replace the row's, as a level gained in play does.
+    const hpPer = classPerk(current.classCode, "hpPerLevel") ?? levels.hpPerLevel;
+    const spPer = classPerk(current.classCode, "spPerLevel") ?? levels.spPerLevel;
+    after.hpMax = Math.max(1, current.hpMax + d * hpPer);
+    after.spMax = Math.max(0, current.spMax + d * spPer);
     if (changes.exp === undefined && after.expNeeded > 0) {
       after.exp = Math.min(after.exp, after.expNeeded - 1);
     }

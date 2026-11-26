@@ -43,6 +43,8 @@ function fake(): Fake {
   return {
     drafts,
     rows,
+    classUsage: async () => ({ name: "", holders: 0, pending: null }),
+    removeClass: async () => ok,
     list: async (dataset, part): Promise<ContentListing> => ({
       dataset,
       part,

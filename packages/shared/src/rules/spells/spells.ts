@@ -39,6 +39,7 @@ import { firstMatch, lastMatch, ruleMatches } from "../core/patterns.ts";
 import { crystalColour } from "../inventory/inventory.ts";
 import { flagHasEffect } from "../monsters/flags.ts";
 import type { Facing } from "../movement/movement.ts";
+import { classPerkBonus } from "../progression/classes.ts";
 import {
   addXp,
   advancedLines,
@@ -207,6 +208,8 @@ export interface Caster {
   faction: Faction;
   /** The character level, for a power row that reads `level`. Absent: 0. */
   level?: number;
+  /** The class code (issue #15): its `spellPower` perk. */
+  classCode?: number;
 }
 
 /** What a power row's condition reads. */
@@ -224,14 +227,14 @@ const NO_DICE: Rng = {
 
 /**
  * The base power: 1, then `spells.json` `power.base` rows (Classic: +1 for each tier of Magery
- * over 10, 20 … 90), the caster's faction perk `spellPower` and their worn spell gear.
+ * over 10, 20 … 90), the caster's faction and class perk `spellPower` and their worn spell gear.
  */
 export function basePower(c: Caster, rng: Rng = NO_DICE): number {
   let p = 1;
   for (const t of content().spells.power.base) {
     p = applyTierRow(p, t, reader(c), rng);
   }
-  p += factionPerk(c.faction, "spellPower");
+  p += factionPerk(c.faction, "spellPower") + classPerkBonus(c.classCode, "spellPower");
   p += gearBonus(c.equip, "spell");
   return p;
 }

@@ -137,6 +137,7 @@ describe("buddies", () => {
 const base: BioSource = {
   name: "Bob",
   sex: 1,
+  classCode: 1,
   level: 7,
   profile: "Hello there",
   medals: "39-31-",

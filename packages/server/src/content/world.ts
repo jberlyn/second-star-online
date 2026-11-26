@@ -84,6 +84,15 @@ export type WorldAction =
       replacement: string | null;
       /** The deed a parked one becomes (the first that built it), or null: it goes. */
       deed: string | null;
+    }
+  | {
+      /** A class removed (issue #15): the characters in it move to `moveTo`. */
+      kind: "class";
+      /** The class's code, as text (the row's key). */
+      key: string;
+      name: string;
+      moveTo: number;
+      moveToName: string;
     };
 
 /** An operator's removal of an item, with its cleanup. */
@@ -135,6 +144,8 @@ export interface ContentWorld {
    * that cannot say counts none.
    */
   skillHolders?(key: string): number;
+  /** How many characters are in class `code` (issue #15). Optional: a world that cannot say counts none. */
+  classHolders?(code: number): number;
   /**
    * A publish starts (before its transaction): memory is noted so a rollback can put it back, and
    * what the game tells clients from here, the new store included, is held until `commit` (or

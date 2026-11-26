@@ -543,7 +543,7 @@ function smash(
     ev.lines.push(advancedText(s));
   }
   // One line for each level gained.
-  for (let n = checkLevelUp(v); n > 0; n--) {
+  for (let n = checkLevelUp(v, p.char.classCode); n > 0; n--) {
     ev.lines.push(LEVEL_UP_TEXT);
   }
 }

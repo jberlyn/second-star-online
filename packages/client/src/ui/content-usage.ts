@@ -556,11 +556,14 @@ export function removalHeadline(removals: readonly ContentRemovalView[]): string
   }
   const items = removals.filter((r) => r.kind === "item").length;
   const vehicles = removals.filter((r) => r.kind === "vehicle").length;
-  const monsters = removals.length - items - vehicles;
+  // A class's removal moves the characters in it (issue #15).
+  const classes = removals.filter((r) => r.kind === "class").length;
+  const monsters = removals.length - items - vehicles - classes;
   const what = [
     items > 0 ? plural(items, "item") : "",
     monsters > 0 ? plural(monsters, "monster") : "",
     vehicles > 0 ? plural(vehicles, "vehicle") : "",
+    classes > 0 ? plural(classes, "class", "classes") : "",
   ]
     .filter(Boolean)
     .join(" and ");
@@ -585,7 +588,7 @@ export function drawRemovals(removals: readonly ContentRemovalView[]): HTMLEleme
   for (const r of removals) {
     const h = document.createElement("p");
     h.className = "content-removals-entry";
-    h.textContent = `${r.kind === "item" ? "Item" : r.kind === "vehicle" ? "Vehicle" : "Monster"} ${r.key}:`;
+    h.textContent = `${r.kind === "item" ? "Item" : r.kind === "vehicle" ? "Vehicle" : r.kind === "class" ? "Class" : "Monster"} ${r.key}:`;
     const ul = document.createElement("ul");
     ul.className = "content-usage-list";
     for (const line of r.lines.length > 0 ? r.lines : ["Not used anywhere in the world."]) {

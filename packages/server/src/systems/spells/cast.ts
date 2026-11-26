@@ -16,6 +16,7 @@ import {
   crystalsFor,
   directional,
   fireballForm,
+  firstUnmet,
   fxForEffect,
   fxRun,
   groundLayer,
@@ -35,6 +36,7 @@ import {
   rollFlat,
   skillValue,
   spCost,
+  spellByName,
   spellPower,
   spriteRect,
   summonFor,
@@ -125,6 +127,16 @@ export function castIntent(
   if (sp === 0) {
     return res;
   }
+  // What the spell needs of its caster (issue #15): a skill, the level or a class.
+  const needs = firstUnmet(
+    spellByName(spell)?.requires ?? [],
+    { level: p.char.vitals.level, skills: p.char.skills, classCode: p.char.classCode },
+    "cast",
+  );
+  if (needs !== null) {
+    res.out.push(tell(p, needs));
+    return res;
+  }
   // A Portal with nowhere to send anyone is refused before anything is spent (a bug fixed: 1.6's
   // empty warp sent its users to the start point).
   if (lingoEq(effect, "Portal") && ctx.portalOpen && !ctx.portalOpen()) {
@@ -179,6 +191,7 @@ export function castIntent(
       equip: p.char.equip,
       faction: p.char.faction,
       level: p.char.vitals.level,
+      classCode: p.char.classCode,
     },
     ctx.rng,
   );

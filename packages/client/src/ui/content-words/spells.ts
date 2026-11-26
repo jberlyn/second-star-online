@@ -73,6 +73,27 @@ export const spellsWords: WordBook = {
     help: "What the spellbook says about the spell.",
     long: true,
   },
+  "spells.requires": {
+    label: "Needs to cast",
+    help: "A skill, the level or a class the caster must have. Leave empty for 1.6's checks alone.",
+    noun: "requirement",
+  },
+  "spells.requires.[].needs": {
+    label: "Skill",
+    help: 'A skill, "level" for the character level, or "class" for a class (pick the classes below).',
+    names: "skill",
+  },
+  "spells.requires.[].atLeast": { label: "At least" },
+  "spells.requires.[].classes": {
+    label: "Classes",
+    help: 'For "class": the class numbers that may cast it.',
+    noun: "class",
+    names: "class",
+  },
+  "spells.requires.[].text": {
+    label: "Refusal message",
+    help: "Said instead of “You need <skill> <number> to cast this.”",
+  },
   "spells.summon": {
     label: "Summons a monster",
     help: "The monster this spell calls up.",

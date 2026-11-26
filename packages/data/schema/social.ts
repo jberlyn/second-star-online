@@ -255,8 +255,22 @@ export const biosSchema = z.strictObject({
     female: guildText.optional(),
   }),
   firstTitle: z.string(),
-  /** In script order; a row applies when every test holds; the last one that applies wins. */
-  titles: z.array(z.strictObject({ tests: z.array(skillTest).min(1), title: z.string() })),
+  /**
+   * In script order; a row applies when every test holds (and, with `classes`, the character is in
+   * one of them, by code: issue #15); the last one that applies wins.
+   */
+  titles: z.array(
+    z.strictObject({
+      tests: z.array(skillTest),
+      classes: z.array(z.number().int().min(1)).min(1).max(100).optional(),
+      title: z.string(),
+    }),
+  ),
+  /**
+   * What the Bio's "Class:" line shows (issue #15): the title worked out from `titles` (1.6, the
+   * default), the character's class, or both ("Barbarian, Grunt").
+   */
+  classLine: z.enum(["title", "class", "both"]).optional(),
   /** The skills (and `HPmax`, `SPmax`) a bio's score adds up. */
   score: z.strictObject({ counted: z.array(z.string()) }),
   /** Every character's last name: castLib 2 member 6's stored text, never placed or written. */

@@ -205,12 +205,16 @@ export interface ConfirmOptions {
   list?: readonly string[];
   /** A checkbox under the question (off unless `checked`), with a hint shown under it. */
   check?: { action: string; label: string; checked?: boolean; hint?: string };
+  /** A drop-down under the question: its choices as [value, text], the first picked. */
+  select?: { action: string; label: string; options: readonly (readonly [string, string])[] };
 }
 
-/** What `confirmChoice` answers: the button, and the checkbox's state when it has one. */
+/** What `confirmChoice` answers: the button, the checkbox's state and the drop-down's value. */
 export interface ConfirmChoice {
   yes: boolean;
   checked: boolean;
+  /** The drop-down's value, when it has one. */
+  selected?: string;
 }
 
 /**
@@ -277,12 +281,32 @@ function openConfirm(
       checkRow.append(hint);
     }
   }
+  let select: HTMLSelectElement | null = null;
+  let selectRow: HTMLElement | null = null;
+  if (opts.select) {
+    select = action(document.createElement("select"), opts.select.action);
+    for (const [value, text] of opts.select.options) {
+      const o = document.createElement("option");
+      o.value = value;
+      o.textContent = text;
+      select.append(o);
+    }
+    const label = document.createElement("label");
+    label.className = "control-panel-confirm-check";
+    label.append(`${opts.select.label} `, select);
+    selectRow = document.createElement("div");
+    selectRow.append(label);
+  }
   const done = (yes: boolean) => {
     shade.remove();
     if (before instanceof HTMLElement && before.isConnected) {
       before.focus();
     }
-    resolve({ yes, checked: check?.checked === true });
+    resolve({
+      yes,
+      checked: check?.checked === true,
+      ...(select ? { selected: select.value } : {}),
+    });
   };
   const stay = panelButton("control-panel-confirm-cancel", opts.cancel, () => done(false));
   const go = panelButton(
@@ -294,7 +318,13 @@ function openConfirm(
   const buttons = document.createElement("div");
   buttons.className = "control-panel-confirm-buttons";
   buttons.append(stay, go);
-  box.append(p, ...(list ? [list] : []), ...(checkRow ? [checkRow] : []), buttons);
+  box.append(
+    p,
+    ...(list ? [list] : []),
+    ...(checkRow ? [checkRow] : []),
+    ...(selectRow ? [selectRow] : []),
+    buttons,
+  );
   box.addEventListener("keydown", (e) => {
     trapTab(box, e);
     if (e.key === "Escape") {

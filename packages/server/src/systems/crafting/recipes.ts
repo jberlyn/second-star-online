@@ -90,6 +90,7 @@ function crafterOf(p: Player): RecipeCrafter {
     held: [p.char.equip.weapon, p.char.equip.offHand],
     skills: p.char.skills,
     known: p.recipe.known,
+    classCode: p.char.classCode,
   };
 }
 

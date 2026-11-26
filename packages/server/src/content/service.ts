@@ -362,7 +362,7 @@ export interface ContentUsage {
 
 /** A removal waiting in the draft, as the pre-publish check describes it. */
 export interface RemovalSummary {
-  kind: EntryKind;
+  kind: EntryKind | "class";
   key: string;
   /** What the publish will do, a line each. */
   lines: string[];
@@ -378,13 +378,15 @@ export interface ContentProblems {
   world: ContentProblem[];
 }
 
-/** The row an item, a monster or a vehicle is. */
-export const entryRef = (kind: EntryKind, key: string): RowRef =>
+/** The row an item, a monster, a vehicle or a class (issue #15, by its code) is. */
+export const entryRef = (kind: EntryKind | "class", key: string): RowRef =>
   kind === "item"
     ? { dataset: "items", part: "items", key }
     : kind === "monster"
       ? { dataset: "monsters", part: "monsters", key }
-      : { dataset: "houses", part: "vehicles", key };
+      : kind === "class"
+        ? { dataset: "classes", part: "classes", key }
+        : { dataset: "houses", part: "vehicles", key };
 
 const npcFileRef = (key: string): RowRef => ({ dataset: "npcFiles", part: "files", key });
 
@@ -451,6 +453,9 @@ export function actionLines(a: WorldAction, places: readonly UsagePlace[]): stri
     if (copies.length === 0 && a.copies === "retire") {
       out.push("Nobody holds a copy, so it is removed rather than retired");
     }
+  } else if (a.kind === "class") {
+    // How many are in it is counted when the removal is drafted and published (issue #15).
+    out.push(`Characters in ${a.name} move to ${a.moveToName}`);
   } else if (a.kind === "vehicle") {
     for (const p of of(["aboard"])) {
       out.push(
@@ -625,6 +630,11 @@ export interface ContentServiceOptions {
    */
   vehiclesInUse?: () => ReadonlyMap<string, { aboard: number; parked: number }>;
   /**
+   * How many characters are in each class, by code (issue #15): a write that takes out a class
+   * characters are in is refused unless its removal (which moves them) is waiting.
+   */
+  classesInUse?: () => ReadonlyMap<number, number>;
+  /**
    * The uploaded art's library (issue #29): checks the `art` rows at publish and builds their hit
    * rects into the store. Without it (tests of the store alone) art rows are taken as they are.
    */
@@ -734,6 +744,7 @@ export class ContentService {
   private readonly log: (line: string) => void;
   private readonly points: () => ContentProblem[];
   private readonly vehiclesInUse: () => ReadonlyMap<string, { aboard: number; parked: number }>;
+  private readonly classesInUse: () => ReadonlyMap<number, number>;
   private readonly art: ArtLibrary | null;
   private readonly mayUpload: (accountId: string) => boolean;
   /** The sprites and sounds the installed packs' own atlases and art rows supply. */
@@ -789,6 +800,7 @@ export class ContentService {
     this.log = opts.log ?? (() => {});
     this.points = opts.points ?? (() => []);
     this.vehiclesInUse = opts.vehiclesInUse ?? (() => new Map());
+    this.classesInUse = opts.classesInUse ?? (() => new Map());
     this.art = opts.art ?? null;
     this.mayUpload = opts.mayUpload ?? (() => true);
     this.releasePacks = opts.releasePacks;
@@ -4446,6 +4458,8 @@ export class ContentService {
       deleteDraftAction(this.db, "item", ref.key);
     } else if (ref.dataset === "monsters" && ref.part === "monsters") {
       deleteDraftAction(this.db, "monster", ref.key);
+    } else if (ref.dataset === "classes" && ref.part === "classes") {
+      deleteDraftAction(this.db, "class", ref.key);
     }
   }
 
@@ -4581,7 +4595,11 @@ export class ContentService {
     const contract =
       schemaProblems(next).length > 0
         ? []
-        : [...contractProblems(next), ...this.vehicleUseProblems(next, actions)];
+        : [
+            ...contractProblems(next),
+            ...this.vehicleUseProblems(next, actions),
+            ...this.classUseProblems(next, actions),
+          ];
     if (problems.length > 0 || contract.length > 0) {
       return [...contract, ...problems];
     }
@@ -4627,6 +4645,31 @@ export class ContentService {
    * The draft's revision: a hash of every change in it (row, change, author, time and JSON). Any
    * save or discard gives a new one, even two saves in the same millisecond.
    */
+  /**
+   * Classes characters are in that `next` takes out without their removal's move (issue #15): the
+   * characters would be left in a class the world no longer has. Remove on the row moves them; any
+   * other way (a pack import or update, an undo) is refused.
+   */
+  private classUseProblems(next: ContentData, actions: readonly WorldAction[]): ContentProblem[] {
+    const kept = new Set(next.classes.classes.map((c) => c.code));
+    const moved = new Set(actions.filter((a) => a.kind === "class").map((a) => Number(a.key)));
+    const out: ContentProblem[] = [];
+    for (const [code, n] of this.classesInUse()) {
+      // Only a class this write takes out: a character saved in a class the world never had (an
+      // operator's old data) is not this write's doing.
+      const was = this.published.classes.classes.find((c) => c.code === code);
+      if (n === 0 || !was || kept.has(code) || moved.has(code)) {
+        continue;
+      }
+      const name = was.name;
+      out.push({
+        where: `classes/classes/${code}`,
+        message: `${n} ${n === 1 ? "character is" : "characters are"} in ${name}: take it out with Remove on its row, which moves them to another class`,
+      });
+    }
+    return out;
+  }
+
   draftRev(draft: readonly DraftRow[] = this.draft()): string {
     const h = createHash("sha256");
     for (const d of draft) {
@@ -5538,6 +5581,94 @@ export class ContentService {
     };
   }
 
+  /**
+   * A class before its removal (issue #15): its name, how many characters are in it, and the
+   * class they move to if its removal is already waiting.
+   */
+  classUsage(
+    code: number,
+    world?: ContentWorld,
+  ): ContentResult<{ name: string; holders: number; pending: number | null }> {
+    const ref = entryRef("class", String(code));
+    const row = (rowValue(this.draftContent(), ref) ?? rowValue(this.published, ref)) as
+      | { name: string }
+      | undefined;
+    if (!row) {
+      return fail(`There is no class ${code}.`);
+    }
+    const waiting = draftActions(this.db).find((a) => a.kind === "class" && a.key === String(code));
+    return {
+      ok: true,
+      value: {
+        name: row.name,
+        holders: world?.classHolders?.(code) ?? 0,
+        pending: (waiting?.action as { moveTo?: number } | undefined)?.moveTo ?? null,
+      },
+    };
+  }
+
+  /**
+   * Puts a class's removal in the draft (issue #15): its row goes, and when it is published every
+   * character in it moves to `moveTo` (which the draft must keep). Other rows that name the class
+   * (a path, gear, a title) are left for the publish checks to name.
+   */
+  draftClassRemoval(
+    actor: ContentActor,
+    code: number,
+    moveTo: number,
+    world?: ContentWorld,
+  ): ContentResult<string> {
+    const ref = entryRef("class", String(code));
+    const published = rowValue(this.published, ref) as { name: string } | undefined;
+    if (!published) {
+      return fail(
+        this.draft().some((d) => sameRow(d, ref) && d.op === "set")
+          ? `${rowLabel(ref)} is only in the draft: discard the change instead`
+          : `There is no class ${code}.`,
+      );
+    }
+    if (moveTo === code) {
+      return fail(`${published.name}'s characters cannot move to ${published.name} itself.`);
+    }
+    const target = this.draftContent().classes.classes.find((c) => c.code === moveTo);
+    if (!target) {
+      return fail(`There is no class ${moveTo} to move them to.`);
+    }
+    const now = this.now();
+    const action: WorldAction = {
+      kind: "class",
+      key: String(code),
+      name: published.name,
+      moveTo,
+      moveToName: target.name,
+    };
+    this.db.transaction(() => {
+      upsertDraftRow(this.db, {
+        dataset: "classes",
+        part: "classes",
+        key: String(code),
+        op: "remove",
+        data: null,
+        authorAccountId: actor.accountId,
+        author: actor.name,
+        updatedAt: now,
+      });
+      upsertDraftAction(this.db, {
+        kind: "class",
+        key: String(code),
+        action,
+        authorAccountId: actor.accountId,
+        author: actor.name,
+        updatedAt: now,
+      });
+    })();
+    const n = world?.classHolders?.(code) ?? 0;
+    return {
+      ok: true,
+      value: `${published.name} will be removed when the draft is published${n > 0 ? `; ${n === 1 ? "its character moves" : `its ${n} characters move`} to ${target.name}` : ""}.`,
+    };
+  }
+
   /** How many copies of an item the world holds anywhere (bags, gear, vaults, containers, the ground, shops). */
   private copiesLeft(key: string, world?: ContentWorld): number {
     return world
@@ -5573,6 +5704,16 @@ export class ContentService {
     const store = buildContentStore(next);
     const out: ContentProblem[] = [];
     for (const a of this.liveActions(draft)) {
+      // A class's characters move to another (issue #15): it must still be there.
+      if (a.kind === "class") {
+        if (!next.classes.classes.some((c) => c.code === a.moveTo)) {
+          out.push({
+            where: rowLabel(entryRef(a.kind, a.key)),
+            message: `its characters move to ${a.moveToName} (class ${a.moveTo}), which the draft no longer has`,
+          });
+        }
+        continue;
+      }
       // A vehicle's parked ones become its deed: the deed item must still be there (issue #44).
       if (a.kind === "vehicle" && a.riders === "land" && a.deed) {
         const deed = store.item(a.deed) as { retired?: true } | undefined;
@@ -5618,6 +5759,28 @@ export class ContentService {
     );
     const out: RemovalSummary[] = [];
     for (const d of draft) {
+      // A class's removal (issue #15): its characters move, or are left in a class that is gone.
+      if (d.dataset === "classes" && d.part === "classes" && d.key !== null && d.op === "remove") {
+        const n = world?.classHolders?.(Number(d.key)) ?? 0;
+        const action = actions.find((a) => a.kind === "class" && a.key === d.key);
+        const name =
+          (rowValue(this.published, d) as { name?: string } | undefined)?.name ?? `class ${d.key}`;
+        out.push({
+          kind: "class",
+          key: name,
+          lines:
+            n === 0
+              ? ["Nobody is in it"]
+              : action?.kind === "class"
+                ? [
+                    `${plural(n, "character")} ${n === 1 ? "moves" : "move"} to ${action.moveToName}`,
+                  ]
+                : [`${plural(n, "character")} ${n === 1 ? "is" : "are"} in it`],
+          stillUsed: 0,
+          inWorld: n,
+        });
+        continue;
+      }
       const kind: EntryKind | null =
         d.dataset === "items" && d.part === "items"
           ? "item"

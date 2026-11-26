@@ -278,7 +278,11 @@ const textOf = (text: Record<string, string>) => (v: string) => text[v] ?? v;
 interface Column {
   key: string;
   label: string;
-  kind: "int" | "intOrNull" | "bool" | "select" | "text" | "range";
+  kind: "int" | "intOrNull" | "bool" | "select" | "text" | "range" | "classes";
+  /** Shown only while the row passes this test (a class requirement's classes, issue #15). */
+  when?: (row: Obj) => boolean;
+  /** Changing it redraws the list, for a column whose `when` reads it. */
+  redraw?: boolean;
   min?: number;
   max?: number;
   options?: () => string[];
@@ -910,6 +914,29 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
           for (const c of spec.columns) {
             const id = `items-${spec.id}-${c.key}`;
             let control: HTMLElement;
+            if (c.when && !c.when(row)) {
+              continue;
+            }
+            if (c.kind === "classes") {
+              const all = choices()?.classes ?? [];
+              control = pickMany(
+                `${spec.id}-${c.key}-${i}`,
+                all.map((k) => String(k.code)),
+                new Set(((row[c.key] as number[] | undefined) ?? []).map(String)),
+                (v) => all.find((k) => String(k.code) === v)?.name ?? `Class ${v}`,
+                (v) => `${id}-${v}`,
+                "Add a class…",
+                (picked) => {
+                  if (picked.length > 0) {
+                    row[c.key] = picked.map(Number);
+                  } else {
+                    delete row[c.key];
+                  }
+                },
+              );
+              line.append(labelled(c.label, control));
+              continue;
+            }
             if (c.kind === "range") {
               line.append(rangeField(row, c, `${name.trim()}`, id));
               continue;
@@ -953,6 +980,9 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
                   delete row[c.key];
                 } else {
                   row[c.key] = v;
+                }
+                if (c.redraw) {
+                  draw();
                 }
               });
             } else {
@@ -1187,7 +1217,7 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
         label: "Requirements",
         one: "requirement",
         path: ["requires"],
-        help: "A skill or level a player must reach before equipping or using it.",
+        help: "A skill or level a player must reach, or a class they must be in, before equipping or using it.",
         columns: [
           {
             key: "on",
@@ -1200,10 +1230,24 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
             key: "needs",
             label: "Needs",
             kind: "select",
-            options: () => ["level", ...c.skills],
-            optionText: textOf({ level: "Level" }),
+            options: () => ["level", "class", ...c.skills],
+            optionText: textOf({ level: "Level", class: "A class" }),
+            redraw: true,
           },
-          { key: "atLeast", label: "At least", kind: "int", min: 0, max: 1_000_000 },
+          {
+            key: "atLeast",
+            label: "At least",
+            kind: "int",
+            min: 0,
+            max: 1_000_000,
+            when: (row) => row.needs !== "class",
+          },
+          {
+            key: "classes",
+            label: "Classes",
+            kind: "classes",
+            when: (row) => row.needs === "class",
+          },
           {
             key: "text",
             label: "Message if not met",

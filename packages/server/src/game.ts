@@ -431,6 +431,7 @@ import { clickNpc, closeBio } from "./systems/monsters/npc.ts";
 import { archiveNpcStore, npcFileNamed, setNpcFile } from "./systems/monsters/npcfiles.ts";
 import { bodyOf, type MonsterSlot } from "./systems/monsters/slots.ts";
 import { noteShown, pressStep, scheduleStep, setHeld } from "./systems/movement/movement.ts";
+import { classOpenIntent, classPromoteIntent } from "./systems/progression/class-window.ts";
 import { type AssassinDeps, endRemovedGame, setAssassinMode } from "./systems/social/assassin.ts";
 import { bioRequest, profileSave } from "./systems/social/bios.ts";
 import { friendsCommand, friendsEntry } from "./systems/social/friends.ts";
@@ -586,6 +587,8 @@ export interface Game {
    * the database).
    */
   vehiclesInUse(): Map<string, { aboard: number; parked: number }>;
+  /** How many characters are in each class, by code (issue #15): online ones by memory. */
+  classesInUse(): Map<number, number>;
 }
 
 /**
@@ -718,12 +721,17 @@ export function createGame(deps: GameDeps): Game {
     if (!restoring) {
       for (const o of world.players.values()) {
         if (o.char.skillXp) {
-          o.char.skillXp = normaliseXp(o.char.skills, o.char.skillXp, o.char.faction);
+          o.char.skillXp = normaliseXp(
+            o.char.skills,
+            o.char.skillXp,
+            o.char.faction,
+            o.char.classCode,
+          );
         }
         // The character level under a changed curve (issue #42): same level, its XP need worked
         // out again, and a level-up for XP that now reaches it.
         const was = o.char.vitals.expNeeded;
-        const gained = syncLevel(o.char.vitals);
+        const gained = syncLevel(o.char.vitals, o.char.classCode);
         if (gained > 0 || o.char.vitals.expNeeded !== was) {
           o.vitalsDirty = true;
         }
@@ -2700,7 +2708,9 @@ export function createGame(deps: GameDeps): Game {
         skills: p.char.skills,
         ...(p.char.skillXp === undefined
           ? {}
-          : { skillXp: normaliseXp(p.char.skills, p.char.skillXp, p.char.faction) }),
+          : {
+              skillXp: normaliseXp(p.char.skills, p.char.skillXp, p.char.faction, p.char.classCode),
+            }),
         respawn: p.char.respawn,
         faction: { key: p.char.faction.key, count: p.char.factionCount },
         wanted: p.char.wanted,
@@ -3189,6 +3199,21 @@ export function createGame(deps: GameDeps): Game {
     config,
     contentWorld,
     contractPointProblems: () => pointProblems(settings, peekMap),
+    classesInUse: () => {
+      const out = new Map<number, number>();
+      const online = new Set(world.players.keys());
+      for (const r of db
+        .query<{ id: string; class_code: number }, []>("SELECT id, class_code FROM characters")
+        .all()) {
+        if (!online.has(r.id)) {
+          out.set(r.class_code, (out.get(r.class_code) ?? 0) + 1);
+        }
+      }
+      for (const p of world.players.values()) {
+        out.set(p.char.classCode, (out.get(p.char.classCode) ?? 0) + 1);
+      }
+      return out;
+    },
     vehiclesInUse: () => {
       const out = new Map<string, { aboard: number; parked: number }>();
       const at = (name: string) => {
@@ -3518,9 +3543,14 @@ export function createGame(deps: GameDeps): Game {
         recipe: newRecipeState(loadRecipes(db, c.id)),
       };
       // XP held to the current content (a curve change, a model switch while offline).
-      p.char.skillXp = normaliseXp(p.char.skills, p.char.skillXp ?? [], p.char.faction);
+      p.char.skillXp = normaliseXp(
+        p.char.skills,
+        p.char.skillXp ?? [],
+        p.char.faction,
+        p.char.classCode,
+      );
       // The character level likewise (issue #42): its XP need under the curve now.
-      syncLevel(p.char.vitals);
+      syncLevel(p.char.vitals, p.char.classCode);
       p.jailUntil = jailUntil;
       p.muteUntil = muteUntil;
       p.ignore = loadIgnores(db, c.accountId);
@@ -4246,6 +4276,30 @@ export function createGame(deps: GameDeps): Game {
           const r = trainIntent(itemCtx(), p, msg.line);
           if (r.result) {
             savePromotion(db, p.id, r.result, isoNow());
+          }
+          deliver(r.out);
+          flushChanged([p]);
+          return;
+        }
+        case "classOpen":
+          deliver(classOpenIntent(world.npcs, p));
+          return;
+        case "classPromote": {
+          // Write-through on a promotion, as at a trainer.
+          const r = classPromoteIntent(itemCtx(), p, msg.code);
+          if (r.changed) {
+            savePromotion(
+              db,
+              p.id,
+              {
+                classCode: p.char.classCode,
+                gold: p.char.gold,
+                hpMax: p.char.vitals.hpMax,
+                spMax: p.char.vitals.spMax,
+                skills: p.char.skills,
+              },
+              isoNow(),
+            );
           }
           deliver(r.out);
           flushChanged([p]);

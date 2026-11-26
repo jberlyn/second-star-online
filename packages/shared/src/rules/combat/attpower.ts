@@ -17,6 +17,7 @@ import { excepted, ruleMatches } from "../core/patterns.ts";
 import { weaponIs } from "../crafting/masterwork.ts";
 import { hasBehaviour } from "../inventory/behaviours.ts";
 import { type CrystalColour, crystalColour } from "../inventory/inventory.ts";
+import { classPerkBonus } from "../progression/classes.ts";
 import { factionPerk } from "../social/factions.ts";
 import { gearBonus } from "./gear.ts";
 
@@ -184,7 +185,7 @@ export function attackPower(
     }
   }
   // The faction perk `melee` (Classic: a Warrior's tier).
-  power += factionPerk(f.faction, "melee");
+  power += factionPerk(f.faction, "melee") + classPerkBonus(f.classCode, "melee");
   let outOfCrystals: string | null = null;
   let crystal: CrystalColour | null = null;
   if (isBow) {

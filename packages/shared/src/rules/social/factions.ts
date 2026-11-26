@@ -113,6 +113,18 @@ export function sortFaction(key: FactionKey, powers: Powers): Faction {
 }
 
 /**
+ * The perk's value from `f`'s own faction at its tier, or undefined when `f` is in no faction or
+ * its faction sets no such perk (the world default not read). A class cap (issue #15) is lowered
+ * only by this.
+ */
+export function ownFactionPerk(f: Faction, kind: FactionPerkKind): number | undefined {
+  const perk = factionByKey(f.key)?.perks.find((p) => p.kind === kind);
+  return perk
+    ? (perk.values[Math.min(Math.max(0, f.tier), perk.values.length - 1)] ?? 0)
+    : undefined;
+}
+
+/**
  * What a perk is worth to `f`: its faction's value at its tier (a tier past the end reads the
  * last value), else `factionRules.perkDefaults` (Classic: the skill cap 50 and the Mage cap 30),
  * else 0.

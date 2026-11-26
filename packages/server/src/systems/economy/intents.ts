@@ -3,12 +3,20 @@
  * server's handler, against server state. The NPC is the one whose Bio you opened, and it must
  * still be in your map's roster (SSO checks the map's roster, not what the client says).
  */
-import { content, displayName, lingoEq, promoteClass } from "@secondstaronline/shared";
+import {
+  content,
+  displayName,
+  lingoEq,
+  type PromotionChange,
+  type PromotionState,
+  promoteClass,
+} from "@secondstaronline/shared";
 
 import { type Holdings, holdingsOf, logActivity, logBagChange } from "../admin/activity.ts";
 import type { ItemCtx } from "../inventory/items.ts";
 import { goldTarget, inMonsterList, NPC_TEXT } from "../monsters/npc.ts";
 import { type NpcStore, npcData, npcFileNamed } from "../monsters/npcfiles.ts";
+import { trainNote } from "../progression/class-window.ts";
 import type { Outgoing, Player, Room, WorldMap } from "../world/world.ts";
 import { BANK_TEXT, parseBank, runBank } from "./bank.ts";
 import { buyList, npcBuy, npcSell, SHOP_TEXT, type ShopLedger, sellList } from "./shop.ts";
@@ -57,8 +65,17 @@ export function shopListIntent(
   // The list replaces the vault's list in the same window (sprites 210-219).
   p.vaultOpen = false;
   if (mode === "train") {
-    // Every TRN| line is listed; the price is the line's.
-    const rows = data.trains.map((t) => ({ line: t.line, item: t.cls, price: t.price }));
+    // Every TRN| line is listed; the price is the line's. A class with paths (issue #15) says what
+    // it needs.
+    const rows = data.trains.map((t) => {
+      const note = trainNote(p, t.cls, t.price);
+      return {
+        line: t.line,
+        item: t.cls,
+        price: t.price,
+        ...(note === undefined ? {} : { note }),
+      };
+    });
     return [{ to: p.id, msg: { t: "shop", mode, rows } }];
   }
   // An NPC shop leaves out a retired item its saved ledger still lists (see `buyIntent`).
@@ -242,19 +259,7 @@ export function trainIntent(
     return { out: [processed(p)], result: null };
   }
   const c = p.char;
-  const r = promoteClass(
-    {
-      classCode: c.classCode,
-      gold: c.gold,
-      hpMax: c.vitals.hpMax,
-      spMax: c.vitals.spMax,
-      skills: c.skills,
-    },
-    train.cls,
-    train.price,
-    s.npc,
-    ctx.rng,
-  );
+  const r = promoteClass(promotionState(p), train.cls, train.price, s.npc, ctx.rng);
   const out: Outgoing[] = r.texts.map((t) => tell(p, t));
   if (r.result) {
     if (r.result.gold !== c.gold) {
@@ -264,18 +269,47 @@ export function trainIntent(
         details: { train: train.cls },
       });
     }
-    c.classCode = r.result.classCode;
-    c.gold = r.result.gold;
-    c.vitals.spMax = r.result.spMax;
-    c.skills = [...r.result.skills];
-    p.invDirty = true;
-    p.vitalsDirty = true;
+    applyPromotion(p, r.result);
   }
   if (r.sound) {
     out.push({ to: p.id, msg: { t: "sound", name: "heal2", ch: 3 } });
   }
   out.push(processed(p));
   return { out, result: r.result };
+}
+
+/** What a promotion reads of a player. */
+export function promotionState(p: Player): PromotionState {
+  const c = p.char;
+  return {
+    classCode: c.classCode,
+    gold: c.gold,
+    hpMax: c.vitals.hpMax,
+    spMax: c.vitals.spMax,
+    skills: c.skills,
+    level: c.vitals.level,
+    bag: c.bag,
+    spellbook: p.spell.book,
+  };
+}
+
+/** A promotion's change made to the player (the class, gold, vitals, skills, bag and spells). */
+export function applyPromotion(p: Player, r: PromotionChange): void {
+  const c = p.char;
+  c.classCode = r.classCode;
+  c.gold = r.gold;
+  c.vitals.hpMax = r.hpMax;
+  c.vitals.spMax = r.spMax;
+  c.skills = [...r.skills];
+  if (r.bag) {
+    c.bag = r.bag;
+  }
+  if (r.spells.length > 0) {
+    p.spell.book.push(...r.spells);
+    p.spell.bookDirty = true;
+  }
+  p.invDirty = true;
+  p.vitalsDirty = true;
 }
 
 /** What a promotion changed, for the write-through. */

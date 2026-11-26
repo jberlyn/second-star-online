@@ -9,7 +9,7 @@ import type { Equipment } from "../core/fighter.ts";
 import { withoutId } from "../core/fixtures.ts";
 import { lingoEq, type Rng } from "../core/lingo.ts";
 import { anyMatch, lastMatch, ruleMatches } from "../core/patterns.ts";
-import { firstUnmet, type Qualifications } from "../core/requirements.ts";
+import { classListWords, firstUnmet, type Qualifications } from "../core/requirements.ts";
 import { clampHunger } from "../progression/progression.ts";
 import { behaviourName, hasBehaviour } from "./behaviours.ts";
 
@@ -45,15 +45,7 @@ export function equipClasses(name: string): number[] | null {
 
 /** "Only a Ranger or an Archer can equip this.": the classes by their names, in the list's order. */
 export function classesText(codes: readonly number[]): string {
-  const names = codes.map(
-    (code) => content().classes.classes.find((k) => k.code === code)?.name ?? `class ${code}`,
-  );
-  const a = (n: string) => `${/^[aeiou]/i.test(n) ? "an" : "a"} ${n}`;
-  const list =
-    names.length <= 1
-      ? a(names[0] ?? "")
-      : `${names.slice(0, -1).map(a).join(", ")} or ${a(names[names.length - 1] ?? "")}`;
-  return `Only ${list} can equip this.`;
+  return `Only ${classListWords(codes)} can equip this.`;
 }
 
 /** The equip type: "No" unless a rule matches, last match wins. */

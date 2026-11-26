@@ -11,9 +11,11 @@ import {
   type ClientMsg,
   type ContentRowRef,
   type ContentStore,
+  classWindowOn,
   type Dir,
   footWalkGrid,
   groundTipName,
+  hasContent,
   hidesName,
   houseType,
   inCastBounds,
@@ -97,6 +99,7 @@ import { createCharMenu } from "./ui/charmenu.ts";
 import { createChatInput, createChatLog } from "./ui/chat.ts";
 import { createChatRoomWindow } from "./ui/chatroom.ts";
 import { createCheckersWindow } from "./ui/checkers.ts";
+import { createClassWindow } from "./ui/class-window.ts";
 import { type AreaPage, type AreaTab, createAreaPage } from "./ui/content-area-page.ts";
 import {
   CLASS_TABS,
@@ -292,6 +295,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     atTitle: () => atTitle,
     can: (permission) => permissions.has(permission),
     shortcut: (act) => primaryKeyLabel(input.bindings, act),
+    classWindow: () => hasContent() && classWindowOn(),
   };
   const menuActions: MenuActions = {
     // Game > Return To Title Screen: in play it is today's Log out.
@@ -322,6 +326,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
       news.openEditor();
       conn.send({ t: "newspaperLoad" });
     },
+    openClass: () => send({ t: "classOpen" }),
     returnToGame: () => {
       if (editing) {
         conn.send({ t: "editClose" });
@@ -371,6 +376,10 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     make: (recipe, count) => send({ t: "recipeMake", recipe, count }),
     stop: () => send({ t: "recipeStop" }),
     closed: () => send({ t: "recipeClose" }),
+  });
+  // The Class window (issue #15): your class and the ways out of it.
+  const classWin = createClassWindow(assets, windows, {
+    promote: (code) => send({ t: "classPromote", code }),
   });
   const room = createChatRoomWindow(assets, windows, {
     say: (text) => send({ t: "roomSay", text }),
@@ -1726,6 +1735,9 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
       case "recipes":
         crafting.show(msg.view);
         return;
+      case "classWindow":
+        classWin.show(msg.view);
+        return;
       case "spellbook":
         model.spellbook = msg.spells;
         panel.spellbook.setSpells(msg.spells);
@@ -1786,6 +1798,10 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         return;
       case "reconcile":
         activityPage.receiveReconcile(msg);
+        return;
+      case "contentClassUsage":
+        // Only the Classes tab asks (issue #15).
+        contentRequests.receive(msg);
         return;
       case "contentList":
       case "contentRow":

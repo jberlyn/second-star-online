@@ -656,7 +656,7 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
           action: "content-publish-logout",
           label: "Log everyone out while publishing",
           hint: inWorld
-            ? "Suggested: this draft removes items or monsters that players hold or that are in the world. Everyone but you is logged out and saved first, and nobody can log in until the publish ends."
+            ? "Suggested: this draft removes items or monsters that players hold or that are in the world, or a class characters are in. Everyone but you is logged out and saved first, and nobody can log in until the publish ends."
             : "Everyone but you is logged out and saved first, and nobody can log in until the publish ends.",
         },
       }).then(({ yes, checked }) => {

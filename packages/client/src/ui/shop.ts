@@ -257,6 +257,19 @@ export function createShopWindow(a: Assets, act: ShopActions): ShopWindow {
         // Training rows name skills; every other row names an item, shown as players know it.
         rows.map((x) => [trainMode ? x.item : itemLabel(x.item), String(x.price)]),
       );
+      // A trainer's class with paths (issue #15) says what it needs under its name.
+      if (trainMode) {
+        list.querySelectorAll<HTMLElement>(".shop-row").forEach((r, i) => {
+          const note = rows[i]?.note;
+          if (note) {
+            const n = document.createElement("span");
+            n.className = "shop-note";
+            n.textContent = note;
+            r.append(n);
+            r.title = note;
+          }
+        });
+      }
       list.hidden = false;
       vault.hidden = true;
       count.hidden = trainMode;

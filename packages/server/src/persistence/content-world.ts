@@ -121,6 +121,30 @@ export function contentWorldStore(db: Db) {
       db.query("UPDATE inventory SET qty = ? WHERE id = ?").run(qty, id);
     },
 
+    /** The characters saved in class `code` (issue #15), by id. */
+    classHolderIds(code: number): string[] {
+      return db
+        .query<{ id: string }, [number]>("SELECT id FROM characters WHERE class_code = ?")
+        .all(code)
+        .map((r) => r.id);
+    },
+
+    /** One character's class (an online one moved by a class's removal, issue #15). */
+    setClassOf(id: string, code: number, now: string): void {
+      db.query("UPDATE characters SET class_code = ?, updated_at = ? WHERE id = ?").run(
+        code,
+        now,
+        id,
+      );
+    },
+
+    /** Every character in class `from` moves to `to` (a class's removal, issue #15). */
+    moveClass(from: number, to: number, now: string): number {
+      return db
+        .query("UPDATE characters SET class_code = ?, updated_at = ? WHERE class_code = ?")
+        .run(to, now, from).changes;
+    },
+
     /** How many characters have a value of the skill stored under `key` (issue #38). */
     skillHolders(key: string): number {
       return (

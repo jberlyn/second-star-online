@@ -29,13 +29,21 @@ export type ContentRequestMsg =
       data: unknown;
       expect?: string;
     } & ContentRowRef)
-  | ({ t: "contentDiscard"; seq: number; expect?: string } & ContentRowRef);
+  | ({ t: "contentDiscard"; seq: number; expect?: string } & ContentRowRef)
+  | { t: "contentClassUsage"; seq: number; code: number }
+  | { t: "contentClassRemove"; seq: number; code: number; moveTo: number };
 
 /** The answers they take back. */
 export type ContentRequestReply =
   | { t: "contentList"; seq: number; listing: ContentListing | null; error?: string }
   | { t: "contentRow"; seq: number; row: ContentRowDetail | null; error?: string }
-  | { t: "contentResult"; seq: number; ok: boolean; text: string; problems?: ContentProblemView[] };
+  | { t: "contentResult"; seq: number; ok: boolean; text: string; problems?: ContentProblemView[] }
+  | {
+      t: "contentClassUsage";
+      seq: number;
+      usage: { name: string; holders: number; pending: number | null } | null;
+      error?: string;
+    };
 
 export interface ContentRequests {
   list(dataset: string, part: string): Promise<ContentListing>;
@@ -47,6 +55,10 @@ export interface ContentRequests {
     expect?: string,
   ): Promise<ContentAnswer>;
   discard(ref: ContentRowRef, expect?: string): Promise<ContentAnswer>;
+  /** A class before its removal (issue #15): its name and how many characters are in it. */
+  classUsage(code: number): Promise<{ name: string; holders: number; pending: number | null }>;
+  /** Puts a class's removal in the draft; its characters move to `moveTo` once published. */
+  removeClass(code: number, moveTo: number): Promise<ContentAnswer>;
   /** Takes an answer that is one of ours: true when it was. */
   receive(msg: { t: string; seq?: number }): boolean;
   /** A new session: every request still waiting fails. */
@@ -130,6 +142,26 @@ export function createContentRequests(send: (msg: ContentRequestMsg) => void): C
         seq,
         ...ref(r),
         ...(expect !== undefined ? { expect } : {}),
+      }));
+      return { ok: m.ok, text: m.text, ...(m.problems ? { problems: m.problems } : {}) };
+    },
+    classUsage: async (code) => {
+      const m = await ask<Extract<ContentRequestReply, { t: "contentClassUsage" }>>((seq) => ({
+        t: "contentClassUsage",
+        seq,
+        code,
+      }));
+      if (!m.usage) {
+        throw new Error(m.error ?? "That class could not be loaded.");
+      }
+      return m.usage;
+    },
+    removeClass: async (code, moveTo) => {
+      const m = await ask<Extract<ContentRequestReply, { t: "contentResult" }>>((seq) => ({
+        t: "contentClassRemove",
+        seq,
+        code,
+        moveTo,
       }));
       return { ok: m.ok, text: m.text, ...(m.problems ? { problems: m.problems } : {}) };
     },

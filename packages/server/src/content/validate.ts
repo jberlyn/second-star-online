@@ -817,12 +817,46 @@ export function referencesOf(data: ContentData): Reference[] {
     if (typeof stat === "string" && stat !== "HPmax" && stat !== "SPmax") {
       skill(row, ["promotion", "requirement", "stat"], stat);
     }
+    // Issue #15: how skills train in the class, and its paths' requirements, items and grants.
+    (c.training?.skills ?? []).forEach((t, i) => {
+      skill(row, ["training", "skills", i, "skill"], t.skill);
+    });
+    if (c.icon !== undefined) {
+      add(row, ["icon"], "item", c.icon, null);
+    }
+    (c.paths ?? []).forEach((path, j) => {
+      (path.requires ?? []).forEach((r, k) => {
+        // A path reads exactly "level", "HPmax" and "SPmax" (shared promotion.ts).
+        if (r.needs !== "level" && r.needs !== "HPmax" && r.needs !== "SPmax") {
+          skill(row, ["paths", j, "requires", k, "needs"], r.needs);
+        }
+      });
+      (path.grants?.skills ?? []).forEach((g, k) => {
+        skill(row, ["paths", j, "grants", "skills", k, "skill"], g.skill);
+      });
+      (path.items ?? []).forEach((it, k) => {
+        add(row, ["paths", j, "items", k, "item"], "item", it.item, ["paths", j, "items", k]);
+      });
+      (path.grants?.items ?? []).forEach((it, k) => {
+        add(row, ["paths", j, "grants", "items", k, "item"], "item", it.item, [
+          "paths",
+          j,
+          "grants",
+          "items",
+          k,
+        ]);
+      });
+    });
   }
   for (const sc of data.classes.startClasses) {
     const row: RowRef = { dataset: "classes", part: "startClasses", key: String(sc.code) };
     for (const name of Object.keys(sc.skills)) {
       skill(row, ["skills", name], name);
     }
+    // A start class's kit (issue #15): an item that goes takes its line with it.
+    (sc.kit ?? []).forEach((l, i) => {
+      add(row, ["kit", i, "item"], "item", l.item, ["kit", i]);
+    });
   }
   // A binding may be left out (its mechanic is off), but one that names a skill must name a real
   // one.
@@ -852,9 +886,10 @@ export function referencesOf(data: ContentData): Reference[] {
   if (farming) {
     skill(gathering, ["farming", "wateringSkill"], farming.wateringSkill);
   }
-  // A requirement reads exactly "level" as the level (shared requirements.ts `requirementMet`).
+  // A requirement reads exactly "level" as the level and "class" as the class (shared
+  // requirements.ts `requirementMet`).
   const needs = (row: RowRef, path: JsonPath, r: { needs?: unknown } | undefined) => {
-    if (r && r.needs !== "level") {
+    if (r && r.needs !== "level" && r.needs !== "class") {
       skill(row, [...path, "needs"], r.needs);
     }
   };
@@ -959,6 +994,9 @@ export function referencesOf(data: ContentData): Reference[] {
   for (const s of data.spells.spells) {
     const row: RowRef = { dataset: "spells", part: "spells", key: s.name };
     skill(row, ["school", "skill"], s.school?.skill);
+    (s.requires ?? []).forEach((r, i) => {
+      needs(row, ["requires", i], r);
+    });
     (s.alsoTrains ?? []).forEach((t, i) => {
       skill(row, ["alsoTrains", i, "skill"], t.skill);
     });
@@ -1528,6 +1566,103 @@ export function classGearProblems(data: ContentData): ContentProblem[] {
   return out;
 }
 
+/**
+ * Classes as other rows name them (issue #15), by code: what a class inherits and the classes its
+ * paths are taken from, a class requirement's classes, a Bio title's classes, a recipe's classes;
+ * plus a loop in `inherits`, a class requirement with no classes and a path's spells.
+ */
+export function classProblems(data: ContentData): ContentProblem[] {
+  const out: ContentProblem[] = [];
+  const codes = new Set(data.classes.classes.map((k) => k.code));
+  const check = (where: string, listed: readonly number[] | undefined, what: string) => {
+    const unknown = (listed ?? []).filter((c) => !codes.has(c));
+    if (unknown.length > 0) {
+      out.push({
+        where,
+        message: `${what} class ${unknown.join(", ")}, which is not a class: pick from the Classes tab's list`,
+      });
+    }
+  };
+  const spells = new Set(data.spells.spells.map((s) => s.name.toLowerCase()));
+  const byCode = new Map(data.classes.classes.map((c) => [c.code, c]));
+  for (const c of data.classes.classes) {
+    const where = `classes/classes/${c.code}`;
+    if (c.inherits !== undefined) {
+      check(where, [c.inherits], "inherits from");
+      const seen = new Set<number>([c.code]);
+      let next = byCode.get(c.inherits);
+      while (next) {
+        if (seen.has(next.code)) {
+          if (next.code === c.code) {
+            out.push({
+              where,
+              message: `${c.name} inherits from itself, through the classes it inherits from: take one of them out`,
+            });
+          }
+          break;
+        }
+        seen.add(next.code);
+        next = next.inherits === undefined ? undefined : byCode.get(next.inherits);
+      }
+    }
+    (c.paths ?? []).forEach((p, j) => {
+      check(`${where} (way in ${j + 1})`, p.from, "is taken from");
+      for (const spell of p.grants?.spells ?? []) {
+        if (!spells.has(spell.toLowerCase())) {
+          out.push({
+            where: `${where} (way in ${j + 1})`,
+            message: `gives a spell that does not exist: ${spell}`,
+          });
+        }
+      }
+    });
+  }
+  const requirement = (where: string, r: { needs: string; classes?: readonly number[] }) => {
+    if (r.needs === "class" && (r.classes ?? []).length === 0) {
+      out.push({ where, message: "needs a class, but lists no classes: pick at least one" });
+    }
+    if (r.needs === "class") {
+      check(where, r.classes, "needs");
+    }
+  };
+  data.itemRules.requires.forEach((r, i) => {
+    requirement(`itemRules/requires/${i + 1} (${r.pattern})`, r);
+  });
+  for (const d of data.items.definitions ?? []) {
+    (d.requires ?? []).forEach((r) => {
+      requirement(`items/definitions/${d.name}`, r);
+    });
+  }
+  for (const s of data.spells.spells) {
+    (s.requires ?? []).forEach((r) => {
+      requirement(`spells/spells/${s.name}`, r);
+    });
+  }
+  data.gather.harvest.forEach((n, i) => {
+    if (n.requires) {
+      requirement(`gather/harvest/${i + 1}`, n.requires);
+    }
+  });
+  const cs = data.craft.stations;
+  for (const r of [
+    ...(cs.smith?.repairs ?? []),
+    ...(cs.cook?.recipes ?? []),
+    ...(cs.mix?.sands ?? []),
+    ...(cs.build?.recipes ?? []),
+  ]) {
+    if (r.requires) {
+      requirement("craft/stations", r.requires);
+    }
+  }
+  for (const r of data.craft.recipes ?? []) {
+    check(`craft/recipes/${r.name}`, r.classes, "can only be made by");
+  }
+  data.social.bios.titles.forEach((t, i) => {
+    check(`social/bios (title ${i + 1}: ${t.title})`, t.classes, "is only for");
+  });
+  return out;
+}
+
 export function checkStore(
   next: ContentData,
   published: ContentData,
@@ -1547,6 +1682,7 @@ export function checkStore(
     ...vehicleProblems(next),
     ...recipeProblems(next),
     ...classGearProblems(next),
+    ...classProblems(next),
     ...referenceProblems(withNpcSaves(next, npcSaves), withNpcSaves(published, npcSaves)),
   ];
 }

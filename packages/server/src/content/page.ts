@@ -267,6 +267,8 @@ type ContentIntent = Extract<
       | "contentNotice"
       | "contentUsage"
       | "contentRemove"
+      | "contentClassUsage"
+      | "contentClassRemove"
       | "contentProblems"
       | "contentUploadTicket"
       | "contentItemArt"
@@ -315,6 +317,9 @@ export const CONTENT_INTENTS = [
   "contentNotice",
   "contentUsage",
   "contentRemove",
+  // A class's removal (issue #15).
+  "contentClassUsage",
+  "contentClassRemove",
   "contentProblems",
   "contentUploadTicket",
   // The Packs page (issue #34).
@@ -416,6 +421,18 @@ export function contentIntent(
     }
     case "contentRemove": {
       const r = service.draftRemoval(actor, removalOf(msg), world);
+      return r.ok
+        ? { t: "contentResult", seq: msg.seq, ok: true, text: r.value }
+        : result(msg.seq, r, "");
+    }
+    case "contentClassUsage": {
+      const r = service.classUsage(msg.code, world);
+      return r.ok
+        ? { t: "contentClassUsage", seq: msg.seq, usage: r.value }
+        : { t: "contentClassUsage", seq: msg.seq, usage: null, error: r.error };
+    }
+    case "contentClassRemove": {
+      const r = service.draftClassRemoval(actor, msg.code, msg.moveTo, world);
       return r.ok
         ? { t: "contentResult", seq: msg.seq, ok: true, text: r.value }
         : result(msg.seq, r, "");

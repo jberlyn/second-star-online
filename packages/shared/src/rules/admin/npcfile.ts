@@ -759,8 +759,17 @@ export function checkNpcFile(
         if (!count(p[1], 0)) {
           return fail(n, "the price is a whole number from 0.");
         }
-        if (!store.classes.classes.some((c) => c.promotion && lingoEq(c.name, p[0] ?? ""))) {
-          warnings.push(`Line ${n}: no class "${p[0]}" can be trained: 1.6 has no rule for it.`);
+        // A class with 1.6's promotion, or a way in a trainer may take (issue #15).
+        if (
+          !store.classes.classes.some(
+            (c) =>
+              lingoEq(c.name, p[0] ?? "") &&
+              (c.promotion || (c.paths ?? []).some((w) => w.where !== "anywhere")),
+          )
+        ) {
+          warnings.push(
+            `Line ${n}: no class "${p[0]}" can be trained: it has no way in at a trainer.`,
+          );
         }
         break;
       case "FLG":

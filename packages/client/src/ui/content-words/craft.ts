@@ -27,10 +27,16 @@ const requires = (at: string, verb: string): WordBook => ({
   },
   [`${at}.requires.needs`]: {
     label: "Skill",
-    help: 'A skill, or "level" for the character level.',
+    help: 'A skill, "level" for the character level, or "class" for a class (pick the classes below).',
     names: "skill",
   },
   [`${at}.requires.atLeast`]: { label: "At least" },
+  [`${at}.requires.classes`]: {
+    label: "Classes",
+    help: 'For "class": the class numbers that may. Others are refused.',
+    noun: "class",
+    names: "class",
+  },
   [`${at}.requires.text`]: {
     label: "Refusal message",
     help: `Said instead of “You need <skill> <number> to ${verb} this.”`,
@@ -152,6 +158,14 @@ const recipeWords: WordBook = {
     label: "Quicker per tier (%)",
     help: "Each tier the tool is above the lowest makes one craft this much quicker (90% at most).",
     tab: "Tool",
+  },
+  "recipes.classes": {
+    label: "Only these classes",
+    help: "Class numbers: only characters in one of them see and make it. Leave off for every class.",
+    noun: "class",
+    names: "class",
+    tab: "Skill",
+    more: true,
   },
   "recipes.skill": {
     label: "Skill",

@@ -264,7 +264,7 @@ export function toolSwing(room: Room, p: Player, ctx: GatherCtx, ev: GatherEvent
   }
   const { node, use } = worked;
   // A node the gatherer cannot work yet says why, once per press.
-  const who = { level: p.char.vitals.level, skills: p.char.skills };
+  const who = { level: p.char.vitals.level, skills: p.char.skills, classCode: p.char.classCode };
   const refusal =
     node.requires && !requirementMet(node.requires, who)
       ? requirementText(node.requires, node.can.toLowerCase())
