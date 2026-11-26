@@ -644,6 +644,31 @@ export interface SpellState {
   body: number | null;
   /** The NPC spell block: monster spells wait 30 frames after a monster's cast. */
   npcSpellBlock: number;
+  /** SSO's timed effects (issue #17): frames left of Haste, Bless, Holy Weapon and Weaken. */
+  haste: number;
+  bless: number;
+  holyWeapon: number;
+  weaken: number;
+  /** Poison Dart's poison on you, or null. */
+  poison: Poison | null;
+}
+
+/**
+ * Poison Dart's poison on a player or monster (issue #17): it hits every `buffs.poisonEveryFrames`
+ * for the spell's `spellEffects` amount until `frames` runs out. Who cast it takes the kill.
+ */
+export interface Poison {
+  /** Frames left. */
+  frames: number;
+  /** Frames to the next hit. */
+  next: number;
+  /** The caster's spell power, for the amount. */
+  power: number;
+  /** The caster's name and id (null for a monster's cast). */
+  owner: string;
+  ownerId: string | null;
+  /** The spell cast, for its own amount and the skills its hits train. */
+  castSpell: string | null;
 }
 
 export function newSpellState(book: string[] = []): SpellState {
@@ -658,6 +683,11 @@ export function newSpellState(book: string[] = []): SpellState {
     smokeBomb: 0,
     body: null,
     npcSpellBlock: 0,
+    haste: 0,
+    bless: 0,
+    holyWeapon: 0,
+    weaken: 0,
+    poison: null,
   };
 }
 
@@ -675,6 +705,8 @@ export interface SpellFx extends FxSprite {
   ownerId: string | null;
   /** The players this Radar has already reported on. */
   radarSeen?: Set<string>;
+  /** The players this Poison Dart has already poisoned (issue #17): one dart poisons once. */
+  poisoned?: Set<string>;
   /** A cannonball shot: the loc its last hit test reached, where the next one sweeps from. */
   sweptTo?: { h: number; v: number };
   /** The spell a player cast to place it (`CastMessage.castSpell`). */

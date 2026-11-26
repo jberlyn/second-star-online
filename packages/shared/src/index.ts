@@ -226,6 +226,7 @@ export {
   SCORES_SIZE,
   SCORES_TEXT,
 } from "./rules/social/highscores.ts";
+export * from "./rules/spells/identify.ts";
 export * from "./rules/spells/spellfx.ts";
 export * from "./rules/spells/spells.ts";
 export * from "./rules/vehicles/cannon.ts";

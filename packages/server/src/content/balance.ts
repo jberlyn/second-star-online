@@ -154,6 +154,21 @@ const amountFields = (
     field([...path, "randomN"], `${name}: extra roll up to`, "random", BALANCE_LIMITS.randomN),
   ].map((f) => (optional ? { ...f, optional: true } : f));
 
+/**
+ * A timed spell's two length fields (issue #17): a fixed time, plus a time for each point of the
+ * caster's power. A spell's own "Lasts" on the Spells page replaces both.
+ */
+const lengthFields = (frames: string, perPower: string, name: string): BalanceFieldView[] => [
+  field(
+    [frames],
+    `${name}: lasts`,
+    "frames",
+    BALANCE_LIMITS.frames,
+    "A spell with its own Lasts on the Spells page lasts that long instead.",
+  ),
+  field([perPower], `${name}: plus time per point of power`, "frames", BALANCE_LIMITS.perPower),
+];
+
 /** What an effect's amounts mean on its row. */
 function effectFields(effect: BalanceSpellEffect): BalanceFieldView[] {
   if (BALANCE_HEAL_EFFECTS.includes(effect)) {
@@ -171,6 +186,22 @@ function effectFields(effect: BalanceSpellEffect): BalanceFieldView[] {
         "The monster's Defense comes off this; under 1, the arrow deals the small roll set under Spell hits.",
       ),
       ...amountFields(["player"], "On a player", "Then the player's spell defense."),
+    ];
+  }
+  if (effect === "Poison Dart") {
+    return [
+      ...amountFields(["monster"], "Each hit on a monster"),
+      ...amountFields(
+        ["monsterHealed"],
+        "Each hit on a monster it heals",
+        "A monster set to be healed by this spell is healed by this much instead. Leave it empty to heal it by the amount on a monster.",
+        true,
+      ),
+      ...amountFields(
+        ["player"],
+        "Each hit on a player",
+        "The poison hits this often for as long as it lasts (under Buffs). Spell defense doesn't reduce it.",
+      ),
     ];
   }
   const throughDefense = !["Firebolt", "Splash"].includes(effect);
@@ -234,7 +265,7 @@ export const BALANCE_GROUPS: readonly BalanceGroupDef[] = [
   {
     id: "buffs",
     title: "Buffs and cast power",
-    help: "How long buff spells last for each point of the caster's power, their bonuses, Morph's roll and the power of free fireballs.",
+    help: "How long buff spells last, their bonuses, Morph's roll and the power of free fireballs.",
     rows: [
       {
         part: "buffs",
@@ -289,6 +320,46 @@ export const BALANCE_GROUPS: readonly BalanceGroupDef[] = [
             ["morph"],
             "Morph roll",
             'Picks the body: the last morph body (bindings.json bodies.morph) whose "above" the roll beats.',
+          ),
+          ...lengthFields("hasteFrames", "hastePerPower", "Haste"),
+          field(
+            ["hasteRegenPercent"],
+            "Haste: regeneration speed, in percent",
+            "count",
+            BALANCE_LIMITS.speedPercent,
+            "How fast HP and SP come back while Haste lasts: 200 is twice as fast.",
+          ),
+          ...lengthFields("blessFrames", "blessPerPower", "Bless"),
+          field(["blessBonus"], "Bless: attack power added", "count", BALANCE_LIMITS.bonus),
+          ...lengthFields("holyWeaponFrames", "holyWeaponPerPower", "Holy Weapon"),
+          field(
+            ["holyWeaponBonus"],
+            "Holy Weapon: damage added to each melee hit",
+            "count",
+            BALANCE_LIMITS.bonus,
+          ),
+          field(
+            ["holyWeaponUndeadBonus"],
+            "Holy Weapon: damage added on an undead monster",
+            "count",
+            BALANCE_LIMITS.bonus,
+            "Undead monsters are the ones healing hurts.",
+          ),
+          ...lengthFields("weakenFrames", "weakenPerPower", "Weaken"),
+          field(
+            ["weakenPenalty"],
+            "Weaken: attack taken off",
+            "count",
+            BALANCE_LIMITS.bonus,
+            "Off a player's attack power, or a monster's attack. Never below 1.",
+          ),
+          ...lengthFields("poisonFrames", "poisonPerPower", "Poison Dart's poison"),
+          field(
+            ["poisonEveryFrames"],
+            "Poison Dart's poison: time between hits",
+            "frames",
+            BALANCE_LIMITS.poisonEvery,
+            "Each hit deals Poison Dart's amount under Spell amounts.",
           ),
         ],
       },

@@ -21,6 +21,8 @@ import {
   shownMonsterLevel,
 } from "@secondstaronline/shared";
 
+import type { Poison } from "../world/world.ts";
+
 export interface LiveMonster {
   name: string;
   hp: number;
@@ -49,6 +51,10 @@ export interface LiveMonster {
   hitCountb: number;
   /** The FX hit frame that last set the lockout (runtime only, never saved). */
   lockedBy?: { fx: object; member: string } | null;
+  /** Frames left of Weaken (issue #17; runtime only, never saved). */
+  weaken?: number;
+  /** Poison Dart's poison on it (issue #17; runtime only, never saved), or null. */
+  poison?: Poison | null;
 }
 
 export interface MonsterSlot {

@@ -17,6 +17,7 @@ import type {
   SpellAmountOverride,
   SpellCreates,
   SpellFx,
+  SpellSchool,
   SpellSummon,
 } from "@secondstaronline/data";
 
@@ -144,33 +145,13 @@ export function isHarmful(spell: string): boolean {
   return spellByName(spell)?.harmful ?? false;
 }
 
-/**
- * The spells 1.6 listed, priced and taught but gave no effect: the cast handler places no FX and
- * nothing reads them (Haste's flag and Replenish's heal sat in a handler nothing called).
- */
-const INERT_EFFECTS = [
-  "Identify",
-  "Poison Dart",
-  "Weaken",
-  "Bless",
-  "Haste",
-  "Replenish",
-  "Holy Weapon",
-];
-
-/** True for a spell with no effect: SSO refuses it before anything is spent. */
-export function isInert(spell: string): boolean {
-  const eff = castEffect(spell);
-  return INERT_EFFECTS.some((n) => lingoEq(eff, n));
-}
-
 export const CAST_TEXT = {
   harmful: "You cannot cast harmful spells here!",
   sp: (n: number) => `You need ${n} spell points to cast this!`,
   crystals: (spell: string) => `You don't have the required crystals to cast ${spell}!`,
   portal: "You cannot cast this close to another person.",
-  /** SSO: a spell with no effect (`isInert`). */
-  inert: "This spell has no power.",
+  /** SSO: Identify (issue #17) cast where no item lies. */
+  identifyNothing: "There is nothing there to identify.",
   /** SSO: Portal with no destination whose map exists. */
   portalClosed: "The portal will not open.",
   summon: "You cannot summon here!",
@@ -316,18 +297,7 @@ export function spellHitOnMonster(
   const b = content().balance;
   const amounts = (effect: BalanceSpellEffect) => spellAmounts(effectRow(effect), override);
   let hit: { n: number; heal: boolean; splat: boolean } | null = null;
-  /** A harmful effect's hit: its damage, or for a species it heals, its heal amount. */
-  const strike = (effect: BalanceSpellEffect) => {
-    const a = amounts(effect);
-    if (flagHasEffect(flags.healedBy, effect)) {
-      return { n: rollAmount(a.monsterHealed, P, r), heal: true, splat: true };
-    }
-    let n = rollAmount(a.monster, P, r);
-    if (flagHasEffect(flags.resists, effect)) {
-      n = r.random(b.spellHits.resistedRandomN);
-    }
-    return { n, heal: false, splat: true };
-  };
+  const strike = (effect: BalanceSpellEffect) => strikeMonster(effect, flags, P, r, override);
   if (lingoContains(member, " Arrows")) {
     let n = rollAmount(amounts("Arrows").monster, P, r) - defense;
     if (n < 1) {
@@ -347,6 +317,9 @@ export function spellHitOnMonster(
   }
   if (is("major heal-3")) {
     hit = healing("Major Heal");
+  }
+  if (is("replenish-3")) {
+    hit = healing("Replenish");
   }
   for (const n of ["meteor-13", "meteor-19"]) {
     if (is(n)) {
@@ -383,6 +356,41 @@ export function spellHitOnMonster(
   return hit;
 }
 
+/**
+ * A harmful effect's hit on a monster: its damage, or for a species it heals, its heal amount; a
+ * species that resists it takes `random(spellHits.resistedRandomN)` instead.
+ */
+function strikeMonster(
+  effect: BalanceSpellEffect,
+  flags: MonsterFlags,
+  P: number,
+  rng: Rng,
+  override?: SpellAmountOverride,
+): { n: number; heal: boolean; splat: boolean } {
+  const a = spellAmounts(effectRow(effect), override);
+  if (flagHasEffect(flags.healedBy, effect)) {
+    return { n: rollAmount(a.monsterHealed, P, rng), heal: true, splat: true };
+  }
+  let n = rollAmount(a.monster, P, rng);
+  if (flagHasEffect(flags.resists, effect)) {
+    n = rng.random(content().balance.spellHits.resistedRandomN);
+  }
+  return { n, heal: false, splat: true };
+}
+
+/**
+ * One hit of Poison Dart's poison on a monster (issue #17): the "Poison Dart" amount, healing a
+ * species it heals and rolled small on one that resists it, as any harmful spell's hit.
+ */
+export function poisonOnMonster(
+  flags: MonsterFlags,
+  P: number,
+  rng: Rng,
+  override?: SpellAmountOverride,
+): { n: number; heal: boolean; splat: boolean } {
+  return strikeMonster("Poison Dart", flags, P, rng, override);
+}
+
 /** The balance row of a spell effect (every effect has one: `fullBalance` fills the defaults). */
 function effectRow(effect: BalanceSpellEffect) {
   const rows = content().balance.spellEffects;
@@ -400,7 +408,9 @@ export type PlayerSpellBranch =
   | "Bolt"
   | "wind wave"
   | "major heal"
-  | "minor heal";
+  | "minor heal"
+  | "replenish"
+  | "poison dart";
 
 /** What the spell-defense lookup reads about the player a spell hits. */
 export interface SpellTarget {
@@ -454,6 +464,8 @@ export function playerSpellAmount(
     case "Splash":
     case "major heal":
     case "minor heal":
+    case "replenish":
+    case "poison dart":
       return roll();
     default:
       return def(roll());
@@ -472,15 +484,17 @@ const PLAYER_BRANCH_EFFECT: Readonly<Record<PlayerSpellBranch, BalanceSpellEffec
   "wind wave": "Wind Wave",
   "major heal": "Major Heal",
   "minor heal": "Minor Heal",
+  replenish: "Replenish",
+  "poison dart": "Poison Dart",
 };
 
 /**
- * The Fireball and Ice Wave direction: from the caster's sprite to the mouse; the larger of |dx|
+ * The Fireball, Ice Wave and Poison Dart (issue #17) direction: from the caster's sprite to the mouse; the larger of |dx|
  * and |dy| picks the axis, LEFT and UP by default, and an exact tie keeps the name, which becomes
  * the R form. Wind's names are "Wind waveL" etc.
  */
 export function directional(
-  base: "Fireball" | "Wind wave",
+  base: "Fireball" | "Wind wave" | "Poison Dart",
   casterH: number,
   casterV: number,
   mouseH: number,
@@ -536,12 +550,12 @@ export function castMageCap(f: Faction): number {
  * "Fireball", "Bolt" and "Wind Wave"; any other name is unchanged.
  */
 export function baseSpell(name: string): string {
-  const m = /^(fireball|bolt|wind wave)[lrud]$/i.exec(name);
+  const m = /^(fireball|bolt|wind wave|poison dart)[lrud]$/i.exec(name);
   if (!m) {
     return name;
   }
   const base = (m[1] ?? "").toLowerCase();
-  return base === "fireball" ? "Fireball" : base === "bolt" ? "Bolt" : "Wind Wave";
+  return { fireball: "Fireball", bolt: "Bolt", "poison dart": "Poison Dart" }[base] ?? "Wind Wave";
 }
 
 /**
@@ -549,13 +563,21 @@ export function baseSpell(name: string): string {
  * directional spell's name such as "Bolt", the spell of that name), when the run is the one its
  * effect is cast with (a spell's other runs, such as Smoke Bomb's puff, train none).
  */
-function castSchool(member: string, eff: string, cast: string | undefined) {
+function castSchools(member: string, eff: string, cast: string | undefined) {
   const spell = cast === undefined ? (spellOfFx(member) ?? spellByName(member)) : spellByName(cast);
-  return spell && lingoEq(eff, spell.effect) ? (spell.school ?? null) : null;
+  return spell && lingoEq(eff, spell.effect) ? spellSchools(spell) : [];
 }
 
 /**
- * The cast skill gain for your own cast (the `cast` source): Magery, then the spell's school, each
+ * Every skill a spell trains after Magery, in order: its `school`, then its `alsoTrains` (issue
+ * #17), each with its cap.
+ */
+export function spellSchools(spell: Pick<Spell, "school" | "alsoTrains">): SpellSchool[] {
+  return [...(spell.school ? [spell.school] : []), ...(spell.alsoTrains ?? [])];
+}
+
+/**
+ * The cast skill gain for your own cast (the `cast` source): Magery, then the spell's schools, each
  * by its progression (Classic: `random(skill) = 1` while 0 < skill < the Mage skill cap; a school's
  * own `cap` replaces the skill's, so Smoke Bomb trains Martial Arts up to 100). Raises the skills in
  * place and returns the lines, in order. A directional name trains its base spell's school (a bug
@@ -582,8 +604,7 @@ export function spellImp(
     }
   };
   roll(boundSkillIndex("magery"));
-  const school = castSchool(spellName, eff, cast);
-  if (school) {
+  for (const school of castSchools(spellName, eff, cast)) {
     roll(findSkillIndex(school.skill), school.cap);
   }
   return lines;
@@ -683,7 +704,71 @@ export const EFFECT_TEXT = {
   argonEnds: "You no longer feel the power of Argon helping you in battle.",
   fireswordEnds: "The fire from your sword has died down.",
   magicShieldEnds: "The magic barrier that protects you has died down.",
+  // SSO's (issue #17).
+  haste: "You feel your wounds knitting faster.",
+  hasteEnds: "Your healing slows back to normal.",
+  bless: "A divine power fills your arms.",
+  blessEnds: "The blessing upon you fades.",
+  holyWeapon: "A holy light shines upon your attacks.",
+  holyWeaponEnds: "The holy light leaves your attacks.",
+  weaken: "You suddenly feel too weak to fight.",
+  weakenEnds: "Your strength returns.",
+  poison: "You have been poisoned!",
+  poisonEnds: "The poison has left your body.",
 } as const;
+
+/** SSO's timed spell effects (issue #17): each lasts a count of frames. */
+export type TimedSpellEffect = "haste" | "bless" | "holyWeapon" | "weaken" | "poison";
+
+/**
+ * How many frames one of SSO's timed effects lasts: the cast spell's own `lasts` (seconds) when it
+ * has one, else the balance row's frames plus its frames per point of power (`buffs.hasteFrames`
+ * and `buffs.hastePerPower`, and so on). 0 when that works out to nothing.
+ */
+export function timedEffectFrames(
+  effect: TimedSpellEffect,
+  power: number,
+  spell?: { lasts?: number } | null,
+): number {
+  if (spell?.lasts !== undefined) {
+    return spell.lasts * TICK_HZ;
+  }
+  const b = content().balance.buffs;
+  const lengths: Record<TimedSpellEffect, readonly [number, number]> = {
+    haste: [b.hasteFrames, b.hastePerPower],
+    bless: [b.blessFrames, b.blessPerPower],
+    holyWeapon: [b.holyWeaponFrames, b.holyWeaponPerPower],
+    weaken: [b.weakenFrames, b.weakenPerPower],
+    poison: [b.poisonFrames, b.poisonPerPower],
+  };
+  const [frames, perPower] = lengths[effect];
+  return Math.max(0, frames + perPower * Math.max(0, power));
+}
+
+/**
+ * The regeneration period while Haste runs (issue #17): the usual period (`regenTarget`) shortened
+ * by `buffs.hasteRegenPercent` (200: twice as fast), at least 1 frame.
+ */
+export function hastedRegenTarget(target: number): number {
+  const percent = content().balance.buffs.hasteRegenPercent;
+  return Math.max(1, Math.round((target * 100) / percent));
+}
+
+/**
+ * Holy Weapon's extra damage on one melee hit (issue #17): `buffs.holyWeaponBonus`, or
+ * `buffs.holyWeaponUndeadBonus` on an undead monster (`hurtByHealing`).
+ */
+export function holyWeaponBonus(undead: boolean): number {
+  const b = content().balance.buffs;
+  return undead ? b.holyWeaponUndeadBonus : b.holyWeaponBonus;
+}
+
+/**
+ * A monster's attack while Weaken runs on it (issue #17): `buffs.weakenPenalty` off, never below 1.
+ */
+export function weakenedAttack(attack: number): number {
+  return Math.max(1, attack - content().balance.buffs.weakenPenalty);
+}
 
 /**
  * Morph: `N`, rolled from the balance row `buffs.morph` (1.6: `3 + P + random(5)`); the last row of

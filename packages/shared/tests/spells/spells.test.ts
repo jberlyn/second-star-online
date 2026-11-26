@@ -30,7 +30,6 @@ import {
   inCastBounds,
   inxitionText,
   isHarmful,
-  isInert,
   morphBody,
   playerSpellAmount,
   runBook,
@@ -108,15 +107,6 @@ describe("the cast checks", () => {
     expect(inCastBounds(100, 415)).toBe(false);
     expect(inCastBounds(579, 419)).toBe(false);
   });
-  test("bug fixed: the spells 1.6 gave no effect are inert, by name or effect", () => {
-    for (const s of ["Bless", "weaken", "Haste", "Poison Dart", "Replenish", "Holy Weapon"]) {
-      expect(isInert(s)).toBe(true);
-    }
-    expect(isInert("Identify")).toBe(true);
-    for (const s of ["Minor Heal", "Radar", "Fireball", "Hold"]) {
-      expect(isInert(s)).toBe(false);
-    }
-  });
   test("the harmful set has 11 spells and not Hold, Raise Dead or Summon Creature", () => {
     for (const s of ["Fireball", "WIND WAVE", "Holy Shield", "Web", "Bolt"]) {
       expect(isHarmful(s)).toBe(true);
@@ -125,12 +115,8 @@ describe("the cast checks", () => {
       expect(isHarmful(s)).toBe(false);
     }
   });
-  test("Holy Weapon costs 10 SP though it places nothing", () => {
-    expect(spCost("Holy Weapon", "NOTHING")).toBe(10);
-  });
-  test("SP cascade: Firesword 22 (24 then 22), Identify 0", () => {
+  test("SP cascade: Firesword 22 (24 then 22)", () => {
     expect(spCost("Firesword", "NOTHING")).toBe(22);
-    expect(spCost("Identify", "NOTHING")).toBe(0);
     expect(spCost("minor heal", "NOTHING")).toBe(5);
   });
   test('bug fixed: Smoke Bomb costs 25 in a body named exactly "Ninja", like any other body', () => {
@@ -340,18 +326,8 @@ describe("FX", () => {
     expect(placeFx("Minor Heal", c, t)).toEqual(t);
     expect(placeFx("Blue ArrowsU", c, t)).toEqual({ h: 50, v: 28 });
   });
-  test("the dead spells place nothing: Bless, Haste, Weaken, Poison Dart, Replenish, Holy Weapon", () => {
-    for (const n of [
-      "Bless",
-      "Haste",
-      "Weaken",
-      "Poison Dart",
-      "Replenish",
-      "Holy Weapon",
-      "Identify",
-    ]) {
-      expect(placeFx(n, { h: 1, v: 1 }, { h: 1, v: 1 })).toBeNull();
-    }
+  test("a name with no member places nothing", () => {
+    expect(placeFx("Nothing At All", { h: 1, v: 1 }, { h: 1, v: 1 })).toBeNull();
   });
   test("a point FX shows frames 1..last, then hides: minor heal 7 ", () => {
     const fx = newFx("Minor Heal", { h: 100, v: 100 });

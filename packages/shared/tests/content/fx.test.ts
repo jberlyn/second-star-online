@@ -57,8 +57,8 @@ describe("what draws a run", () => {
       needs: 3,
       projectile: { axis: "locH", px: -8 },
     });
-    // 1.6's dead spells show nothing.
-    expect(runs.get("bless")).toMatchObject({ show: "none", needs: 0 });
+    // The spells 1.6 left without an effect run SSO's art (issue #17).
+    expect(runs.get("bless")).toMatchObject({ show: "point", needs: 10, trigger: 3 });
     // xSmokeoBomb is a run of its own (frame 9 is never shown).
     expect(runs.get("xsmokeobomb")).toMatchObject({ needs: 8, trail: 0 });
   });

@@ -16,6 +16,8 @@ export const MONSTER_HIT_EFFECTS = [
   "Firebolt",
   "Fireball",
   "Wind Wave",
+  // SSO's (issue #17): each hit of Poison Dart's poison.
+  "Poison Dart",
 ] as const;
 const hitEffect = z.enum(MONSTER_HIT_EFFECTS);
 

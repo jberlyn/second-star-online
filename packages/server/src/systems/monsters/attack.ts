@@ -21,6 +21,7 @@ import {
   shattersText,
   train,
   trainsFrom,
+  weakenedAttack,
 } from "@secondstaronline/shared";
 
 import { logTransform } from "../admin/activity.ts";
@@ -134,7 +135,9 @@ function hitMe2(
   const f = fighterOf(p);
   const map = p.map;
   const shielded = onHolyShield(p, map.slots);
-  const hit = monsterHitsPlayer(attack, f, p.defenseBonus, ctx.rng, shielded, p.lastToHitMe);
+  // A weakened monster (issue #17) hits for less.
+  const power = (m.weaken ?? 0) > 0 ? weakenedAttack(attack) : attack;
+  const hit = monsterHitsPlayer(power, f, p.defenseBonus, ctx.rng, shielded, p.lastToHitMe);
   const lines: string[] = [];
   // On a plain hit the Parry gain rolls first, and Block's requirement reads the Parry that leaves.
   const gainParry = () => gainDefence(p, "parry", ctx.rng, lines);
@@ -241,6 +244,8 @@ export function fighterOf(p: Player): Fighter {
     equip: p.char.equip,
     faction: p.char.faction,
     attackBonus: p.attackBonus,
+    blessBonus: p.spell.bless > 0 ? content().balance.buffs.blessBonus : 0,
+    weakenPenalty: p.spell.weaken > 0 ? content().balance.buffs.weakenPenalty : 0,
     wanted: p.char.wanted,
   };
 }

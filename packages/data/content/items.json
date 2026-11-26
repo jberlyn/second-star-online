@@ -1148,6 +1148,10 @@
       "icon": null
     },
     {
+      "name": "Haste Book",
+      "icon": "added"
+    },
+    {
       "name": "Heavy Arms Book",
       "icon": {
         "member": 85,
@@ -1741,6 +1745,10 @@
         "castLib": 9,
         "asset": "bitmaps/292939_Plate_Helm.png"
       }
+    },
+    {
+      "name": "Poison Dart Book",
+      "icon": "added"
     },
     {
       "name": "Portal Book",
@@ -2913,6 +2921,8 @@
     "Splash Book",
     "Nature Shift Book",
     "Holy Weapon Book",
+    "Haste Book",
+    "Poison Dart Book",
     "Illusionary Spikes Book",
     "Argon's Fist Book",
     "Magic Shield Book",

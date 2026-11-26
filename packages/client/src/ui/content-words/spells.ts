@@ -94,13 +94,23 @@ export const spellsWords: WordBook = {
     label: "Stops training at",
     help: "Leave off to use the caster's mage limit.",
   },
+  "spells.alsoTrains": {
+    label: "Also trains",
+    help: "More skills each cast and each hit train, after the one above.",
+    noun: "skill",
+  },
+  "spells.alsoTrains.[].skill": { label: "Skill", names: "skill" },
+  "spells.alsoTrains.[].cap": {
+    label: "Stops training at",
+    help: "Leave off to use the caster's mage limit.",
+  },
   "spells.power": {
     label: "Power table",
     help: "The extra power rows (from Spell power) this spell adds to the base power.",
   },
   "spells.lasts": {
     label: "Lasts (seconds)",
-    help: "How long the new body lasts, for spells that change the caster's look. 65 if left off.",
+    help: "How long the spell's effect lasts: the new body of a spell that changes the caster's look (65 if left off), or Haste, Bless, Holy Weapon, Weaken and Poison Dart (the Balance page's time for the caster's power if left off).",
   },
   "spells.amount": {
     label: "Own damage and healing",

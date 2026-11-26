@@ -1415,6 +1415,36 @@
         "match": "contains",
         "pattern": "Magic Shield",
         "mysticism": 21
+      },
+      {
+        "match": "contains",
+        "pattern": "Replenish",
+        "mysticism": 20
+      },
+      {
+        "match": "contains",
+        "pattern": "Weaken",
+        "mysticism": 18
+      },
+      {
+        "match": "contains",
+        "pattern": "Poison Dart",
+        "mysticism": 18
+      },
+      {
+        "match": "contains",
+        "pattern": "Haste",
+        "mysticism": 14
+      },
+      {
+        "match": "contains",
+        "pattern": "Bless",
+        "mysticism": 12
+      },
+      {
+        "match": "contains",
+        "pattern": "Holy Weapon",
+        "mysticism": 12
       }
     ],
     "skillBooks": [

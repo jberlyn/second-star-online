@@ -29,6 +29,7 @@ import {
   firstMatch,
   flickerFrames,
   hasBehaviour,
+  holyWeaponBonus,
   invDelSlot,
   isArenaTile,
   LEVEL_UP_TEXT,
@@ -37,6 +38,7 @@ import {
   meleeKillXp,
   meleeReaches,
   monsterDrawnTile,
+  monsterFlags,
   pvpHit,
   type Rng,
   rollKillSkillGain,
@@ -311,7 +313,10 @@ function workAttack(room: Room, p: Player, ctx: MeleeCtx, ev: SwingEvents): void
     if (arrowing) {
       continue;
     }
-    smash(room, p, slot, dmg, ctx, ev);
+    // Holy Weapon (issue #17) adds to each melee hit, more on the undead.
+    const holy =
+      p.spell.holyWeapon > 0 ? holyWeaponBonus(monsterFlags(m.name).hurtByHealing === true) : 0;
+    smash(room, p, slot, dmg + holy, ctx, ev);
   }
   if (arrowing) {
     gainOnShot(p, ctx, ev);
@@ -426,10 +431,12 @@ function pvpSwing(
     if (r.kind !== "hit") {
       continue;
     }
-    // HP loses the attack power, floor 0, floatie with splat and sound, then both gains.
+    // HP loses the attack power, floor 0, floatie with splat and sound, then both gains. Holy
+    // Weapon (issue #17) adds to the hit.
+    const dmg = r.dmg + (p.spell.holyWeapon > 0 ? holyWeaponBonus(false) : 0);
     const left = v.char.vitals.hp;
-    v.char.vitals.hp = Math.max(0, v.char.vitals.hp - r.dmg);
-    ev.lines.push(...gainOnHit(p, weaponSkillList(weapon), Math.min(r.dmg, left), ctx.rng));
+    v.char.vitals.hp = Math.max(0, v.char.vitals.hp - dmg);
+    ev.lines.push(...gainOnHit(p, weaponSkillList(weapon), Math.min(dmg, left), ctx.rng));
     if (ctx.lightning) {
       // `ltass`: floored at 1 instead, so the frame script's own death test never fires; the death
       // script runs after the floatie, the gains and the save.
@@ -438,7 +445,7 @@ function pvpSwing(
     }
     gainParry();
     gainBlock();
-    ev.pvp.push({ victim: v, text: String(r.dmg), color: HIT_COLOR, splat: true, lines });
+    ev.pvp.push({ victim: v, text: String(dmg), color: HIT_COLOR, splat: true, lines });
   }
 }
 

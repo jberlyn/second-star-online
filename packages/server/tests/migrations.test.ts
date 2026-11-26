@@ -1442,11 +1442,26 @@ describe("migrations (real SQL on in-memory SQLite)", () => {
           .get() as { s: string }
       ).s,
     );
+    // Issue #17 later gave seven spells (Replenish, Haste, Bless, Holy Weapon, Weaken, Poison
+    // Dart, Identify) a school and power table of their own; the migration gives them 1.6's.
+    const AS_MIGRATED: Record<string, { school?: { skill: string }; power?: string }> = {
+      Replenish: { school: { skill: "Blessing" } },
+      Haste: { power: "Blessing" },
+      Bless: { power: "Blessing" },
+      "Holy Weapon": {},
+      Weaken: { power: "BlackArts" },
+      "Poison Dart": {},
+      Identify: {},
+    };
+    const migrated = (s: (typeof classic.spells)[number]) => {
+      const was = AS_MIGRATED[s.name];
+      return was ? { ...strip(s), ...was } : s;
+    };
     // Drench keeps its own school (its own line went with progression, #37 stage 6) and gains
     // Splash's power table, which it had none of.
     expect(pack).toEqual({
       spells: [
-        ...classic.spells,
+        ...classic.spells.map(migrated),
         { ...own, school: { skill: "Water" }, power: byName("Splash").power },
       ],
       power: classic.power,
@@ -1924,7 +1939,13 @@ describe("migrations (real SQL on in-memory SQLite)", () => {
       data: string;
     };
     const pack = JSON.parse(row.data).data;
-    expect(pack.classes).toEqual(classicData.classes);
+    // As Classic's are now, but for Item Identification, which issue #17 later showed.
+    expect(pack.classes).toEqual({
+      ...classicData.classes,
+      skills: classicData.classes.skills.map((k) =>
+        k.skill === "ItemIdentification" ? { ...k, hidden: true } : k,
+      ),
+    });
     expect(pack.gather).toEqual(classicData.gather);
     expect(pack["item-rules"]).toEqual(classicData.itemRules);
     expect(pack.spells).toEqual(classicData.spells);

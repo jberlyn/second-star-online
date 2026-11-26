@@ -29,8 +29,8 @@ An entry uses this shape; `Pinned by` is optional:
 
 | Section | Entries |
 |---|---:|
-| [Design changes](#design-changes) | 84 |
-| [Fixed bugs](#fixed-bugs) | 304 |
+| [Design changes](#design-changes) | 85 |
+| [Fixed bugs](#fixed-bugs) | 303 |
 | [Kept on purpose](#kept-on-purpose) | 12 |
 | [Server authority and exploits](#server-authority-and-exploits) | 138 |
 | [Not in SSO](#not-in-sso) | 40 |
@@ -54,7 +54,7 @@ By system (the code folder that holds the change):
 | movement | [5](#movement) | [4](#server-side-movement) |
 | progression | [9](#progression) | [4](#server-side-progression) |
 | social | [21](#social) | [9](#server-side-social) |
-| spells | [26](#spells) | [9](#server-side-spells) |
+| spells | [25](#spells) | [9](#server-side-spells) |
 | vehicles | [4](#vehicles) | [1](#server-side-vehicles) |
 | world | [2](#world) | [6](#server-side-world) |
 
@@ -824,6 +824,15 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Why:** Per-source and per-spell lines were inconsistent and could not be kept in step as operators add skills; one line keeps every gain alike.
 - **In the code:** `packages/shared/src/rules/progression/progress.ts` (`advancedText`), `packages/shared/src/rules/spells/spells.ts` (`spellImp`)
 - **Pinned by:** `design change: one advance line for every skill; Magery then the school, each random(skill) = 1` (packages/shared/tests/spells/spells.test.ts)
+
+#### The spells 1.6 left without an effect work
+- **Kind:** Other
+- **What you notice:** Bless, Weaken, Haste, Poison Dart, Replenish, Holy Weapon and Identify each do something, with their own animation and sound. Replenish heals between Minor and Major Heal. Haste makes your HP and SP come back twice as fast for about a minute. Bless adds 2 to the attack power of the player it lands on, and Holy Weapon adds 2 to each of their melee hits (4 on the undead), each for about a minute. Weaken takes 2 off a player's attack power or a monster's attack for about half a minute. Poison Dart flies like a fireball and poisons the first player or monster it touches, which then loses 3 to 5 HP every two seconds for about ten; any heal cures it, and a death by poison is the caster's kill. Identify, cast on an item on the ground, tells you where it is worn, what it strikes for, what it does while worn, what it needs and whether it can break. Weaken and Poison Dart are harmful: they cannot be cast where fighting is off, and they never touch you or, where PvP is off, another player. Replenish now costs 5 Blue Crystals, Holy Weapon 3 White and Poison Dart 3 Green; Identify costs 5 SP. Weaken and Poison Dart train Black Arts (Poison Dart Martial Arts too); the rest train Blessing, but Identify trains Item Identification, which now shows on the Skills page. Reading the books needs some Dexterity (Bless and Holy Weapon 12, Haste 14, Weaken and Poison Dart 18, Replenish 20). The Classic pack has Haste and Poison Dart books, but no shop or monster gives any of these books out: an operator decides where they come from.
+- **1.6:** The seven spells had names, books, SP and crystal costs and (all but two) Info lines, but no effect: the cast placed no animation and nothing read them, so the first six took SP and crystals for nothing and Identify did nothing silently. Haste's flag and Replenish's heal (`20 + random(10)`, more than Major Heal) sat in a handler nothing called. There was no Haste Book, and the Poison Dart Book had no picture. Item Identification was a hidden skill nothing raised.
+- **SSO:** Each spell runs an effect of its own. Their lengths and bonuses are the `buffs` rows of the balance (a fixed time plus a time for each point of power), Replenish's and the poison's amounts are `spellEffects` rows, and a spell's own `lasts` and `amount` replace them; all are on the Spells page. Weaken and Poison Dart are marked harmful. A spell may train more skills after its school (`alsoTrains`). The art and sounds are new (`assets/added/`, drawn by `tools/spell-art.ts`).
+- **Why:** 1.6 began these spells (costs, books, Info lines, Haste's flag, Replenish's heal) but never finished them. SSO finishes them in the spirit of their Info text and school rather than leaving them refused. Replenish heals less than 1.6's unused handler so that it sits between Minor and Major Heal, as "A medium level healing spell" says.
+- **In the code:** `packages/shared/src/rules/spells/spells.ts` (`timedEffectFrames`, `spellSchools`, `poisonOnMonster`), `packages/shared/src/rules/spells/identify.ts` (`identifyLines`), `packages/server/src/systems/spells/cast.ts` (`castIntent`, `identifyTarget`), `packages/server/src/systems/spells/collide.ts` (`playerCollision`, `poisonPlayerStep`, `afflictedMonstersStep`), `packages/server/src/systems/spells/buffs.ts` (`timedEffectsStep`), `packages/data/content/spells.json`, `packages/data/content/balance.json`
+- **Pinned by:** `design change: each spell has its cost, school and harm`; `design change: Replenish heals between Minor and Major Heal, and hurts the undead`; `design change: a timed spell lasts its frames plus its frames per power, or its own seconds`; `design change: Identify reads an item's real rules` (packages/shared/tests/spells/finished-spells.test.ts); `design change: Haste makes HP and SP regenerate twice as fast, then ends`; `design change: Holy Weapon adds 2 to each melee hit, 4 on the undead`; `design change: Weaken takes 2 off another player's attack where PvP is on, never yours`; `design change: Poison Dart flies at a player and poisons them; each hit is the caster's`; `design change: a poisoned monster loses HP every two seconds and its death is the caster's`; `design change: Poison Dart trains Black Arts and Martial Arts on each cast`; `design change: Identify where nothing lies is refused before anything is spent` (packages/server/tests/finished-spells.test.ts)
 
 ## Fixed bugs
 
@@ -2553,7 +2562,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** Bug fixed
 - **What you notice:** Nothing in the Classic pack hands you an item with no picture or asks you for one you could never get. Merius sells nothing; the Gold and Dark Chests no longer refill with the Hammer, Laser Sword or Green Laser Sword; no quest asks for a Damaged Helm, Water Orb or Ocarina or rewards a Scimitar; the cauldron no longer turns a Magic Shield Book and a Small Shield into a Magic Shield item. Copies you already hold of those six items stay and work.
 - **1.6:** 47 items had no picture. Some could still be got and showed as a blank: Damaged Armor (Merius), the Scimitar (a quest reward), the Hammer, Laser Sword and Green Laser Sword (quest chest refills), the Magic Shield (a cauldron recipe SSO made work) and Coched's "red crystal". Others could never be got at all, though quests asked for some of them: Dantan's quest and the quest pool wanted a Water Orb, a Damaged Helm or an Ocarina.
-- **SSO:** The Classic pack drops every item with no picture and no source, with the rule rows, shop-list entries and quest rolls that named only them: the Crown, the Cyclops, Imp, Lizard and Pig Costumes, the Damaged Helm, Shield and Sword, "Damaged Sword, Knight's" (see [Masterwork rolls are even and the Knight's Sword repairs](#masterwork-rolls-are-even-and-the-knights-sword-repairs)), the Dark Shield and Dark Staff, the Fawn Cap and Ice Cap, the Gold Armor, Boots, Helm and Shield, the Rune Armor, Helm, Shield and Sword, the Red Laser Sword, the White Tiara, the Magic Shield Spell Book, the Poison Dart Book, the duplicate singular crystals, and these three, recorded so they can come back to Classic with art and a source:
+- **SSO:** The Classic pack drops every item with no picture and no source, with the rule rows, shop-list entries and quest rolls that named only them: the Crown, the Cyclops, Imp, Lizard and Pig Costumes, the Damaged Helm, Shield and Sword, "Damaged Sword, Knight's" (see [Masterwork rolls are even and the Knight's Sword repairs](#masterwork-rolls-are-even-and-the-knights-sword-repairs)), the Dark Shield and Dark Staff, the Fawn Cap and Ice Cap, the Gold Armor, Boots, Helm and Shield, the Rune Armor, Helm, Shield and Sword, the Red Laser Sword, the White Tiara, the Magic Shield Spell Book, the Poison Dart Book (back with a picture: see [The spells 1.6 left without an effect work](#the-spells-16-left-without-an-effect-work)), the duplicate singular crystals, and these three, recorded so they can come back to Classic with art and a source:
   - **The Ocarina.** SSO had made it play a short authored tune to everyone on the map when used (an added sound, ocarina.wav, removed here and kept in the git history), but nobody could get one.
   - **The Earth, Fire, Water and Wind Orbs**, the pieces of the orb war 1.6 never finished (see [Features 1.6 never reached](#features-16-never-reached)).
   - **The Stone Guild Hall Deed.** It had no art, template or builder; SSO's Use said "The Stone Guild Hall cannot be built yet, so this deed can't be used." and kept it (building it is [#10](https://github.com/jberlyn/second-star-online/issues/10)). A deed whose `use` is `nothing` still works that way for an operator's own content.
@@ -3358,15 +3367,6 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Why:** "Another person" never meant you, and a refused cast should not be paid for.
 - **In the code:** `packages/server/src/systems/spells/cast.ts` (`castIntent`)
 - **Pinned by:** `bug fixed: Portal is refused near another player before SP and crystals are spent, and opens on the caster` (packages/server/tests/spells.test.ts)
-
-#### Spells with no effect are refused before they cost anything
-- **Kind:** Bug fixed
-- **What you notice:** Casting Bless, Weaken, Haste, Poison Dart, Replenish, Holy Weapon or Identify says "This spell has no power." and spends no SP, crystals or delay.
-- **1.6:** These spells had costs but no effect: the cast placed no FX and nothing read them. Haste's flag and Replenish's heal sat in a handler nothing called. The first six took SP and crystals for nothing; Identify had no cost and did nothing silently.
-- **SSO:** They stay learnable and listed, but the cast is refused before anything is spent. No effect is invented for them.
-- **Why:** Taking a player's SP and crystals for a spell that cannot do anything is a bug; giving them effects 1.6 never had would be new content.
-- **In the code:** `packages/shared/src/rules/spells/spells.ts` (`isInert`), `packages/server/src/systems/spells/cast.ts` (`castIntent`)
-- **Pinned by:** `bug fixed: the spells 1.6 gave no effect are inert, by name or effect` (packages/shared/tests/spells/spells.test.ts); `bug fixed: Bless, Weaken, Haste, Poison Dart, Replenish, Holy Weapon and Identify are refused before anything is spent` (packages/server/tests/spells.test.ts)
 
 #### Smoke Bomb in a body named "Ninja" costs 25
 - **Kind:** Bug fixed
@@ -4875,7 +4875,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **SSO:** The server triggers effects only from validated state.
 - **Why:** A forged client could teleport for free, change another player's body, create items or deal free damage.
 - **In the code:** `packages/server/src/systems/spells/cast.ts` (`castIntent`, `swingFireballs`), `packages/server/src/systems/spells/collide.ts` (`playerCollision`, `setBody`), `packages/server/src/systems/world/tick.ts` (`portal`)
-- **Pinned by:** `a spell not in your spellbook does nothing at all, not even the delay`; `bug fixed: Bless, Weaken, Haste, Poison Dart, Replenish, Holy Weapon and Identify are refused before anything is spent`; `stepping into the portal's frame 3 warps you to random(count) of the operator's targets` (packages/server/tests/spells.test.ts); `SSO: no client message sets a body, makes food or fires an effect; a cast names only the spell and the point` (packages/shared/tests/ledger-pins-a.test.ts); `SSO: no client message field sets a body, makes food or fires an effect` (packages/shared/tests/ledger-pins-e.test.ts)
+- **Pinned by:** `a spell not in your spellbook does nothing at all, not even the delay`; `stepping into the portal's frame 3 warps you to random(count) of the operator's targets` (packages/server/tests/spells.test.ts); `SSO: no client message sets a body, makes food or fires an effect; a cast names only the spell and the point` (packages/shared/tests/ledger-pins-a.test.ts); `SSO: no client message field sets a body, makes food or fires an effect` (packages/shared/tests/ledger-pins-e.test.ts)
 
 #### Monster spells and summons authored by the server
 - **Kind:** Exploit closed

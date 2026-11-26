@@ -1,20 +1,24 @@
 # Item Identification
 
-Item Identification is stored for every character but has no effect. It is a hidden slot that content could use in future.
+Item Identification is the skill of studying items. The Identify spell trains it.
 
 | | |
 |---|---|
-| Kind | Unused |
+| Kind | Magic |
 | Starting value | 1 |
-| Rises from | Nothing |
+| Rises from | Casting Identify |
 | Cap | 100 |
 | Medal | None |
 | Counts towards | Nothing |
 
-## How it works
+## How it rises
 
-Item Identification is in the stored skills (`skills` in [classes.json](../../../packages/data/content/classes.json)), marked `hidden`, so the Skills page leaves it out. Nothing raises it and no rule reads it. It is kept because 1.6 saved it. The Identify spell does not use it.
+- **Casting Identify** rolls `random(Item Identification) = 1` while it is below 100 (Identify's school sets its own cap, so the Mage cap does not apply); see [casting](README.md#casting).
 
-## Adding content
+## What it does
 
-A new use for it needs a way to raise it, something that reads it, and the `hidden` mark taken off its row to show it; see [Meditation](meditation.md#adding-content).
+Nothing reads it yet: Identify tells you the same about an item at any skill. It shows on the Skills page in SSO (1.6 hid it, as it still hides Meditation and Terrain Navigating), so players see the training Identify gives.
+
+## Differences from 1.6
+
+- [The spells 1.6 left without an effect work](../../differences-from-fso.md#the-spells-16-left-without-an-effect-work): Identify trains it, and it is shown.

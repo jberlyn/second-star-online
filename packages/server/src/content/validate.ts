@@ -888,6 +888,9 @@ export function referencesOf(data: ContentData): Reference[] {
   for (const s of data.spells.spells) {
     const row: RowRef = { dataset: "spells", part: "spells", key: s.name };
     skill(row, ["school", "skill"], s.school?.skill);
+    (s.alsoTrains ?? []).forEach((t, i) => {
+      skill(row, ["alsoTrains", i, "skill"], t.skill);
+    });
     (s.creates ?? []).forEach((c, i) => {
       add(row, ["creates", i, "item"], "item", c.item, null);
     });

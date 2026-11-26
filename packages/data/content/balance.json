@@ -53,6 +53,17 @@
       "monster": { "flat": 15, "power": 1, "randomN": 10 },
       "monsterUndead": { "flat": 5, "power": 1, "randomN": 5 },
       "player": { "flat": 15, "power": 1, "randomN": 5 }
+    },
+    {
+      "effect": "Replenish",
+      "monster": { "flat": 8, "power": 1, "randomN": 8 },
+      "monsterUndead": { "flat": 3, "power": 1, "randomN": 3 },
+      "player": { "flat": 8, "power": 1, "randomN": 6 }
+    },
+    {
+      "effect": "Poison Dart",
+      "monster": { "flat": 2, "power": 0, "randomN": 3 },
+      "player": { "flat": 2, "power": 0, "randomN": 3 }
     }
   ],
   "spellHits": { "dispel": 2000, "resistedRandomN": 3, "arrowsFloorRandomN": 2 },
@@ -64,7 +75,23 @@
     "holdPerPower": 8,
     "argonFrames": 400,
     "diminishHunger": { "add": 3000, "below": 35000 },
-    "morph": { "flat": 3, "power": 1, "randomN": 5 }
+    "morph": { "flat": 3, "power": 1, "randomN": 5 },
+    "hasteFrames": 1000,
+    "hastePerPower": 20,
+    "hasteRegenPercent": 200,
+    "blessFrames": 1000,
+    "blessPerPower": 20,
+    "blessBonus": 2,
+    "holyWeaponFrames": 1000,
+    "holyWeaponPerPower": 20,
+    "holyWeaponBonus": 2,
+    "holyWeaponUndeadBonus": 4,
+    "weakenFrames": 500,
+    "weakenPerPower": 10,
+    "weakenPenalty": 2,
+    "poisonFrames": 200,
+    "poisonPerPower": 10,
+    "poisonEveryFrames": 40
   },
   "castPower": { "staffFireball": { "flat": 1, "randomN": 3 }, "swordFireball": { "flat": 4, "randomN": 3 } },
   "regen": { "periodFrames": 149, "regenerate": 1, "starve": 1 },

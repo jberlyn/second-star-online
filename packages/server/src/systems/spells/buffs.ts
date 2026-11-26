@@ -92,3 +92,35 @@ export function npcSpellBlockStep(p: Player): void {
     p.spell.npcSpellBlock -= 1;
   }
 }
+
+/**
+ * SSO's timed effects (issue #17), after Firesword and Magic Shield: Haste, Bless, Holy Weapon and
+ * Weaken count down, each telling you when it ends.
+ */
+export function timedEffectsStep(p: Player, tell: (text: string) => void): void {
+  const s = p.spell;
+  const ends: [keyof Pick<typeof s, "haste" | "bless" | "holyWeapon" | "weaken">, string][] = [
+    ["haste", EFFECT_TEXT.hasteEnds],
+    ["bless", EFFECT_TEXT.blessEnds],
+    ["holyWeapon", EFFECT_TEXT.holyWeaponEnds],
+    ["weaken", EFFECT_TEXT.weakenEnds],
+  ];
+  for (const [k, text] of ends) {
+    if (s[k] > 0) {
+      s[k] -= 1;
+      if (s[k] === 0) {
+        tell(text);
+      }
+    }
+  }
+}
+
+/** Every timed effect and poison ends at once, silently (a death). */
+export function clearTimedEffects(p: Player): void {
+  const s = p.spell;
+  s.haste = 0;
+  s.bless = 0;
+  s.holyWeapon = 0;
+  s.weaken = 0;
+  s.poison = null;
+}

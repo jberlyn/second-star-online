@@ -93,14 +93,18 @@ describe("the Spellbook page (frame 67)", () => {
     (sb.page.querySelector(".spell-list") as HTMLElement).click();
     expect([sb.armed, sb.selected]).toEqual([true, ""]);
   });
-  test("Info prints the selected spell's line, typos kept; none for Poison Dart", () => {
+  test("Info prints the selected spell's line, typos kept", () => {
     const { sb, said } = book();
     sb.setSpells(["Firebolt", "Poison Dart"]);
     line(sb, 1).click();
     (sb.page.querySelector(".spell-info") as HTMLElement).click();
     line(sb, 2).click();
     (sb.page.querySelector(".spell-info") as HTMLElement).click();
-    expect(said).toEqual(["Fry your oppoent with this deadly bolt of flames."]);
+    // Poison Dart had no line in 1.6; SSO gave it one with its effect (issue #17).
+    expect(said).toEqual([
+      "Fry your oppoent with this deadly bolt of flames.",
+      "A venomous dart that poisons its target.",
+    ]);
     expect(spellInfo("wind wave")).toBe("This wind blast will definately hurt your foes.");
   });
   test("Info and the cast button are unstretched, side by side at their members' sizes (frame-67.json channels 43, 44)", () => {
@@ -230,7 +234,8 @@ describe("spell sounds", () => {
     ]);
     expect(spellSounds("BoltD")).toEqual([{ name: "lightning", ch: 4 }]);
     expect(spellSounds("Blue ArrowsL")).toEqual([]);
-    expect(spellSounds("Bless")).toEqual([]);
+    // SSO's own sound for a spell 1.6 left without one (issue #17).
+    expect(spellSounds("Bless")).toEqual([{ name: "bless", ch: 4 }]);
     // The puff `xSmokeoBomb` does not contain "Smoke Bomb" (no space): silent.
     expect(spellSounds("xSmokeoBomb")).toEqual([]);
     expect(spellSounds("Smoke Bomb")).toEqual([{ name: "fireballs", ch: 4 }]);

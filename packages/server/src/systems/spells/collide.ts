@@ -26,12 +26,14 @@ import {
   isCannonball,
   LEVEL_UP_TEXT,
   lingoContains,
+  lingoEq,
   meleeKillXp,
   monsterDrawnTile,
   monsterFlags,
   morphBody,
   type PlayerSpellBranch,
   playerSpellAmount,
+  poisonOnMonster,
   type Rng,
   radarText,
   rectsIntersect,
@@ -42,6 +44,8 @@ import {
   spellByName,
   spellHitOnMonster,
   spellOfFx,
+  spellSchools,
+  timedEffectFrames,
   treeBody,
   vehicleOfItem,
   weaponSkillList,
@@ -57,8 +61,19 @@ import { hasFlag, npcFileNamed } from "../monsters/npcfiles.ts";
 import { defenseOf, type MonsterSlot, species } from "../monsters/slots.ts";
 import { spawnHp } from "../monsters/spawn.ts";
 import { downed } from "../progression/vitals.ts";
-import type { Outgoing, Player, Room, SpellFx } from "../world/world.ts";
+import type { Outgoing, Player, Poison, Room, SpellFx } from "../world/world.ts";
 import { fxRect, monsterRect, playerRect } from "./geometry.ts";
+
+/** The blessings (issue #17): the member that gives each, its timer and its line. */
+const BLESSINGS: readonly [string, "haste" | "bless" | "holyWeapon", string][] = [
+  ["Haste-3", "haste", EFFECT_TEXT.haste],
+  ["Bless-3", "bless", EFFECT_TEXT.bless],
+  ["Holy Weapon-3", "holyWeapon", EFFECT_TEXT.holyWeapon],
+];
+
+/** A poisoned target's floatie, and a weakened monster's. */
+const POISON_TEXT = "Poison";
+const WEAKEN_TEXT = "Weak";
 
 /** Spell damage on a player shows in colour 6 with no splat or sound; heals in 5. */
 export const SPELL_HIT_COLOR = 6;
@@ -260,6 +275,42 @@ export function playerCollision(room: Room, p: Player, ctx: CollideCtx, res: Col
     if (has("minor heal-3")) {
       heal(playerSpellAmount("minor heal", P, target(), ctx.rng, own(fx)));
     }
+    // SSO's spells (issue #17). Replenish heals as the other heals do, and any heal cures poison.
+    if (has("Replenish-3")) {
+      heal(playerSpellAmount("replenish", P, target(), ctx.rng, own(fx)));
+    }
+    if (p.spell.poison && (has("major heal-3") || has("minor heal-3") || has("Replenish-3"))) {
+      p.spell.poison = null;
+      tell(res.out, p, EFFECT_TEXT.poisonEnds);
+    }
+    // A blessing cast again while it runs restarts its time, the longer of the two.
+    for (const [member, effect, text] of BLESSINGS) {
+      if (has(member)) {
+        const lasts = timedEffectFrames(effect, P, castSpellOf(fx));
+        if (lasts > 0) {
+          p.spell[effect] = Math.max(p.spell[effect], lasts);
+          tell(res.out, p, text);
+        }
+      }
+    }
+    // Weaken and Poison Dart are harmful: never on yourself, another player's only where PvP is
+    // on, and nothing in a vehicle but the hull's wear.
+    if (has("Weaken-3") && !spared(fx) && !invulnerable && !p.vehicle) {
+      const lasts = timedEffectFrames("weaken", P, castSpellOf(fx));
+      if (lasts > 0) {
+        p.spell.weaken = Math.max(p.spell.weaken, lasts);
+        tell(res.out, p, EFFECT_TEXT.weaken);
+      }
+    }
+    if (has("Poison Dart") && !spared(fx) && !fx.poisoned?.has(p.id)) {
+      fx.poisoned ??= new Set();
+      fx.poisoned.add(p.id);
+      if (p.vehicle) {
+        damage(fx, 0);
+      } else if (!invulnerable) {
+        poisonPlayer(p, fx, res);
+      }
+    }
     // Morph, Nature Shift and Smoke Bomb do nothing in a vehicle or as a boss (not built); Hold
     // the same, its vehicle test first.
     // A world that binds no such body (`bindings.json` `bodies`) has the spell do nothing.
@@ -321,9 +372,15 @@ export function playerCollision(room: Room, p: Player, ctx: CollideCtx, res: Col
 
 /**
  * A player's spell or arrow that did damage trains its owner (the `hit` source): an arrow the
- * owner's weapon skills, a spell its school. A cannonball trains nothing.
+ * owner's weapon skills, a spell its schools (Poison Dart's poison too). A cannonball trains nothing.
  */
-function trainHitter(room: Room, fx: SpellFx, damage: number, ctx: CollideCtx, res: CollideOut) {
+function trainHitter(
+  room: Room,
+  fx: Pick<SpellFx, "name" | "ownerId" | "castSpell" | "firedFrom">,
+  damage: number,
+  ctx: CollideCtx,
+  res: CollideOut,
+) {
   const owner = fx.ownerId ? room.players.find((o) => o.id === fx.ownerId) : undefined;
   if (!owner || isCannonball(fx.name)) {
     return;
@@ -334,7 +391,7 @@ function trainHitter(room: Room, fx: SpellFx, damage: number, ctx: CollideCtx, r
     skills = weaponSkillList(fx.firedFrom ?? owner.char.equip.weapon);
   } else {
     const spell = fx.castSpell ? spellByName(fx.castSpell) : spellOfFx(fx.name);
-    skills = spell?.school ? [spell.school.skill] : [];
+    skills = spell ? spellSchools(spell).map((s) => s.skill) : [];
   }
   for (const line of gainOnHit(owner, skills, damage, ctx.rng)) {
     tell(res.out, owner, line);
@@ -424,6 +481,9 @@ export function monsterHits(room: Room, ctx: CollideCtx, res: CollideOut): void 
         for (const o of room.players) {
           tell(res.out, o, `The ${m.name} has ${m.hp} hit points.`);
         }
+      }
+      if (afflictMonster(room, slot, fx, mem, res)) {
+        continue;
       }
       const hit = spellHitOnMonster(mem, monsterFlags(m.name), defenseOf(m.name), P, r, own(fx));
       if (!hit) {
@@ -570,7 +630,7 @@ function shellMonster(
 function checkForDead(
   room: Room,
   slot: MonsterSlot,
-  fx: SpellFx,
+  fx: { ownerId: string | null },
   ctx: CollideCtx,
   res: CollideOut,
 ): boolean {
@@ -639,4 +699,204 @@ function checkForDead(
     tell(res.out, owner, LEVEL_UP_TEXT);
   }
   return true;
+}
+
+// ---- Weaken and Poison Dart (issue #17) -------------------------------------------------------
+
+/** A new poison from a dart: its length for the caster's power and the spell cast. */
+function newPoison(fx: SpellFx, lasts: number): Poison {
+  return {
+    frames: lasts,
+    next: content().balance.buffs.poisonEveryFrames,
+    power: fx.power,
+    owner: fx.owner,
+    ownerId: fx.ownerId,
+    castSpell: fx.castSpell ?? null,
+  };
+}
+
+/**
+ * A Poison Dart's poison on a player: a new poison, or a running one's time restarted (the longer
+ * of the two) and taken over by the new caster. Nothing when it would last no time.
+ */
+function poisonPlayer(p: Player, fx: SpellFx, res: CollideOut): void {
+  const lasts = timedEffectFrames("poison", fx.power, castSpellOf(fx));
+  if (lasts <= 0) {
+    return;
+  }
+  const was = p.spell.poison;
+  p.spell.poison = {
+    ...newPoison(fx, Math.max(lasts, was?.frames ?? 0)),
+    next: was?.next ?? content().balance.buffs.poisonEveryFrames,
+  };
+  p.lastToHitMe = fx.owner;
+  p.lastToHitId = fx.ownerId ?? null;
+  p.hitAge = 0;
+  if (!was) {
+    tell(res.out, p, EFFECT_TEXT.poison);
+  }
+  res.events.push({ e: "phit", id: p.id, text: POISON_TEXT, color: SPELL_HIT_COLOR });
+}
+
+/**
+ * Weaken's and Poison Dart's hit on a monster, in the spell-hit pass: Weaken on its hit frame,
+ * the dart on frame 1 of its three. Either sets the spell-hit lockout and provokes a Passive monster
+ * as a damaging spell does. True when the FX was one of them (the monster takes no amount).
+ */
+function afflictMonster(
+  room: Room,
+  slot: MonsterSlot,
+  fx: SpellFx,
+  mem: string,
+  res: CollideOut,
+): boolean {
+  const m = slot.live;
+  const weaken = lingoEq(mem, "Weaken-3");
+  // The dart strikes on frame 1 of its three, as a fireball does.
+  const dart = ["Poison DartL-1", "Poison DartR-1", "Poison DartU-1", "Poison DartD-1"].some((n) =>
+    lingoEq(mem, n),
+  );
+  if (!m || (!weaken && !dart)) {
+    return false;
+  }
+  if (weaken) {
+    const lasts = timedEffectFrames("weaken", fx.power, castSpellOf(fx));
+    if (lasts > 0) {
+      m.weaken = Math.max(m.weaken ?? 0, lasts);
+    }
+  } else {
+    const lasts = timedEffectFrames("poison", fx.power, castSpellOf(fx));
+    if (lasts > 0) {
+      const was = m.poison;
+      m.poison = {
+        ...newPoison(fx, Math.max(lasts, was?.frames ?? 0)),
+        next: was?.next ?? content().balance.buffs.poisonEveryFrames,
+      };
+    }
+  }
+  m.hitCountb = 16;
+  m.lockedBy = { fx, member: mem };
+  if (fx.ownerId !== null && hasFlag(room.npcs, m.name, "Passive")) {
+    for (const o of room.players) {
+      o.npcAttackFlag = true;
+    }
+  }
+  res.events.push({
+    e: "mspell",
+    slot: slot.slot,
+    text: weaken ? WEAKEN_TEXT : POISON_TEXT,
+    color: MONSTER_SPELL_HIT_COLOR,
+    splat: false,
+    kill: false,
+  });
+  return true;
+}
+
+/** Counts a poison down one frame: true when it hits this frame. */
+function poisonTicks(poison: Poison): boolean {
+  poison.frames -= 1;
+  poison.next -= 1;
+  if (poison.next > 0) {
+    return false;
+  }
+  poison.next = content().balance.buffs.poisonEveryFrames;
+  return true;
+}
+
+/** The FX a poison's hit trains its caster as: the spell cast, for its schools. */
+function poisonFx(poison: Poison) {
+  return {
+    name: "Poison Dart",
+    ownerId: poison.ownerId,
+    ...(poison.castSpell ? { castSpell: poison.castSpell } : {}),
+  };
+}
+
+/**
+ * A poisoned player's frame (issue #17): every `buffs.poisonEveryFrames` the poison deals the
+ * "Poison Dart" amount, which spell defense does not reduce, and the caster is the last to have hit
+ * them, so a death is theirs. It does no harm where its caster's spells would not (another
+ * player's poison where PvP is off), to a role that takes no damage, or aboard; it ends when its
+ * time runs out, at a death, or with a heal.
+ */
+export function poisonPlayerStep(room: Room, p: Player, ctx: CollideCtx, res: CollideOut): void {
+  const poison = p.spell.poison;
+  if (!poison || p.loading > 0) {
+    return;
+  }
+  if (p.deadLock > 0 || downed(p)) {
+    p.spell.poison = null;
+    return;
+  }
+  if (poisonTicks(poison)) {
+    const harmless =
+      p.vehicle !== null ||
+      can(p.role, "invulnerable") ||
+      (poison.ownerId !== null && pvpOff(room, p));
+    if (!harmless) {
+      const v = p.char.vitals;
+      const target: SpellTarget = { equip: p.char.equip, magicShield: p.spell.magicDef > 0 };
+      const override = poison.castSpell ? spellByName(poison.castSpell)?.amount : undefined;
+      const dmg = playerSpellAmount("poison dart", poison.power, target, ctx.rng, override);
+      const left = v.hp;
+      v.hp = v.hp <= dmg ? 0 : v.hp - dmg;
+      if (poison.ownerId !== p.id) {
+        trainHitter(room, poisonFx(poison), Math.min(dmg, left), ctx, res);
+      }
+      p.lastToHitMe = poison.owner;
+      p.lastToHitId = poison.ownerId;
+      p.hitAge = 0;
+      p.vitalsDirty = true;
+      res.events.push({ e: "phit", id: p.id, text: String(dmg), color: SPELL_HIT_COLOR });
+    }
+  }
+  if (poison.frames <= 0) {
+    p.spell.poison = null;
+    tell(res.out, p, EFFECT_TEXT.poisonEnds);
+  }
+}
+
+/**
+ * The monsters' frame for SSO's effects (issue #17): Weaken counts down, and a poisoned monster
+ * takes the "Poison Dart" amount every `buffs.poisonEveryFrames` (healed by it, or rolled small, by
+ * a species it heals or that resists it). A death by poison is its caster's kill, as a spell's.
+ */
+export function afflictedMonstersStep(room: Room, ctx: CollideCtx, res: CollideOut): void {
+  for (const slot of room.map.slots) {
+    const m = slot.live;
+    if (!m) {
+      continue;
+    }
+    if ((m.weaken ?? 0) > 0) {
+      m.weaken = (m.weaken ?? 0) - 1;
+    }
+    const poison = m.poison;
+    if (!poison) {
+      continue;
+    }
+    const hits = poisonTicks(poison);
+    if (poison.frames <= 0) {
+      m.poison = null;
+    }
+    if (!hits) {
+      continue;
+    }
+    const override = poison.castSpell ? spellByName(poison.castSpell)?.amount : undefined;
+    const hit = poisonOnMonster(monsterFlags(m.name), poison.power, ctx.rng, override);
+    const left = m.hp + 1;
+    m.hp += hit.heal ? hit.n : -hit.n;
+    if (!hit.heal) {
+      trainHitter(room, poisonFx(poison), Math.min(hit.n, left), ctx, res);
+    }
+    slot.dirty = true;
+    const kill = checkForDead(room, slot, poison, ctx, res);
+    res.events.push({
+      e: "mspell",
+      slot: slot.slot,
+      text: String(hit.n),
+      color: hit.heal ? MONSTER_SPELL_HEAL_COLOR : MONSTER_SPELL_HIT_COLOR,
+      splat: hit.splat,
+      kill,
+    });
+  }
 }

@@ -18,11 +18,13 @@ import {
   fireballForm,
   fxForEffect,
   fxRun,
+  groundLayer,
+  groundTipName,
   hasBehaviour,
+  identifyLines,
   inCastBounds,
   invDelSlot,
   isHarmful,
-  isInert,
   lingoDiv,
   lingoEq,
   lingoWord,
@@ -119,10 +121,6 @@ export function castIntent(
   if (spell === "") {
     return res;
   }
-  if (isInert(spell)) {
-    res.out.push(tell(p, CAST_TEXT.inert));
-    return res;
-  }
   const sp = spCost(spell, p.char.equip.body);
   if (sp === 0) {
     return res;
@@ -165,6 +163,12 @@ export function castIntent(
     res.out.push(tell(p, CAST_TEXT.summon));
     return res;
   }
+  // Identify (issue #17) needs an item on the clicked tile, found before anything is spent.
+  const studied = lingoEq(effect, "Identify") ? identifyTarget(room, tx, ty) : null;
+  if (lingoEq(effect, "Identify") && studied === null) {
+    res.out.push(tell(p, CAST_TEXT.identifyNothing));
+    return res;
+  }
 
   // The power comes from the caster before anything is spent (it reads the skills and gear, which
   // the cost does not change).
@@ -205,6 +209,9 @@ export function castIntent(
   if (lingoEq(eff, "Bolt")) {
     eff = boltForm(p.facing);
   }
+  if (lingoEq(eff, "Poison Dart")) {
+    eff = directional("Poison Dart", me.h, me.v, h, v);
+  }
   queueCast(room, {
     owner: p.name,
     ownerId: p.id,
@@ -221,7 +228,24 @@ export function castIntent(
     res.out.push(...summoned.out);
     res.slotsChanged = summoned.changed;
   }
+  if (studied !== null) {
+    for (const line of identifyLines(studied)) {
+      res.out.push(tell(p, line));
+    }
+  }
   return res;
+}
+
+/**
+ * The item Identify studies on map tile (x, y): the one a click there would take, the newest the
+ * hover tip names (exits, markers and hidden overlays are passed over), or null for none.
+ */
+export function identifyTarget(room: Room, x: number, y: number): string | null {
+  const here = room.map.ground.filter(
+    (g) =>
+      g.x === x && g.y === y && groundLayer(g.item) !== "hidden" && groundTipName(g.item) !== null,
+  );
+  return here.at(-1)?.item ?? null;
 }
 
 // ---- summons -------------------------------------------------------

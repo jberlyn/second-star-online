@@ -6,8 +6,8 @@ Martial Arts is the ninja's skill. It boosts bare hands, the Katana, Scimitar, B
 |---|---|
 | Kind | Weapon and magic |
 | Starting value | 1 |
-| Rises from | Melee kills; Smoke Bomb casts; crossbow shots |
-| Cap | [Combat cap](README.md#caps) on kills; 100 from casts and shots |
+| Rises from | Melee kills; Smoke Bomb and Poison Dart casts; crossbow shots |
+| Cap | [Combat cap](README.md#caps) on kills; 100 from Smoke Bomb and shots; [Mage cap](README.md#caps) from Poison Dart |
 | Medal | Oraku's sash at 90: +1 Strength, +2 Intelligence, +1 Wisdom |
 | Counts towards | Bio score, high scores, combat rating |
 
@@ -15,6 +15,7 @@ Martial Arts is the ninja's skill. It boosts bare hands, the Katana, Scimitar, B
 
 - **Melee kills** with no weapon, the Katana, the Scimitar or the Bo. The chance is 1 in (Martial Arts + W); see [melee kills](README.md#melee-kills).
 - **Casting Smoke Bomb** rolls `random(Martial Arts) = 1` up to 100 (after the usual Magery roll); see [casting](README.md#casting).
+- **Casting Poison Dart** rolls `random(Martial Arts) = 1` below the Mage cap, after Black Arts; a dart's poison that does damage trains it the same way.
 - **Each crossbow shot** rolls `random(Martial Arts) = 1` up to 100, alongside Archery.
 
 ## What it does
@@ -44,6 +45,8 @@ Crossbows start lower and climb with Martial Arts: the Wooden Crossbow takes −
 ## Differences from 1.6
 
 - [Smoke Bomb in a body named "Ninja" costs 25](../../differences-from-fso.md#smoke-bomb-in-a-body-named-ninja-costs-25).
+
+- [The spells 1.6 left without an effect work](../../differences-from-fso.md#the-spells-16-left-without-an-effect-work): Poison Dart trains Martial Arts.
 
 ## Balance notes
 

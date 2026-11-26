@@ -212,6 +212,8 @@ export function attackPower(
   if (f.attackBonus > 0) {
     power += 1; // Purple Potion
   }
+  // Bless (an SSO addition, issue #17) adds beside Argon's Fist.
+  power += f.blessBonus ?? 0;
   // STR tiers.
   for (const t of [5, 10, 15, 19]) {
     if (f.str > t) {
@@ -234,6 +236,10 @@ export function attackPower(
     for (const t of block.tiers) {
       power = applyTier(power, t, f, rng);
     }
+  }
+  // Weaken (an SSO addition, issue #17) comes off last, never below 1.
+  if ((f.weakenPenalty ?? 0) > 0) {
+    power = Math.max(1, power - (f.weakenPenalty ?? 0));
   }
   return { power, outOfCrystals, crystal };
 }

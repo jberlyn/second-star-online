@@ -72,9 +72,9 @@ describe("what draws a run", () => {
     const used = usedArt(classicData).sprites.fx;
     expect(used.get("crush")).toBe("spell Crush");
     expect(used.get("xfirebolt")).toBe("spell Firebolt");
-    // A run with no trail has no trail in use, and a dead spell's run shows nothing.
+    // A run with no trail has no trail in use; the runs SSO drew for 1.6's dead spells show.
     expect(used.has("xcrush")).toBe(false);
-    expect(used.has("bless")).toBe(false);
+    expect(used.get("bless")).toBe("spell Bless");
     expect(used.get("fishing")).toBe("fishing");
   });
 });

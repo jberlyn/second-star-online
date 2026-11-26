@@ -70,7 +70,6 @@ import {
   isFootprint,
   isGoldName,
   isHarmful,
-  isInert,
   isKey,
   isTrap,
   isUniqueContainer,
@@ -966,7 +965,6 @@ describe("the behaviour snapshot", () => {
       lines.push(
         line(s, {
           effect: show(castEffect(s)),
-          inert: isInert(s),
           harmful: isHarmful(s),
           sp: spCost(s, NOTHING),
           spNinja: spCost(s, "Ninja Outfit"),

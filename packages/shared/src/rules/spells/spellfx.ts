@@ -78,6 +78,13 @@ const AT_CLICK = [
   "sprinkle",
   "Firebolt",
   "Magic Shield",
+  // SSO's (issue #17): 1.6 placed nothing for these.
+  "Replenish",
+  "Haste",
+  "Bless",
+  "Holy Weapon",
+  "Weaken",
+  "Identify",
 ];
 
 /**
@@ -133,6 +140,11 @@ const FROM_CASTER: Record<string, [number, number]> = {
   "wind waver": [33, 0],
   "wind waveu": [0, -33],
   "wind waved": [0, 33],
+  // SSO's Poison Dart (issue #17), placed as a fireball is.
+  "poison dartl": [-32, 0],
+  "poison dartr": [32, 0],
+  "poison dartu": [0, -32],
+  "poison dartd": [0, 32],
   cannonballshotl: [-CANNONBALL_OFFSET, 0],
   cannonballshotr: [CANNONBALL_OFFSET, 0],
   cannonballshotu: [0, -CANNONBALL_OFFSET],
@@ -141,8 +153,9 @@ const FROM_CASTER: Record<string, [number, number]> = {
 
 /**
  * Where the cast handler places `name`, or null when it sets no loc: the sprite keeps its off-stage
- * loc and nothing shows (Bless, Haste, Weaken, Poison Dart, Replenish, Holy Weapon, Identify, and
- * any name without a member).
+ * loc and nothing shows (any name without a member). 1.6 placed nothing for Bless, Haste, Weaken,
+ * Poison Dart, Replenish, Holy Weapon and Identify; SSO places them at the click, Poison Dart beside
+ * the caster as a fireball (issue #17).
  */
 export function placeFx(
   name: string,
@@ -321,6 +334,7 @@ export function rectsIntersect(
  */
 export const FX_TRIGGER_FRAMES: Readonly<Record<string, number>> = {
   "argon's fist": 3,
+  bless: 3,
   boltd: 1,
   boltl: 1,
   boltr: 1,
@@ -335,7 +349,9 @@ export const FX_TRIGGER_FRAMES: Readonly<Record<string, number>> = {
   fireballu: 1,
   firebolt: 12,
   firesword: 3,
+  haste: 3,
   hold: 3,
+  "holy weapon": 3,
   inxition: 3,
   "magic shield": 3,
   "major heal": 3,
@@ -343,11 +359,17 @@ export const FX_TRIGGER_FRAMES: Readonly<Record<string, number>> = {
   "minor heal": 3,
   morph: 3,
   "nature shift": 3,
+  "poison dartd": 1,
+  "poison dartl": 1,
+  "poison dartr": 1,
+  "poison dartu": 1,
   portal: 3,
   radar: 5,
+  replenish: 3,
   "smoke bomb": 3,
   splash: 18,
   "stone skin": 9,
+  weaken: 3,
   "wind waved": 1,
   "wind wavel": 1,
   "wind waver": 1,

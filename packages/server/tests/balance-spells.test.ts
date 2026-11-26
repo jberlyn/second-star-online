@@ -708,6 +708,8 @@ describe("the Balance page's spell, buff and vitals rows", () => {
         "spellEffects/Arrows",
         "spellEffects/Minor Heal",
         "spellEffects/Major Heal",
+        "spellEffects/Replenish",
+        "spellEffects/Poison Dart",
         "spellHits/",
         "buffs/",
         "castPower/",

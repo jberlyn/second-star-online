@@ -94,13 +94,16 @@ import {
   npcSpellBlockStep,
   smokeBombStep,
   swordShieldStep,
+  timedEffectsStep,
 } from "../spells/buffs.ts";
 import {
+  afflictedMonstersStep,
   type CollideCtx,
   type CollideOut,
   cannonballHits,
   monsterHits,
   playerCollision,
+  poisonPlayerStep,
 } from "../spells/collide.ts";
 import { advanceFx, placeQueued } from "../spells/fx.ts";
 import { serverTimer } from "../spells/hazards.ts";
@@ -386,6 +389,31 @@ export function tick(world: World, deps: TickDeps): TickResult {
       tell(l.to, l.text);
     }
     tickPauses(map);
+    // SSO's Weaken and Poison Dart on the monsters (issue #17), once a frame.
+    if (map.slots.some((sl) => sl.live && ((sl.live.weaken ?? 0) > 0 || sl.live.poison))) {
+      const afflicted: CollideOut = {
+        events: [],
+        out: [],
+        portals: [],
+        slotsChanged: false,
+        broadcasts: [],
+      };
+      afflictedMonstersStep(room, collideCtx, afflicted);
+      for (const ev of afflicted.events) {
+        all(ev);
+      }
+      out.push(...afflicted.out);
+      for (const b of afflicted.broadcasts) {
+        for (const o of world.players.values()) {
+          if (hears(o, b.from)) {
+            tell(o, b.text);
+          }
+        }
+      }
+      if (afflicted.slotsChanged) {
+        slotEvent = true;
+      }
+    }
     // RND chatter: each talking monster speaks on its own fixed interval, heard by the whole map.
     for (const slot of map.slots) {
       const said = chatterTick(room.npcs, slot, (deps.npcChatterSeconds ?? 150) * TICK_HZ, rng);
@@ -436,6 +464,7 @@ export function tick(world: World, deps: TickDeps): TickResult {
       };
       smokeBombStep(room, p, spells);
       playerCollision(room, p, collideCtx, spells);
+      poisonPlayerStep(room, p, collideCtx, spells);
       for (const ev of spells.events) {
         all(ev);
       }
@@ -509,6 +538,7 @@ export function tick(world: World, deps: TickDeps): TickResult {
         }
       }
       swordShieldStep(p, (text) => tell(p, text));
+      timedEffectsStep(p, (text) => tell(p, text));
       const death = checkDeath(room, p, rng, {
         item: itemCtx,
         rules: deps.deathDrops ?? balanceDeathDrops(),

@@ -130,28 +130,6 @@ describe("the cast", () => {
     expect(casts(29, 100)).toBe(false);
     expect(casts(100, 415)).toBe(false);
   });
-  test("bug fixed: Bless, Weaken, Haste, Poison Dart, Replenish, Holy Weapon and Identify are refused before anything is spent", () => {
-    const { a, room, cast } = scene();
-    const inert = [
-      "Bless",
-      "Weaken",
-      "Haste",
-      "Poison Dart",
-      "Replenish",
-      "Holy Weapon",
-      "Identify",
-    ];
-    a.spell.book = [...inert];
-    give(a, "Blue Crystal", 4);
-    for (const spell of inert) {
-      const r = cast(a, spell, 200, 200);
-      expect(r.out[0]?.msg).toEqual({ t: "chat", text: CAST_TEXT.inert, color: 0 });
-    }
-    expect(a.char.vitals.sp).toBe(200);
-    expect(a.char.bag.some((l) => l?.item === "Blue Crystal")).toBe(true);
-    expect(a.timers.actionDelay).toBe(0);
-    expect(room.fxQueue).toEqual([]);
-  });
   test("bug fixed: Fireball and Wind Wave cast with their school bonus", () => {
     const { a, room, cast } = scene();
     a.spell.book = ["Fireball", "Wind Wave"];
@@ -664,6 +642,8 @@ describe("books", () => {
   });
   test("bug fixed: a book with no picture is read like any other book", () => {
     const p = player("Ann", testMap("x1"), 1, 1);
+    // 1.6's Poison Dart Book had no picture; SSO's has one and needs Dexterity 18 (issue #17).
+    p.char.stats.dex = 18;
     give(p, "Poison Dart Book", 1);
     expect(readBook(p, 0, rngByN())).toEqual([
       "You read the book...",

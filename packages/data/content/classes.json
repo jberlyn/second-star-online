@@ -534,8 +534,7 @@
     },
     {
       "skill": "ItemIdentification",
-      "display": "Item Identification",
-      "hidden": true
+      "display": "Item Identification"
     },
     {
       "skill": "Illusion"

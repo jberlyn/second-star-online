@@ -270,22 +270,31 @@
       "name": "Identify",
       "id": null,
       "effect": "Identify",
-      "sp": null,
+      "sp": 5,
       "crystals": null,
       "harmful": false,
       "book": {
         "match": "contains",
         "pattern": "Identify"
       },
-      "info": null,
+      "info": "Reveals the secrets of an item on the ground.",
+      "school": {
+        "skill": "ItemIdentification",
+        "cap": 100
+      },
       "fx": [
         {
           "member": "Identify",
           "effect": "Identify",
-          "frames": 0,
-          "lastFrame": null,
+          "frames": 8,
+          "lastFrame": 8,
           "projectile": null,
-          "sounds": []
+          "sounds": [
+            {
+              "name": "identify",
+              "ch": 4
+            }
+          ]
         }
       ]
     },
@@ -690,21 +699,89 @@
       "id": 6,
       "effect": "Poison Dart",
       "sp": 25,
-      "crystals": null,
-      "harmful": false,
+      "crystals": {
+        "colour": "Green",
+        "count": 3
+      },
+      "harmful": true,
       "book": {
         "match": "contains",
         "pattern": "Poison Dart"
       },
-      "info": null,
+      "info": "A venomous dart that poisons its target.",
+      "school": {
+        "skill": "BlackArts"
+      },
+      "alsoTrains": [
+        {
+          "skill": "MartialArts"
+        }
+      ],
+      "power": "BlackArts",
       "fx": [
         {
-          "member": "Poison Dart",
-          "effect": "Poison Dart",
-          "frames": 0,
+          "member": "Poison DartL",
+          "effect": "Poison DartL",
+          "frames": 3,
           "lastFrame": null,
-          "projectile": null,
-          "sounds": []
+          "projectile": {
+            "axis": "locH",
+            "px": -8
+          },
+          "sounds": [
+            {
+              "name": "poison dart",
+              "ch": 4
+            }
+          ]
+        },
+        {
+          "member": "Poison DartR",
+          "effect": "Poison DartR",
+          "frames": 3,
+          "lastFrame": null,
+          "projectile": {
+            "axis": "locH",
+            "px": 8
+          },
+          "sounds": [
+            {
+              "name": "poison dart",
+              "ch": 4
+            }
+          ]
+        },
+        {
+          "member": "Poison DartU",
+          "effect": "Poison DartU",
+          "frames": 3,
+          "lastFrame": null,
+          "projectile": {
+            "axis": "locV",
+            "px": -8
+          },
+          "sounds": [
+            {
+              "name": "poison dart",
+              "ch": 4
+            }
+          ]
+        },
+        {
+          "member": "Poison DartD",
+          "effect": "Poison DartD",
+          "frames": 3,
+          "lastFrame": null,
+          "projectile": {
+            "axis": "locV",
+            "px": 8
+          },
+          "sounds": [
+            {
+              "name": "poison dart",
+              "ch": 4
+            }
+          ]
         }
       ]
     },
@@ -717,21 +794,29 @@
         "colour": "White",
         "count": 5
       },
-      "harmful": false,
+      "harmful": true,
       "book": {
         "match": "contains",
         "pattern": "Weaken"
       },
       "info": "Your opponent will become too weak to fight.",
+      "school": {
+        "skill": "BlackArts"
+      },
       "power": "BlackArts",
       "fx": [
         {
           "member": "Weaken",
           "effect": "Weaken",
-          "frames": 0,
-          "lastFrame": null,
+          "frames": 9,
+          "lastFrame": 9,
           "projectile": null,
-          "sounds": []
+          "sounds": [
+            {
+              "name": "weaken",
+              "ch": 4
+            }
+          ]
         }
       ]
     },
@@ -750,15 +835,23 @@
         "pattern": "Bless"
       },
       "info": "Give the attacker divine power.",
+      "school": {
+        "skill": "Blessing"
+      },
       "power": "Blessing",
       "fx": [
         {
           "member": "Bless",
           "effect": "Bless",
-          "frames": 0,
-          "lastFrame": null,
+          "frames": 10,
+          "lastFrame": 10,
           "projectile": null,
-          "sounds": []
+          "sounds": [
+            {
+              "name": "bless",
+              "ch": 4
+            }
+          ]
         }
       ]
     },
@@ -837,7 +930,10 @@
       "id": 11,
       "effect": "Replenish",
       "sp": 22,
-      "crystals": null,
+      "crystals": {
+        "colour": "Blue",
+        "count": 5
+      },
       "harmful": false,
       "book": {
         "match": "contains",
@@ -847,14 +943,20 @@
       "school": {
         "skill": "Blessing"
       },
+      "power": "Blessing",
       "fx": [
         {
           "member": "Replenish",
           "effect": "Replenish",
-          "frames": 0,
-          "lastFrame": null,
+          "frames": 9,
+          "lastFrame": 9,
           "projectile": null,
-          "sounds": []
+          "sounds": [
+            {
+              "name": "replenish",
+              "ch": 4
+            }
+          ]
         }
       ]
     },
@@ -929,21 +1031,33 @@
       "id": 42,
       "effect": "Holy Weapon",
       "sp": 10,
-      "crystals": null,
+      "crystals": {
+        "colour": "White",
+        "count": 3
+      },
       "harmful": false,
       "book": {
         "match": "contains",
         "pattern": "Holy Weapon"
       },
       "info": "Let the light shine on your attacks.",
+      "school": {
+        "skill": "Blessing"
+      },
+      "power": "Blessing",
       "fx": [
         {
           "member": "Holy Weapon",
           "effect": "Holy Weapon",
-          "frames": 0,
-          "lastFrame": null,
+          "frames": 10,
+          "lastFrame": 10,
           "projectile": null,
-          "sounds": []
+          "sounds": [
+            {
+              "name": "holy weapon",
+              "ch": 4
+            }
+          ]
         }
       ]
     },
@@ -1363,15 +1477,23 @@
         "pattern": "Haste"
       },
       "info": "Speeds up your healing.",
+      "school": {
+        "skill": "Blessing"
+      },
       "power": "Blessing",
       "fx": [
         {
           "member": "Haste",
           "effect": "Haste",
-          "frames": 0,
-          "lastFrame": null,
+          "frames": 9,
+          "lastFrame": 9,
           "projectile": null,
-          "sounds": []
+          "sounds": [
+            {
+              "name": "haste",
+              "ch": 4
+            }
+          ]
         }
       ]
     }

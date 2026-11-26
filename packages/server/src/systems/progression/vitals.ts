@@ -14,6 +14,7 @@ import {
   exileAtDeath,
   factionPerk,
   goldPileName,
+  hastedRegenTarget,
   hungerTick,
   invDelSlot,
   lingoEq,
@@ -37,7 +38,9 @@ export function regenStep(p: Player): void {
   const v = p.char.vitals;
   const before = `${v.hp}/${v.sp}`;
   const hp = v.hp;
-  const target = regenTarget(factionPerk(p.char.faction, "regeneration"));
+  const usual = regenTarget(factionPerk(p.char.faction, "regeneration"));
+  // Haste (issue #17) shortens the period while it runs.
+  const target = p.spell.haste > 0 ? hastedRegenTarget(usual) : usual;
   p.regenCounter = regenTick(p.regenCounter, target, p.char.hunger, v);
   // Starving costs no HP for a role that takes no damage.
   if (v.hp < hp && can(p.role, "invulnerable")) {
@@ -121,6 +124,8 @@ export function checkDeath(room: Room, p: Player, rng: Rng, drop?: DeathDropCtx)
     p.lastToHitMe = null;
     p.lastToHitId = null;
   }
+  // A death, the arena's too, ends any poison (issue #17).
+  p.spell.poison = null;
   const world = drop?.item.world;
   const arena = !p.vehicle && onArenaTile(room, p.x, p.y);
   if (world) {

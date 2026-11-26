@@ -25,7 +25,7 @@ The [progression guide](../progression.md) covers character growth as a whole. T
 | [Musicianship](musicianship.md) | Unused | Yes |
 | [Terrain Navigating](terrain-navigating.md) | Unused | No |
 | [Staff Fighting](staff-fighting.md) | Weapon | Yes |
-| [Item Identification](item-identification.md) | Unused | No |
+| [Item Identification](item-identification.md) | Magic | Yes |
 | [Illusion](illusion.md) | Magic | Yes |
 | [Hammer Wielding](hammer-wielding.md) | Weapon | Yes |
 | [Fire](fire.md) | Magic (element) | Yes |
@@ -47,7 +47,7 @@ The [progression guide](../progression.md) covers character growth as a whole. T
 | [Shoveling](shoveling.md) | Gathering | Yes |
 | [Farming](farming.md) | Gathering | Yes |
 
-The table is in the order of `skills` in [classes.json](../../../packages/data/content/classes.json), which is the order of the Skills page. A character saves each skill under its key (`skill`), so the list can change without moving anyone's training. The Skills page shows 35 of them under their `display` names; Meditation, Terrain Navigating and Item Identification are `hidden`, stored but never shown. Code finds a skill by name with `skillIndex` in [fighter.ts](../../../packages/shared/src/rules/core/fighter.ts), which accepts the spellings the original used (`HeavyArms`, `Heavy Arms`, `fire`). The skills a mechanic reads (Parry, Block, the crafts and others) are named in [bindings.json](../../../packages/data/content/bindings.json); see [Bindings](../../modding.md#bindings-bindingsjson).
+The table is in the order of `skills` in [classes.json](../../../packages/data/content/classes.json), which is the order of the Skills page. A character saves each skill under its key (`skill`), so the list can change without moving anyone's training. The Skills page shows 36 of them under their `display` names; Meditation and Terrain Navigating are `hidden`, stored but never shown. Code finds a skill by name with `skillIndex` in [fighter.ts](../../../packages/shared/src/rules/core/fighter.ts), which accepts the spellings the original used (`HeavyArms`, `Heavy Arms`, `fire`). The skills a mechanic reads (Parry, Block, the crafts and others) are named in [bindings.json](../../../packages/data/content/bindings.json); see [Bindings](../../modding.md#bindings-bindingsjson).
 
 ## Starting values
 
@@ -95,7 +95,7 @@ Stamina and Wisdom here are the calculated stats, including class and medal poin
 
 ### Casting
 
-Casting a spell runs `spellImp` ([spells.ts](../../../packages/shared/src/rules/spells/spells.ts)) on the caster: Magery rises on `random(Magery) = 1`, then the spell's school skill (if it has one) rolls the same way, `random(skill) = 1`. Both need the skill above 0 and below the Mage cap, except Martial Arts, which rises to 100. Wisdom does not affect cast gains. Each magic skill's page lists the spells that train it.
+Casting a spell runs `spellImp` ([spells.ts](../../../packages/shared/src/rules/spells/spells.ts)) on the caster: Magery rises on `random(Magery) = 1`, then the spell's school skill (if it has one) rolls the same way, `random(skill) = 1`, and then any more skills the spell trains (Poison Dart: Martial Arts after Black Arts). Each needs the skill above 0 and below the Mage cap, unless the spell sets its own cap: Smoke Bomb's Martial Arts and Identify's Item Identification rise to 100. Wisdom does not affect cast gains. Each magic skill's page lists the spells that train it.
 
 ### Being attacked
 

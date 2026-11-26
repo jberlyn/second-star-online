@@ -25,7 +25,8 @@ export interface Balance {
   /** One row for each effect, in `BALANCE_SPELL_EFFECT_ORDER`. */
   spellEffects: SpellEffectRow[];
   spellHits: NonNullable<BalanceData["spellHits"]>;
-  buffs: NonNullable<BalanceData["buffs"]>;
+  /** Every field present: a row's later fields it leaves out are the defaults'. */
+  buffs: Required<NonNullable<BalanceData["buffs"]>>;
   castPower: NonNullable<BalanceData["castPower"]>;
   regen: NonNullable<BalanceData["regen"]>;
   /** Every field present: a row's later fields it leaves out are the defaults'. */
@@ -53,6 +54,8 @@ export const BALANCE_SPELL_EFFECT_ORDER: readonly BalanceSpellEffect[] = [
   "Arrows",
   "Minor Heal",
   "Major Heal",
+  "Replenish",
+  "Poison Dart",
 ];
 
 /** `flat + P + random(randomN)`: most of 1.6's spell amounts. */
@@ -81,6 +84,20 @@ export const BALANCE_DEFAULTS: Readonly<Balance> = {
       monsterUndead: plusP(5, 5),
       player: plusP(15, 5),
     },
+    // SSO's (issue #17): Replenish, "a medium level healing spell", heals between Minor and Major
+    // Heal (1.6's unused handler's `20 + random(10)` would have out-healed Major Heal).
+    {
+      effect: "Replenish",
+      monster: plusP(8, 8),
+      monsterUndead: plusP(3, 3),
+      player: plusP(8, 6),
+    },
+    // One hit of Poison Dart's poison: 2 + random(3) each time, whatever the power.
+    {
+      effect: "Poison Dart",
+      monster: { flat: 2, power: 0, randomN: 3 },
+      player: { flat: 2, power: 0, randomN: 3 },
+    },
   ],
   spellHits: { dispel: 2000, resistedRandomN: 3, arrowsFloorRandomN: 2 },
   buffs: {
@@ -92,6 +109,24 @@ export const BALANCE_DEFAULTS: Readonly<Balance> = {
     argonFrames: 400,
     diminishHunger: { add: 3000, below: 35_000 },
     morph: plusP(3, 5),
+    // SSO's (issue #17): about a minute at power 10 for the blessings, half that for Weaken, and
+    // ten seconds of poison hitting every two.
+    hasteFrames: 1000,
+    hastePerPower: 20,
+    hasteRegenPercent: 200,
+    blessFrames: 1000,
+    blessPerPower: 20,
+    blessBonus: 2,
+    holyWeaponFrames: 1000,
+    holyWeaponPerPower: 20,
+    holyWeaponBonus: 2,
+    holyWeaponUndeadBonus: 4,
+    weakenFrames: 500,
+    weakenPerPower: 10,
+    weakenPenalty: 2,
+    poisonFrames: 200,
+    poisonPerPower: 10,
+    poisonEveryFrames: 40,
   },
   castPower: {
     staffFireball: { flat: 1, randomN: 3 },
@@ -208,7 +243,8 @@ export function fullBalance(data: BalanceData | undefined): Balance {
   return {
     spellEffects,
     spellHits: part("spellHits"),
-    buffs: part("buffs"),
+    // A row written before SSO's buffs existed plays the defaults for them.
+    buffs: { ...structuredClone(BALANCE_DEFAULTS.buffs), ...structuredClone(d.buffs ?? {}) },
     castPower: part("castPower"),
     regen: part("regen"),
     // A row written before the later hunger fields existed plays the defaults for them.

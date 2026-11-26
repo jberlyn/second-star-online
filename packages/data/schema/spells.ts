@@ -104,11 +104,17 @@ export const spellSchema = z.strictObject({
   summon: spellSummonSchema.optional(),
   /** The school a cast trains after Magery. Absent = Magery only. */
   school: spellSchoolSchema.optional(),
+  /**
+   * More skills each cast (and each hit) trains after its school, in order, each with its own cap
+   * (issue #17: Poison Dart trains Black Arts and Martial Arts). Absent = the school alone.
+   */
+  alsoTrains: z.array(spellSchoolSchema).max(8).optional(),
   /** The `power.tables` entry added after the base power. Absent = the base power alone. */
   power: z.string().min(1).optional(),
   /**
-   * How many seconds the body this spell gives lasts (the Morph, Nature Shift and Smoke Bomb
-   * effects), 1 to 3600. Absent = 65, 1.6's 1,300 frames.
+   * How many seconds what this spell gives lasts, 1 to 3600: the body of the Morph, Nature Shift and
+   * Smoke Bomb effects (absent: 65, 1.6's 1,300 frames), and the Haste, Bless, Holy Weapon, Weaken
+   * and Poison Dart effects (absent: the Balance page's length for the caster's power).
    */
   lasts: int.min(1).max(3600).optional(),
   /**

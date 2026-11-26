@@ -37,6 +37,10 @@ export const BALANCE_LIMITS = {
   perPower: { min: 0, max: 10_000 },
   /** A small bonus (Stone Skin's defense). */
   bonus: { min: 0, max: 1_000 },
+  /** A speed in percent of the usual (Haste's regeneration): from the usual to ten times it. */
+  speedPercent: { min: 100, max: 1_000 },
+  /** Frames between poison hits: from every frame to once a minute. */
+  poisonEvery: { min: 1, max: 1_200 },
   /** A hunger value (hunger counts down from about 40,000 while you play). */
   hunger: { min: 0, max: 100_000 },
   /** A fixed amount of HP or SP. */
@@ -92,6 +96,8 @@ export const BALANCE_SPELL_EFFECTS = [
   "Arrows",
   "Minor Heal",
   "Major Heal",
+  "Replenish",
+  "Poison Dart",
   "Meteor",
   "Bolt",
   "Splash",
@@ -102,7 +108,11 @@ export const BALANCE_SPELL_EFFECTS = [
 ] as const;
 
 /** The healing effects: they heal a monster (and a player), and hurt an undead monster. */
-export const BALANCE_HEAL_EFFECTS: readonly BalanceSpellEffect[] = ["Minor Heal", "Major Heal"];
+export const BALANCE_HEAL_EFFECTS: readonly BalanceSpellEffect[] = [
+  "Minor Heal",
+  "Major Heal",
+  "Replenish",
+];
 
 /** A spell row's own amounts (`spells.json` `amount`): each part it sets replaces its effect's. */
 export const spellAmountOverrideSchema = z.strictObject({
@@ -183,6 +193,36 @@ export const buffsSchema = z.strictObject({
   }),
   /** Morph's roll: the first morph body whose `above` it passes from the top wins. */
   morph: amountSchema,
+  /*
+   * SSO's additions (issue #17), each optional so a row saved before them plays the defaults. A
+   * buff lasts its `…Frames` plus its `…PerPower` for each point of the caster's power, unless the
+   * cast spell's own `lasts` says otherwise.
+   */
+  /** Haste: how long it lasts. */
+  hasteFrames: bounded(BALANCE_LIMITS.frames).optional(),
+  hastePerPower: bounded(BALANCE_LIMITS.perPower).optional(),
+  /** Haste: how fast HP and SP regenerate meanwhile, in percent of the usual speed (200: twice). */
+  hasteRegenPercent: bounded(BALANCE_LIMITS.speedPercent).optional(),
+  /** Bless: how long it lasts and the attack power it adds. */
+  blessFrames: bounded(BALANCE_LIMITS.frames).optional(),
+  blessPerPower: bounded(BALANCE_LIMITS.perPower).optional(),
+  blessBonus: bounded(BALANCE_LIMITS.bonus).optional(),
+  /** Holy Weapon: how long it lasts and the damage it adds to each melee hit (on the undead). */
+  holyWeaponFrames: bounded(BALANCE_LIMITS.frames).optional(),
+  holyWeaponPerPower: bounded(BALANCE_LIMITS.perPower).optional(),
+  holyWeaponBonus: bounded(BALANCE_LIMITS.bonus).optional(),
+  holyWeaponUndeadBonus: bounded(BALANCE_LIMITS.bonus).optional(),
+  /** Weaken: how long it lasts and the attack it takes off a player or monster. */
+  weakenFrames: bounded(BALANCE_LIMITS.frames).optional(),
+  weakenPerPower: bounded(BALANCE_LIMITS.perPower).optional(),
+  weakenPenalty: bounded(BALANCE_LIMITS.bonus).optional(),
+  /**
+   * Poison Dart's poison: how long it lasts, and the frames between its hits (each the
+   * `spellEffects` "Poison Dart" amount).
+   */
+  poisonFrames: bounded(BALANCE_LIMITS.frames).optional(),
+  poisonPerPower: bounded(BALANCE_LIMITS.perPower).optional(),
+  poisonEveryFrames: bounded(BALANCE_LIMITS.poisonEvery).optional(),
 });
 
 /** The power of a weapon's free fireball. */

@@ -57,6 +57,10 @@ export interface Fighter {
   faction: Faction;
   /** The Purple Potion's attack bonus flag (spells and potions arrive in later slices). */
   attackBonus: number;
+  /** Bless's attack bonus while it runs (issue #17), added with Argon's Fist's. Absent: 0. */
+  blessBonus?: number;
+  /** Weaken's attack penalty while it runs (issue #17), taken off last. Absent: 0. */
+  weakenPenalty?: number;
   /** `gnL`: wanted for murder. */
   wanted: boolean;
 }

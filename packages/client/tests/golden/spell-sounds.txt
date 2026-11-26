@@ -1,6 +1,6 @@
 Argon's Fist | fx2@4
 BSmith | Swordhit2@4 / Swordhit1@4
-Bless | -
+Bless | bless@4
 Blue ArrowsL | -
 Bolt | -
 BoltD | lightning@4
@@ -20,11 +20,11 @@ FireballU | fireballs@4
 Firebolt | firebolt@4
 Firesword | clear2@4
 Fishing | -
-Haste | -
+Haste | haste@4
 Hold | land@4
 Holy Shield | clear@4
-Holy Weapon | -
-Identify | -
+Holy Weapon | holy weapon@4
+Identify | identify@4
 Illusionary Spikes | bad@4
 Inxition | fx2@4
 Magic Shield | fx2@4
@@ -34,16 +34,20 @@ Minor Heal | fx2@4
 Morph | clear2@4
 Nature Shift | clear2@4
 Poison Dart | -
+Poison DartD | poison dart@4
+Poison DartL | poison dart@4
+Poison DartR | poison dart@4
+Poison DartU | poison dart@4
 Portal | heal2@4,heal1@3
 Radar | fx2@4
 Raise Dead | bad@4
-Replenish | -
+Replenish | replenish@4
 Slot Machine | SlotMachine@6
 Smoke Bomb | fireballs@4
 Splash | splash@4
 Stone Skin | stone skin@4
 Summon Creature | clear@4
-Weaken | -
+Weaken | weaken@4
 Web | bad@4
 Whirlwind | whirlwind@4
 Wind Wave | -

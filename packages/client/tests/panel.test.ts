@@ -285,19 +285,27 @@ describe("the right panel (frames 50-65)", () => {
   const zeros = () =>
     Object.fromEntries(classesData.skills.map((s) => [s.skill, 0])) as Record<string, number>;
   const shownRows = () => classesData.skills.filter((s) => !s.hidden).length;
-  test("skills show 1.6's fixed 35 rows with display names (the stats text)", () => {
+  test("skills show 1.6's 35 rows and Item Identification with display names (the stats text)", () => {
     const { panel } = panelWith([]);
     panel.setSkills(numbered());
     const names = panel.el.querySelector(".skill-names")?.textContent?.split("\n") ?? [];
     const values = panel.el.querySelector(".skill-values")?.textContent?.split("\n") ?? [];
-    expect(names).toHaveLength(35);
-    expect(shownRows()).toBe(35);
+    // Item Identification shows since Identify trains it (issue #17).
+    expect(names).toHaveLength(36);
+    expect(shownRows()).toBe(36);
     expect(names.slice(0, 5)).toEqual(["Slash", "Thrust", "Parry", "Heavy Arms", "Axe Fighting"]);
-    expect(names.slice(17, 21)).toEqual(["Fire", "Water", "Wind", "Earth"]);
+    expect(names.slice(15, 22)).toEqual([
+      "Item Identification",
+      "Illusion",
+      "Hammer Wielding",
+      "Fire",
+      "Water",
+      "Wind",
+      "Earth",
+    ]);
     expect(names.at(-1)).toBe("Farming");
     expect(names).not.toContain("Meditation");
     expect(names).not.toContain("Terrain Navigating");
-    expect(names).not.toContain("Item Identification");
     // Each row shows its own skill's value: Heavy Arms (row 4) is skill 4; Meditation (skill 12)
     // is hidden, so Blessing (row 12) is skill 13.
     expect(values[3]).toBe("4");

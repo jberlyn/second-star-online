@@ -191,6 +191,7 @@ Guild Key | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"
 Guitar | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
 Halo's Newspaper | click={"kind":"newspaper"} ctrl={"kind":"newspaper"} ctrlStrong={"kind":"newspaper"} ctrlMine={"kind":"newspaper"}
 Hammer | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Haste Book | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
 Heavy Arms Book | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
 Herb | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
 High Score Statue | click={"kind":"scores"} ctrl={"kind":"scores"} ctrlStrong={"kind":"scores"} ctrlMine={"kind":"scores"}
@@ -281,6 +282,7 @@ Plate Armor +1 | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"
 Plate Armor +2 | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
 Plate Boots | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
 Plate Helm | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Poison Dart Book | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
 Portal | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
 Portal Book | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
 Potion Bottle | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
