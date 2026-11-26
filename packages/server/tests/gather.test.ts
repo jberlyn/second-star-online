@@ -247,6 +247,78 @@ describe("fishing", () => {
     expect(fx).toMatchObject({ name: "Fishing", h: 5 * 32 + 14, v: 6 * 32 - 3 - 41 });
   });
 
+  test("each cast's splash sound plays to everyone on the map, from content", () => {
+    const f = fisher(rngByN({ 28: [1] }));
+    const b = player("b", f.map, 9, 9);
+    f.join(b);
+    setSkill(f.a, "Fishing", 20);
+    setAttackHeld(f.a, true);
+    const out = f.run(1);
+    expect(sounds(out, "a")).toContain("splash:4");
+    expect(sounds(out, "b")).toEqual(["splash:4"]);
+  });
+
+  /** Runs `body` with fishing's cast set to `cast`. */
+  function withCast(
+    cast: {
+      castFx: { fx: string; frames: number } | null;
+      castSound: { name: string; ch: number } | null;
+    },
+    body: () => void,
+  ) {
+    const d = structuredClone(classicData) as ContentData;
+    if (d.gather.gathering.fishing) {
+      Object.assign(d.gather.gathering.fishing, cast);
+    }
+    installContent(buildContentStore(d));
+    try {
+      body();
+    } finally {
+      installContent(buildContentStore(classicData as ContentData));
+    }
+  }
+  const castFx = (out: Out) =>
+    events(out, "a").flatMap((e) => (e.e === "fx" ? [[e.name, e.h, e.v]] : []));
+
+  test("a world's own cast effect and sound play instead, and train no spell skill", () => {
+    withCast({ castFx: { fx: "Bobber", frames: 4 }, castSound: { name: "plop", ch: 6 } }, () => {
+      const f = fisher(rngByN({ 28: [1] }));
+      setSkill(f.a, "Fishing", 20);
+      setAttackHeld(f.a, true);
+      const out = [...f.run(1), ...f.run(1)];
+      expect(castFx(out)).toEqual([["Bobber", 5 * 32 + 14, 6 * 32 - 3 - 41]]);
+      expect(sounds(out, "a")).toContain("plop:6");
+      expect(sounds(out, "a")).not.toContain("splash:4");
+      expect(lines(out, "a").some((l) => /Magic|Black Arts|Blessing|Spell/.test(l))).toBe(false);
+      // The run plays its 4 frames (two a frame) and goes.
+      const room = f.world.rooms.get(f.map.name);
+      expect(room?.fx.map((x) => x.name)).toEqual(["Bobber"]);
+      setAttackHeld(f.a, false);
+      f.run(3);
+      expect(room?.fx).toEqual([]);
+    });
+  });
+
+  test("a world with no cast effect or no cast sound shows or plays none, and fishing still works", () => {
+    withCast({ castFx: null, castSound: { name: "splash", ch: 4 } }, () => {
+      const f = fisher(rngByN({ 28: [1] }));
+      setSkill(f.a, "Fishing", 20);
+      setAttackHeld(f.a, true);
+      const out = [...f.run(1), ...f.run(1)];
+      expect(castFx(out)).toEqual([]);
+      expect(sounds(out, "a")).toContain("splash:4");
+      expect(f.map.ground.map((x) => x.item)).toEqual(["Trout"]);
+    });
+    withCast({ castFx: { fx: "Fishing", frames: 13 }, castSound: null }, () => {
+      const f = fisher(rngByN({ 28: [1] }));
+      setSkill(f.a, "Fishing", 20);
+      setAttackHeld(f.a, true);
+      const out = [...f.run(1), ...f.run(1)];
+      expect(castFx(out).map((x) => x[0])).toEqual(["Fishing"]);
+      expect(sounds(out, "a")).not.toContain("splash:4");
+    });
+  });
+
   test("bug fixed: the Ring of Quickness shortens a cast's AtDelay from 20 to 16", () => {
     const f = fisher(rngByN({ 28: [1] }));
     f.a.char.equip.ring = "Ring of Quickness";

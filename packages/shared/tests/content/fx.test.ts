@@ -67,21 +67,35 @@ describe("what draws a run", () => {
     const runs = fxRuns(classic);
     expect(runs.get("sprinkle")).toMatchObject({ show: "engine", needs: 5, content: true });
     expect(runs.get("slot machine")).toMatchObject({ needs: 52, content: true });
-    expect(runs.get("fishing")).toMatchObject({ needs: 13, content: false, users: ["fishing"] });
     expect(runs.get("bsmith")).toMatchObject({ needs: 13, content: false });
     expect(runs.get("blue arrowsr")).toMatchObject({ needs: 1, users: ["Blue Arrows"] });
     expect(runs.get("cannonballshotd")).toMatchObject({ needs: 4 });
   });
 
-  test("a harvest node's strike run shows the frames its row asks for", () => {
+  test("a gathering run (a harvest node's strike, fishing's cast) shows the frames its row asks for", () => {
     const runs = fxRuns(classic);
     expect(runs.get("wood chips")).toMatchObject({
       show: "point",
       needs: 12,
       content: true,
-      strike: true,
+      gathering: true,
       users: ["harvesting tile S3"],
     });
+    expect(runs.get("fishing")).toMatchObject({
+      show: "point",
+      needs: 13,
+      content: true,
+      gathering: true,
+      users: ["fishing"],
+    });
+    // Renamed and shortened, the cast run is the content's, and Fishing is drawn by nothing.
+    const renamed = structuredClone(classic) as unknown as FxContent & {
+      gather: { gathering: { fishing: { castFx: unknown } } };
+    };
+    renamed.gather.gathering.fishing.castFx = { fx: "Bobber", frames: 6 };
+    const r = fxRuns(renamed);
+    expect(r.get("bobber")).toMatchObject({ needs: 6, users: ["fishing"] });
+    expect(r.has("fishing")).toBe(false);
     expect(runs.get("rock chips")?.users).toEqual(["harvesting tile B8"]);
     expect(runs.get("ember chips")?.needs).toBe(12);
   });

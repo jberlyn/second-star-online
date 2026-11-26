@@ -33,7 +33,6 @@ export const ENGINE_SOUNDS: readonly { name: string; use: string }[] = [
   { name: "CardShuffle", use: "a blackjack table reset" },
   { name: "CardDeal", use: "a blackjack card dealt" },
   { name: "cannonball", use: "a cannon shot" },
-  { name: "splash", use: "a fishing cast" },
   { name: "Swordhit1", use: "smithing at an anvil" },
   { name: "Swordhit2", use: "smithing at an anvil" },
   { name: "Swordhit3", use: "starting to smith" },

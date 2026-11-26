@@ -90,7 +90,6 @@ describe("gathering sounds", () => {
   test("BSmith plays Swordhit2 on a 1, else Swordhit1, on channel 4", () => {
     expect(spellSounds("BSmith", () => 1)).toEqual([{ name: "Swordhit2", ch: 4 }]);
     expect(spellSounds("BSmith", () => 2)).toEqual([{ name: "Swordhit1", ch: 4 }]);
-    expect(spellSounds("Fishing", () => 1)).toEqual([{ name: "splash", ch: 4 }]);
     expect(spellSounds("sprinkle", () => 1)).toEqual([]);
   });
 

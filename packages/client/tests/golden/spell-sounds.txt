@@ -19,7 +19,7 @@ FireballR | fireballs@4
 FireballU | fireballs@4
 Firebolt | firebolt@4
 Firesword | clear2@4
-Fishing | splash@4
+Fishing | -
 Haste | -
 Hold | land@4
 Holy Shield | clear@4

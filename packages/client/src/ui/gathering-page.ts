@@ -90,6 +90,7 @@ const TAB_FIELDS: Record<string, Record<string, readonly string[]>> = {
   },
   fishing: {
     fishing: ["waterTiles", "antiMacroStart", "stoppedText"],
+    cast: ["castFx", "castSound", "fxOffsets"],
     catches: ["bands"],
     bites: ["fishCheck"],
   },
@@ -1660,6 +1661,146 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
   };
 
   // ---- fishing, farming and the swings a harvest takes ----
+
+  /** Fishing's cast: the splash every map shows, where it lands, and the sound everyone hears. */
+  const castSection = (f: Record<string, unknown>) => {
+    type Run = { fx: string; frames: number } | null;
+    type Snd = { name: string; ch: number } | null;
+    const frames = document.createElement("div");
+    const drawFrames = () => {
+      const run = f.castFx as Run;
+      frames.replaceChildren(
+        ...(run
+          ? [
+              labelled(
+                "Frames shown",
+                int("gathering-cast-frames", run.frames, 1, 99, false, "Frames shown", (c) => {
+                  const now = f.castFx as Run;
+                  if (now) {
+                    now.frames = c ?? 1;
+                  }
+                }),
+                "How many of the effect's frames play, from frame 1. Upload its pictures on Effects.",
+              ),
+            ]
+          : []),
+      );
+    };
+    drawFrames();
+    const effect = labelled(
+      "Splash effect",
+      Object.assign(
+        text(
+          "gathering-cast-fx",
+          (f.castFx as Run)?.fx ?? "",
+          (t) => {
+            const had = f.castFx !== null;
+            f.castFx = t === "" ? null : { fx: t, frames: (f.castFx as Run)?.frames ?? 13 };
+            if (had !== (f.castFx !== null)) {
+              drawFrames();
+            }
+          },
+          effectsList.id,
+        ),
+        { placeholder: "None" },
+      ),
+      "Plays on the water at every cast, and everyone nearby sees it.",
+    );
+    const channel = document.createElement("div");
+    const drawChannel = () => {
+      const snd = f.castSound as Snd;
+      channel.replaceChildren(
+        snd
+          ? labelled(
+              "Cast sound channel",
+              int("gathering-cast-sound-ch", snd.ch, 1, 8, false, "Cast sound channel", (c) => {
+                const now = f.castSound as Snd;
+                if (now) {
+                  now.ch = c ?? 1;
+                }
+              }),
+              "Sound channels 1 to 8. Leave it as it is unless sounds cut each other off.",
+            )
+          : helpLine("Pick a sound first."),
+      );
+    };
+    drawChannel();
+    const castSound = labelled(
+      "Cast sound",
+      Object.assign(
+        text(
+          "gathering-cast-sound",
+          (f.castSound as Snd)?.name ?? "",
+          (t) => {
+            const had = f.castSound !== null;
+            f.castSound = t === "" ? null : { name: t, ch: (f.castSound as Snd)?.ch ?? 4 };
+            if (had !== (f.castSound !== null)) {
+              drawChannel();
+            }
+          },
+          soundsList.id,
+        ),
+        { placeholder: "None" },
+      ),
+      "Everyone nearby hears it at every cast.",
+    );
+    // Where the splash lands, from the fisher, for each way they face.
+    const offsets = f.fxOffsets as Record<"N" | "S" | "E" | "W", [number, number]>;
+    const facing = (k: "N" | "S" | "E" | "W", word: string) => {
+      const row = document.createElement("div");
+      row.className = "items-list-row";
+      const pair = offsets[k] ?? [0, 0];
+      offsets[k] = pair;
+      const across = int(
+        `gathering-cast-offset-${k.toLowerCase()}-x`,
+        pair[0],
+        -200,
+        200,
+        false,
+        `Facing ${word}: pixels right`,
+        (v) => {
+          pair[0] = v ?? 0;
+        },
+      );
+      const down = int(
+        `gathering-cast-offset-${k.toLowerCase()}-y`,
+        pair[1],
+        -200,
+        200,
+        false,
+        `Facing ${word}: pixels down`,
+        (v) => {
+          pair[1] = v ?? 0;
+        },
+      );
+      row.append(
+        labelled(`Facing ${word}: pixels right`, across),
+        labelled(`Facing ${word}: pixels down`, down),
+      );
+      return row;
+    };
+    return section(
+      "cast",
+      "Splash and sound",
+      "What players see and hear when someone casts into water.",
+      f.castFx !== null || f.castSound !== null,
+      effect,
+      frames,
+      castSound,
+      more(
+        false,
+        channel,
+        helpLine(
+          "Where the splash lands, in pixels from the fisher, for each way they face. A tile is 32 pixels.",
+        ),
+        facing("N", "north"),
+        facing("S", "south"),
+        facing("E", "east"),
+        facing("W", "west"),
+      ),
+    );
+  };
+
   const drawFixed = () => {
     if (!view || part === null || part === "node") {
       return;
@@ -1739,6 +1880,7 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
             }),
           ),
         ),
+        castSection(f),
         section(
           "catches",
           "Catches",

@@ -14,6 +14,7 @@ import { worldToCreate } from "../src/content/world-seed.ts";
 import { startServer } from "../src/main.ts";
 import { insertCharacter as insertCurrent } from "../src/persistence/characters.ts";
 import { type Db, openDatabase } from "../src/persistence/database.ts";
+import { moveFishingCast } from "../src/persistence/fishing-cast-content.ts";
 import {
   appliedMigrations,
   loadMigrations,
@@ -2741,6 +2742,132 @@ describe("migrations (real SQL on in-memory SQLite)", () => {
     // The species and rules rows it moved raise no pack notice (the definitions here were written
     // without the pack row they were made over, so those notices are the fixture's own).
     expect(s.notices().filter((n) => n.part !== "definitions")).toEqual([]);
+  });
+
+  test("fishing_cast_as_content gives every stored fishing section the cast effect and sound it played", () => {
+    const db = openDatabase();
+    const all = loadMigrations(MIGRATIONS_DIR);
+    runMigrations(
+      db,
+      all.filter((m) => m.name < "20261126_76"),
+    );
+    // Fishing as stored before: no castFx or castSound (the engine fixed them).
+    const {
+      castFx: _f,
+      castSound: _s,
+      ...oldFishing
+    } = classicData.gather.gathering.fishing as Record<string, unknown>;
+    const oldGathering = { ...classicData.gather.gathering, fishing: oldFishing };
+    const mine = { ...oldGathering, fishing: { ...oldFishing, antiMacroStart: 9 } };
+    db.run(
+      "INSERT INTO content_packs (id, name, version, position, source, data, installed_at) VALUES ('old', 'old', '1.0.0', 1, 'imported', ?, 'now')",
+      [
+        JSON.stringify({
+          manifest: {},
+          data: { gather: { ...classicData.gather, gathering: oldGathering } },
+        }),
+      ],
+    );
+    db.run(
+      "INSERT INTO content_rows (dataset, part, row_key, op, data, base_hash, base_data, seq, updated_by, updated_at) VALUES ('gather', 'gathering', '', 'set', ?, 'h', ?, 1, 'a', 'then')",
+      [JSON.stringify(mine), JSON.stringify(oldGathering)],
+    );
+    db.run(
+      "INSERT INTO content_draft (dataset, part, row_key, op, data, author_account_id, author, updated_at) VALUES ('gather', 'gathering', '', 'set', ?, 'a', 'A', 'then')",
+      [JSON.stringify(mine)],
+    );
+    db.run(
+      "INSERT INTO content_publishes (id, created_at, actor_account_id, actor_name, summary, changes, hash) VALUES ('p1', 'then', 'a', 'A', '', ?, 'h')",
+      [
+        JSON.stringify([
+          {
+            dataset: "gather",
+            part: "gathering",
+            key: null,
+            before: { op: "set", data: oldGathering },
+            after: { op: "set", data: mine },
+          },
+        ]),
+      ],
+    );
+    runMigrations(db, all);
+    const cast = {
+      castFx: { fx: "Fishing", frames: 13 },
+      castSound: { name: "splash", ch: 4 },
+    };
+    const fishingOf = (v: unknown) => (v as { fishing: Record<string, unknown> }).fishing;
+    const pack = JSON.parse(
+      (db.query("SELECT data FROM content_packs WHERE id = 'old'").get() as { data: string }).data,
+    );
+    expect(fishingOf(pack.data.gather.gathering)).toMatchObject(cast);
+    const row = db
+      .query("SELECT data, base_data, base_hash FROM content_rows WHERE dataset = 'gather'")
+      .get() as { data: string; base_data: string; base_hash: string | null };
+    expect(fishingOf(JSON.parse(row.data))).toEqual({ ...oldFishing, antiMacroStart: 9, ...cast });
+    expect(fishingOf(JSON.parse(row.base_data))).toEqual({ ...oldFishing, ...cast });
+    expect(row.base_hash).toBeNull();
+    const draft = db.query("SELECT data FROM content_draft WHERE dataset = 'gather'").get() as {
+      data: string;
+    };
+    expect(fishingOf(JSON.parse(draft.data))).toMatchObject(cast);
+    const [change] = JSON.parse(
+      (
+        db.query("SELECT changes FROM content_publishes WHERE id = 'p1'").get() as {
+          changes: string;
+        }
+      ).changes,
+    );
+    expect(fishingOf(change.before.data)).toMatchObject(cast);
+    expect(fishingOf(change.after.data)).toMatchObject(cast);
+    // The filled pack loads: its gathering passes the schema.
+    const manifest = JSON.parse(
+      readFileSync(
+        join(MIGRATIONS_DIR, "..", "..", "data", "packs", "classic", "manifest.json"),
+        "utf8",
+      ),
+    );
+    readPackBlob(JSON.stringify({ ...pack, manifest: { ...manifest, id: "old", art: undefined } }));
+    // A world's own choice (none) is kept, and running it again changes nothing.
+    const none = { ...mine, fishing: { ...mine.fishing, castFx: null, castSound: null } };
+    db.run("UPDATE content_draft SET data = ? WHERE dataset = 'gather'", [JSON.stringify(none)]);
+    const dump = () =>
+      JSON.stringify(
+        ["content_packs", "content_rows", "content_draft", "content_publishes"].map((t) =>
+          db.query(`SELECT * FROM ${t} ORDER BY 1, 2, 3`).all(),
+        ),
+      );
+    const once = dump();
+    moveFishingCast(db);
+    expect(dump()).toBe(once);
+  });
+
+  test("an imported pack exported before fishing_cast_as_content loads with the cast it played", () => {
+    const {
+      castFx: _f,
+      castSound: _s,
+      ...oldFishing
+    } = classicData.gather.gathering.fishing as Record<string, unknown>;
+    const manifest = JSON.parse(
+      readFileSync(
+        join(MIGRATIONS_DIR, "..", "..", "data", "packs", "classic", "manifest.json"),
+        "utf8",
+      ),
+    );
+    const loaded = readPackBlob(
+      JSON.stringify({
+        manifest: { ...manifest, id: "old", art: undefined },
+        data: {
+          gather: {
+            ...classicData.gather,
+            gathering: { ...classicData.gather.gathering, fishing: oldFishing },
+          },
+        },
+      }),
+    );
+    expect(loaded.data.gather?.gathering.fishing).toMatchObject({
+      castFx: { fx: "Fishing", frames: 13 },
+      castSound: { name: "splash", ch: 4 },
+    });
   });
 
   test("vehicles_as_content moves riders and hulls into vehicle rows, layer by layer (issue #44)", () => {

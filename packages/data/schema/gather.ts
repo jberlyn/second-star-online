@@ -115,6 +115,23 @@ export const gatherDataSchema = z
           /** Water on any of these layers can be fished. */
           layers: z.array(z.union([z.literal(1), z.literal(2)])).min(1),
           waterTiles: z.array(z.string().length(2)).min(1),
+          /**
+           * The effect run every map shows at each cast into water: frames `<fx>-1` …
+           * `<fx>-<frames>`, placed at the caster's point plus `fxOffsets` for the facing. Null
+           * shows none.
+           */
+          castFx: z
+            .strictObject({
+              fx: z
+                .string()
+                .min(1)
+                .max(80)
+                .refine((s) => !/-\d+$/.test(s), "name the run without a frame number"),
+              frames: z.number().int().min(1).max(99),
+            })
+            .nullable(),
+          /** Played to everyone on the map at each cast into water. Null plays none. */
+          castSound: sound.nullable(),
           fxOffsets: z.record(z.enum(["E", "W", "N", "S"]), offset),
           bands: z.array(z.strictObject({ lt: z.number().int(), fish: z.string() })).min(1),
           fishCheck: z.array(gtRow).min(1),

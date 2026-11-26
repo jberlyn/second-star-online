@@ -561,7 +561,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **1.6:** Chopping and mining played their hit sound but showed nothing on the tile, while fishing showed its splash on every cast.
 - **SSO:** A harvest node's `strikeFx` names the effect run shown on the tile at each swing that strikes it. Classic ships new 12-frame runs: `Wood Chips`, `Rock Chips`, `Ice Chips` and `Ember Chips`. Operators can pick another run, change its length, or leave it out on the Gathering page.
 - **Why:** Gathering should show the tool hitting the tile, as fishing already did.
-- **In the code:** `packages/server/src/systems/crafting/gather.ts` (`toolSwing`); `packages/shared/src/rules/spells/spellfx.ts` (`strikeRunFrames`); `packages/data/content/gather.json` (`strikeFx`); `assets/added/fx/`
+- **In the code:** `packages/server/src/systems/crafting/gather.ts` (`toolSwing`); `packages/shared/src/rules/spells/spellfx.ts` (`gatherRunFrames`); `packages/data/content/gather.json` (`strikeFx`); `assets/added/fx/`
 - **Pinned by:** `design change: every strike at a tree shows Wood Chips on the tree, to everyone on the map`; `design change: each hammer's rock shows its own chips`; `design change: a swing at a tile that cannot be worked shows nothing` (packages/server/tests/gather.test.ts); `design change: a strike run stands on the struck tile, shows its frames and draws in the tile's row` (packages/shared/tests/spells/spells.test.ts)
 
 #### Crafting stations animate only while in use

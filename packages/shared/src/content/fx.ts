@@ -6,8 +6,8 @@
  * A run is named by its member: `Crush` draws `Crush-1` … `Crush-30`, and a trail `xFirebolt-1` …
  * follows a run whose effect has one. How many frames show is the engine's: a point run shows
  * frames 1 to its row's `lastFrame` (two a tick), a projectile cycles frames 1-3 as it flies, and
- * the engine's own runs (fishing, smithing, the slot machine, arrows, cannon shots) have fixed
- * lengths. Every FX member belongs to one spell row at most (the spells schema refuses
+ * the engine's own runs (smithing, the slot machine, arrows, cannon shots) have fixed lengths; the
+ * gathering runs (fishing's cast, each harvest node's strike) show the length their row names. Every FX member belongs to one spell row at most (the spells schema refuses
  * duplicates). Everything here is pure and takes content as data.
  */
 import type { ArtFx } from "@secondstaronline/data";
@@ -26,7 +26,7 @@ export type FxShow =
   | "point"
   /** Frames 1, 2, 3, 1… while it flies along its row's axis. */
   | "projectile"
-  /** A length the engine fixes (fishing, smithing, the slot machine, arrows, cannon shots). */
+  /** A length the engine fixes (smithing, the slot machine, arrows, cannon shots). */
   | "engine"
   /** Never shown: a spell row with no `lastFrame` and no projectile (1.6's dead spells). */
   | "none";
@@ -55,8 +55,11 @@ export interface FxRunUse {
   projectile?: { axis: "locH" | "locV"; px: number };
   /** Named by content (a spell row, gathering's sprinkle, the casino), not only the engine. */
   content: boolean;
-  /** A harvest node's strike run (issue #41): content names it and its length, so its frames are checked. */
-  strike?: true;
+  /**
+   * A gathering run (a harvest node's strike, issue #41, or fishing's cast): content names it and
+   * its length, so its frames are checked.
+   */
+  gathering?: true;
 }
 
 /** A spell's `fx` row, as the plan reads and writes it. */
@@ -81,7 +84,10 @@ export interface FxSpellRow {
 export interface FxContent {
   spells: { spells: readonly FxSpellRow[] };
   gather: {
-    gathering: { fishing?: unknown; sprinkle?: { fx: string } };
+    gathering: {
+      fishing?: { castFx: { fx: string; frames: number } | null };
+      sprinkle?: { fx: string };
+    };
     harvest: readonly { tile: string; strikeFx?: { fx: string; frames: number } }[];
   };
   casino: { slots?: { fx: string } };
@@ -167,24 +173,29 @@ export function fxRuns(data: FxContent): Map<string, FxRunUse> {
     );
   };
   named(data.gather.gathering.sprinkle?.fx, "gathering's sprinkle");
-  // A harvest node's strike run (issue #41) shows the frames its row asks for, like a point run.
-  for (const node of data.gather.harvest) {
-    if (node.strikeFx) {
+  // A gathering run (a harvest node's strike, issue #41, or fishing's cast) shows the frames its
+  // row asks for, like a point run.
+  const gathering = (run: { fx: string; frames: number } | null | undefined, who: string) => {
+    if (run) {
       note(
         {
-          member: node.strikeFx.fx,
-          effect: node.strikeFx.fx,
+          member: run.fx,
+          effect: run.fx,
           show: "point",
-          needs: node.strikeFx.frames,
+          needs: run.frames,
           trail: 0,
           trigger: 0,
           content: true,
-          strike: true,
+          gathering: true,
         },
-        `harvesting tile ${node.tile}`,
+        who,
       );
     }
+  };
+  for (const node of data.gather.harvest) {
+    gathering(node.strikeFx, `harvesting tile ${node.tile}`);
   }
+  gathering(data.gather.gathering.fishing?.castFx, "fishing");
   named(data.casino.slots?.fx, "the casino's slot machine");
   // The engine's own runs, drawn by name while their mechanic is in the content.
   const engine = (member: string, needs: number, who: string) =>
@@ -192,9 +203,6 @@ export function fxRuns(data: FxContent): Map<string, FxRunUse> {
       { member, effect: member, show: "engine", needs, trail: 0, trigger: 0, content: false },
       who,
     );
-  if (data.gather.gathering.fishing) {
-    engine("Fishing", OTHER_LAST_FRAME.fishing ?? 13, "fishing");
-  }
   engine("BSmith", OTHER_LAST_FRAME.bsmith ?? 13, "smithing");
   for (const colour of ARROW_COLOURS) {
     // A retired arrow still fires while players hold copies, so it counts until it is removed.

@@ -376,10 +376,11 @@ function fxGaps(
   const out: { key: string; run: Span[]; trail: Span[]; problem: ContentProblem }[] = [];
   for (const use of fxRuns(data).values()) {
     // Spell runs: a spell's hits come from its frames' boxes, so a frame with no art is a frame
-    // that cannot hit. And strike runs, whose name and length content chooses, so a misspelt name
-    // or a short upload is told. The engine's own runs (and the names content gives them, such as
-    // the slot machine's) are only pictures, and are what the packs shipped.
-    if ((use.spell === undefined && !use.strike) || use.needs === 0) {
+    // that cannot hit. And gathering runs (strikes and fishing's cast), whose name and length
+    // content chooses, so a misspelt name or a short upload is told. The engine's own runs (and
+    // the names content gives them, such as the slot machine's) are only pictures, and are what
+    // the packs shipped.
+    if ((use.spell === undefined && !use.gathering) || use.needs === 0) {
       continue;
     }
     const upload = data.art.fx.find((a) => a.name.toLowerCase() === use.member.toLowerCase());

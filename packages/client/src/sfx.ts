@@ -107,8 +107,9 @@ const has = (a: string, b: string) => a.toLowerCase().includes(b.toLowerCase());
 /**
  * The spell-cast sounds, in source order, for the second field of the message. Every client on
  * the map plays them, the caster's own too. Spell runs read their `spells.json` row; non-spell
- * FX (Cannonball, Slot Machine, BSmith, Fishing) are handled here. Arrows, Bless, Haste,
- * Weaken, Poison Dart, Replenish, Holy Weapon and Identify are silent.
+ * FX (Cannonball, Slot Machine, BSmith) are handled here; fishing's cast sound comes from the
+ * server as a sound of its own (`fishing.castSound`). Arrows, Bless, Haste, Weaken, Poison Dart,
+ * Replenish, Holy Weapon and Identify are silent.
  */
 export function spellSounds(name: string, random: (n: number) => number = lingoRandom): Sfx[] {
   const out: Sfx[] = [];
@@ -126,9 +127,6 @@ export function spellSounds(name: string, random: (n: number) => number = lingoR
   }
   if (has(name, "Cannonball")) {
     on4("cannonball");
-  }
-  if (eq(name, "Fishing")) {
-    on4("splash");
   }
   // The Slot Machine's pull has a channel of its own, so it cuts off nothing else (1.6 drew a
   // random channel 1-4 for it, cutting off a spell, a hit or the church bell).

@@ -255,6 +255,7 @@ const NODE_FIELDS: Record<string, string> = {
   treasure: "Can dig up the buried treasure",
   hitSound: "Swing sound",
   successSound: "Harvest sound",
+  strikeFx: "Strike effect",
 };
 
 /** The gathering section's parts, as the page names them. */
@@ -272,6 +273,9 @@ const PART_FIELDS: Record<string, Record<string, string>> = {
     waterTiles: "Water tiles",
     antiMacroStart: "Catches before a spot runs out",
     stoppedText: "Message when a spot runs out",
+    castFx: "Splash effect",
+    castSound: "Cast sound",
+    fxOffsets: "Where the splash lands",
     bands: "Fish by skill",
     fishCheck: "Bite chance by skill",
   },

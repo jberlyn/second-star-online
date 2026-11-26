@@ -57,7 +57,6 @@ const AT_CLICK = [
   "Portal",
   "Diminish Hunger",
   "major heal",
-  "Fishing",
   "Illusionary Spikes",
   "Web",
   "morph",
@@ -82,33 +81,39 @@ const AT_CLICK = [
 ];
 
 /**
- * The strike runs content names (issue #41: a harvest node's `strikeFx`, the chips a swing at a
- * tree or rock throws up), by member in lower case: how many frames each shows.
+ * The gathering runs content names, by member in lower case: how many frames each shows. A
+ * harvest node's `strikeFx` (issue #41: the chips a swing at a tree or rock throws up) and
+ * fishing's `castFx` (the splash). Each is placed where the gathering code says and plays its
+ * frames once.
  */
-let STRIKE_RUNS = new Map<string, number>();
+let GATHER_RUNS = new Map<string, number>();
 onContent((c) => {
-  STRIKE_RUNS = new Map();
-  for (const node of c.gather.harvest) {
-    if (node.strikeFx) {
-      const k = node.strikeFx.fx.toLowerCase();
-      // Two nodes may share a run; the longer length shows every frame either asks for.
-      STRIKE_RUNS.set(k, Math.max(STRIKE_RUNS.get(k) ?? 0, node.strikeFx.frames));
+  GATHER_RUNS = new Map();
+  const add = (run: { fx: string; frames: number } | null | undefined) => {
+    if (run) {
+      const k = run.fx.toLowerCase();
+      // Two rows may share a run; the longer length shows every frame either asks for.
+      GATHER_RUNS.set(k, Math.max(GATHER_RUNS.get(k) ?? 0, run.frames));
     }
+  };
+  for (const node of c.gather.harvest) {
+    add(node.strikeFx);
   }
+  add(c.gather.gathering.fishing?.castFx);
 });
 
-/** The frames a harvest node's strike run shows, or undefined when no node names it. */
-export function strikeRunFrames(name: string): number | undefined {
-  return STRIKE_RUNS.get(name.toLowerCase());
+/** The frames a gathering run (a strike or fishing's cast) shows, or undefined when none names it. */
+export function gatherRunFrames(name: string): number | undefined {
+  return GATHER_RUNS.get(name.toLowerCase());
 }
 
 /**
- * Whether a FX lies on the ground of the tile it marks (fishing's splash and the strike runs), so
- * it draws in that tile's row: behind a character standing south of it, in front of one north of
- * it. Other FX draw over characters.
+ * Whether a FX lies on the ground of the tile it marks (the gathering runs: fishing's splash and
+ * the strikes), so it draws in that tile's row: behind a character standing south of it, in front
+ * of one north of it. Other FX draw over characters.
  */
 export function isGroundFx(name: string): boolean {
-  return lingoEq(name, "Fishing") || strikeRunFrames(name) !== undefined;
+  return fxRun(name) === null && gatherRunFrames(name) !== undefined;
 }
 
 /**
@@ -145,7 +150,7 @@ export function placeFx(
   target: { h: number; v: number },
 ): { h: number; v: number } | null {
   const eff = fxEffect(name);
-  if (AT_CLICK.some((n) => lingoEq(eff, n)) || (fxRun(name) === null && strikeRunFrames(name))) {
+  if (AT_CLICK.some((n) => lingoEq(eff, n)) || (fxRun(name) === null && gatherRunFrames(name))) {
     return { h: target.h, v: target.v };
   }
   // Arrows: the target is the shooter's tile; the arrow starts one tile on.
@@ -182,7 +187,6 @@ export function placeFx(
 export const OTHER_LAST_FRAME: Readonly<Record<string, number>> = {
   sprinkle: 5,
   "slot machine": 52,
-  fishing: 13,
   bsmith: 13,
   music: 30,
 };
@@ -260,7 +264,7 @@ export function stepFx(fx: FxSprite, blocked?: ShotBlocked): void {
     }
     return;
   }
-  const last = OTHER_LAST_FRAME[fx.name.toLowerCase()] ?? strikeRunFrames(fx.name);
+  const last = gatherRunFrames(fx.name) ?? OTHER_LAST_FRAME[fx.name.toLowerCase()];
   if (last !== undefined) {
     if (fx.frame >= last) {
       fx.gone = true; // locV = -5300

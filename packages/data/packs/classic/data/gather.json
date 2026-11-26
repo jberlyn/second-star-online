@@ -225,6 +225,14 @@
         "D2",
         "I2"
       ],
+      "castFx": {
+        "fx": "Fishing",
+        "frames": 13
+      },
+      "castSound": {
+        "name": "splash",
+        "ch": 4
+      },
       "fxOffsets": {
         "E": [
           38,

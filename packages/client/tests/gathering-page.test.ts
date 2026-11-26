@@ -49,6 +49,8 @@ const VIEW = (fp = "aaaaaaaaaaaaaaaa"): ContentGatheringView => ({
     data: {
       layers: [1],
       waterTiles: ["W1"],
+      castFx: { fx: "Fishing", frames: 13 },
+      castSound: { name: "splash", ch: 4 },
       fxOffsets: { E: [0, 0], W: [0, 0], N: [0, 0], S: [0, 0] },
       bands: [{ lt: 101, fish: "Fish" }],
       fishCheck: [{ gt: -1, value: 4 }],
@@ -202,6 +204,42 @@ describe("the Gathering page", () => {
       expect: "dddddddddddddddd",
       data: { antiMacroStart: 7 },
     });
+  });
+});
+
+describe("fishing's splash and sound", () => {
+  test("the cast's effect, frames, sound and where it lands are edited and saved", () => {
+    const { p, sent } = page();
+    q<HTMLButtonElement>(p.el, "[data-action='gathering-open-fishing']").click();
+    const fx = q<HTMLInputElement>(p.el, "[data-action='gathering-cast-fx']");
+    expect(fx.value).toBe("Fishing");
+    expect(fx.getAttribute("list")).toBe("gathering-effects");
+    expect(q<HTMLInputElement>(p.el, "[data-action='gathering-cast-frames']").value).toBe("13");
+    expect(q<HTMLInputElement>(p.el, "[data-action='gathering-cast-sound']").value).toBe("splash");
+    typeIn(fx, "Bobber");
+    typeIn(q<HTMLInputElement>(p.el, "[data-action='gathering-cast-frames']"), "6");
+    typeIn(q<HTMLInputElement>(p.el, "[data-action='gathering-cast-sound-ch']"), "6");
+    typeIn(q<HTMLInputElement>(p.el, "[data-action='gathering-cast-offset-n-y']"), "-40");
+    q<HTMLButtonElement>(p.el, "[data-action='gathering-save']").click();
+    expect(sent.at(-1)).toMatchObject({
+      op: "fishing",
+      data: {
+        castFx: { fx: "Bobber", frames: 6 },
+        castSound: { name: "splash", ch: 6 },
+        fxOffsets: { N: [0, -40], S: [0, 0], E: [0, 0], W: [0, 0] },
+      },
+    });
+  });
+
+  test("clearing the effect or the sound saves none, and hides what only it needs", () => {
+    const { p, sent } = page();
+    q<HTMLButtonElement>(p.el, "[data-action='gathering-open-fishing']").click();
+    typeIn(q<HTMLInputElement>(p.el, "[data-action='gathering-cast-fx']"), "");
+    typeIn(q<HTMLInputElement>(p.el, "[data-action='gathering-cast-sound']"), "");
+    expect(p.el.querySelector("[data-action='gathering-cast-frames']")).toBeNull();
+    expect(p.el.querySelector("[data-action='gathering-cast-sound-ch']")).toBeNull();
+    q<HTMLButtonElement>(p.el, "[data-action='gathering-save']").click();
+    expect(sent.at(-1)).toMatchObject({ op: "fishing", data: { castFx: null, castSound: null } });
   });
 });
 

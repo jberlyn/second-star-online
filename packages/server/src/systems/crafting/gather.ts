@@ -14,6 +14,7 @@ import {
   FISHING_LAYERS,
   FISHING_STOPPED_TEXT,
   findSkillIndex,
+  fishingCast,
   fishingOffset,
   fishingSpot,
   GATHER_TEXT,
@@ -176,17 +177,28 @@ export function preSwing(room: Room, p: Player, ctx: GatherCtx, ev: GatherEvents
   const io = new ItemOut(room);
   const layers = room.map.layers;
   if (FISHING_LAYERS.some((l) => isFishingWater(tileAt(layers[l - 1] ?? [], t.x, t.y)))) {
-    const off = fishingOffset(p.facing);
-    queueCast(room, {
-      owner: p.name,
-      ownerId: p.id,
-      name: "Fishing",
-      casterH: me.h,
-      casterV: me.v,
-      h: me.h + off[0],
-      v: me.v + off[1],
-      power: 1,
-    });
+    // The cast's effect and sound are content (`fishing.castFx`, `castSound`): everyone on the map
+    // sees and hears each cast, as 1.6's `Fishing` splash and its `splash` sound.
+    const cast = fishingCast();
+    if (cast.fx) {
+      const off = fishingOffset(p.facing);
+      queueCast(room, {
+        owner: p.name,
+        ownerId: p.id,
+        name: cast.fx.fx,
+        casterH: me.h,
+        casterV: me.v,
+        h: me.h + off[0],
+        v: me.v + off[1],
+        power: 1,
+        train: false,
+      });
+    }
+    if (cast.sound) {
+      for (const q of room.players) {
+        io.out.push(sound(q, cast.sound.name, cast.sound.ch));
+      }
+    }
     // The allowance belongs to the tile you fish from, and outlasts a logout.
     const spot = fishingSpot(ctx.world.fishingSpots.get(p.id), p.map.id, p.x, p.y);
     const r = castLine(p.char.skills[fishing] ?? 0, spot.left, ctx.rng);

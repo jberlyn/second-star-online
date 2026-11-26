@@ -326,6 +326,14 @@ export function fishingOffset(facing: Facing): readonly [number, number] {
   return G.fishing?.fxOffsets[facing] ?? [0, 0];
 }
 
+/** What a cast into water shows and plays (`fishing.castFx`, `castSound`): null for none. */
+export function fishingCast(): {
+  fx: { fx: string; frames: number } | null;
+  sound: { name: string; ch: number } | null;
+} {
+  return { fx: G.fishing?.castFx ?? null, sound: G.fishing?.castSound ?? null };
+}
+
 /** The catches one tile allows before you must fish from another. */
 export let ANTI_MACRO_START: number;
 
