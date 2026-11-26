@@ -126,6 +126,7 @@ export function plays(name: string): Record<string, unknown> {
         str: 30,
         wanted,
         equip: { ...NO_EQUIPMENT, weapon: name, offHand: name },
+        classCode: 1,
         level: 100,
         skills: Array(content().classes.skills.length).fill(100) as number[],
       }),

@@ -16,6 +16,7 @@
 import { content, hasContent } from "@secondstaronline/shared";
 
 import type { AreaPart, AreaTab, RecordPanelLike } from "./content-area-page.ts";
+import { masterworkPreview } from "./masterwork-preview.ts";
 import { recipePreview } from "./recipe-preview.ts";
 
 const p = (
@@ -237,6 +238,15 @@ export const CRAFT_TABS: AreaTab[] = [
     label: "Recipe stations",
     help: "Where recipes are made: the station players stand at (or the bag item that opens it), and the tools it takes.",
     part: p("craft", "recipeStations", "Recipe stations", "", { noun: "recipe station" }),
+  },
+  {
+    kind: "records",
+    label: "Masterworks",
+    help: "The better items any craft can make: when a craft makes the item, the chance by the crafting skill it comes out as one of its masterworks instead.",
+    part: p("craft", "masterworks", "Masterworks", "", {
+      noun: "masterwork",
+      preview: masterworkPreview,
+    }),
   },
   {
     kind: "settings",

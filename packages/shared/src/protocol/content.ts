@@ -1195,6 +1195,8 @@ export interface ContentItemView {
     powers: string[];
     stats: string[];
     skills: string[];
+    /** The classes, by code, with their names (`equip.classes`). */
+    classes: { code: number; name: string }[];
     /** Stage 4's picks: tool uses, swing ladders, menu buttons, paperdoll and ground layers. */
     toolCans: string[];
     ladders: string[];

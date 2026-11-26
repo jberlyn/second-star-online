@@ -182,6 +182,19 @@ export const itemRulesWords: WordBook = {
     },
   },
   "equip.twoHanded": { label: "Two-handed weapons", noun: "weapon" },
+  "equip.classes": {
+    label: "Only some classes",
+    help: "Gear only characters of the listed classes may equip; the last matching row counts, and a +1 counts as its item. Leave off for every class.",
+    noun: "row",
+    more: true,
+  },
+  "equip.classes.[].classes": {
+    label: "Classes (by code)",
+    help: "The class codes, as the Classes tab lists them.",
+    noun: "class",
+    names: "class",
+  },
+  "equip.classes.[].classes.[]": { names: "class" },
   "equip.murder": {
     label: "Murderers only",
     help: "Items only a player marked as a murderer may equip.",

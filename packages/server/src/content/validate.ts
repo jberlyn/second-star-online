@@ -619,6 +619,14 @@ export function referencesOf(data: ContentData): Reference[] {
       add(row, ["book"], "item", r.book, []);
     }
   }
+  // Masterworks: the row goes with its item, a result with its own item (the row with its last).
+  for (const m of data.craft.masterworks ?? []) {
+    const row: RowRef = { dataset: "craft", part: "masterworks", key: m.item };
+    add(row, ["item"], "item", m.item, []);
+    m.results.forEach((r, i) => {
+      add(row, ["results", i, "item"], "item", r.item, m.results.length > 1 ? ["results", i] : []);
+    });
+  }
   // What gathering takes and gives. A roll band's fish and the one-of tools are replaced, not
   // dropped.
   const g = data.gather.gathering;
@@ -1383,6 +1391,45 @@ export function recipeProblems(data: ContentData): ContentProblem[] {
       }
     }
   }
+  return [...out, ...masterworkProblems(data)];
+}
+
+/**
+ * Masterworks' own checks: a masterwork is made from one item only, across this table and the
+ * Classic smithing one (rules written for an item cover its masterworks, so each must have one
+ * item it comes from), and is never itself an item a masterwork row makes better.
+ */
+export function masterworkProblems(data: ContentData): ContentProblem[] {
+  const out: ContentProblem[] = [];
+  const from = new Map<string, string>();
+  for (const m of data.craft.stations.smith?.masterwork ?? []) {
+    for (const o of m.outcomes) {
+      from.set(o.result.toLowerCase(), m.item);
+    }
+  }
+  const rows = data.craft.masterworks ?? [];
+  for (const m of rows) {
+    const where = `craft/masterworks/${m.item}`;
+    for (const r of m.results) {
+      const other = from.get(r.item.toLowerCase());
+      if (other !== undefined && !lingoEq(other, m.item)) {
+        out.push({
+          where,
+          message: `${r.item} is already the masterwork of ${other}: a masterwork is made from one item`,
+        });
+      }
+      from.set(r.item.toLowerCase(), m.item);
+    }
+  }
+  for (const m of rows) {
+    const base = from.get(m.item.toLowerCase());
+    if (base !== undefined) {
+      out.push({
+        where: `craft/masterworks/${m.item}`,
+        message: `${m.item} is itself a masterwork of ${base}: give the masterworks to ${base}`,
+      });
+    }
+  }
   return out;
 }
 
@@ -1454,6 +1501,33 @@ export function vehicleProblems(data: ContentData): ContentProblem[] {
   return out;
 }
 
+/**
+ * Gear only some classes may equip (`equip.classes`, an item definition's `classes`): every class
+ * code it lists must be a class, or the gear could never be worn by it.
+ */
+export function classGearProblems(data: ContentData): ContentProblem[] {
+  const out: ContentProblem[] = [];
+  const codes = new Set(data.classes.classes.map((k) => k.code));
+  const check = (where: string, listed: readonly number[]) => {
+    const unknown = listed.filter((c) => !codes.has(c));
+    if (unknown.length > 0) {
+      out.push({
+        where,
+        message: `class ${unknown.join(", ")} is not a class: pick the classes that may equip it from the Classes tab's list`,
+      });
+    }
+  };
+  (data.itemRules.equip.classes ?? []).forEach((r, i) => {
+    check(`itemRules/equip/classes/${i + 1} (${r.pattern})`, r.classes);
+  });
+  for (const d of data.items.definitions ?? []) {
+    if (d.classes) {
+      check(`items/definitions/${d.name}`, d.classes);
+    }
+  }
+  return out;
+}
+
 export function checkStore(
   next: ContentData,
   published: ContentData,
@@ -1472,6 +1546,7 @@ export function checkStore(
     ...progressionProblems(next),
     ...vehicleProblems(next),
     ...recipeProblems(next),
+    ...classGearProblems(next),
     ...referenceProblems(withNpcSaves(next, npcSaves), withNpcSaves(published, npcSaves)),
   ];
 }

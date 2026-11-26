@@ -1168,6 +1168,19 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
       check(work.twoHanded === true, "Needs both hands", "items-two-handed", (on) =>
         put(work, ["twoHanded"], on ? true : undefined),
       ),
+      labelled(
+        "Only these classes",
+        pickMany(
+          "classes",
+          c.classes.map((k) => String(k.code)),
+          new Set(((work.classes as number[] | undefined) ?? []).map(String)),
+          (v) => c.classes.find((k) => String(k.code) === v)?.name ?? `Class ${v}`,
+          (v) => `items-class-${v}`,
+          "Add a class…",
+          (picked) => put(work, ["classes"], picked.length > 0 ? picked.map(Number) : undefined),
+        ),
+        "Only characters of these classes can equip it (a +1 of it too). Leave none ticked for every class.",
+      ),
       abilities,
       listEditor({
         id: "requires",

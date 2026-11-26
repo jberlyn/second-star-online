@@ -40,6 +40,7 @@ export const ITEM_GROUPS: readonly { id: string; title: string; tables: Definiti
       "itemRules equip.slots",
       "itemRules equip.strength",
       "itemRules equip.twoHanded",
+      "itemRules equip.classes",
       "itemRules behaviours",
       "itemRules requires",
       "itemRules paperdoll.aliases",
@@ -120,6 +121,7 @@ export const TABLE_LABELS: Record<DefinitionTable, string> = {
   "itemRules equip.slots": "Worn in",
   "itemRules equip.strength": "Strength needed",
   "itemRules equip.twoHanded": "Needs both hands",
+  "itemRules equip.classes": "Only these classes",
   "itemRules behaviours": "Special abilities",
   "attPower attPower.base": "Damage",
   "attPower attPower.exactOverrides": "Final damage override",
@@ -216,6 +218,7 @@ const FIELD_LABELS: Record<string, string> = {
   slot: "Worn in",
   strength: "Strength needed",
   twoHanded: "Needs both hands",
+  classes: "Only these classes",
   behaviours: "Special abilities",
   "attack/base": "Damage roll",
   "attack/overrides": "Final damage override",
@@ -263,6 +266,7 @@ const KEY_LABELS: Record<string, string> = {
   actionDelay: "action delay",
   spellDefense: "Spell protection",
   twoHanded: "Needs both hands",
+  classes: "Only these classes",
 };
 
 /**
@@ -321,6 +325,7 @@ export function itemChoices(data: ContentData): ContentItemView["choices"] {
     powers: ["spell", "blackArts", "martialArts", "attack", "killXp"],
     stats: ["HP", "SP", "Hunger"],
     skills: data.classes.skills.map((s) => s.skill),
+    classes: data.classes.classes.map((k) => ({ code: k.code, name: k.name })),
     toolCans: [...toolCanSchema.options],
     ladders: Object.keys(data.itemRules.ladders),
     menus: ["Cook", "Mix", "Build", "Smith", "Storage"],

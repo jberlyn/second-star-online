@@ -35,6 +35,27 @@ export function itemRequirementRefusal(
   return firstUnmet(rows, who, on);
 }
 
+/**
+ * The classes (by code) that may equip an item (`equip.classes`, last match wins), or null for any.
+ * Tested without its `#id` or `+N` ending: a masterwork is worn by whoever may wear its item.
+ */
+export function equipClasses(name: string): number[] | null {
+  return lastMatch(R.equip.classes ?? [], behaviourName(name))?.classes ?? null;
+}
+
+/** "Only a Ranger or an Archer can equip this.": the classes by their names, in the list's order. */
+export function classesText(codes: readonly number[]): string {
+  const names = codes.map(
+    (code) => content().classes.classes.find((k) => k.code === code)?.name ?? `class ${code}`,
+  );
+  const a = (n: string) => `${/^[aeiou]/i.test(n) ? "an" : "a"} ${n}`;
+  const list =
+    names.length <= 1
+      ? a(names[0] ?? "")
+      : `${names.slice(0, -1).map(a).join(", ")} or ${a(names[names.length - 1] ?? "")}`;
+  return `Only ${list} can equip this.`;
+}
+
 /** The equip type: "No" unless a rule matches, last match wins. */
 export function equipSlotFor(name: string): EquipSlot | "No" {
   return lastMatch(R.equip.slots, name)?.slot ?? "No";
@@ -68,12 +89,12 @@ export type EquipCheck = { ok: true; slot: EquipSlot } | { ok: false; text: stri
 /**
  * The client's equip gates in order. An occupied slot is no refusal: the server swaps the worn item
  * back into the bag (1.6's server refused with "You have to remove the current item you're wearing
- * to equip this!"). Content's `requires` rows come after 1.6's gates (an SSO addition; Classic has
- * none), so a refusal 1.6 gave is never hidden behind one.
+ * to equip this!"). Content's `equip.classes` and `requires` rows come after 1.6's gates (SSO
+ * additions; Classic has none), so a refusal 1.6 gave is never hidden behind one.
  */
 export function checkEquip(
   name: string,
-  who: { str: number; wanted: boolean; equip: Equipment } & Qualifications,
+  who: { str: number; wanted: boolean; equip: Equipment; classCode: number } & Qualifications,
 ): EquipCheck {
   if (who.str < strengthRequirement(name)) {
     return { ok: false, text: EQUIP_TEXT.weak };
@@ -91,6 +112,10 @@ export function checkEquip(
   }
   if (!who.wanted && ruleMatches(name, R.equip.murder)) {
     return { ok: false, text: EQUIP_TEXT.vile };
+  }
+  const classes = equipClasses(name);
+  if (classes !== null && !classes.includes(who.classCode)) {
+    return { ok: false, text: classesText(classes) };
   }
   const needs = itemRequirementRefusal(name, "equip", who);
   if (needs !== null) {

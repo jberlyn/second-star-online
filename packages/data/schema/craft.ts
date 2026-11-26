@@ -165,6 +165,43 @@ export const recipeSchema = z
 export type Recipe = z.infer<typeof recipeSchema>;
 
 /**
+ * A masterwork row: when any craft (a recipe, a cooking recipe, a brew, a build, or a repair the
+ * Classic smithing table has no row for) succeeds in making `item`, `odds` by the craft's skill is
+ * the chance it comes out as one of `results` instead, picked by weight. Name a result after its
+ * item with a `+N` ending (`Leather Armor +1`): it then keeps the item's abilities and adds N to
+ * its armour or attack, as the Classic smithing masterworks do.
+ */
+export const masterworkSchema = z
+  .strictObject({
+    /** The item a craft makes, by exact name. */
+    item: z.string().min(1),
+    /** The chance a success makes a masterwork, by the craft's skill. */
+    odds: levelOddsSchema,
+    /** The masterworks it can come out as, each picked by its weight among them. */
+    results: z
+      .array(
+        z.strictObject({
+          item: z.string().min(1),
+          weight: z.number().int().min(1).max(1000),
+        }),
+      )
+      .min(1)
+      .max(10),
+  })
+  .superRefine((m, ctx) => {
+    m.results.forEach((r, i) => {
+      if (r.item.toLowerCase() === m.item.toLowerCase()) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["results", i, "item"],
+          message: "a masterwork must be a different item from the one it is made from",
+        });
+      }
+    });
+  });
+export type Masterwork = z.infer<typeof masterworkSchema>;
+
+/**
  * Each station (`smith`, `cook`, `mix`, `build`, `cauldron`) may be left out: that craft is then off,
  * as when its skill binding is.
  */
@@ -302,6 +339,8 @@ export const craftDataSchema = z.strictObject({
   recipeStations: z.array(recipeStationSchema).optional(),
   /** Recipes (issue #45), keyed by name. Classic has none. */
   recipes: z.array(recipeSchema).optional(),
+  /** Masterworks any craft can make, keyed by the item made. Classic has none. */
+  masterworks: z.array(masterworkSchema).optional(),
 });
 
 export type CraftData = z.infer<typeof craftDataSchema>;

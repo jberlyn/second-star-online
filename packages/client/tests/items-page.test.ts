@@ -86,6 +86,10 @@ const sword = (
     powers: ["attack"],
     stats: ["HP", "SP", "Hunger"],
     skills: ["Slash", "Thrust"],
+    classes: [
+      { code: 1, name: "Fighter" },
+      { code: 3, name: "Ranger" },
+    ],
     toolCans: ["Chop", "Mine"],
     ladders: ["axe"],
     menus: ["Cook", "Storage"],

@@ -12,6 +12,7 @@ import { content } from "../../content/store.ts";
 import { skillDisplay, skillValue } from "../core/fighter.ts";
 import { lingoEq, type Rng } from "../core/lingo.ts";
 import { type AddResult, type Bag, invAdd } from "../inventory/inventory.ts";
+import { masterworkChance, rollMasterwork } from "./masterwork.ts";
 import { lineAt, oddsAt, rollChance } from "./odds.ts";
 
 export type { Recipe, RecipeStation };
@@ -237,6 +238,8 @@ export interface RecipeRow {
   affordable: number;
   /** The chance one succeeds now, 0 to 1. */
   chance: number;
+  /** The chance a success comes out a masterwork, 0 to 1 (0: it has none). */
+  masterwork: number;
 }
 
 /** The crafting window's rows for a station: recipes above the level are left out when hidden. */
@@ -268,6 +271,7 @@ export function stationRows(station: RecipeStation, c: RecipeCrafter): RecipeRow
       why: recipeRefusal(r, station, c),
       affordable: craftsAffordable(r, c.bag),
       chance: recipeChance(r, skill, tier),
+      masterwork: masterworkChance(r.output.item, skill),
     });
   }
   return out;
@@ -302,9 +306,10 @@ export interface RecipeFinish {
 
 /**
  * One craft on `inv` in place: the materials are taken and the chance rolled; a success adds the
- * output, a failure the failure output (if any). If the bag has no room for what comes out, nothing
- * changes and the crafter is told the bag is too full. `addName` lets the server mint a built
- * container's id. The caller has already checked `recipeRefusal`.
+ * output (or its masterwork, by the crafter's `skill`), a failure the failure output (if any). If
+ * the bag has no room for what comes out, nothing changes and the crafter is told the bag is too
+ * full. `addName` lets the server mint a built container's id. The caller has already checked
+ * `recipeRefusal`.
  */
 export function finishRecipe(
   inv: { bag: Bag; gold: number },
@@ -312,6 +317,7 @@ export function finishRecipe(
   chance: number,
   rng: Rng,
   addName: (name: string) => string = (n) => n,
+  skill = 0,
 ): RecipeFinish {
   if (craftsAffordable(recipe, inv.bag) < 1) {
     return {
@@ -326,7 +332,10 @@ export function finishRecipe(
     takeQty(bag, m.item, m.qty);
   }
   const ok = rollChance(chance, rng);
-  const out = ok ? recipe.output : recipe.failure;
+  // A success may come out a masterwork (`masterworks`, by the recipe's skill).
+  const out = ok
+    ? { ...recipe.output, item: rollMasterwork(recipe.output.item, skill, rng) }
+    : recipe.failure;
   const trial = { bag, gold: inv.gold };
   let added: AddResult | null = null;
   if (out) {
@@ -338,7 +347,7 @@ export function finishRecipe(
   inv.bag.splice(0, inv.bag.length, ...trial.bag);
   inv.gold = trial.gold;
   const line = ok
-    ? RECIPE_TEXT.made(recipe.output.qty, recipe.output.item)
+    ? RECIPE_TEXT.made(recipe.output.qty, out?.item ?? recipe.output.item)
     : out
       ? RECIPE_TEXT.failedInto(out.item)
       : RECIPE_TEXT.failed(recipe.output.item);

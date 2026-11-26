@@ -199,6 +199,11 @@ export const NAME_TABLES: Record<string, TableInfo> = {
     note: "every matching row of its kind must be met; rows test the name without its #id or +N",
   },
   "itemRules equip.strength": { decides: "the Strength needed to equip", wins: "last" },
+  "itemRules equip.classes": {
+    decides: "the only classes that may equip an item",
+    wins: "last",
+    note: "rows test the name without its #id or +N",
+  },
   "itemRules equip.slots": { decides: "which slot the item goes in", wins: "last" },
   "itemRules menu": {
     decides: "the item menu's button in place of Equip",
@@ -406,6 +411,7 @@ const groundName = (name: string): string => (name.split("#")[0] ?? name).trim()
 const TESTED_NAME: Record<string, (name: string) => string> = {
   "itemRules behaviours": behaviourName,
   "itemRules requires": behaviourName,
+  "itemRules equip.classes": behaviourName,
   "itemRules paperdoll.aliases": lookName,
   "itemRules ground.tipless": groundName,
   "itemRules ground.tipNames": groundName,

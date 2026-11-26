@@ -190,8 +190,32 @@ const recipeWords: WordBook = {
   ),
 };
 
+/** The words of the masterworks every craft shares. */
+const masterworkWords: WordBook = {
+  "masterworks.item": {
+    label: "Item",
+    help: "The item a craft makes: whenever any craft (a recipe, cooking, a brew, a build or a repair) makes it, it may come out as a masterwork instead. A repair the Classic smithing table has masterworks for keeps that table's roll.",
+    names: "item",
+  },
+  "masterworks.odds": {
+    label: "Chance by skill",
+    help: "The chance a successful craft comes out a masterwork, at a few levels of the crafting skill, in percent: in a straight line between two levels and the same past the ends.",
+    noun: "level",
+  },
+  "masterworks.odds.[].level": { label: "At skill" },
+  "masterworks.odds.[].percent": { label: "Chance %" },
+  "masterworks.results": {
+    label: "Masterworks",
+    help: "What it can come out as, each picked by its weight (weight 3 comes up three times as often as weight 1). Name each after the item with a +N ending (Leather Armor +1): it keeps the item's abilities and adds N to its armour or attack.",
+    noun: "masterwork",
+  },
+  "masterworks.results.[].item": { label: "Masterwork", names: "item" },
+  "masterworks.results.[].weight": { label: "Weight" },
+};
+
 export const craftWords: WordBook = {
   ...recipeWords,
+  ...masterworkWords,
   // ---- all stations ----
   "stations.frameOrder": { label: "Crafting order", more: true },
   "stations.frameOrder.order": {

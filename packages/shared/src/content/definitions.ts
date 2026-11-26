@@ -18,6 +18,7 @@
 import type { ItemDefinition } from "@secondstaronline/data";
 
 import { lingoEq } from "../rules/core/lingo.ts";
+import { masterworksOf as masterworksOfIn } from "../rules/crafting/masterwork.ts";
 import { behaviourName, behaviourTest } from "../rules/inventory/behaviours.ts";
 import { lookName } from "../rules/inventory/paperdoll.ts";
 import { compileMonsterDefinitions } from "./monster-definitions.ts";
@@ -40,6 +41,7 @@ export const DEFINITION_TABLES = [
   "itemRules equip.slots",
   "itemRules equip.strength",
   "itemRules equip.twoHanded",
+  "itemRules equip.classes",
   "itemRules behaviours",
   "attPower attPower.base",
   "attPower attPower.exactOverrides",
@@ -109,6 +111,7 @@ export function definesBehaviours(name: string): boolean {
  */
 export const INHERITED_TABLES: ReadonlySet<string> = new Set([
   "itemRules behaviours",
+  "itemRules equip.classes",
   "itemRules requires",
   "itemRules paperdoll.aliases",
 ]);
@@ -138,6 +141,8 @@ export function definitionRows(def: ItemDefinition, key: DefinitionTable): Obj[]
       return def.strength === undefined ? [] : [{ strength: def.strength }];
     case "itemRules equip.twoHanded":
       return def.twoHanded ? [{}] : [];
+    case "itemRules equip.classes":
+      return def.classes === undefined ? [] : [{ classes: [...def.classes] }];
     case "itemRules behaviours":
       return (def.behaviours ?? []).map((behaviour) => ({ behaviour }));
     case "attPower attPower.base":
@@ -235,11 +240,9 @@ function exactRow(key: string, name: string, row: Obj, masterworks: readonly str
   return out;
 }
 
-/** The masterworks made from `name` (craft `smith.masterwork`). */
+/** The masterworks made from `name` (craft `smith.masterwork` and `masterworks`). */
 function masterworksOf(name: string, craft: ContentData["craft"] | undefined): string[] {
-  return (craft?.stations.smith?.masterwork ?? [])
-    .filter((m) => lingoEq(m.item, name))
-    .flatMap((m) => m.outcomes.map((o) => o.result));
+  return craft ? masterworksOfIn(name, craft) : [];
 }
 
 /**
@@ -290,6 +293,9 @@ export function seedDefinition(
         break;
       case "itemRules equip.twoHanded":
         def.twoHanded = true;
+        break;
+      case "itemRules equip.classes":
+        def.classes = [...(first.classes as number[])];
         break;
       case "itemRules behaviours":
         def.behaviours = [

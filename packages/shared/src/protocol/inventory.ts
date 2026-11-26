@@ -92,6 +92,8 @@ export interface RecipeRowView {
   why: string | null;
   affordable: number;
   chance: number;
+  /** The chance a success comes out a masterwork, 0 to 1 (0: it has none). */
+  masterwork: number;
 }
 
 /** The crafting window (issue #45): a recipe station's recipes and the running Make X. */

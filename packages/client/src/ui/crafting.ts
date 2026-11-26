@@ -219,7 +219,8 @@ export function createCraftingWindow(
     const facts = document.createElement("div");
     facts.className = "crafting-facts";
     const xp = r.xp === null ? "" : ` · ${r.xp} XP`;
-    facts.textContent = `${r.skill} ${r.level}${xp} · ${Math.round(r.chance * 100)}% success`;
+    const masterwork = r.masterwork > 0 ? ` · ${percentText(r.masterwork)} masterwork` : "";
+    facts.textContent = `${r.skill} ${r.level}${xp} · ${Math.round(r.chance * 100)}% success${masterwork}`;
     const titles = document.createElement("div");
     titles.append(title, facts);
     head.append(picture(a, r.output.item, "crafting-pic"), titles);
@@ -335,4 +336,10 @@ export function createCraftingWindow(
       }
     },
   };
+}
+
+/** A chance as a percent: whole above 1%, else to one decimal place, so a small chance never reads 0%. */
+function percentText(chance: number): string {
+  const p = chance * 100;
+  return p >= 1 ? `${Math.round(p)}%` : `${Math.max(0.1, Math.round(p * 10) / 10)}%`;
 }

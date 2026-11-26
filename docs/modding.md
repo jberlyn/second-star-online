@@ -75,7 +75,7 @@ The original engine classified items, monsters, and spells by testing their name
 - **Every match adds:** all matching rows' numeric bonuses or effects are summed.
 - **In order:** every matching row applies, one after another in file order (`paperdoll.aliases`, where each row can rename the result of the one before).
 
-Because `contains` tests the entire name string, it also matches runtime-generated names (`Crate#123`, `5 Blue Crystal`, `Long Sword+3`, `Damaged Helm, Fire`) and owner-prefixed fixtures (a player named `"Crate"` owns `"Crate's Door"`). Use `exact` when you want to match only a single name. Two tables also extend `exact` to masterworks: an exact row in `classes.json` `skillGain.weaponSkills` or an exact skill block in `attpower.json` also matches the `+1` to `+N` masterworks that `craft.json` `stations.smith.masterwork` makes from that weapon.
+Because `contains` tests the entire name string, it also matches runtime-generated names (`Crate#123`, `5 Blue Crystal`, `Long Sword+3`, `Damaged Helm, Fire`) and owner-prefixed fixtures (a player named `"Crate"` owns `"Crate's Door"`). Use `exact` when you want to match only a single name. Two tables also extend `exact` to masterworks: an exact row in `classes.json` `skillGain.weaponSkills` or an exact skill block in `attpower.json` also matches the `+1` to `+N` masterworks that `craft.json` `stations.smith.masterwork` or `masterworks` makes from that weapon.
 
 ## Items (`items.json`, `item-rules.json`, `attpower.json`)
 
@@ -86,6 +86,7 @@ Because `contains` tests the entire name string, it also matches runtime-generat
 | `equip.strength` | Strength needed to equip | Last | `strength`; default `0` |
 | `equip.twoHanded` | Two-handed weapons | Any | Boolean |
 | `equip.murder` | The item that needs the murder flag (a single row, not a list) | Match | Boolean |
+| `equip.classes` | The only classes that may equip an item (optional; tested without `#id` or `+N`) | Last | `classes` (class codes); none: any class |
 | `use.usable`, `use.effects`, `use.messages` | Food and potion use behaviour | See schema | Healing/messages |
 | `use.silent` | Use does and says nothing (keys, deeds, seeds, `Map`) | Any | Boolean |
 | `use.whenFull` | Usable even by a stuffed player (a healing potion, say), whatever `hunger.stuffedRefuses` says; optional | Any | Boolean; default none (1.6) |
@@ -189,6 +190,8 @@ So a new gathering skill needs no code. For example, add a `Panning` skill, a `G
 
 An item can need a skill, or the level, before it is equipped or used, a harvest node before it is gathered, and a crafting recipe before it is started. A requirement is `{ "needs", "atLeast", "text"? }`: `needs` is a skill key, or exactly `level`, the shape the skill platforms use. `item-rules.json` `requires` rows add `match`, `pattern` and `on` (`equip` or `use`); a row tests the name without its `#id` or `+N` ending, as the behaviours do (a masterwork needs what its item needs). Every matching row of that kind must be met, and the first that is not refuses with its `text`, else "You need Cooking 10 to use this." ("You need to be level 5 to equip this." for the level). Equip tests it after 1.6's own equip gates, Use before anything else, and the character editor's wear check honours it too. Classic needs nothing.
 
+Gear can also be for some classes only: `item-rules.json` `equip.classes` rows (`{ "match", "pattern", "classes": [3, 7] }`, the class codes of `classes.json` `classes`) name the classes that may equip an item, and the last matching row decides. A row tests the name without its `#id` or `+N` ending, so a masterwork is worn by the classes that may wear its item. Anyone else is refused with "Only a Ranger or an Archer can equip this.", after 1.6's own gates and before the `requires` rows; the character editor's wear check honours it too. Gear already worn stays on when a character changes class. An item's definition sets the same with `classes` (the Items page's **Only these classes**). Left out, every class may wear everything, as in 1.6 and Classic.
+
 ### Names the engine still builds or reads
 
 These are the engine's own names:
@@ -252,6 +255,7 @@ The [Moonblade](#example-moonblade) above is one. Its fields, and the tables eac
 | Field | Table it compiles into |
 |---|---|
 | `slot`, `strength`, `twoHanded: true` | `equip.slots`, `equip.strength`, `equip.twoHanded` |
+| `classes` (class codes) | `equip.classes` |
 | `behaviours` | `behaviours` (one row per behaviour) |
 | `attack.base`, `attack.overrides` | `attPower.base`, `attPower.exactOverrides`: `{ flat, randomN, strengthHalf? }`, every roll drawing in order |
 | `attack.blocks` | `attPower.skillBlocks`: `[{ tiers }]`, the tiers as a skill block's |
@@ -446,7 +450,7 @@ The Talk & Shops tab checks these forms as you type and when you save; see the [
 These files have no worked example here; their schemas in [packages/data/schema/](../packages/data/schema/) document every field, and the matching [system guide](guides/README.md) describes what they do in play.
 
 - **`gather.json`:** `gathering` (the hit table, mining strikes, fishing, farming, regrowth and treasure), and `harvest` and `yields` (see [Tools and gathering](#tools-and-gathering)). How the gathering and crafting skills rise is each skill's [progression](#progression).
-- **`craft.json`:** `stations`: what each Classic crafting station makes, from what, and at what skill; `recipeStations` and `recipes`: the recipe stations and their recipes, made through the crafting window (see [the example](#example-runescape-style-gathering-and-crafting)).
+- **`craft.json`:** `stations`: what each Classic crafting station makes, from what, and at what skill; `recipeStations` and `recipes`: the recipe stations and their recipes, made through the crafting window (see [the example](#example-runescape-style-gathering-and-crafting)); `masterworks`: the better items any craft can make.
 - **`houses.json`:** house deeds and types, [vehicles](#vehicles-housesjson-vehicles), placement and building, doors, keys and switches, containers, resting regeneration and monthly decay.
 - **`social.json`:** [factions](#factions-socialjson) and their rules, murder, the Assassin's Game, high scores, guilds, chat rooms, buddies, Bios, medals, mail, boards, art tools and the newspaper.
 - **`casino.json`:** the Slot Machine, Blackjack and Checkers games, including their sounds. Which items play them is the `slotMachine`, `blackjackTable` and `checkersTable` [behaviours](#item-behaviours). Classic no longer sets each game's `item`; a pack made before the behaviours that still sets it keeps that item playing.
@@ -532,6 +536,8 @@ Only a spell cast from a spellbook takes its own amounts: a free fireball, a mon
 | `gathering.regrowth.checks` (empty) | Nothing grows back |
 | `craft.json` `stations.smith`, `cook`, `mix`, `build`, `cauldron` | That craft is off: its menu button does nothing (as with an unbound skill), and a job running when a publish takes the station out ends silently; with no `cauldron`, nothing dropped is taken for one |
 | `craft.json` `recipeStations`, `recipes` | No recipe stations: Ctrl and Use open no crafting window (Classic) |
+| `craft.json` `masterworks` | Only the Classic smithing table makes masterworks (Classic) |
+| `item-rules.json` `equip.classes` | Every class may wear all gear (Classic) |
 | `casino.json` `slots`, `blackjack`, `checkers` | Its items play nothing: their click and Ctrl fall through to the item's other uses. A spin, hand or match a publish leaves running finishes on the rules it began with |
 | `social.json` `assassin` | No Assassin's Game: the menu does nothing, kills score nothing, and an `assassinStatue` item is a plain item. A game running when a publish takes it out ends there (Lightning's one-hit melee with it), without prizes, and does not come back with the section |
 | `social.json` `questReplies.oraku` | No NPC takes Oraku's orb |
@@ -778,7 +784,16 @@ Classic leaves every field below out and plays as 1.6. A world that wants RuneSc
 ]
 ```
 
-Every one of these is edited on the Control Panel: nodes on the Gathering page's **Harvesting** tab (**A swing harvests**: after a set number of swings, or by a chance on every swing with its levels and percents and **Better tools add**; **Used up 1 time in … harvests**; **Comes back after (seconds)**) with the **Odds** tab showing the swings each harvest takes at every level and tool tier; fish on **Catches** (**Only with**); the Classic stations' recipes on the **Classic crafting** tab (**Skill needed**, **Chance of success by skill**, **Set recipes**); recipe stations and recipes on the **Recipe stations** and **Recipes** tabs; curves on the Skills page.
+- **Masterworks.** `masterworks` rows (`{ "item", "odds", "results": [{ "item", "weight" }] }`) let every craft, not only Classic smithing, make a better item: when any craft (a recipe, a cooking recipe, a brew, a build, or a repair the Classic `stations.smith.masterwork` table has no row for) succeeds in making `item`, its `odds` by the craft's skill (a straight line between levels, as a recipe's) is the chance it comes out as one of `results` instead, picked by `weight`. A failure never makes one. Name a result after its item with a `+N` ending: it keeps the item's behaviours, needs and worn picture, adds `N` to its armour or attack, and is covered by the item's exact weapon rows; give it a catalogue entry with art. A masterwork comes from one item only (across both tables), and is not itself a row's `item`: the checks before publishing refuse either. The crafting window shows a recipe's masterwork chance at the crafter's level.
+
+```json
+"masterworks": [
+  { "item": "Leather Armor", "odds": [{ "level": 20, "percent": 1 }, { "level": 99, "percent": 8 }],
+    "results": [{ "item": "Leather Armor +1", "weight": 4 }, { "item": "Leather Armor +2", "weight": 1 }] }
+]
+```
+
+Every one of these is edited on the Control Panel: nodes on the Gathering page's **Harvesting** tab (**A swing harvests**: after a set number of swings, or by a chance on every swing with its levels and percents and **Better tools add**; **Used up 1 time in … harvests**; **Comes back after (seconds)**) with the **Odds** tab showing the swings each harvest takes at every level and tool tier; fish on **Catches** (**Only with**); the Classic stations' recipes on the **Classic crafting** tab (**Skill needed**, **Chance of success by skill**, **Set recipes**); recipe stations and recipes on the **Recipe stations** and **Recipes** tabs; masterworks on the **Masterworks** tab; curves on the Skills page.
 
 ### Example: a new gathering skill, from the Control Panel
 

@@ -540,11 +540,26 @@ describe("the behaviour snapshot", () => {
   });
 
   test("item rule tables", () => {
-    const weak = { level: 1, skills: [], str: 0, wanted: false, equip: NO_EQUIPMENT };
-    const strong = { level: 1, skills: [], str: 40, wanted: false, equip: NO_EQUIPMENT };
-    const wanted = { level: 1, skills: [], str: 40, wanted: true, equip: NO_EQUIPMENT };
+    const weak = { level: 1, classCode: 1, skills: [], str: 0, wanted: false, equip: NO_EQUIPMENT };
+    const strong = {
+      level: 1,
+      classCode: 1,
+      skills: [],
+      str: 40,
+      wanted: false,
+      equip: NO_EQUIPMENT,
+    };
+    const wanted = {
+      level: 1,
+      classCode: 1,
+      skills: [],
+      str: 40,
+      wanted: true,
+      equip: NO_EQUIPMENT,
+    };
     const shielded = {
       level: 1,
+      classCode: 1,
       skills: [],
       str: 40,
       wanted: true,
@@ -552,6 +567,7 @@ describe("the behaviour snapshot", () => {
     };
     const twoHanded = {
       level: 1,
+      classCode: 1,
       skills: [],
       str: 40,
       wanted: true,

@@ -164,6 +164,12 @@ export const itemRulesDataSchema = z
       twoHanded: z.array(z.strictObject(pattern)),
       /** A name containing "Murder" needs the murder flag. */
       murder: z.strictObject(pattern),
+      /**
+       * Gear only some classes may equip, last match wins, tested without the `+N` ending (a
+       * masterwork is worn by whoever may wear its item): the class codes that may. Left out: any
+       * class (1.6, Classic).
+       */
+      classes: z.array(strictRow({ classes: z.array(int).min(1).max(100) })).optional(),
     }),
     use: z.strictObject({
       /** Use says nothing and does nothing: any match. */

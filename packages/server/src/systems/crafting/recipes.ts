@@ -260,7 +260,7 @@ export function recipeStep(room: Room, p: Player, ctx: RecipeCtx): Outgoing[] {
   const skill = skillValue(p.char.skills, recipe.skill);
   const chance = recipeChance(recipe, skill, toolTier(station, crafterOf(p)));
   const before = holdingsOf(p.char);
-  const r = finishRecipe(p.char, recipe, chance, ctx.rng, withId(ctx.world, ctx.now));
+  const r = finishRecipe(p.char, recipe, chance, ctx.rng, withId(ctx.world, ctx.now), skill);
   if (!r.done) {
     return stopRun(p, r.line);
   }

@@ -85,6 +85,8 @@ export const itemDefinitionSchema = z.strictObject({
   strength: int.min(0).max(200).optional(),
   /** `equip.twoHanded`: it takes both hands. */
   twoHanded: z.literal(true).optional(),
+  /** `equip.classes`: the only classes (by code) that may equip it. */
+  classes: z.array(int).min(1).max(100).optional(),
   /** `behaviours`: what it does (a bow, a key, a sword for Firesword…). */
   behaviours: z.array(itemBehaviourSchema).optional(),
   /** `attPower`: its attack power. */

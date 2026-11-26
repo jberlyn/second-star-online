@@ -1181,7 +1181,14 @@ describe("requirements (item-rules.json requires)", () => {
         { match: "contains", pattern: "Murder", on: "equip", needs: "level", atLeast: 50 },
       ],
       () => {
-        const who = { str: 40, wanted: false, equip: NO_EQUIPMENT, level: 1, skills: [] };
+        const who = {
+          str: 40,
+          wanted: false,
+          equip: NO_EQUIPMENT,
+          classCode: 1,
+          level: 1,
+          skills: [],
+        };
         expect(checkEquip("Long Sword+3", who)).toEqual({
           ok: false,
           text: "You need to be level 5 to equip this.",

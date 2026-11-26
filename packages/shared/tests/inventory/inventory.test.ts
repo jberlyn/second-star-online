@@ -191,7 +191,14 @@ describe("equip", () => {
   });
   test("bug fixed: the Dragon Sword is wielded in the left hand", () => {
     expect(
-      checkEquip("Dragon Sword", { level: 1, skills: [], str: 26, wanted: false, equip: gear({}) }),
+      checkEquip("Dragon Sword", {
+        level: 1,
+        classCode: 1,
+        skills: [],
+        str: 26,
+        wanted: false,
+        equip: gear({}),
+      }),
     ).toEqual({
       ok: true,
       slot: "LeftHand",
@@ -208,7 +215,14 @@ describe("equip", () => {
   });
   test('bug fixed: "You cannot equip the ..." ends with a full stop', () => {
     expect(
-      checkEquip("Apple", { level: 1, skills: [], str: 99, wanted: false, equip: gear({}) }),
+      checkEquip("Apple", {
+        level: 1,
+        classCode: 1,
+        skills: [],
+        str: 99,
+        wanted: false,
+        equip: gear({}),
+      }),
     ).toEqual({
       ok: false,
       text: "You cannot equip the Apple.",
@@ -219,6 +233,7 @@ describe("equip", () => {
     expect(
       checkEquip("Pharaoh Sword", {
         level: 1,
+        classCode: 1,
         skills: [],
         str: 27,
         wanted: false,
@@ -233,6 +248,7 @@ describe("equip", () => {
     expect(
       checkEquip("Small Shield", {
         level: 1,
+        classCode: 1,
         skills: [],
         str: 99,
         wanted: false,
@@ -242,6 +258,7 @@ describe("equip", () => {
     expect(
       checkEquip("War Hammer", {
         level: 1,
+        classCode: 1,
         skills: [],
         str: 99,
         wanted: false,
@@ -251,13 +268,27 @@ describe("equip", () => {
   });
   test("murder gear needs the flag", () => {
     expect(
-      checkEquip("Murder Helm", { level: 1, skills: [], str: 99, wanted: false, equip: gear({}) }),
+      checkEquip("Murder Helm", {
+        level: 1,
+        classCode: 1,
+        skills: [],
+        str: 99,
+        wanted: false,
+        equip: gear({}),
+      }),
     ).toEqual({
       ok: false,
       text: EQUIP_TEXT.vile,
     });
     expect(
-      checkEquip("Murder Helm", { level: 1, skills: [], str: 99, wanted: true, equip: gear({}) }),
+      checkEquip("Murder Helm", {
+        level: 1,
+        classCode: 1,
+        skills: [],
+        str: 99,
+        wanted: true,
+        equip: gear({}),
+      }),
     ).toEqual({
       ok: true,
       slot: "Head",
@@ -267,6 +298,7 @@ describe("equip", () => {
     expect(
       checkEquip("Knife", {
         level: 1,
+        classCode: 1,
         skills: [],
         str: 99,
         wanted: false,

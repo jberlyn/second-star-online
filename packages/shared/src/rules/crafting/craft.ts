@@ -17,6 +17,7 @@ import {
 import { menuAction } from "../inventory/equip.ts";
 import { type AddResult, type Bag, invAdd } from "../inventory/inventory.ts";
 import { crystalLine } from "../spells/spells.ts";
+import { rollMasterwork } from "./masterwork.ts";
 import { type OddsPoint, oddsAt, rollChance } from "./odds.ts";
 
 let ST: CraftData["stations"];
@@ -571,9 +572,9 @@ function materials(job: CraftJob): string[] {
  * gone the craft ends silently and nothing changes. Cooking, alchemy and carpentry then roll their
  * failure: a failure uses the materials up, and a burn makes the raw food's burned form while a
  * failed brew or build makes nothing. A success makes the result (a repair rolls its masterwork on
- * the server's skill). If the bag has no room for what is made, nothing is taken, nothing is made
- * and the crafter is told the bag is too crowded. `addName` lets the server mint a built
- * container's id.
+ * the server's skill; any other success may come out a shared masterwork, by the craft's skill).
+ * If the bag has no room for what is made, nothing is taken, nothing is made and the crafter is
+ * told the bag is too crowded. `addName` lets the server mint a built container's id.
  */
 export function finishCraft(
   inv: { bag: Bag; gold: number },
@@ -603,6 +604,7 @@ export function finishCraft(
     return { reached: true, lines: [line], added, gain };
   };
   let result: string | null;
+  let smithRolled = false;
   let failed: string | null = null;
   let spoiled: string | null = null;
   switch (job.kind) {
@@ -611,6 +613,9 @@ export function finishCraft(
       const pool = masterworkPool(skill);
       const roll = rng.random(pool);
       if (result !== null) {
+        // The Classic smithing table decides an item it has a row for; any other repair takes the
+        // shared masterworks below.
+        smithRolled = (ST.smith?.masterwork ?? []).some((m) => lingoEq(m.item, result ?? ""));
         result = masterwork(result, roll);
       }
       break;
@@ -643,6 +648,12 @@ export function finishCraft(
   if (result === null || result === "") {
     return { reached: false, lines: [], added: null, gain: false };
   }
+  // A success may come out a masterwork (`masterworks`, by the craft's skill); the XP stays the
+  // plain item's.
+  const plain = result;
+  if (!smithRolled) {
+    result = rollMasterwork(result, skill, rng);
+  }
   const line =
     job.kind === "Mix"
       ? CRAFT_TEXT.potionReady
@@ -650,7 +661,7 @@ export function finishCraft(
         ? CRAFT_TEXT.built(result)
         : CRAFT_TEXT.ready(result);
   const made = make(result, line, true);
-  const xp = made.gain ? craftXp(job, result, skill) : undefined;
+  const xp = made.gain ? craftXp(job, plain, skill) : undefined;
   return xp === undefined ? made : { ...made, xp };
 }
 

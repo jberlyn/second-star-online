@@ -624,8 +624,8 @@ function storageIdErrors(before: EditableCharacter, after: EditableCharacter): s
 /**
  * The worn gear in `after` that the wear rules would refuse, one line each: an item in the wrong
  * slot, one the character is not strong enough for, an off-hand item with a two-handed weapon,
- * a murder weapon worn while not wanted, or one whose content requirement the edited level and
- * skills do not meet. `str` is the strength played with (class and medal
+ * a murder weapon worn while not wanted, one the edited class may not wear, or one whose content
+ * requirement the edited level and skills do not meet. `str` is the strength played with (class and medal
  * points included). Only slots the edit changed count, so gear already worn stays legal (a wear
  * rule change keeps worn gear on).
  */
@@ -635,7 +635,11 @@ export function wearBreaks(
   str: number,
 ): string[] {
   const out: string[] = [];
-  const quals = { level: after.level, skills: skillsFromKeys(after.skills) };
+  const quals = {
+    level: after.level,
+    skills: skillsFromKeys(after.skills),
+    classCode: after.classCode,
+  };
   const equip = {
     weapon: after.equip.weapon ?? NOTHING,
     offHand: after.equip.offHand ?? NOTHING,

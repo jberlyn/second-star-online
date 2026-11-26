@@ -343,6 +343,7 @@ export function equipIntent(ctx: ItemCtx, room: Room, p: Player, slot: number): 
     str: statsOf(p).str,
     wanted: p.char.wanted,
     equip: p.char.equip,
+    classCode: p.char.classCode,
     level: p.char.vitals.level,
     skills: p.char.skills,
   });
