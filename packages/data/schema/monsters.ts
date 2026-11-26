@@ -75,6 +75,12 @@ export const monsterSchema = z.strictObject({
   xpMelee: int.min(0).max(1_000_000_000).optional(),
   xpSpell: int.min(0).max(1_000_000_000).optional(),
   /**
+   * A fixed kill XP in place of `xpMelee` and `xpSpell` and any XP gear's bonus (issue #42;
+   * Classic: Cow and Holy Shield, 5). Absent: none. Before #42 this was the name-matched table
+   * `rules.killXp`.
+   */
+  killXp: int.min(0).max(1_000_000_000).optional(),
+  /**
    * The XP a kill gives each `xp`-model skill the weapon trains, replacing the skills' own `kill`
    * amount. Kill XP for the character level is `xpMelee`/`xpSpell`.
    */
@@ -158,11 +164,6 @@ export const monsterDefinitionSchema = z.strictObject({
   noQuests: on,
   /** Never casts monster spells (`casting.neverCasts`). */
   neverCasts: on,
-  /**
-   * The kill XP after the ring, in place of `xpMelee` or `xpSpell` (`rules.killXp`): a fixed base
-   * that XP gear does not raise (Classic: Cow and Holy Shield, 5).
-   */
-  killXp: int.min(0).max(1_000_000_000).optional(),
   /** Broadcast on a kill, `{}` the killer's name (`rules.killBroadcasts`). */
   killBroadcast: z.string().min(1).max(200).optional(),
   /** Melee damage added by a weapon family, in order (`meleeAffinities`, monster side exact). */
@@ -211,7 +212,6 @@ export const monstersDataSchema = z.strictObject({
     officer: z.array(patternEntry),
     sparesInnocent: z.array(patternEntry),
     clearsBlock: z.array(patternEntry),
-    killXp: z.array(z.strictObject({ ...patternRow, xp: int })),
     killBroadcasts: z.array(z.strictObject({ ...patternRow, text: z.string().min(1) })),
     namesSelf: z.array(patternEntry),
     noQuests: z.array(patternEntry),

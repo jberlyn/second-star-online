@@ -171,7 +171,7 @@ const GROUP_KEYS: Record<string, { record: string[]; form: string[] }> = {
     form: [...BEHAVIOUR_MAIN, ...BEHAVIOUR_MORE].filter(([w]) => w === "form").map(([, k]) => k),
   },
   combat: { record: [], form: ["affinities", "skillCap"] },
-  xp: { record: ["level", "xpMelee", "xpSpell", "skillXp"], form: ["killXp", "killBroadcast"] },
+  xp: { record: ["level", "xpMelee", "xpSpell", "killXp", "skillXp"], form: ["killBroadcast"] },
   lists: { record: [], form: ["lists"] },
 };
 
@@ -1284,7 +1284,7 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
         "Shown to everyone online. {} becomes the killer's name: {} has slain the Dragon!",
       ),
       more(
-        work.record.skillXp !== undefined || work.form.killXp !== undefined,
+        work.record.skillXp !== undefined || work.record.killXp !== undefined,
         labelled(
           "Skill XP per kill",
           intInput(
@@ -1303,12 +1303,12 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
         labelled(
           "Fixed kill XP",
           intInput(
-            work.form.killXp,
+            work.record.killXp,
             0,
             1_000_000_000,
             true,
             "Fixed kill XP",
-            (n) => setKey(work.form, "killXp", n ?? undefined),
+            (n) => setKey(work.record, "killXp", n ?? undefined),
             edited,
             invalid,
             "Not used",

@@ -76,12 +76,6 @@ export const monstersWords: WordBook = {
     help: "These don't block the tile they stand on once they move.",
     noun: "monster",
   },
-  "rules.killXp": {
-    label: "Fixed kill XP",
-    help: "XP a kill gives, in place of the monster's own XP.",
-    noun: "monster",
-  },
-  "rules.killXp.[].xp": { label: "XP for the kill" },
   "rules.killBroadcasts": {
     label: "Announcement when killed",
     help: "A message everyone sees when one of these is killed.",

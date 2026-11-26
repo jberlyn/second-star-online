@@ -174,6 +174,20 @@ describe("a fixed-XP model with a steep curve (RuneScape-like)", () => {
   });
 });
 
+describe("XP gear is content, not a name", () => {
+  test("any item can add kill XP while worn, and the Ring of Experience's +5 is its own row", () => {
+    const d = structuredClone(classicData) as ContentData;
+    d.itemRules.gear = [
+      ...d.itemRules.gear.filter((g) => g.power !== "killXp"),
+      { slot: "ring", match: "exact", pattern: "Ring of Power", power: "killXp", add: 12 },
+    ];
+    installContent(buildContentStore(d));
+    expect(meleeKillXp(14, "Slime", { ...NO_EQUIPMENT, ring: "Ring of Power" })).toBe(36);
+    // Without its row the Ring of Experience adds nothing.
+    expect(meleeKillXp(14, "Slime", ringed)).toBe(24);
+  });
+});
+
 describe("kill XP by level difference", () => {
   test("more for a monster above you, less below, never past the most percent", () => {
     install({ killXp: { ...BALANCE_DEFAULTS.killXp, adjust: "levelDifference" } });

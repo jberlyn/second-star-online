@@ -376,7 +376,7 @@ export const KILL_XP_ADJUST = ["minusLevel", "none", "levelDifference"] as const
  *    works it out from its level (`fromLevel`: `flat + perLevel × level`), and a name with no
  *    species gives `noSpecies`;
  * 2. plus the worn gear's `killXp` (item rules; Classic: the Ring of Experience's 5);
- * 3. replaced by the monster's fixed kill XP (`rules.killXp`; Classic: Cow and Holy Shield, 5);
+ * 3. replaced by the species' fixed `killXp` (Classic: Cow and Holy Shield, 5);
  * 4. plus `bonus` (1.6's `Regged` bonus, always on: 10);
  * 5. plus `thresholdBonus` for each of `thresholds` the value is above, tested in order on the
  *    growing value (1.6: 10 for each of 100, 150 … 400);

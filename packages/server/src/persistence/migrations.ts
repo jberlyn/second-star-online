@@ -5,6 +5,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import type { Db } from "./database.ts";
+import { moveKillXp } from "./kill-xp-content.ts";
 import { churchMapSql, jailMapSql, seedMapSql } from "./seed-map.ts";
 import { splitSqlStatements } from "./sql-split.ts";
 import { moveVehicleContent } from "./vehicle-content.ts";
@@ -50,6 +51,9 @@ export function loadMigrations(dir: string = MIGRATIONS_DIR): Migration[] {
       }
       if (dir === MIGRATIONS_DIR && name === "20261125_73_vehicles_as_content.sql") {
         return { name, sql, code: moveVehicleContent };
+      }
+      if (dir === MIGRATIONS_DIR && name === "20261126_75_kill_xp_on_species.sql") {
+        return { name, sql, code: moveKillXp };
       }
       return { name, sql: seed ? `${sql}\n${seedMapSql()}\n` : sql };
     });

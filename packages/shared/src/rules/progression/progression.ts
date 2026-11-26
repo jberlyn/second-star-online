@@ -7,7 +7,6 @@ import { content } from "../../content/store.ts";
 import { gearBonus } from "../combat/gear.ts";
 import type { Equipment } from "../core/fighter.ts";
 import type { Rng } from "../core/lingo.ts";
-import { firstMatch } from "../core/patterns.ts";
 
 /**
  * A species' base kill XP for the kind of kill (`xpMelee` or `xpSpell`). A species that sets
@@ -26,7 +25,7 @@ export function speciesKillXp(sp: Monster | null | undefined, kind: "melee" | "s
 /**
  * Kill XP before the levels adjust it (the balance row `killXp`): the base (`speciesKillXp`), plus
  * the worn gear's `killXp` (`item-rules.json` `gear`; Classic: the Ring of Experience's 5), the
- * monster's fixed kill XP in its place (`rules.killXp`; Classic: Cow and Holy Shield, 5), plus
+ * species' fixed `killXp` in its place (Classic: Cow and Holy Shield, 5), plus
  * `bonus` (1.6's `Regged`, always 10), then `thresholdBonus` for each of `thresholds` the value
  * is above, tested on the growing value (1.6: +10 for each of > 100 … > 400). Used for melee and
  * spell kills alike.
@@ -34,9 +33,9 @@ export function speciesKillXp(sp: Monster | null | undefined, kind: "melee" | "s
 export function meleeKillXp(base: number, monsterName: string, equip: Equipment): number {
   const k = content().balance.killXp;
   let xp = base + gearBonus(equip, "killXp");
-  const override = firstMatch(content().monsters.rules.killXp, monsterName);
-  if (override) {
-    xp = override.xp;
+  const fixed = content().monster(monsterName)?.killXp;
+  if (fixed !== undefined) {
+    xp = fixed;
   }
   xp += k.bonus;
   for (const t of k.thresholds) {

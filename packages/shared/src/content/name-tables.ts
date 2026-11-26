@@ -346,7 +346,6 @@ export const NAME_TABLES: Record<string, TableInfo> = {
     decides: "never blocks a player's step",
     wins: "any",
   },
-  "monsters rules.killXp": { decides: "kill XP override after the ring", wins: "first" },
   "monsters rules.killBroadcasts": {
     decides: "server broadcast on a melee kill",
     wins: "first",

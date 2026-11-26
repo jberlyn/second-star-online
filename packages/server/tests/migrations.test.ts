@@ -2615,6 +2615,123 @@ describe("migrations (real SQL on in-memory SQLite)", () => {
     ]);
   });
 
+  test("kill_xp_on_species moves the fixed kill XP table and definitions onto species rows, layer by layer (issue #42)", () => {
+    const db = openDatabase();
+    const all = loadMigrations(MIGRATIONS_DIR);
+    runMigrations(
+      db,
+      all.filter((m) => m.name < "20261126_75"),
+    );
+    const species = (name: string) =>
+      classicData.monsters.monsters.find((m) => m.name === name) as Record<string, unknown>;
+    const { killXp: _cow, ...oldCow } = species("Cow");
+    // Before #42 the rules held the table, and Classic's Cow had no value on its row.
+    const oldRules = (table: unknown[]) => ({ ...classicData.monsters.rules, killXp: table });
+    db.run(
+      "INSERT INTO content_packs (id, name, version, position, source, data, installed_at) VALUES ('rats', 'rats', '1.0.0', 1, 'imported', ?, 'now')",
+      [
+        JSON.stringify({
+          manifest: { id: "rats", name: "rats", version: "1.0.0", format: 2, sso: "1.14" },
+          data: {
+            monsters: {
+              rules: oldRules([{ match: "exact", pattern: "Rat", xp: 4 }]),
+              monsters: [{ ...species("Rat"), hp: 7 }],
+            },
+          },
+        }),
+      ],
+    );
+    const row = (part: string, key: string, data: unknown, base: unknown = null) =>
+      db.run(
+        "INSERT INTO content_rows (dataset, part, row_key, op, data, base_hash, base_data, seq, updated_by, updated_at) VALUES ('monsters', ?, ?, 'set', ?, NULL, ?, 1, 'acc', 'then')",
+        [part, key, JSON.stringify(data), base === null ? null : JSON.stringify(base)],
+      );
+    // The operator's table: every Slime 9, Holy Shield as Classic; a definition for the Cow with
+    // no kill XP (so none), one for the Orc with 12; and a Mega Slime row of their own.
+    row(
+      "rules",
+      "",
+      oldRules([
+        { match: "contains", pattern: "Slime", xp: 9 },
+        { match: "exact", pattern: "Holy Shield", xp: 5 },
+      ]),
+      oldRules([
+        { match: "exact", pattern: "Cow", xp: 5 },
+        { match: "exact", pattern: "Holy Shield", xp: 5 },
+      ]),
+    );
+    row("definitions", "Cow", { name: "Cow" });
+    row("definitions", "Orc", { name: "Orc", killXp: 12 });
+    row("monsters", "Mega Slime", { ...species("Mega Slime"), hp: 99 }, species("Mega Slime"));
+    // The draft gives the Ogre 3 by a definition.
+    db.run(
+      "INSERT INTO content_draft (dataset, part, row_key, op, data, author_account_id, author, updated_at) VALUES ('monsters', 'definitions', 'Ogre', 'set', ?, 'acc', 'A', 'then')",
+      [JSON.stringify({ name: "Ogre", killXp: 3 })],
+    );
+    db.run(
+      "INSERT INTO content_publishes (id, created_at, actor_account_id, actor_name, summary, changes, hash) VALUES ('p1', '2026-11-20T00:00:00.000Z', 'acc', 'A', 'cow', ?, 'h')",
+      [
+        JSON.stringify([
+          {
+            dataset: "monsters",
+            part: "definitions",
+            key: "Orc",
+            before: null,
+            after: { op: "set", data: { name: "Orc", killXp: 12 }, baseHash: null, baseData: null },
+          },
+        ]),
+      ],
+    );
+    runMigrations(db, all);
+
+    // No old field is left anywhere.
+    const text = [
+      ...db.query("SELECT data FROM content_packs WHERE data IS NOT NULL").all(),
+      ...db.query("SELECT data FROM content_rows WHERE part IN ('rules', 'definitions')").all(),
+      ...db.query("SELECT data FROM content_draft WHERE part IN ('rules', 'definitions')").all(),
+      ...db.query("SELECT changes AS data FROM content_publishes").all(),
+    ]
+      .map((r) => (r as { data: string }).data)
+      .join("\n");
+    expect(text).not.toContain("killXp");
+
+    // Every monster plays what it played before.
+    const s = new ContentService({
+      db,
+      now: () => "2026-11-26T00:00:00.000Z",
+      releasePacks: RELEASE_PACK_DIRS,
+      onPublish: () => {},
+    });
+    const played = (data: { monsters: { monsters: { name: string; killXp?: number }[] } }) =>
+      Object.fromEntries(
+        ["Slime", "Mega Slime", "Cow", "Holy Shield", "Orc", "Rat", "Ogre", "Wolf"].map((n) => [
+          n,
+          data.monsters.monsters.find((m) => m.name === n)?.killXp ?? null,
+        ]),
+      );
+    expect(played(s.publishedContent())).toEqual({
+      Slime: 9,
+      "Mega Slime": 9,
+      Cow: null,
+      "Holy Shield": 5,
+      Orc: 12,
+      // The operator's table replaced the pack's, which gave the Rat 4.
+      Rat: null,
+      Ogre: null,
+      Wolf: null,
+    });
+    expect(played(s.draftContent())).toMatchObject({ Ogre: 3, Orc: 12 });
+    expect(s.publishedContent().monsters.monsters.find((m) => m.name === "Mega Slime")?.hp).toBe(
+      99,
+    );
+    // The Cow's own row says none, over Classic's 5.
+    expect(oldCow.killXp).toBeUndefined();
+    expect(s.check()).toEqual([]);
+    // The species and rules rows it moved raise no pack notice (the definitions here were written
+    // without the pack row they were made over, so those notices are the fixture's own).
+    expect(s.notices().filter((n) => n.part !== "definitions")).toEqual([]);
+  });
+
   test("vehicles_as_content moves riders and hulls into vehicle rows, layer by layer (issue #44)", () => {
     const db = openDatabase();
     const all = loadMigrations(MIGRATIONS_DIR);

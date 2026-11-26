@@ -974,6 +974,7 @@
       "defense": 7,
       "xpMelee": 5,
       "xpSpell": 5,
+      "killXp": 5,
       "spawnMinute": null
     },
     {
@@ -1095,6 +1096,7 @@
       "defense": 5,
       "xpMelee": 5,
       "xpSpell": 5,
+      "killXp": 5,
       "spawnMinute": null,
       "flags": {
         "immobile": true,
@@ -1464,18 +1466,6 @@
       {
         "match": "exact",
         "pattern": "Holy Shield"
-      }
-    ],
-    "killXp": [
-      {
-        "match": "exact",
-        "pattern": "Cow",
-        "xp": 5
-      },
-      {
-        "match": "exact",
-        "pattern": "Holy Shield",
-        "xp": 5
       }
     ],
     "killBroadcasts": [

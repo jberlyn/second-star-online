@@ -82,7 +82,7 @@ export function rules(name: string) {
     namesSelf: anyMatch(r.namesSelf, name),
     noQuests: anyMatch(r.noQuests, name),
     neverCasts: anyMatch(content().monsters.casting.neverCasts, name),
-    killXp: firstMatch(r.killXp, name)?.xp ?? null,
+    killXp: species(name)?.killXp ?? null,
     killBroadcast: firstMatch(r.killBroadcasts, name)?.text ?? null,
     inMonsterList: inMonsterList(name),
     npced: isNpced(name),

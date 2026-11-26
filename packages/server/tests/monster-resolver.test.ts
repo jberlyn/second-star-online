@@ -72,13 +72,9 @@ describe("the monster resolver (#31 stage 0)", () => {
     expect(rows?.rows.map((r) => `${r.match} ${r.pattern}`)).toEqual(["contains Faction"]);
   });
 
-  test("which rows decide: first for kill XP and broadcasts, last for the cap, every affinity adds, except skips", () => {
+  test("which rows decide: first for broadcasts, last for the cap, every affinity adds, except skips", () => {
     const d = structuredClone(classicData) as unknown as ContentData;
     const r = d.monsters.rules;
-    r.killXp = [
-      { match: "contains", pattern: "Orc", xp: 5 },
-      { match: "exact", pattern: "Orc Chief", xp: 9 },
-    ];
     r.killBroadcasts = [
       { match: "exact", pattern: "Orc Chief", text: "A {}" },
       { match: "contains", pattern: "Chief", text: "B {}" },
@@ -113,7 +109,6 @@ describe("the monster resolver (#31 stage 0)", () => {
     const hits = resolveMonster("Orc Chief", d);
     const deciding = (key: string): unknown[] | undefined =>
       hits.find((h) => h.key === key)?.deciding.map((x) => x.raw);
-    expect(deciding("monsters rules.killXp")).toEqual([r.killXp[0]] as unknown[]);
     expect(deciding("monsters rules.killBroadcasts")).toEqual([r.killBroadcasts[0]] as unknown[]);
     expect(deciding(SKILL_CAP_TABLE)).toEqual([d.monsters.skillCaps.byBody[1]] as unknown[]);
     expect(deciding("monsters meleeAffinities")).toEqual(d.monsters.meleeAffinities as unknown[]);

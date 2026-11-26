@@ -321,6 +321,7 @@ const RECORD_FIELDS = [
   "attack",
   "defense",
   "level",
+  "killXp",
   "xpMelee",
   "xpSpell",
   "skillXp",

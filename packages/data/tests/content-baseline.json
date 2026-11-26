@@ -8984,7 +8984,7 @@
     ],
     [
       "Cow",
-      "57c0a03e4a15f6f8"
+      "aa582f2828bdc525"
     ],
     [
       "Oraku",
@@ -9028,7 +9028,7 @@
     ],
     [
       "Holy Shield",
-      "c3fb3806235c8a41"
+      "6ad8806512d502b8"
     ],
     [
       "Mizella",
@@ -9087,16 +9087,6 @@
     [
       "Overlord",
       "c3634727ff218aa4"
-    ]
-  ],
-  "monsters.json#/rules/killXp": [
-    [
-      "Cow",
-      "3dc5f9c90ddc35c8"
-    ],
-    [
-      "Holy Shield",
-      "3e9bf6bebc91416c"
     ]
   ],
   "monsters.json#/rules/namesSelf": [

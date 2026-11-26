@@ -51,7 +51,6 @@ export const MONSTER_FLAG_TABLES = [
 /** The tables a monster definition covers (its name-matched tables). */
 export const MONSTER_DEFINITION_TABLES = [
   ...MONSTER_FLAG_TABLES.map(([, key]) => key),
-  "monsters rules.killXp",
   "monsters rules.killBroadcasts",
   "monsters meleeAffinities",
 ] as const;
@@ -71,9 +70,6 @@ export function monsterDefinitionRows(def: MonsterDefinition, key: MonsterDefini
     if (table === key) {
       return def[field] ? [{}] : [];
     }
-  }
-  if (key === "monsters rules.killXp") {
-    return def.killXp === undefined ? [] : [{ xp: def.killXp }];
   }
   if (key === "monsters rules.killBroadcasts") {
     return def.killBroadcast === undefined ? [] : [{ text: def.killBroadcast }];
@@ -111,10 +107,6 @@ export function seedMonsterDefinition(
     if ((by.get(key)?.deciding.length ?? 0) > 0) {
       def[field] = true;
     }
-  }
-  const xp = by.get("monsters rules.killXp")?.deciding[0]?.raw.xp;
-  if (typeof xp === "number") {
-    def.killXp = xp;
   }
   const text = by.get("monsters rules.killBroadcasts")?.deciding[0]?.raw.text;
   if (typeof text === "string") {

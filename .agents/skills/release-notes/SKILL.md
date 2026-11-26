@@ -27,7 +27,7 @@ Base every claim on the code as it was **at the tag being described**, not the w
 
 Changes that the next release after `v1.14.0` must list under Upgrade Notes (confirm each in the code at the tag):
 
-- None yet.
+- Issue #42 (migration `20261126_75_kill_xp_on_species`): the monster rules table `rules.killXp` and a monster definition's `killXp` are gone; a monster's fixed kill XP is now its species row's `killXp` (the Creatures & NPCs page's Rewards tab, under More options). The upgrade moves what a world set there onto species rows, adding an operator (or draft) row for a monster where needed, so every monster gives the kill XP it gave. An imported pack exported before the upgrade is updated the same way. Undoing a publish made before the upgrade no longer changes kill XP that it set through the table or a definition.
 
 ## 2. Choose the version
 

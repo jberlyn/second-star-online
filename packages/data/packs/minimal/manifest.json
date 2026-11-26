@@ -1,10 +1,10 @@
 {
   "id": "minimal",
   "name": "Minimal",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "format": 1,
   "sso": "1.10",
-  "contentHash": "303178d76087e7b8",
+  "contentHash": "6f8f351f33b3f56b",
   "art": "art",
   "world": "world.json"
 }

@@ -41,7 +41,7 @@ export const MONSTER_GROUPS: readonly { id: string; title: string; tables: strin
   {
     id: "xp",
     title: "Rewards",
-    tables: ["monsters rules.killXp", "monsters rules.killBroadcasts"],
+    tables: ["monsters rules.killBroadcasts"],
   },
 ];
 
@@ -58,7 +58,6 @@ export const MONSTER_TABLE_LABELS: Record<string, string> = {
   "monsters casting.neverCasts": "Never casts spells",
   "monsters meleeAffinities": "Weapon bonuses",
   [SKILL_CAP_TABLE]: "Skill training limit",
-  "monsters rules.killXp": "Fixed kill XP",
   "monsters rules.killBroadcasts": "Announcement when killed",
 };
 

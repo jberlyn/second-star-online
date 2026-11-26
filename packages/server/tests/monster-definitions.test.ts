@@ -97,7 +97,6 @@ describe("monster definitions compile into the tables (#31 stage 2)", () => {
     const own: MonsterDefinition = {
       name: "Slime",
       sea: true,
-      killXp: 7,
       killBroadcast: "{} squashed it.",
       affinities: [{ weapon: "Axe", delta: 3, randomN: 2 }],
       skillCap: 12,
@@ -135,7 +134,6 @@ describe("monster definitions compile into the tables (#31 stage 2)", () => {
     const own: MonsterDefinition = {
       ...seed("Slime"),
       sea: true,
-      killXp: 7,
       affinities: [{ weapon: "Axe", delta: 3, randomN: 0 }],
       skillCap: 12,
     };
@@ -143,12 +141,9 @@ describe("monster definitions compile into the tables (#31 stage 2)", () => {
     try {
       const p = plays("Slime");
       expect(p.rules.sea).toBe(true);
-      // The override, then 1.6's +10.
-      expect(p.killXp).toEqual([17, 17]);
       expect(monsterSkillCap(30, 0, "Slime")).toBe(12);
       // Another species on the Slime's body keeps the by-body cap.
       expect(monsterSkillCap(30, 0, "Somebody Else")).toBe(30);
-      expect(meleeKillXp(10, "Slime", NO_EQUIPMENT)).toBe(17);
       expect(meleeDamageVsMonster(3, { name: "Slime", defense: 0 }, "Axe", recorder("low"))).toBe(
         6,
       );
@@ -220,12 +215,11 @@ describe("monster definitions on a running server (#31 stage 2)", () => {
   test("drafted, published and undone through the content store, live; no notice", () => {
     const { s } = service();
     try {
-      const slime = { ...seed("Slime"), skillCap: 12, killXp: 9 };
+      const slime = { ...seed("Slime"), skillCap: 12 };
       expect(s.draftSet(ADMIN, defRef("Slime"), "set", slime).ok).toBe(true);
       const p = s.publish(ADMIN, s.draftRev(), "Tougher slime");
       expect(p.ok).toBe(true);
       expect(monsterSkillCap(30, 0, "Slime")).toBe(12);
-      expect(meleeKillXp(10, "Slime", NO_EQUIPMENT)).toBe(19);
       expect(s.notices()).toEqual([]);
       expect(s.undo(ADMIN, p.ok ? p.value.id : "").ok).toBe(true);
       expect(monsterSkillCap(30, 0, "Slime")).toBe(30);
@@ -425,7 +419,9 @@ describe("monster definitions on a running server (#31 stage 2)", () => {
           const u = s1.usage("monster", n);
           return u.ok && u.value.uses.length === 0;
         }) as string;
-      expect(s1.draftSet(ADMIN, defRef(name), "set", { ...seed(name), killXp: 7 }).ok).toBe(true);
+      expect(s1.draftSet(ADMIN, defRef(name), "set", { ...seed(name), skillCap: 27 }).ok).toBe(
+        true,
+      );
       expect(s1.publish(ADMIN, s1.draftRev(), "").ok).toBe(true);
       expect(s1.notices()).toEqual([]);
       // The next Classic has no such monster at all.
@@ -480,7 +476,7 @@ describe("monster definitions on a running server (#31 stage 2)", () => {
       expect(s.draftDiscard(rec).ok).toBe(true);
       expect(s.draftDiscard(defRef(name)).ok).toBe(true);
       // Only in the draft: it is discarded.
-      expect(s.draftSet(ADMIN, defRef(name), "set", { ...seed(name), killXp: 3 }).ok).toBe(true);
+      expect(s.draftSet(ADMIN, defRef(name), "set", { ...seed(name), skillCap: 23 }).ok).toBe(true);
       expect(s.draftSet(ADMIN, rec, "remove", null).ok).toBe(true);
       expect(s.draft().filter((d) => d.part === "definitions")).toEqual([
         expect.objectContaining({ op: "remove" }),
@@ -517,11 +513,11 @@ describe("monster definitions on a running server (#31 stage 2)", () => {
       const opened = rowOf(ref);
       expect(typeof opened).toBe("string");
       // Another editor saves first: the first's revision is stale, and naming none is refused too.
-      expect(put(OTHER, { ...seed("Slime"), killXp: 3 }, opened).ok).toBe(true);
-      const stale = put(ADMIN, { ...seed("Slime"), killXp: 4 }, opened);
+      expect(put(OTHER, { ...seed("Slime"), skillCap: 23 }, opened).ok).toBe(true);
+      const stale = put(ADMIN, { ...seed("Slime"), skillCap: 24 }, opened);
       expect(stale.ok).toBe(false);
       expect(stale.text).toContain("changed since you opened it");
-      expect(put(ADMIN, { ...seed("Slime"), killXp: 4 }).text).toContain(
+      expect(put(ADMIN, { ...seed("Slime"), skillCap: 24 }).text).toContain(
         "changed since you opened it",
       );
       // The species record shares the revision: editing the record makes the definition stale.
@@ -541,7 +537,7 @@ describe("monster definitions on a running server (#31 stage 2)", () => {
           }) as { ok: boolean }
         ).ok,
       ).toBe(true);
-      expect(put(ADMIN, { ...seed("Slime"), killXp: 5 }, rec).ok).toBe(false);
+      expect(put(ADMIN, { ...seed("Slime"), skillCap: 25 }, rec).ok).toBe(false);
       // A raw table edit under a monster with no definition changes its revision too.
       const cowRec = rowOf({ dataset: "monsters", part: "monsters", key: "Cow" });
       const rules = s.publishedContent().monsters.rules;
@@ -563,9 +559,9 @@ describe("monster definitions on a running server (#31 stage 2)", () => {
     const dir = mkdtempSync(join(tmpdir(), "sso-monster-definition-pack-"));
     try {
       const s1 = service(RELEASE_PACK_DIRS, db).s;
-      expect(s1.draftSet(ADMIN, defRef("Slime"), "set", { ...seed("Slime"), killXp: 9 }).ok).toBe(
-        true,
-      );
+      expect(
+        s1.draftSet(ADMIN, defRef("Slime"), "set", { ...seed("Slime"), skillCap: 29 }).ok,
+      ).toBe(true);
       expect(s1.draftSet(ADMIN, defRef("Cow"), "set", seed("Cow")).ok).toBe(true);
       // The operator's own monster: a species no pack has.
       const record = s1.publishedContent().monsters.monsters.find((m) => m.name === "Slime");
