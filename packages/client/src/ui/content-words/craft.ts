@@ -49,7 +49,149 @@ const odds = (at: string): WordBook => ({
   [`${at}.odds.[].percent`]: { label: "Chance %" },
 });
 
+/** An item and how many of it, at `at`. */
+const amount = (at: string, label: string, help: string, tab: string): WordBook => ({
+  [at]: { label, help, tab },
+  [`${at}.item`]: { label: "Item", names: "item" },
+  [`${at}.qty`]: { label: "How many" },
+});
+
+/** A list of items with how many of each, at `at`. */
+const amounts = (at: string, label: string, help: string, tab: string, more = false): WordBook => ({
+  [at]: { label, help, noun: "item", tab, more },
+  [`${at}.[].item`]: { label: "Item", names: "item" },
+  [`${at}.[].qty`]: { label: "How many" },
+});
+
+/** The words of recipe stations and recipes (issue #45). */
+const recipeWords: WordBook = {
+  // ---- recipe stations ----
+  "recipeStations.name": {
+    label: "Name",
+    help: "The crafting window's title; each recipe names the station it is made at.",
+  },
+  "recipeStations.at": {
+    label: "Stand at",
+    help: "The station items players face and press Ctrl at to open the window (an Anvil, a Furnace).",
+    noun: "station item",
+    names: "item",
+  },
+  "recipeStations.at.[]": { names: "item" },
+  "recipeStations.opens": {
+    label: "Or use from the bag",
+    help: "Bag items whose Use opens the window anywhere (a Knife for fletching). Give a station item, a bag item, or both.",
+    noun: "item",
+    names: "item",
+  },
+  "recipeStations.opens.[]": { names: "item" },
+  "recipeStations.tools": {
+    label: "Tools",
+    help: "The tools it takes, held or in the bag, each with a tier: the best one the player has counts. Leave off for a station that needs no tool.",
+    noun: "tool",
+  },
+  "recipeStations.tools.[].item": { label: "Tool", names: "item" },
+  "recipeStations.tools.[].tier": {
+    label: "Tier",
+    help: "Higher is better: a Bronze Hammer 1, a Steel Hammer 2.",
+  },
+  "recipeStations.aboveLevel": {
+    label: "Recipes above the player's level",
+    help: "Left out of the window, or shown with a lock and the level they need. A recipe can choose for itself.",
+    choices: { hide: "Hidden", show: "Shown locked" },
+  },
+
+  // ---- recipes ----
+  "recipes.name": {
+    label: "Recipe name",
+    help: "Unique; the window lists it by this name (Bronze Dagger).",
+    tab: "Recipe",
+  },
+  "recipes.station": {
+    label: "Made at",
+    help: "The recipe station it is made at.",
+    names: "recipeStation",
+    tab: "Recipe",
+  },
+  "recipes.category": {
+    label: "Group",
+    help: "The heading it is listed under in the window (Daggers, Bars).",
+    tab: "Recipe",
+  },
+  "recipes.aboveLevel": {
+    label: "Above the player's level",
+    help: "Hidden or shown locked, in place of the station's choice.",
+    choices: { hide: "Hidden", show: "Shown locked" },
+    tab: "Recipe",
+    more: true,
+  },
+  "recipes.book": {
+    label: "Learned from",
+    help: "A recipe book players must use before they can make it (give it as a quest reward to teach it by a quest). Leave off for a recipe everyone knows.",
+    names: "item",
+    tab: "Recipe",
+    more: true,
+  },
+  ...amounts("recipes.materials", "Materials", "What one craft uses up.", "Materials"),
+  ...amounts(
+    "recipes.keeps",
+    "Also needs (not used up)",
+    "Items one craft needs in the bag but keeps (a mould).",
+    "Materials",
+  ),
+  "recipes.tier": {
+    label: "Lowest tool tier",
+    help: "The station's tools below this tier can't make it. Leave off for any of them.",
+    tab: "Tool",
+  },
+  "recipes.tierBonus": {
+    label: "Odds bonus per tier",
+    help: "Percentage points added to the chance for each tier the tool is above the lowest. Needs the chance by skill.",
+    tab: "Tool",
+  },
+  "recipes.tierSpeed": {
+    label: "Quicker per tier (%)",
+    help: "Each tier the tool is above the lowest makes one craft this much quicker (90% at most).",
+    tab: "Tool",
+  },
+  "recipes.skill": {
+    label: "Skill",
+    help: "The skill it needs and trains.",
+    names: "skill",
+    tab: "Skill",
+  },
+  "recipes.level": { label: "Level needed", tab: "Skill" },
+  "recipes.xp": {
+    label: "Skill XP",
+    help: "For a skill that levels by XP: the XP each success gives. Leave off for the skill's usual crafting XP.",
+    tab: "Skill",
+  },
+  "recipes.odds": {
+    label: "Chance of success by skill",
+    help: "The chance at a few skill levels, in percent: it rises in a straight line between two levels and stays the same past the ends (100 at a level: it never fails from there). Leave off for a recipe that never fails.",
+    noun: "level",
+    tab: "Odds",
+  },
+  "recipes.odds.[].level": { label: "At skill" },
+  "recipes.odds.[].percent": { label: "Chance %" },
+  "recipes.time": {
+    label: "How long one craft takes",
+    help: "In frames (20 frames is a second), at a few skill levels: in a straight line between two. One row for a time that never changes.",
+    noun: "level",
+    tab: "Odds",
+  },
+  "recipes.time.[].level": { label: "At skill" },
+  "recipes.time.[].frames": { label: "Frames" },
+  ...amount("recipes.output", "Makes", "What one successful craft makes.", "Output"),
+  ...amount(
+    "recipes.failure",
+    "A failure makes",
+    "What a failed craft makes instead (a burned fish). Leave off for a failure that makes nothing.",
+    "Output",
+  ),
+};
+
 export const craftWords: WordBook = {
+  ...recipeWords,
   // ---- all stations ----
   "stations.frameOrder": { label: "Crafting order", more: true },
   "stations.frameOrder.order": {

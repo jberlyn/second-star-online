@@ -316,6 +316,9 @@ describe("Only server systems create items", () => {
       roleSave: ["role.id:string", "role.name:string", "role.permissions[]:string"],
       roleDelete: ["id:string"],
       roleAssign: ["name:string", "role:string"],
+      // The crafting window's Make (issue #45): a recipe of the open station, by name, which the
+      // server looks up; it creates only what that recipe makes.
+      recipeMake: ["recipe:string"],
       guildCreate: ["name:string"],
       bjBid: ["text:string"],
       guildView: ["name:string"],

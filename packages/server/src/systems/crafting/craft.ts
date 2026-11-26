@@ -28,6 +28,7 @@ import { fighterOf } from "../monsters/attack.ts";
 import { queueCast } from "../spells/fx.ts";
 import { playerLoc } from "../spells/geometry.ts";
 import type { Outgoing, Player, Room, World } from "../world/world.ts";
+import { recipeRunning } from "./recipes.ts";
 
 /** One running craft: the Smith, Cook, Build or Mix countdown. */
 export interface CraftTimer {
@@ -53,7 +54,8 @@ export function newCraftState(): CraftState {
  * they face animates only while it is in use (an SSO change). Null when nothing changed.
  */
 export function craftShownChange(p: Player): { e: "craft"; id: string; on: boolean } | null {
-  const on = craftingInPlace(p);
+  // A recipe station's Make X animates it too (issue #45).
+  const on = craftingInPlace(p) || recipeRunning(p);
   if (on === p.craft.shown) {
     return null;
   }

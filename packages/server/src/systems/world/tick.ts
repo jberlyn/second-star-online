@@ -58,6 +58,7 @@ import { hopTo } from "../combat/arena.ts";
 import { pollAttack } from "../combat/melee.ts";
 import { craftShownChange, craftStep } from "../crafting/craft.ts";
 import { regrowthStep } from "../crafting/gather.ts";
+import { recipeStep } from "../crafting/recipes.ts";
 import { saveClockStep } from "../economy/containers.ts";
 import { leaveTrade } from "../economy/trade.ts";
 import { relockStep } from "../housing/doors.ts";
@@ -521,6 +522,8 @@ export function tick(world: World, deps: TickDeps): TickResult {
       }
       // The crafting counters: Smith, Cook, Build, Mix.
       out.push(...craftStep(room, p, { world, rng }, itemCtx.now));
+      // A recipe station's Make X (issue #45); nothing runs in a world without recipes.
+      out.push(...recipeStep(room, p, { world, rng, now: itemCtx.now }));
       tickAttackTimers(p.timers);
       if (p.cannonReload > 0) {
         p.cannonReload -= 1;

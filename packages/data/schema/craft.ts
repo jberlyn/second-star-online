@@ -41,6 +41,129 @@ const recipe = z.strictObject({
 /** A cooking recipe also names what a burn makes. */
 const cookRecipe = recipe.extend({ burned: z.string().min(1), odds });
 
+/** An item and how many of it. */
+const amount = z.strictObject({
+  item: z.string().min(1),
+  qty: z.number().int().min(1).max(1_000_000),
+});
+
+/** Whether recipes above the crafter's level are left out of the window or shown locked. */
+const aboveLevel = z.enum(["hide", "show"]);
+
+/**
+ * A recipe station (issue #45): where recipes are made, through the crafting window. Facing one of
+ * its `at` items and pressing Ctrl opens it; so does using one of its `opens` items from the bag
+ * (a knife for fletching, with no station). A world with none has only the four stations above.
+ */
+export const recipeStationSchema = z
+  .strictObject({
+    /** Its name, the crafting window's title; recipes name their station by it. */
+    name: z.string().min(1).max(60),
+    /** The ground items it is worked at (an Anvil, a Furnace, a Range), by exact name. */
+    at: z.array(z.string().min(1)).max(20).optional(),
+    /** Bag items whose Use opens it anywhere (a Knife, a Needle), by exact name. */
+    opens: z.array(z.string().min(1)).max(20).optional(),
+    /**
+     * The tools it takes, each with its tier, held or in the bag; the best one there counts. Left
+     * out, it needs no tool.
+     */
+    tools: z
+      .array(
+        z.strictObject({
+          item: z.string().min(1),
+          tier: z.number().int().min(1).max(1000),
+        }),
+      )
+      .max(30)
+      .optional(),
+    /** Recipes above the crafter's level: hidden from the window, or shown locked. */
+    aboveLevel,
+  })
+  .superRefine((s, ctx) => {
+    if (!s.at?.length && !s.opens?.length) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["at"],
+        message: "a recipe station needs a station item to stand at or a bag item that opens it",
+      });
+    }
+  });
+export type RecipeStation = z.infer<typeof recipeStationSchema>;
+
+/** One recipe (issue #45), made at its station through the crafting window. */
+export const recipeSchema = z
+  .strictObject({
+    /** Its name, unique; the window shows the output item's name. */
+    name: z.string().min(1).max(80),
+    /** The recipe station it is made at, by name. */
+    station: z.string().min(1),
+    /** The group it is listed under in the window (Daggers, Bars). */
+    category: z.string().min(1).max(40).optional(),
+    /** Overrides the station's `aboveLevel` for this recipe. */
+    aboveLevel: aboveLevel.optional(),
+    /**
+     * The item that teaches it (a recipe book): a recipe with one must be learned by using it first.
+     * A quest teaches it by giving the book as its reward.
+     */
+    book: z.string().min(1).optional(),
+    /** What one craft uses up. */
+    materials: z.array(amount).min(1).max(12),
+    /** What one craft needs but does not use up (a mould). */
+    keeps: z.array(amount).max(12).optional(),
+    /** The lowest tier of the station's tools it needs (1 when left out). */
+    tier: z.number().int().min(1).max(1000).optional(),
+    /**
+     * Percentage points the odds gain for each tier the tool is above the recipe's lowest. Read
+     * only with `odds`.
+     */
+    tierBonus: z.number().min(0).max(100).optional(),
+    /** Percent quicker for each tier the tool is above the recipe's lowest. */
+    tierSpeed: z.number().min(0).max(90).optional(),
+    /** The skill it needs and trains. */
+    skill: z.string().min(1),
+    /** The skill level it needs. */
+    level: z.number().int().min(0).max(1_000_000),
+    /** The XP a craft gives an `xp`-model skill, replacing the skill's own `craft` amount. */
+    xp,
+    /** The chance it succeeds by the skill; left out, it never fails. */
+    odds,
+    /** How many frames one craft takes by the skill (20 frames a second), as `odds` reads. */
+    time: z
+      .array(
+        z.strictObject({
+          level: z.number().int().min(0).max(100),
+          frames: z.number().int().min(1).max(12_000),
+        }),
+      )
+      .min(1)
+      .max(30),
+    /** What one craft makes. */
+    output: amount,
+    /** What a failed craft makes (a burned fish); left out, a failure makes nothing. */
+    failure: amount.optional(),
+  })
+  .superRefine((r, ctx) => {
+    r.time.forEach((t, i) => {
+      const prev = r.time[i - 1];
+      if (prev && t.level <= prev.level) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["time", i, "level"],
+          message: "each time row's level must be above the one before it",
+        });
+      }
+    });
+    if (r.tierBonus !== undefined && r.odds === undefined) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["tierBonus"],
+        message:
+          "a tool tier bonus adds to the odds by level: give the recipe odds, or leave the bonus off",
+      });
+    }
+  });
+export type Recipe = z.infer<typeof recipeSchema>;
+
 /**
  * Each station (`smith`, `cook`, `mix`, `build`, `cauldron`) may be left out: that craft is then off,
  * as when its skill binding is.
@@ -175,6 +298,10 @@ export const craftDataSchema = z.strictObject({
       .optional(),
     texts: z.record(z.string(), z.strictObject({ text: z.string().min(1) })),
   }),
+  /** Recipe stations (issue #45), keyed by name. Classic has none. */
+  recipeStations: z.array(recipeStationSchema).optional(),
+  /** Recipes (issue #45), keyed by name. Classic has none. */
+  recipes: z.array(recipeSchema).optional(),
 });
 
 export type CraftData = z.infer<typeof craftDataSchema>;

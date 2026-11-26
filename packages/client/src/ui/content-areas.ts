@@ -16,6 +16,7 @@
 import { content, hasContent } from "@secondstaronline/shared";
 
 import type { AreaPart, AreaTab, RecordPanelLike } from "./content-area-page.ts";
+import { recipePreview } from "./recipe-preview.ts";
 
 const p = (
   dataset: string,
@@ -223,12 +224,24 @@ export const CLASS_TABS: AreaTab[] = [
   },
 ];
 
-/** The Gathering & Crafting page's tab after the gathering spots. */
+/** The Gathering & Crafting page's tabs after the gathering spots. */
 export const CRAFT_TABS: AreaTab[] = [
   {
+    kind: "records",
+    label: "Recipes",
+    help: "Each recipe made through the crafting window: what it takes and makes, the skill it needs and trains, and its odds and time.",
+    part: p("craft", "recipes", "Recipes", "", { noun: "recipe", preview: recipePreview }),
+  },
+  {
+    kind: "records",
+    label: "Recipe stations",
+    help: "Where recipes are made: the station players stand at (or the bag item that opens it), and the tools it takes.",
+    part: p("craft", "recipeStations", "Recipe stations", "", { noun: "recipe station" }),
+  },
+  {
     kind: "settings",
-    label: "Crafting",
-    help: "What each crafting station makes, from what, and at what skill.",
+    label: "Classic crafting",
+    help: "The four Classic stations (smithing repairs, cooking, alchemy and carpentry) and the Cauldron, each with its own fixed rules.",
     parts: [
       p(
         "craft",

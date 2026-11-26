@@ -294,6 +294,11 @@
     "hidden": 0,
     "disabled": 0
   },
+  "crafting-search": {
+    "count": 1,
+    "hidden": 0,
+    "disabled": 0
+  },
   "creation-cancel": {
     "count": 1,
     "hidden": 0,
@@ -1695,12 +1700,12 @@
     "disabled": 0
   },
   "window-close": {
-    "count": 31,
+    "count": 32,
     "hidden": 0,
     "disabled": 0
   },
   "window-drag": {
-    "count": 31,
+    "count": 32,
     "hidden": 0,
     "disabled": 0
   }

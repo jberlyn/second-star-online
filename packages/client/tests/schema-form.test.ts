@@ -192,3 +192,48 @@ test("RuneScape-style recipes: a level, a chance by level and set recipes read b
   expect(text).toContain("Set recipes");
   expect(text).toContain("Skill needed");
 });
+
+test("a recipe's form groups its fields under tabs, and reads back unchanged (issue #45)", () => {
+  const schema = schemaOf("craft", "recipes") as JsonSchema & { items?: JsonSchema };
+  const recipe = {
+    name: "Iron Dagger",
+    station: "Forge",
+    category: "Daggers",
+    materials: [{ item: "Chunk of Iron", qty: 2 }],
+    tier: 2,
+    skill: "Blacksmithing",
+    level: 10,
+    xp: 25,
+    odds: [{ level: 10, percent: 50 }],
+    time: [{ level: 0, frames: 100 }],
+    output: { item: "Dagger", qty: 1 },
+  };
+  const form = schemaForm(schema.items ?? schema, recipe, contentWords("craft", "recipes"));
+  const tabs = [...form.el.querySelectorAll<HTMLElement>(".schema-form-tabs [role=tab]")];
+  expect(tabs.map((t) => t.textContent)).toEqual([
+    "Recipe",
+    "Materials",
+    "Tool",
+    "Skill",
+    "Odds",
+    "Output",
+  ]);
+  const panes = [...form.el.querySelectorAll<HTMLElement>(".schema-form-tab")];
+  expect(panes.map((p) => p.hidden)).toEqual([false, true, true, true, true, true]);
+  tabs[4]?.click();
+  expect(panes.map((p) => p.hidden)).toEqual([true, true, true, true, false, true]);
+  expect(canonical(form.value())).toBe(canonical(recipe));
+});
+
+test("an object with nothing under More options shows no empty fold", () => {
+  const form = schemaForm(
+    {
+      type: "object",
+      properties: { level: { type: "integer" }, percent: { type: "number" } },
+      required: ["level", "percent"],
+    },
+    { level: 1, percent: 50 },
+    contentWords("craft", "recipes"),
+  );
+  expect(form.el.querySelector(".schema-form-more")).toBeNull();
+});

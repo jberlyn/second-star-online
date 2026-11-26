@@ -4616,3 +4616,212 @@ body {
 .control-panel-rowlist > [hidden] {
   display: none;
 }
+
+/* The crafting window (ui/crafting.ts, issue #45): an SSO panel in the 1.6 theme tokens, the item
+   menu's purple frame on the panel's woodgrain. */
+.crafting {
+  display: flex;
+  gap: 6px;
+  width: 100%;
+  height: 100%;
+  padding: 6px;
+  background: var(--ui-wood-surface);
+  color: var(--ui-text);
+  font:
+    12px Arial,
+    sans-serif;
+}
+.crafting-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 170px;
+  min-width: 0;
+}
+.crafting-search,
+.crafting-x {
+  background: var(--ui-well);
+  color: var(--ui-text);
+  border: 1px solid var(--ui-line-strong);
+  font: inherit;
+  padding: 2px 4px;
+}
+.crafting-search:focus-visible,
+.crafting-x:focus-visible,
+.crafting-btn:focus-visible,
+.crafting-row:focus-visible {
+  outline: 1px solid var(--ui-purple-light);
+  outline-offset: 0;
+}
+.crafting-list {
+  flex: 1;
+  overflow-y: auto;
+  background: var(--ui-well);
+  box-shadow: var(--ui-menu-frame);
+  border: 1px solid var(--ui-purple);
+  padding: 3px;
+}
+.crafting-category {
+  margin: 4px 2px 2px;
+  color: var(--ui-trim-light);
+  font-weight: bold;
+  font-size: 11px;
+}
+.crafting-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  min-height: 22px;
+  padding: 1px 3px;
+  background: none;
+  border: 0;
+  color: var(--ui-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.crafting-row:hover {
+  background: var(--ui-purple-dark);
+}
+.crafting-row[aria-selected="true"] {
+  background: var(--ui-purple-dim);
+}
+.crafting-row.crafting-missing,
+.crafting-row.crafting-tool {
+  color: var(--ui-text-muted);
+}
+.crafting-row.crafting-level,
+.crafting-row.crafting-unlearned {
+  color: var(--ui-text-muted);
+  font-style: italic;
+}
+.crafting-row-pic {
+  max-width: 20px;
+  max-height: 20px;
+  image-rendering: pixelated;
+}
+.crafting-row-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.crafting-row-level {
+  color: var(--ui-text-dim);
+  font-size: 11px;
+}
+.crafting-none,
+.crafting-hint {
+  padding: 6px;
+  color: var(--ui-text-dim);
+}
+.crafting-right {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  padding: 6px;
+  background: var(--ui-well);
+  box-shadow: var(--ui-menu-frame);
+  border: 1px solid var(--ui-purple);
+}
+.crafting-detail {
+  flex: 1;
+  overflow-y: auto;
+}
+.crafting-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.crafting-pic {
+  image-rendering: pixelated;
+}
+.crafting-title {
+  font-weight: bold;
+  color: var(--ui-purple-pale);
+}
+.crafting-facts {
+  color: var(--ui-text-dim);
+  font-size: 11px;
+}
+.crafting-needs {
+  list-style: none;
+  margin: 0 0 6px;
+  padding: 0;
+}
+.crafting-needs li {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 20px;
+}
+.crafting-needs li > span:first-of-type {
+  flex: 1;
+}
+.crafting-needs li.short {
+  color: #f08080;
+}
+.crafting-need-pic {
+  max-width: 18px;
+  max-height: 18px;
+  image-rendering: pixelated;
+}
+.crafting-have {
+  font-size: 11px;
+}
+.crafting-why {
+  min-height: 14px;
+  color: var(--ui-text-dim);
+  font-style: italic;
+  font-size: 11px;
+}
+.crafting-make {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-top: 4px;
+}
+.crafting-btn {
+  padding: 2px 6px;
+  background: var(--ui-purple);
+  color: #fff;
+  border: 1px solid var(--ui-purple-light);
+  font: inherit;
+  cursor: pointer;
+}
+.crafting-btn:hover:not(:disabled) {
+  background: var(--ui-purple-hover);
+}
+.crafting-btn:disabled {
+  background: var(--ui-purple-dark);
+  color: var(--ui-text-muted);
+  border-color: var(--ui-purple-dim);
+  cursor: default;
+}
+.crafting-x {
+  width: 54px;
+}
+.crafting-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-height: 24px;
+  padding-top: 4px;
+  border-top: 1px solid var(--ui-line-strong);
+  color: var(--ui-purple-pale);
+}
+.crafting-status:empty {
+  border-top-color: transparent;
+}
+/* A form's own field tabs (schema-form.ts `FieldWords.tab`): not sticky, inside the form. */
+.control-panel-tabs.schema-form-tabs {
+  position: static;
+  margin: 4px 0 8px;
+  padding: 0;
+  background: none;
+}

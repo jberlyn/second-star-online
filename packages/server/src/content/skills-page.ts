@@ -184,6 +184,15 @@ function trainerOf(d: ContentData, row: RowRef, path: JsonPath): SkillTrainer | 
         node: n(path[0]),
       };
     }
+    case "craft/recipes": {
+      const r = (d.craft.recipes ?? []).find((x) => x.name === row.key);
+      return {
+        kind: "recipe",
+        text: `${row.key}: each success trains it${r ? ` (needs ${r.level})` : ""}`,
+        page: "content",
+        row,
+      };
+    }
     case "gather/gathering":
       return {
         kind: "watering",

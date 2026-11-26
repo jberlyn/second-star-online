@@ -104,6 +104,8 @@ function namesOf(kind: string): readonly string[] {
       return c.houses.types.map((h) => h.house);
     case "vehicle":
       return (c.houses.vehicles ?? []).map((v) => v.name);
+    case "recipeStation":
+      return (c.craft.recipeStations ?? []).map((s) => s.name);
     case "npc":
       return [
         ...new Set([

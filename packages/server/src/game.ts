@@ -234,6 +234,7 @@ import {
   setPlayerShopOwner,
 } from "./persistence/playershops.ts";
 import { loadAccountPreferencesRecord, saveAccountPreferences } from "./persistence/preferences.ts";
+import { loadRecipes, saveRecipes } from "./persistence/recipes.ts";
 import {
   activityFlows,
   countHoldings,
@@ -353,6 +354,15 @@ import { enterRoom, leaveRoom, rejoinRoom, roomMembership, roomSay } from "./sys
 import { setAttackHeld } from "./systems/combat/melee.ts";
 import { craftIntent } from "./systems/crafting/craft.ts";
 import { resetTreasure } from "./systems/crafting/gather.ts";
+import {
+  cancelRecipeRun,
+  newRecipeState,
+  recipeCloseIntent,
+  recipeMakeIntent,
+  recipeStopIntent,
+  recipeWindowRefresh,
+  savedRecipes,
+} from "./systems/crafting/recipes.ts";
 import { storageIntent, withdrawContainer } from "./systems/economy/containers.ts";
 import {
   buyIntent,
@@ -1374,6 +1384,11 @@ export function createGame(deps: GameDeps): Game {
           // A book's use and the spell it teaches are written together.
           p.spell.bookDirty = false;
           saveSpellbook(db, p.id, savedSpellbook(p.spell.book));
+        }
+        if (p.recipe.knownDirty) {
+          // A recipe book's use and the recipes it teaches, likewise (issue #45).
+          p.recipe.knownDirty = false;
+          saveRecipes(db, p.id, savedRecipes(p.recipe));
         }
         if (p.char.storeDirty) {
           p.char.storeDirty = false;
@@ -3500,6 +3515,7 @@ export function createGame(deps: GameDeps): Game {
           ...newSpellState(loadSpellbook(db, c.id)),
           body: vehicle ? vehicleBody(vehicle) : null,
         },
+        recipe: newRecipeState(loadRecipes(db, c.id)),
       };
       // XP held to the current content (a curve change, a model switch while offline).
       p.char.skillXp = normaliseXp(p.char.skills, p.char.skillXp ?? [], p.char.faction);
@@ -4042,6 +4058,23 @@ export function createGame(deps: GameDeps): Game {
           return;
         case "attack":
           setAttackHeld(p, msg.held);
+          // An attack ends a recipe station's Make X (issue #45).
+          if (msg.held) {
+            deliver(cancelRecipeRun(p));
+          }
+          return;
+        case "recipeMake": {
+          const room = world.rooms.get(p.map.name);
+          if (room) {
+            deliver(recipeMakeIntent(room, p, msg.recipe, msg.count));
+          }
+          return;
+        }
+        case "recipeStop":
+          deliver(recipeStopIntent(p));
+          return;
+        case "recipeClose":
+          deliver(recipeCloseIntent(p));
           return;
         case "use":
         case "equip":
@@ -4085,6 +4118,10 @@ export function createGame(deps: GameDeps): Game {
                                   ? crystalsIntent(ctx, room, p, msg.slot, msg.n, msg.mode)
                                   : goldIntent(ctx, room, p, msg.n);
           deliver(out);
+          // An open crafting window shows what the bag holds now (issue #45).
+          if (msg.t !== "use" && msg.t !== "action") {
+            deliver(recipeWindowRefresh(p));
+          }
           // Everyone whose inventory changed (a crystal or gold give changes two) gets `inv` now.
           const changed: Player[] = [];
           for (const o of room.players) {
@@ -4098,8 +4135,10 @@ export function createGame(deps: GameDeps): Game {
             p.vitalsDirty = false;
             send(p.id, { t: "vitals", vitals: vitalsView(p) });
           }
-          if (p.spell.bookDirty) {
-            send(p.id, { t: "spellbook", spells: [...p.spell.book] });
+          if (p.spell.bookDirty || p.recipe.knownDirty) {
+            if (p.spell.bookDirty) {
+              send(p.id, { t: "spellbook", spells: [...p.spell.book] });
+            }
             if (!changed.includes(p)) {
               changed.push(p);
             }

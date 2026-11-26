@@ -47,7 +47,7 @@ export type {
   StartClass as StartClassRow,
   WeaponSkills,
 } from "../schema/classes.ts";
-export type { CraftData } from "../schema/craft.ts";
+export type { CraftData, Recipe, RecipeStation } from "../schema/craft.ts";
 export type { GatherData, HarvestNode, YieldTable } from "../schema/gather.ts";
 export type { HelpData, HelpTopic } from "../schema/help.ts";
 export type { Deed, HouseData, HouseType, TileSet, VehicleRow } from "../schema/houses.ts";

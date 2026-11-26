@@ -589,6 +589,36 @@ export function referencesOf(data: ContentData): Reference[] {
       craft(["cauldron", "recipes", i, "result"], r.result, ["cauldron", "recipes", i]);
     });
   }
+  // Recipe stations and recipes (issue #45): a station's fixtures, openers and tools, and a
+  // recipe's materials, outputs and book. A recipe that takes or makes the item goes as a whole.
+  for (const rs of data.craft.recipeStations ?? []) {
+    const row: RowRef = { dataset: "craft", part: "recipeStations", key: rs.name };
+    rs.at?.forEach((n, i) => {
+      add(row, ["at", i], "itemOrFixture", n, ["at", i]);
+    });
+    rs.opens?.forEach((n, i) => {
+      add(row, ["opens", i], "item", n, ["opens", i]);
+    });
+    rs.tools?.forEach((t, i) => {
+      add(row, ["tools", i, "item"], "item", t.item, ["tools", i]);
+    });
+  }
+  for (const r of data.craft.recipes ?? []) {
+    const row: RowRef = { dataset: "craft", part: "recipes", key: r.name };
+    r.materials.forEach((m, i) => {
+      add(row, ["materials", i, "item"], "item", m.item, []);
+    });
+    r.keeps?.forEach((m, i) => {
+      add(row, ["keeps", i, "item"], "item", m.item, []);
+    });
+    add(row, ["output", "item"], "item", r.output.item, []);
+    if (r.failure) {
+      add(row, ["failure", "item"], "item", r.failure.item, ["failure"]);
+    }
+    if (r.book !== undefined) {
+      add(row, ["book"], "item", r.book, []);
+    }
+  }
   // What gathering takes and gives. A roll band's fish and the one-of tools are replaced, not
   // dropped.
   const g = data.gather.gathering;
@@ -839,6 +869,9 @@ export function referencesOf(data: ContentData): Reference[] {
   cs.build?.recipes?.forEach((r, i) => {
     needs(craftStations, ["build", "recipes", i, "requires"], r.requires);
   });
+  for (const r of data.craft.recipes ?? []) {
+    skill({ dataset: "craft", part: "recipes", key: r.name }, ["skill"], r.skill);
+  }
   const ladders = section("itemRules", "ladders");
   for (const [name, l] of Object.entries(data.itemRules.ladders)) {
     skill(ladders, [name, "skill"], l.skill);
@@ -1320,6 +1353,39 @@ const FIXTURE_WORDS = [
  * codes the catalogue has, flags some tile carries, and a way to board: a `shore` vehicle crosses
  * some tile, and a `pad` vehicle has some tile to land on.
  */
+/**
+ * Recipe crafting's own checks (issue #45): every recipe names a recipe station that exists, and no
+ * ground item or bag item opens two stations (the first would always win).
+ */
+export function recipeProblems(data: ContentData): ContentProblem[] {
+  const out: ContentProblem[] = [];
+  const stations = data.craft.recipeStations ?? [];
+  for (const r of data.craft.recipes ?? []) {
+    if (!stations.some((s) => lingoEq(s.name, r.station))) {
+      out.push({
+        where: `craft/recipes/${r.name}`,
+        message: `it is made at ${r.station}, which is not a recipe station: pick one, or add it`,
+      });
+    }
+  }
+  for (const field of ["at", "opens"] as const) {
+    const seen = new Map<string, string>();
+    for (const st of stations) {
+      for (const n of st[field] ?? []) {
+        const other = seen.get(n.toLowerCase());
+        if (other !== undefined && !lingoEq(other, st.name)) {
+          out.push({
+            where: `craft/recipeStations/${st.name}`,
+            message: `${n} already ${field === "at" ? "is the station item of" : "opens"} ${other}: one item opens one station`,
+          });
+        }
+        seen.set(n.toLowerCase(), st.name);
+      }
+    }
+  }
+  return out;
+}
+
 export function vehicleProblems(data: ContentData): ContentProblem[] {
   const out: ContentProblem[] = [];
   const codes = new Set(data.tiles.catalogue.map((t) => t.code.toLowerCase()));
@@ -1405,6 +1471,7 @@ export function checkStore(
     ...skillProblems(next, published),
     ...progressionProblems(next),
     ...vehicleProblems(next),
+    ...recipeProblems(next),
     ...referenceProblems(withNpcSaves(next, npcSaves), withNpcSaves(published, npcSaves)),
   ];
 }

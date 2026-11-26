@@ -74,6 +74,12 @@ import {
   craftingInPlace,
   newCraftState,
 } from "../crafting/craft.ts";
+import {
+  cancelRecipeRun,
+  newRecipeState,
+  type RecipeState,
+  recipeRunning,
+} from "../crafting/recipes.ts";
 import type { ShopLedger } from "../economy/shop.ts";
 import { archiveNpcStore, type NpcStore } from "../monsters/npcfiles.ts";
 import { type MonsterSlot, monsterView } from "../monsters/slots.ts";
@@ -516,6 +522,8 @@ export interface Player {
   // ---- crafting stations and containers --------------------------------------
   /** The running crafts and the session's last action, next food and next potion. */
   craft: CraftState;
+  /** Recipe crafting (issue #45): the learned recipes, the open window and a running Make X. */
+  recipe: RecipeState;
   /**
    * The container the window is on (`Cauldron#n`, a carried Crate or Cabinet; 1.6 kept it in its
    * last-chest name): the window's OK withdraws from it. `shown` is the list the window was last
@@ -781,6 +789,7 @@ export function sessionCombatState(): Pick<
   | "told"
   | "shownNames"
   | "craft"
+  | "recipe"
   | "container"
   | "placing"
   | "headFlag"
@@ -853,6 +862,7 @@ export function sessionCombatState(): Pick<
     told: null,
     shownNames: [null, null, null, null],
     craft: newCraftState(),
+    recipe: newRecipeState(),
     container: null,
     placing: null,
     headFlag: 0,
@@ -1240,7 +1250,9 @@ export function playerView(p: Player): PlayerView {
     step: p.stepFrames > 0 ? { fromX: p.x - dx, fromY: p.y - dy, frames: p.stepFrames } : null,
     equip: { ...p.char.equip },
     body: p.spell.body,
-    ...(p.craft.shown && craftingInPlace(p) ? { crafting: true as const } : {}),
+    ...(p.craft.shown && (craftingInPlace(p) || recipeRunning(p))
+      ? { crafting: true as const }
+      : {}),
   };
 }
 
@@ -1339,7 +1351,12 @@ export function enterRoom(world: World, p: Player): Outgoing[] {
   if (p.mailBox) {
     p.mailBox = null;
   }
-  const stopped = cancelCrafts(p);
+  const stopped = [...cancelCrafts(p), ...cancelRecipeRun(p)];
+  // The crafting window belongs to the station left behind.
+  if (p.recipe.window !== null) {
+    p.recipe.window = null;
+    stopped.push({ to: p.id, msg: { t: "recipes", view: null } });
+  }
   // The death guard clears when a map is drawn; the loading lock keeps the player safe until then.
   p.dontHitMeAgain = false;
   // Drawing an O-O-O map (no fighting, indoors, no PvP) saves the respawn point, except in jail.

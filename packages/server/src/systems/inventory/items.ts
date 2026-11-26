@@ -58,6 +58,8 @@ import {
   scoresBlock,
   seedTile,
   standName,
+  stationAt,
+  stationOpenedBy,
   USE_TEXT,
   useDeferred,
   useItem,
@@ -68,6 +70,7 @@ import { bjSit } from "../casino/blackjack.ts";
 import { ckSit } from "../casino/checkers.ts";
 import { slotOpen } from "../casino/slots.ts";
 import { plantSeeds } from "../crafting/gather.ts";
+import { openRecipeWindow, readRecipeBook } from "../crafting/recipes.ts";
 import { depositContainer, dropRoute, openContainer } from "../economy/containers.ts";
 import { giveGoldToNpc } from "../economy/intents.ts";
 import { questGive } from "../economy/quests.ts";
@@ -222,6 +225,24 @@ export function useIntent(ctx: ItemCtx, room: Room, p: Player, slot: number): Ou
   });
   if (needs !== null) {
     io.tell(p, needs);
+    return io.out;
+  }
+  // A recipe book teaches its recipes, and a crafting tool opens its recipe station (issue #45).
+  const book = readRecipeBook(p, line.item);
+  if (book) {
+    for (const l of book.lines) {
+      io.tell(p, l);
+    }
+    if (book.consume) {
+      logActivity(ctx.world, p, "use", { item: line.item, qty: -1, details: { learned: true } });
+      invDelSlot(p.char.bag, slot - 1, 1);
+      changed(p);
+    }
+    return io.out;
+  }
+  const opens = stationOpenedBy(line.item);
+  if (opens) {
+    io.out.push(...openRecipeWindow(p, opens));
     return io.out;
   }
   // Seeds are planted on the faced tile, and used up only when they take.
@@ -1083,6 +1104,12 @@ export function actionIntent(ctx: ItemCtx, room: Room, p: Player): Outgoing[] {
     return unboardVehicle(ctx, room, p);
   }
   if (p.stepFrames > 0 || !g) {
+    return io.out;
+  }
+  // A recipe station opens its crafting window (issue #45).
+  const station = stationAt(g.item);
+  if (station) {
+    io.out.push(...openRecipeWindow(p, station));
     return io.out;
   }
   // A sign shows its text: map field 14-16.

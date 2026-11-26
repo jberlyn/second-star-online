@@ -114,6 +114,7 @@ import { createContentPage } from "./ui/content-page.ts";
 import { createContentRequests } from "./ui/content-requests.ts";
 import { contentWords } from "./ui/content-words.ts";
 import { createControlPanel } from "./ui/control-panel.ts";
+import { createCraftingWindow } from "./ui/crafting.ts";
 import { createFriendsWindow } from "./ui/friends.ts";
 import { desktopMenus, type MenuActions, type MenuState } from "./ui/gamemenu.ts";
 import { createGatheringPage } from "./ui/gathering-page.ts";
@@ -364,6 +365,12 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     remove: (name) => send({ t: "friendRemove", name }),
     im: (name) => ims.openSend(name),
     away: () => away.open(),
+  });
+  // The crafting window of a recipe station (issue #45).
+  const crafting = createCraftingWindow(assets, windows, {
+    make: (recipe, count) => send({ t: "recipeMake", recipe, count }),
+    stop: () => send({ t: "recipeStop" }),
+    closed: () => send({ t: "recipeClose" }),
   });
   const room = createChatRoomWindow(assets, windows, {
     say: (text) => send({ t: "roomSay", text }),
@@ -1715,6 +1722,9 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
       }
       case "trade":
         trade.show(msg.trade, model.inv);
+        return;
+      case "recipes":
+        crafting.show(msg.view);
         return;
       case "spellbook":
         model.spellbook = msg.spells;

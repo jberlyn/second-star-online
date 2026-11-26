@@ -446,7 +446,7 @@ The Talk & Shops tab checks these forms as you type and when you save; see the [
 These files have no worked example here; their schemas in [packages/data/schema/](../packages/data/schema/) document every field, and the matching [system guide](guides/README.md) describes what they do in play.
 
 - **`gather.json`:** `gathering` (the hit table, mining strikes, fishing, farming, regrowth and treasure), and `harvest` and `yields` (see [Tools and gathering](#tools-and-gathering)). How the gathering and crafting skills rise is each skill's [progression](#progression).
-- **`craft.json`:** `stations`: what each crafting station makes, from what, and at what skill.
+- **`craft.json`:** `stations`: what each Classic crafting station makes, from what, and at what skill; `recipeStations` and `recipes`: the recipe stations and their recipes, made through the crafting window (see [the example](#example-runescape-style-gathering-and-crafting)).
 - **`houses.json`:** house deeds and types, [vehicles](#vehicles-housesjson-vehicles), placement and building, doors, keys and switches, containers, resting regeneration and monthly decay.
 - **`social.json`:** [factions](#factions-socialjson) and their rules, murder, the Assassin's Game, high scores, guilds, chat rooms, buddies, Bios, medals, mail, boards, art tools and the newspaper.
 - **`casino.json`:** the Slot Machine, Blackjack and Checkers games, including their sounds. Which items play them is the `slotMachine`, `blackjackTable` and `checkersTable` [behaviours](#item-behaviours). Classic no longer sets each game's `item`; a pack made before the behaviours that still sets it keeps that item playing.
@@ -531,6 +531,7 @@ Only a spell cast from a spellbook takes its own amounts: a free fireball, a mon
 | `gathering.treasure` | No treasure is buried and no NPC tells a rumour; no harvest node may set `treasure` |
 | `gathering.regrowth.checks` (empty) | Nothing grows back |
 | `craft.json` `stations.smith`, `cook`, `mix`, `build`, `cauldron` | That craft is off: its menu button does nothing (as with an unbound skill), and a job running when a publish takes the station out ends silently; with no `cauldron`, nothing dropped is taken for one |
+| `craft.json` `recipeStations`, `recipes` | No recipe stations: Ctrl and Use open no crafting window (Classic) |
 | `casino.json` `slots`, `blackjack`, `checkers` | Its items play nothing: their click and Ctrl fall through to the item's other uses. A spin, hand or match a publish leaves running finishes on the rules it began with |
 | `social.json` `assassin` | No Assassin's Game: the menu does nothing, kills score nothing, and an `assassinStatue` item is a plain item. A game running when a publish takes it out ends there (Lightning's one-hit melee with it), without prizes, and does not come back with the section |
 | `social.json` `questReplies.oraku` | No NPC takes Oraku's orb |
@@ -758,7 +759,26 @@ Classic leaves every field below out and plays as 1.6. A world that wants RuneSc
 - **Fishing.** The catch pool's overlapping ranges, weights, per-fish `xp` and `tools` (a net's shrimp, a harpoon's sharks), with `trains: { "cast": false, "catch": true }` so only a catch pays.
 - **Recipes.** In `craft.json`, a cooking recipe, an alchemy sand, a smithing repair and a carpentry recipe each take `requires` (the level to start it: "You need Cooking 15 to cook this."), and a cooking recipe, a sand and a carpentry recipe take `odds`, their own chance of success by level in place of the shared `failure` table (RuneScape's burn chance that falls to nothing: `[{ "level": 15, "percent": 40 }, { "level": 68, "percent": 100 }]`). `stations.build.recipes` (`{ "input", "output", "xp"?, "requires"?, "odds"? }`) makes exactly one item from the item built with, in place of the carpentry bands' roll: RuneScape's fletching, Oak Logs into an Oak Shortbow. A recipe's `xp` pays an `xp`-model skill.
 
-Every one of these is edited on the Control Panel: nodes on the Gathering page's **Harvesting** tab (**A swing harvests**: after a set number of swings, or by a chance on every swing with its levels and percents and **Better tools add**; **Used up 1 time in … harvests**; **Comes back after (seconds)**) with the **Odds** tab showing the swings each harvest takes at every level and tool tier; fish on **Catches** (**Only with**); recipes on the Crafting tab (**Skill needed**, **Chance of success by skill**, **Set recipes**); curves on the Skills page.
+- **Recipe crafting.** `recipeStations` and `recipes` give RuneScape's smithing, cooking, fletching and herblore a crafting window, beside the four Classic crafts. A station names the items it is worked at (`at`, Ctrl while facing one) or the bag items whose Use opens it anywhere (`opens`), the `tools` it takes with their tiers (held or in the bag; the best one counts), and whether recipes above the player's level are hidden or shown locked (`aboveLevel`). A recipe names its `station`, a `category` for the window, its `materials` and `keeps` (needed but not used up), each with a `qty`, the lowest tool `tier`, the `output` and an optional `failure` output (a burned fish), the `skill` and `level` it needs and trains, its `xp`, its `odds` by level (left out, it never fails), `tierBonus` (odds points per tier above the lowest) and `tierSpeed` (percent quicker per tier), its `time` in frames by level (a straight line between the levels, like `odds`) and an optional `book`, the item that teaches it (give the book as a quest reward to teach it by a quest). Players choose 1, 5, 10, X or All, and the crafts run one after another until they are made, the materials run out or the player moves.
+
+```json
+"recipeStations": [
+  { "name": "Anvil", "at": ["Anvil"], "aboveLevel": "show",
+    "tools": [{ "item": "Bronze Hammer", "tier": 1 }, { "item": "Steel Hammer", "tier": 2 }] },
+  { "name": "Fletching", "opens": ["Knife"], "aboveLevel": "hide" }
+],
+"recipes": [
+  { "name": "Iron Platebody", "station": "Anvil", "category": "Platebodies",
+    "materials": [{ "item": "Iron Bar", "qty": 5 }], "output": { "item": "Iron Platebody", "qty": 1 },
+    "skill": "Blacksmithing", "level": 33, "xp": 125, "tierSpeed": 15,
+    "time": [{ "level": 33, "frames": 80 }, { "level": 99, "frames": 40 }] },
+  { "name": "Oak Shortbow", "station": "Fletching", "category": "Bows", "book": "Fletching Manual",
+    "materials": [{ "item": "Oak Logs", "qty": 1 }], "output": { "item": "Oak Shortbow (u)", "qty": 1 },
+    "skill": "Carpentry", "level": 20, "xp": 17, "time": [{ "level": 0, "frames": 30 }] }
+]
+```
+
+Every one of these is edited on the Control Panel: nodes on the Gathering page's **Harvesting** tab (**A swing harvests**: after a set number of swings, or by a chance on every swing with its levels and percents and **Better tools add**; **Used up 1 time in … harvests**; **Comes back after (seconds)**) with the **Odds** tab showing the swings each harvest takes at every level and tool tier; fish on **Catches** (**Only with**); the Classic stations' recipes on the **Classic crafting** tab (**Skill needed**, **Chance of success by skill**, **Set recipes**); recipe stations and recipes on the **Recipe stations** and **Recipes** tabs; curves on the Skills page.
 
 ### Example: a new gathering skill, from the Control Panel
 

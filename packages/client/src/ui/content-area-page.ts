@@ -53,6 +53,11 @@ export interface AreaPart {
   labelOf?: (key: string) => string;
   /** A picture panel shown above an entry's form (a spell's cast effect), saving on its own. */
   panel?: () => RecordPanelLike | null;
+  /**
+   * A preview under an entry's form, drawn from the form as it reads now (a recipe's chance and
+   * time by level), redrawn as it changes; null shows none.
+   */
+  preview?: (value: unknown) => HTMLElement | null;
 }
 
 /** A picture panel for one entry (content-page.ts's `RecordPanel`). */
@@ -190,6 +195,8 @@ function rowEditor(
   note.hidden = true;
   const holder = document.createElement("div");
   holder.className = "content-area-form";
+  const previewBox = document.createElement("div");
+  previewBox.className = "content-area-preview";
   const status = document.createElement("p");
   status.className = "balance-status";
   status.setAttribute("role", "status");
@@ -257,7 +264,19 @@ function rowEditor(
   bar.className = "items-actions";
   bar.append(left, right);
   const actionsBar = formActions(bar, status);
-  box.append(tags, note, holder, actionsBar);
+  box.append(tags, note, holder, previewBox, actionsBar);
+  /** Redraws the preview from the form as it reads now; a form that does not read keeps the last. */
+  const drawPreview = () => {
+    if (!part.preview) {
+      return;
+    }
+    const c = current();
+    if (!c.ok) {
+      return;
+    }
+    const el = part.preview(c.value);
+    previewBox.replaceChildren(...(el ? [el] : []));
+  };
 
   const buttons = () => {
     const d = dirty();
@@ -301,10 +320,12 @@ function rowEditor(
       onInput: () => {
         say("");
         buttons();
+        drawPreview();
       },
       readOnly: r.readOnly,
     });
     holder.replaceChildren(form.el);
+    drawPreview();
     firstReading = reading();
     buttons();
   };
@@ -483,6 +504,7 @@ function rowEditor(
       row = null;
       form = null;
       holder.replaceChildren();
+      previewBox.replaceChildren();
       tags.replaceChildren();
       say("");
       buttons();

@@ -7456,6 +7456,33 @@
     "errors": []
   },
   {
+    "action": "crafting-search",
+    "tag": "INPUT",
+    "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-drag",
+    "tag": "DIV",
+    "events": ["pointerdown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "window-close",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
     "action": "room-chat-input",
     "tag": "INPUT",
     "events": ["keydown"],

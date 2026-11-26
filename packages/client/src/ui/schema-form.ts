@@ -56,6 +56,8 @@ export interface FieldWords {
   noun?: string;
   /** The labels of a value that can take several shapes, in the schema's order. */
   shapes?: string[];
+  /** A top-level field's tab: a form whose fields name tabs shows one tab at a time. */
+  tab?: string;
 }
 
 /** Where a field's words come from. `path` is the field's keys from the row, `[]` for a list's entries. */
@@ -658,20 +660,51 @@ export function schemaForm(
         : {};
     const box = document.createElement("div");
     box.className = "schema-form-object";
-    const inlineRow = document.createElement("div");
-    inlineRow.className = "balance-fields schema-form-fields";
-    const blocks = document.createElement("div");
-    blocks.className = "schema-form-blocks";
-    const more = document.createElement("details");
-    more.className = "items-more schema-form-more";
-    const moreSum = action(document.createElement("summary"), `${opts.id}-more`);
-    moreSum.textContent = "More options";
-    const moreInline = document.createElement("div");
-    moreInline.className = "balance-fields schema-form-fields";
-    more.append(moreSum, moreInline);
+    /** One group of fields: the inline row, the blocks and the "More options" fold. */
+    const bucket = () => {
+      const inlineRow = document.createElement("div");
+      inlineRow.className = "balance-fields schema-form-fields";
+      const blocks = document.createElement("div");
+      blocks.className = "schema-form-blocks";
+      const more = document.createElement("details");
+      more.className = "items-more schema-form-more";
+      const moreSum = action(document.createElement("summary"), `${opts.id}-more`);
+      moreSum.textContent = "More options";
+      const moreInline = document.createElement("div");
+      moreInline.className = "balance-fields schema-form-fields";
+      more.append(moreSum, moreInline);
+      return { inlineRow, blocks, more, moreInline, moreUsed: false };
+    };
+    type Bucket = ReturnType<typeof bucket>;
+    const fill = (into: HTMLElement, b: Bucket) => {
+      b.more.open = b.moreUsed;
+      if (b.inlineRow.childElementCount > 0) {
+        into.append(b.inlineRow);
+      }
+      if (b.blocks.childElementCount > 0) {
+        into.append(b.blocks);
+      }
+      // The fold holds its summary and inline row: show it only with a field in it.
+      if (b.more.childElementCount > 2 || b.moreInline.childElementCount > 0) {
+        into.append(b.more);
+      }
+    };
+    // Top-level fields may be grouped under tabs (`FieldWords.tab`), in the order first named.
+    const tabs = new Map<string, Bucket>();
+    const plain = bucket();
+    const bucketOf = (fw: FieldWords): Bucket => {
+      if (path.length > 0 || fw.tab === undefined) {
+        return plain;
+      }
+      let b = tabs.get(fw.tab);
+      if (!b) {
+        b = bucket();
+        tabs.set(fw.tab, b);
+      }
+      return b;
+    };
     const getters: [string, () => unknown][] = [];
     const required = new Set(s.required ?? []);
-    let moreUsed = false;
     for (const [k, p] of Object.entries(s.properties ?? {})) {
       const fp = [...path, k];
       const fw = words.field(fp);
@@ -701,30 +734,58 @@ export function schemaForm(
       }
       getters.push([k, built.get]);
       const row = fieldRow(built, label, fw.help, true);
+      const b = bucketOf(fw);
       if (fw.more) {
         if (o[k] !== undefined && o[k] !== null && o[k] !== false) {
-          moreUsed = true;
+          b.moreUsed = true;
         }
         if (built.inline) {
-          moreInline.append(row);
+          b.moreInline.append(row);
         } else {
-          more.append(row);
+          b.more.append(row);
         }
       } else if (built.inline) {
-        inlineRow.append(row);
+        b.inlineRow.append(row);
       } else {
-        blocks.append(row);
+        b.blocks.append(row);
       }
     }
-    more.open = moreUsed;
-    if (inlineRow.childElementCount > 0) {
-      box.append(inlineRow);
-    }
-    if (blocks.childElementCount > 0) {
-      box.append(blocks);
-    }
-    if (more.childElementCount > 1 || moreInline.childElementCount > 0) {
-      box.append(more);
+    fill(box, plain);
+    if (tabs.size > 0) {
+      const strip = document.createElement("div");
+      strip.className = "control-panel-tabs schema-form-tabs";
+      strip.setAttribute("role", "tablist");
+      strip.setAttribute("aria-label", "Sections");
+      const panes: HTMLElement[] = [];
+      const buttons: HTMLButtonElement[] = [];
+      const pick = (i: number) => {
+        panes.forEach((pane, j) => {
+          pane.hidden = j !== i;
+        });
+        buttons.forEach((btn, j) => {
+          btn.setAttribute("aria-selected", String(j === i));
+        });
+      };
+      for (const [label, b] of tabs) {
+        const i = panes.length;
+        const pane = document.createElement("div");
+        pane.className = "schema-form-tab";
+        pane.setAttribute("role", "tabpanel");
+        pane.setAttribute("aria-label", label);
+        fill(pane, b);
+        const btn = action(document.createElement("button"), `${opts.id}-tab`);
+        btn.type = "button";
+        btn.className = "control-panel-tab";
+        btn.setAttribute("role", "tab");
+        btn.dataset.tab = label;
+        btn.textContent = label;
+        btn.addEventListener("click", () => pick(i));
+        panes.push(pane);
+        buttons.push(btn);
+      }
+      strip.append(...buttons);
+      box.append(strip, ...panes);
+      pick(0);
     }
     return {
       el: box,

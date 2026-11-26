@@ -131,6 +131,7 @@ export {
 } from "./rules/crafting/gather.ts";
 export * from "./rules/crafting/masterwork.ts";
 export * from "./rules/crafting/odds.ts";
+export * from "./rules/crafting/recipes.ts";
 export * from "./rules/economy/playershop.ts";
 export * from "./rules/economy/quests.ts";
 export {
