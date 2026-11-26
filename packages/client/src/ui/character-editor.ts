@@ -36,7 +36,15 @@ import {
 
 import { action, gameInput } from "./action.ts";
 import { activityTime } from "./activity-log.ts";
-import { confirmBox, createTable, formField, panelButton, rowList } from "./control-panel-kit.ts";
+import {
+  confirmBox,
+  createTable,
+  formActions,
+  formField,
+  panelButton,
+  rowList,
+  sectionTabs,
+} from "./control-panel-kit.ts";
 
 /** The worn-gear fields in the paperdoll's order, with their labels. */
 const WORN: readonly [string, string][] = [
@@ -113,10 +121,38 @@ function section(title: string, ...body: Node[]): HTMLElement {
   return s;
 }
 
+/** One of the editor's tabs: a form section with its title (`sectionTabs` makes it a tab). */
+function tab(title: string, ...body: Node[]): HTMLElement {
+  const s = document.createElement("section");
+  s.className = "balance-row hub-edit-tab";
+  const h = document.createElement("h3");
+  h.className = "balance-row-title";
+  h.textContent = title;
+  s.append(h, ...body);
+  return s;
+}
+
+/** A heading inside a tab, over one of its parts. */
+function part(title: string): HTMLElement {
+  const h = document.createElement("h4");
+  h.className = "hub-edit-part";
+  h.textContent = title;
+  return h;
+}
+
 function grid(...fields: HTMLElement[]): HTMLElement {
   const g = document.createElement("div");
   g.className = "hub-edit-grid";
   g.append(...fields);
+  return g;
+}
+
+/**
+ * A grid of short numbers (the stats, forty-odd skills): each a name and a small box on one line, in
+ * columns, so they fit on one screen.
+ */
+function compact(g: HTMLElement): HTMLElement {
+  g.classList.add("hub-edit-compact");
   return g;
 }
 
@@ -136,8 +172,11 @@ export interface CharacterEditorOptions {
 }
 
 export interface CharacterEditor {
-  /** The form's sections. */
-  readonly sections: HTMLElement[];
+  /**
+   * The form: its parts behind tabs (Character, Stats & skills, Bag & gold and the rest), with the
+   * reason and Save kept in view at the bottom.
+   */
+  readonly el: HTMLElement;
   /** Fills the form from the hub's sheet (a new hub, or after a save). */
   /** `hunger`: the world's hunger limits, sent with the character. */
   load(name: string, sheet: CharacterSheet, hunger: HungerLimits, levels?: BalanceLevels): void;
@@ -201,7 +240,7 @@ export function createCharacterEditor(opts: CharacterEditorOptions): CharacterEd
     `0 to ${l.max} (the most hunger can be); a new character starts at ${l.start}, a death sets ${l.afterDeath}.`;
   const hungerField = formField("Hunger", hunger, "…");
   const hungerNote = hungerField.querySelector(".control-panel-field-help");
-  const core = section(
+  const core = tab(
     "Character",
     grid(
       formField("Class", cls),
@@ -219,16 +258,24 @@ export function createCharacterEditor(opts: CharacterEditorOptions): CharacterEd
 
   // ---- stats and skills ------------------------------------------------------------------------
   const stats = new Map(STAT_FIELDS.map((f) => [f, numberInput(`hub-edit-${f}`)] as const));
-  const statsBox = section(
-    "Stats",
-    grid(...STAT_FIELDS.map((f) => formField(STAT_LABELS[f], stats.get(f) as HTMLInputElement))),
+  const statsPart = [
+    part("Stats"),
+    compact(
+      grid(...STAT_FIELDS.map((f) => formField(STAT_LABELS[f], stats.get(f) as HTMLInputElement))),
+    ),
     note("The allocated points, 1 to 20. Class and medal points are added in play."),
-  );
+  ];
   let skills: HTMLInputElement[] = [];
   /** The skill key each of `skills` edits. */
   let skillKeys: string[] = [];
-  const skillsGrid = grid();
-  const skillsBox = section("Skills", skillsGrid, note("1 to 100."));
+  const skillsGrid = compact(grid());
+  const skillsBox = tab(
+    "Stats & skills",
+    ...statsPart,
+    part("Skills"),
+    skillsGrid,
+    note("1 to 100."),
+  );
 
   // ---- gold and items --------------------------------------------------------------------------
   const gold = numberInput("hub-edit-gold");
@@ -290,24 +337,22 @@ export function createCharacterEditor(opts: CharacterEditorOptions): CharacterEd
     box.append(l, list.el, h);
     return box;
   };
-  const goldBox = section(
-    "Gold and bank",
+  const bagBox = tab(
+    "Bag & gold",
     grid(formField("Gold carried", gold), formField("Bank", bank)),
-  );
-  const bagBox = section(
-    "Bag",
+    part("Bag"),
     bagRows,
     note("An item name and how many. Leave the name empty for an empty line."),
   );
-  const wornBox = section(
+  const wornBox = tab(
     "Worn gear",
     grid(...WORN.map(([f, l]) => formField(l, worn.get(f) as HTMLInputElement))),
     note(
       "Leave a slot empty to take its item off. Gear must follow the wear rules unless overridden.",
     ),
   );
-  const storeBox = section(
-    "Vault and spellbook",
+  const storeBox = tab(
+    "Vault & spellbook",
     grid(
       listField("Vault", vault, "At most 15 items."),
       listField("Spellbook", spellbook, "In the order the book lists them."),
@@ -369,8 +414,8 @@ export function createCharacterEditor(opts: CharacterEditorOptions): CharacterEd
     head.value = String(heads.includes(pick) ? pick : heads[0]);
   };
   sex.addEventListener("change", () => fillHeads(Number(head.value)));
-  const placeBox = section(
-    "Position and look",
+  const placeBox = tab(
+    "Position & look",
     grid(
       formField("Map", posMap, mapsHelp),
       formField("Across", posX),
@@ -402,19 +447,24 @@ export function createCharacterEditor(opts: CharacterEditorOptions): CharacterEd
     }
   });
   const buttons = document.createElement("div");
-  buttons.className = "hub-tools";
+  buttons.className = "hub-edit-save-buttons";
   buttons.append(saveBtn, resetBtn);
-  const saveBox = section(
-    "Save",
-    grid(formField("Reason", reason, "Required. Kept in the character's edit log.")),
-    overrideLabel,
-    buttons,
-    status,
-  );
-  saveBox.classList.add("hub-edit-save", "hub-wide");
+  // The reason and Save stay in view at the bottom, whichever tab is showing.
+  const reasonField = formField("Reason", reason, "Required. Kept in the character's edit log.");
+  const saveRow = document.createElement("div");
+  saveRow.className = "hub-edit-save";
+  saveRow.append(reasonField, overrideLabel, buttons);
+  const saveBox = formActions(saveRow, status);
   const items = datalist(itemList, []);
   const spells = datalist(spellList, []);
-  saveBox.append(items, spells);
+  const el = document.createElement("div");
+  el.className = "hub-editor";
+  el.append(core, skillsBox, bagBox, wornBox, storeBox, placeBox, items, spells);
+  const tabs = sectionTabs(el, "hub-edit");
+  tabs.el.classList.add("schema-form-tabs");
+  tabs.el.setAttribute("aria-label", "Edit sections");
+  el.prepend(tabs.el);
+  el.append(saveBox);
   // The class list, the factions, the skills and the item suggestions follow the content store, so
   // a publish that adds a class, a faction, a skill or an item shows here at once.
   onContent((c) => {
@@ -623,14 +673,19 @@ export function createCharacterEditor(opts: CharacterEditorOptions): CharacterEd
       if (!yes || name !== asked || original !== c) {
         return;
       }
-      status.textContent = opts.save({ set, seen, override: withOverride, reason: why })
+      status.textContent = opts.save({
+        set,
+        seen,
+        override: withOverride,
+        reason: why,
+      })
         ? "Saving…"
         : EDIT_TEXT.wait;
     });
   };
 
   return {
-    sections: [core, statsBox, skillsBox, goldBox, bagBox, wornBox, storeBox, placeBox, saveBox],
+    el,
     load(n, sheet, limits, levels) {
       hungerLimits = limits;
       levelRules = levels;

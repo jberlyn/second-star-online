@@ -8,11 +8,14 @@
  *   event type.
  *
  * Both filter by event type (one type or a whole group) and by UTC date. A player named in a row
- * opens their timeline, and an item opens its flow. Older rows load a page at a time.
+ * opens their timeline, and an item opens its flow. Older rows load a page at a time. Laid out like
+ * the content editors: the three views are tabs, the filters one row, and on a wide screen the rows
+ * fill the window and scroll on their own, with an item's totals beside them.
  *
  * - **Reconciliation** (issue #35): the newest item reconciliation runs, newest first, each with the
  *   items whose count differs from what the log expects and the items with unlogged changes. Run
- *   now starts one. An item opens its flow.
+ *   now starts one. An item opens its flow. Each run folds away under its heading; the newest is
+ *   open.
  */
 import {
   ACTIVITY_GROUP_LABELS,
@@ -30,7 +33,7 @@ import {
 } from "@secondstaronline/shared";
 
 import { action, gameInput } from "./action.ts";
-import { createTable, formField, pageHeading, panelButton } from "./control-panel-kit.ts";
+import { createTable, formField, pageHeading, panelButton, tabStrip } from "./control-panel-kit.ts";
 
 export type ActivityScope = "character" | "item";
 
@@ -117,14 +120,19 @@ export function typesFor(value: string): ActivityType[] {
   return value in ACTIVITY_TYPE_LABELS ? [value as ActivityType] : [];
 }
 
-const SCOPE_TEXT: Record<ActivityScope, { label: string; help: string; empty: string }> = {
+const SCOPE_TEXT: Record<
+  ActivityScope,
+  { label: string; help: string; placeholder: string; empty: string }
+> = {
   character: {
     label: "Character",
+    placeholder: "A character's name, even a deleted one",
     help: "A character's name. A deleted character is still found by the name it had.",
     empty: "Nothing is logged for this character with these filters.",
   },
   item: {
     label: "Item",
+    placeholder: "Such as Steel Sword, or Gold for the gold",
     help: "An item's name as the bag shows it, such as Steel Sword or Blue Crystal. The currency's name (Gold) shows every change to the gold.",
     empty: "Nothing is logged for this item with these filters.",
   },
@@ -167,19 +175,18 @@ export function createActivityLogPage(opts: {
   let shown: Omit<ActivityRequest, "seq" | "before" | "limit"> | null = null;
   let rows: ActivityRow[] = [];
 
-  // ---- the mode switch -----------------------------------------------------------------------
-  const modes = document.createElement("div");
-  modes.className = "activity-modes";
-  modes.setAttribute("role", "group");
-  modes.setAttribute("aria-label", "Show");
-  const timelineBtn = panelButton("activity-mode-timeline", "Player timeline", () =>
-    setScope("character"),
+  // ---- the views, as tabs --------------------------------------------------------------------
+  const modes = tabStrip<ActivityMode>(
+    "activity-modes",
+    "Show",
+    [
+      { key: "character", label: "Player timeline", action: "activity-mode-timeline" },
+      { key: "item", label: "Item flow", action: "activity-mode-item" },
+      { key: "reconcile", label: "Reconciliation", action: "activity-mode-reconcile" },
+    ],
+    (m) => setMode(m),
   );
-  const itemBtn = panelButton("activity-mode-item", "Item flow", () => setScope("item"));
-  const reconcileBtn = panelButton("activity-mode-reconcile", "Reconciliation", () =>
-    setMode("reconcile"),
-  );
-  modes.append(timelineBtn, itemBtn, reconcileBtn);
+  modes.el.classList.add("activity-tabs");
 
   // ---- the filters ---------------------------------------------------------------------------
   const form = document.createElement("form");
@@ -227,8 +234,8 @@ export function createActivityLogPage(opts: {
   form.append(
     nameField,
     formField("Type", type),
-    formField("From", since, "UTC day."),
-    formField("To", until, "UTC day, included."),
+    formField("From (UTC day)", since),
+    formField("To (UTC day, included)", until),
     show,
   );
   form.addEventListener("submit", (e) => e.preventDefault());
@@ -249,7 +256,8 @@ export function createActivityLogPage(opts: {
     empty: "",
     key: (t) => t.type,
   });
-  const totalsBox = document.createElement("div");
+  // Beside the rows on a wide screen, under them on a narrow one.
+  const totalsBox = document.createElement("aside");
   totalsBox.className = "activity-totals";
   const totalsTitle = document.createElement("h2");
   totalsTitle.className = "activity-subtitle";
@@ -332,13 +340,19 @@ export function createActivityLogPage(opts: {
   // ---- reconciliation ------------------------------------------------------------------------
   const search = document.createElement("div");
   search.className = "activity-search";
-  search.append(form, status, totalsBox, table.el, more);
+  const rowsBox = document.createElement("div");
+  rowsBox.className = "activity-rows";
+  rowsBox.append(table.el, more);
+  const results = document.createElement("div");
+  results.className = "activity-results";
+  results.append(rowsBox, totalsBox);
+  search.append(form, status, results);
 
   const recon = document.createElement("div");
   recon.className = "activity-reconcile";
   recon.hidden = true;
   const reconIntro = document.createElement("p");
-  reconIntro.className = "activity-status";
+  reconIntro.className = "activity-reconcile-intro";
   reconIntro.textContent =
     "A run saves the world, counts every item and the gold wherever they are held, and compares the count with the last run's plus what the log says was made and ended since. A difference is a source or sink the log missed, or a dupe. Runs happen nightly and when you choose Run now.";
   const runNow = panelButton(
@@ -350,9 +364,12 @@ export function createActivityLogPage(opts: {
   const reconStatus = document.createElement("p");
   reconStatus.className = "activity-status activity-reconcile-status";
   reconStatus.setAttribute("role", "status");
+  const reconHead = document.createElement("div");
+  reconHead.className = "activity-reconcile-head";
+  reconHead.append(reconIntro, runNow);
   const runsBox = document.createElement("div");
   runsBox.className = "activity-runs";
-  recon.append(reconIntro, runNow, reconStatus, runsBox);
+  recon.append(reconHead, reconStatus, runsBox);
 
   /** The item's name, as a link to its flow (the currency's flow is every change to the gold). */
   const itemCell = (r: ReconcileItem): string | Node =>
@@ -360,13 +377,21 @@ export function createActivityLogPage(opts: {
 
   const drawRuns = (runs: readonly ReconcileRunView[]) => {
     runsBox.replaceChildren();
-    for (const r of runs) {
-      const section = document.createElement("section");
+    for (const [i, r] of runs.entries()) {
+      // Each run folds under its heading, the newest open, so older runs are a click away rather
+      // than a long scroll down.
+      const section = document.createElement("details");
       section.className = "activity-run";
+      section.open = i === 0;
+      const summary = action(document.createElement("summary"), "activity-reconcile-toggle");
       const h = document.createElement("h2");
       h.className = "activity-subtitle";
       h.textContent = runHeading(r);
-      section.append(h);
+      summary.append(h);
+      if (!r.baseline && r.mismatches > 0) {
+        section.classList.add("activity-run-differs");
+      }
+      section.append(summary);
       if (r.rows.length > 0) {
         const t = createTable<ReconcileItem>({
           label: `Run of ${activityTime(r.at)}`,
@@ -415,7 +440,7 @@ export function createActivityLogPage(opts: {
     opts.reconcile({ seq: reconcileSeq, run });
   };
 
-  root.append(modes, search, recon);
+  root.append(modes.el, search, recon);
 
   // ---- behaviour -----------------------------------------------------------------------------
   const setMode = (m: ActivityMode) => {
@@ -448,10 +473,10 @@ export function createActivityLogPage(opts: {
   };
 
   const drawScope = () => {
-    timelineBtn.setAttribute("aria-pressed", String(mode === "character"));
-    itemBtn.setAttribute("aria-pressed", String(mode === "item"));
-    reconcileBtn.setAttribute("aria-pressed", String(mode === "reconcile"));
+    modes.show(mode);
     search.hidden = mode === "reconcile";
+    // Totals belong to an item's flow: a timeline's rows take the whole width.
+    results.classList.toggle("activity-results-flow", scope === "item");
     recon.hidden = mode !== "reconcile";
     const text = SCOPE_TEXT[scope];
     const label = nameField.querySelector("label");
@@ -462,6 +487,7 @@ export function createActivityLogPage(opts: {
     if (help) {
       help.textContent = text.help;
     }
+    name.placeholder = text.placeholder;
   };
 
   const clear = (message: string) => {

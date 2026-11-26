@@ -148,29 +148,40 @@ describe("the search", () => {
         },
       ],
     });
-    const cells = [...p.el.querySelectorAll("table[aria-label='Characters'] td")].map(
-      (td) => td.textContent,
-    );
-    expect(cells).toEqual([
-      "Al",
-      "5",
-      expect.any(String),
-      "Admin",
-      "Online",
-      "2026-11-22 09:00:00",
-    ]);
+    const entry = p.el.querySelector<HTMLElement>("ul[aria-label='Characters'] li");
+    expect(entry?.textContent).toContain("Al");
+    expect(entry?.textContent).toContain("Online");
+    expect(entry?.textContent).toContain("Level 5");
+    expect(entry?.textContent).toContain("Admin");
+    expect(entry?.textContent).toContain("2026-11-22 09:00:00");
     $("characters-open").click();
     expect(calls.open.at(-1)?.[1]).toBe("Al");
   });
 
+  test("typing searches a moment after it stops, once", async () => {
+    const { calls, $ } = page();
+    const q = $<HTMLInputElement>("characters-query");
+    for (const text of ["A", "Al", "Ali"]) {
+      q.value = text;
+      q.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+    expect(calls.search).toEqual([]);
+    await Bun.sleep(400);
+    expect(calls.search.map(([, text]) => text)).toEqual(["Ali"]);
+  });
+
   test("an old answer is ignored and an empty one says so", () => {
     const { p, calls, $ } = page();
-    $("characters-search").click();
-    $("characters-search").click();
+    const enter = () =>
+      $<HTMLInputElement>("characters-query").dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+      );
+    enter();
+    enter();
     p.receiveList({ seq: 1, rows: [] });
-    expect(p.el.querySelector(".activity-status")?.textContent).not.toBe(HUB_TEXT.noMatches);
+    expect(p.el.querySelector(".characters-count")?.textContent).not.toBe(HUB_TEXT.noMatches);
     p.receiveList({ seq: calls.search.at(-1)?.[0] ?? 0, rows: [] });
-    expect(p.el.querySelector(".activity-status")?.textContent).toBe(HUB_TEXT.noMatches);
+    expect(p.el.querySelector(".characters-count")?.textContent).toBe(HUB_TEXT.noMatches);
   });
 });
 
@@ -180,9 +191,15 @@ describe("the hub", () => {
     showHub();
     expect(p.el.querySelector(".hub-summary")?.textContent).toContain("Level 5");
     expect(p.el.querySelector(".hub-summary")?.textContent).toContain("Online on x1000y992");
-    const facts = p.el.querySelector(".hub-facts")?.textContent ?? "";
+    const facts = p.el.querySelector(".hub-body")?.textContent ?? "";
     expect(facts).toContain("Warrior");
     expect(facts).toContain("20 of 30");
+    // Every skill shows, highest first, in short columns rather than a long table.
+    const skills = [...p.el.querySelectorAll("dl[aria-label='Skills'] dd")].map((d) =>
+      Number(d.textContent),
+    );
+    expect(skills.length).toBe(classicData.classes.skills.length);
+    expect(skills).toEqual([...skills].sort((a, b) => b - a));
     $("hub-tab-items").click();
     const text = p.el.querySelector(".hub-body")?.textContent ?? "";
     expect(text).toContain("1,234");
@@ -257,8 +274,8 @@ describe("the hub", () => {
     expect(p.el.querySelector<HTMLElement>(".hub")?.hidden).toBe(true);
   });
 
-  test("an unknown name shows the server's error; All characters goes back to the search", () => {
-    const { p, calls, $ } = page();
+  test("an unknown name shows the server's error", () => {
+    const { p, calls } = page();
     p.openHub("Nobody");
     p.receiveHub({
       seq: calls.open.at(-1)?.[0] ?? 0,
@@ -266,8 +283,58 @@ describe("the hub", () => {
       error: HUB_TEXT.notFound("Nobody"),
     });
     expect(p.el.textContent).toContain(HUB_TEXT.notFound("Nobody"));
-    $("hub-back").click();
-    expect(p.el.querySelector<HTMLElement>(".hub")?.hidden).toBe(true);
+  });
+
+  test("the list stays beside the hub, marks the open character, and neither drops the other's answer", () => {
+    const { p, calls, $ } = page();
+    expect(p.el.querySelector<HTMLElement>(".items-empty-form")?.hidden).toBe(false);
+    p.onShow();
+    const listSeq = calls.search.at(-1)?.[0] ?? 0;
+    // A hub asked for while the list is on its way: both answers are shown.
+    p.openHub("Al");
+    p.receiveHub({ seq: calls.open.at(-1)?.[0] ?? 0, hub: hub() });
+    p.receiveList({
+      seq: listSeq,
+      rows: [
+        {
+          name: "Al",
+          level: 5,
+          classCode: 1,
+          role: null,
+          online: true,
+          lastSaved: "2026-11-22T09:00:00.000Z",
+        },
+        {
+          name: "Bo",
+          level: 2,
+          classCode: 2,
+          role: null,
+          online: false,
+          lastSaved: "2026-11-21T09:00:00.000Z",
+        },
+      ],
+    });
+    const items = [...p.el.querySelectorAll<HTMLElement>("[data-action='characters-open']")];
+    expect(items.map((b) => b.dataset.key)).toEqual(["Al", "Bo"]);
+    expect(items.map((b) => b.getAttribute("aria-current"))).toEqual(["true", null]);
+    expect(p.el.querySelector<HTMLElement>(".hub")?.hidden).toBe(false);
+    expect(p.el.querySelector<HTMLElement>(".items-empty-form")?.hidden).toBe(true);
+    expect(p.el.querySelector(".hub-title")?.textContent).toBe("Al");
+    // Another character, straight from the list.
+    items[1]?.click();
+    expect(calls.open.at(-1)?.[1]).toBe("Bo");
+    expect(
+      [...p.el.querySelectorAll<HTMLElement>("[data-action='characters-open']")].map((b) =>
+        b.getAttribute("aria-current"),
+      ),
+    ).toEqual([null, "true"]);
+    // The hub's tabs are tabs: the arrow keys move between them.
+    p.receiveHub({ seq: calls.open.at(-1)?.[0] ?? 0, hub: hub({ name: "Bo" }) });
+    $("hub-tab-overview").focus();
+    $("hub-tab-overview").dispatchEvent(
+      new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }),
+    );
+    expect($("hub-tab-items").getAttribute("aria-selected")).toBe("true");
   });
 });
 
@@ -438,6 +505,36 @@ describe("the editor", () => {
     const editor = page(["characterView", "characterEditor"]);
     editor.showHub();
     expect(editor.$("hub-tab-edit").hidden).toBe(false);
+  });
+
+  test("Edit shows one part at a time behind tabs, with the reason and Save kept in view", () => {
+    const { p, $, showHub } = page(["characterView", "characterEditor"]);
+    showHub();
+    $("hub-tab-edit").click();
+    const tabs = [...p.el.querySelectorAll<HTMLElement>("[data-action='hub-edit-tab']")];
+    expect(tabs.map((t) => t.textContent)).toEqual([
+      "Character",
+      "Stats & skills",
+      "Bag & gold",
+      "Worn gear",
+      "Vault & spellbook",
+      "Position & look",
+      "All",
+    ]);
+    const shown = () =>
+      [...p.el.querySelectorAll<HTMLElement>(".hub-edit-tab")]
+        .filter((s) => !s.classList.contains("control-panel-tab-hidden"))
+        .map((s) => s.querySelector(".balance-row-title")?.textContent);
+    expect(shown()).toEqual(["Character"]);
+    tabs[2]?.click();
+    expect(shown()).toEqual(["Bag & gold"]);
+    expect(
+      $("hub-edit-gold").closest(".hub-edit-tab")?.classList.contains("control-panel-tab-hidden"),
+    ).toBe(false);
+    // Save and its reason sit in the bar under the tabs, whichever tab shows.
+    const bar = p.el.querySelector(".hub-editor > .control-panel-form-actions");
+    expect(bar?.contains($("hub-edit-save"))).toBe(true);
+    expect(bar?.contains($("hub-edit-reason"))).toBe(true);
   });
 
   test("hunger is checked against the world's limits sent with the character", async () => {

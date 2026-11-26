@@ -29,6 +29,11 @@
     "hidden": 0,
     "disabled": 0
   },
+  "activity-modes": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
   "activity-more": {
     "count": 2,
     "hidden": 0,
@@ -195,11 +200,6 @@
     "disabled": 0
   },
   "characters-query": {
-    "count": 2,
-    "hidden": 0,
-    "disabled": 0
-  },
-  "characters-search": {
     "count": 2,
     "hidden": 0,
     "disabled": 0
@@ -501,11 +501,6 @@
   },
   "hub-apply": {
     "count": 1,
-    "hidden": 0,
-    "disabled": 0
-  },
-  "hub-back": {
-    "count": 2,
     "hidden": 0,
     "disabled": 0
   },
@@ -989,6 +984,11 @@
     "hidden": 0,
     "disabled": 0
   },
+  "hub-edit-tab": {
+    "count": 7,
+    "hidden": 0,
+    "disabled": 0
+  },
   "hub-edit-vault": {
     "count": 1,
     "hidden": 0,
@@ -1100,6 +1100,11 @@
     "disabled": 0
   },
   "hub-tab-overview": {
+    "count": 2,
+    "hidden": 0,
+    "disabled": 0
+  },
+  "hub-tabs": {
     "count": 2,
     "hidden": 0,
     "disabled": 0

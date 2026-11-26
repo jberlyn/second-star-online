@@ -315,6 +315,89 @@ function openConfirm(
   stay.focus();
 }
 
+/**
+ * Arrow keys, Home and End move between a strip's shown tabs (the tab pattern), choosing as they go.
+ * Each tab button carries its key in `data-tab`.
+ */
+function tabKeys(strip: HTMLElement, select: (key: string) => void): void {
+  strip.addEventListener("keydown", (e) => {
+    const tabs = [...strip.querySelectorAll<HTMLButtonElement>("button")].filter((b) => !b.hidden);
+    const at = tabs.indexOf(document.activeElement as HTMLButtonElement);
+    if (at < 0) {
+      return;
+    }
+    const to =
+      e.key === "ArrowRight"
+        ? (at + 1) % tabs.length
+        : e.key === "ArrowLeft"
+          ? (at - 1 + tabs.length) % tabs.length
+          : e.key === "Home"
+            ? 0
+            : e.key === "End"
+              ? tabs.length - 1
+              : -1;
+    const tab = tabs[to];
+    if (tab) {
+      e.preventDefault();
+      select(tab.dataset.tab ?? "");
+      tab.focus();
+    }
+  });
+}
+
+export interface TabStrip<K extends string> {
+  /** The strip: put it above what it switches. */
+  readonly el: HTMLElement;
+  /** Marks a tab chosen (it does not run `onSelect`). */
+  show(key: K): void;
+  /** A tab's button, to hide or show it. */
+  button(key: K): HTMLButtonElement;
+}
+
+/**
+ * A fixed row of tabs, drawn like an editor form's section tabs: each tab is a button with its own
+ * action, and choosing one (a click, or the arrow keys) runs `onSelect`.
+ */
+export function tabStrip<K extends string>(
+  id: string,
+  label: string,
+  tabs: readonly { key: K; label: string; action: string }[],
+  onSelect: (key: K) => void,
+): TabStrip<K> {
+  // The strip takes the arrow keys, so it carries an action of its own.
+  const strip = action(document.createElement("div"), id);
+  strip.className = "control-panel-tabs";
+  strip.setAttribute("role", "tablist");
+  strip.setAttribute("aria-label", label);
+  const buttons = new Map<K, HTMLButtonElement>();
+  for (const t of tabs) {
+    const b = action(document.createElement("button"), t.action);
+    b.type = "button";
+    b.className = "control-panel-tab";
+    b.setAttribute("role", "tab");
+    b.dataset.tab = t.key;
+    b.textContent = t.label;
+    b.addEventListener("click", () => onSelect(t.key));
+    buttons.set(t.key, b);
+    strip.append(b);
+  }
+  tabKeys(strip, (k) => {
+    if (buttons.has(k as K)) {
+      onSelect(k as K);
+    }
+  });
+  return {
+    el: strip,
+    show(key) {
+      for (const [k, b] of buttons) {
+        b.setAttribute("aria-selected", String(k === key));
+        b.tabIndex = k === key ? 0 : -1;
+      }
+    },
+    button: (key) => buttons.get(key) as HTMLButtonElement,
+  };
+}
+
 /** The label a section's tab shows: its `data-tab`, or its title. */
 function tabLabel(sec: HTMLElement): string {
   return (
@@ -427,30 +510,7 @@ export function sectionTabs(form: HTMLElement, id: string): SectionTabs {
     show();
   };
 
-  // Arrow keys, Home and End move between tabs (the tab pattern), choosing as they go.
-  strip.addEventListener("keydown", (e) => {
-    const tabs = [...strip.querySelectorAll<HTMLButtonElement>("button")];
-    const at = tabs.indexOf(document.activeElement as HTMLButtonElement);
-    if (at < 0) {
-      return;
-    }
-    const to =
-      e.key === "ArrowRight"
-        ? (at + 1) % tabs.length
-        : e.key === "ArrowLeft"
-          ? (at - 1 + tabs.length) % tabs.length
-          : e.key === "Home"
-            ? 0
-            : e.key === "End"
-              ? tabs.length - 1
-              : -1;
-    const tab = tabs[to];
-    if (tab) {
-      e.preventDefault();
-      select(tab.dataset.tab ?? "");
-      tab.focus();
-    }
-  });
+  tabKeys(strip, select);
 
   let queued = false;
   new MutationObserver((records) => {

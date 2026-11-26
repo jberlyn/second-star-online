@@ -3,7 +3,8 @@
  * read a character's text files by hand. It is a plain SSO page built from the Control Panel's
  * shared parts.
  *
- * - **Search:** characters whose name contains the text, online or not. A row opens the hub.
+ * - **The list:** characters whose name contains the text, online or not, following the typing. It
+ *   stays on the left, as a content page's list does, and an entry opens the hub beside it.
  * - **The hub:** one character in one place. Overview (class, vitals, stats, skills, where they
  *   are), Items (gold, bank, bag, worn gear, vault, spellbook, houses), Moderation (what is in
  *   force, the buttons and the history, with addresses for a role with `/banip`) and Chat (their
@@ -46,6 +47,7 @@ import {
   formField,
   pageHeading,
   panelButton,
+  tabStrip,
 } from "./control-panel-kit.ts";
 
 export interface CharactersPageOptions {
@@ -151,10 +153,13 @@ const TABS: readonly [Tab, string][] = [
   ["overview", "Overview"],
   ["items", "Items"],
   ["edit", "Edit"],
-  ["edits", "Edits"],
+  ["edits", "Edit log"],
   ["moderation", "Moderation"],
   ["chat", "Chat"],
 ];
+
+/** How long typing in the search waits before it asks the server, in milliseconds. */
+const SEARCH_WAIT = 250;
 
 /** `ends 2026-11-29 09:00:00 UTC` or `permanent`. */
 function endText(r: ModerationRecord): string {
@@ -192,6 +197,31 @@ function section(title: string, ...body: Node[]): HTMLElement {
 function wide(s: HTMLElement): HTMLElement {
   s.classList.add("hub-wide");
   return s;
+}
+
+/**
+ * Names and values in short columns (the sheet, the stats, or every skill): one row each, the value
+ * last, so a long list fits beside itself instead of running down the page.
+ */
+function levels(
+  label: string,
+  rows: readonly { key: string; label: string; level: number | string }[],
+): HTMLElement {
+  const dl = document.createElement("dl");
+  dl.className = "hub-levels";
+  dl.setAttribute("aria-label", label);
+  for (const r of rows) {
+    const row = document.createElement("div");
+    row.className = "hub-level";
+    row.dataset.key = r.key;
+    const dt = document.createElement("dt");
+    dt.textContent = r.label;
+    const dd = document.createElement("dd");
+    dd.textContent = String(r.level);
+    row.append(dt, dd);
+    dl.append(row);
+  }
+  return dl;
 }
 
 function list(items: readonly string[], empty: string): HTMLElement {
@@ -252,7 +282,10 @@ function shopsText(h: HubHouse): string {
 }
 
 /** The question a house preview asks, and what the change will do, line by line (issue #36). */
-export function housePreviewText(p: HousePreview): { text: string; list: string[] } {
+export function housePreviewText(p: HousePreview): {
+  text: string;
+  list: string[];
+} {
   const where = houseLabel(p.house);
   const list: string[] = [];
   if (p.action === "revoke") {
@@ -271,7 +304,10 @@ export function housePreviewText(p: HousePreview): { text: string; list: string[
     }
     list.push(`On the floor, destroyed: ${itemsText(p.floor)}.`);
     list.push("This can't be undone.");
-    return { text: `Demolish ${p.owner}'s ${where}, interior ${p.house.interior}?`, list };
+    return {
+      text: `Demolish ${p.owner}'s ${where}, interior ${p.house.interior}?`,
+      list,
+    };
   }
   const to = p.to ?? "";
   if (p.renames.length > 0) {
@@ -305,12 +341,16 @@ export function housePreviewText(p: HousePreview): { text: string; list: string[
       ? `Transferring it back returns the house and its shops, but not necessarily the vault's contents: they go back only if ${to} owns no other house then.`
       : "Transferring it back returns the house and its shops; the vault rules apply again then.",
   );
-  return { text: `Give ${p.owner}'s ${where}, interior ${p.house.interior}, to ${to}?`, list };
+  return {
+    text: `Give ${p.owner}'s ${where}, interior ${p.house.interior}, to ${to}?`,
+    list,
+  };
 }
 
 export function createCharactersPage(opts: CharactersPageOptions): CharactersPage {
   const root = document.createElement("section");
-  root.className = "characters";
+  // Laid out like the content editors: the list on the left, the chosen character beside it.
+  root.className = "characters items-page plain-editor";
   root.append(
     pageHeading(
       "Characters",
@@ -318,57 +358,97 @@ export function createCharactersPage(opts: CharactersPageOptions): CharactersPag
     ),
   );
 
+  /** The hub's requests; the list's have their own count, so neither drops the other's answer. */
   let seq = 0;
-  let lastQuery: string | null = null;
+  let searchSeq = 0;
   /** The hub on screen, by name, or null for the search. */
   let openName: string | null = null;
   let hub: CharacterHub | null = null;
   let tab: Tab = "overview";
 
-  // ---- the search ------------------------------------------------------------------------------
-  const searchBox = document.createElement("div");
-  const form = document.createElement("form");
-  form.className = "activity-filters";
-  form.addEventListener("submit", (e) => e.preventDefault());
+  // ---- the list: the characters found, always beside the hub ----------------------------------
+  const listBox = document.createElement("div");
+  listBox.className = "items-list-box characters-list-box";
   const query = gameInput("characters-query");
   query.type = "search";
   query.maxLength = CHARACTER_SEARCH_MAX;
   query.spellcheck = false;
+  query.placeholder = "Search by name";
+  // The list follows the typing, a moment after it stops; Enter asks at once.
+  let searchTimer: ReturnType<typeof setTimeout> | null = null;
+  const stopTimer = () => {
+    if (searchTimer !== null) {
+      clearTimeout(searchTimer);
+      searchTimer = null;
+    }
+  };
+  query.addEventListener("input", () => {
+    stopTimer();
+    searchTimer = setTimeout(() => {
+      searchTimer = null;
+      search();
+    }, SEARCH_WAIT);
+  });
   query.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
       e.preventDefault();
       search();
     }
   });
-  form.append(
-    formField("Name", query, HUB_TEXT.searchHelp),
-    panelButton("characters-search", "Search", () => search(), "primary"),
-  );
+  const queryField = formField("Find a character", query, HUB_TEXT.searchHelp);
   const status = document.createElement("p");
-  status.className = "activity-status";
+  status.className = "control-panel-field-help characters-count";
   status.setAttribute("role", "status");
-  const results = createTable<CharacterListRow>({
-    label: "Characters",
-    columns: [
-      { label: "Name", cell: (r) => r.name },
-      { label: "Level", cell: (r) => String(r.level), numeric: true },
-      { label: "Class", cell: (r) => classLabel(r.classCode) },
-      { label: "Role", cell: (r) => r.role ?? "" },
-      { label: "Status", cell: (r) => (r.online ? "Online" : "Offline") },
-      { label: "Last saved (UTC)", cell: (r) => activityTime(r.lastSaved) },
-    ],
-    empty: "",
-    key: (r) => r.name,
-    open: { id: "characters-open", run: (r) => openHub(r.name) },
-  });
-  results.el.hidden = true;
-  searchBox.append(form, status, results.el);
+  const listEl = document.createElement("ul");
+  listEl.className = "items-list characters-list";
+  listEl.setAttribute("aria-label", "Characters");
+  listBox.append(queryField, status, listEl);
+  /** The rows the list shows, kept to mark the open one again. */
+  let listRows: CharacterListRow[] = [];
+  const drawList = () => {
+    listEl.replaceChildren(
+      ...listRows.map((r) => {
+        const li = document.createElement("li");
+        const b = action(document.createElement("button"), "characters-open");
+        b.type = "button";
+        b.className = "items-list-item characters-list-item";
+        b.dataset.key = r.name;
+        if (r.name.toLowerCase() === openName?.toLowerCase()) {
+          b.setAttribute("aria-current", "true");
+        }
+        const n = document.createElement("span");
+        n.className = "items-list-name";
+        n.textContent = r.name;
+        const state = document.createElement("span");
+        state.className = r.online ? "characters-online" : "characters-offline";
+        state.textContent = r.online ? "Online" : "Offline";
+        const line = document.createElement("span");
+        line.className = "characters-list-line";
+        line.append(n, state);
+        const meta = document.createElement("span");
+        meta.className = "items-list-meta";
+        meta.textContent = [`Level ${r.level} ${classLabel(r.classCode)}`, r.role ?? ""]
+          .filter(Boolean)
+          .join(" · ");
+        const saved = document.createElement("span");
+        saved.className = "items-list-meta characters-saved";
+        saved.textContent = `Saved ${activityTime(r.lastSaved)} UTC`;
+        b.append(line, meta, saved);
+        b.addEventListener("click", () => openHub(r.name));
+        li.append(b);
+        return li;
+      }),
+    );
+  };
 
   // ---- the hub ---------------------------------------------------------------------------------
-  const hubBox = document.createElement("div");
-  hubBox.className = "hub";
+  const empty = document.createElement("p");
+  empty.className = "items-empty-form";
+  empty.textContent =
+    "Pick a character on the left to see their sheet, items, moderation and history.";
+  const hubBox = document.createElement("section");
+  hubBox.className = "items-form hub";
   hubBox.hidden = true;
-  const back = panelButton("hub-back", "All characters", () => closeHub());
   const refresh = panelButton("hub-refresh", "Refresh", () => {
     if (openName) {
       ask(openName);
@@ -381,29 +461,35 @@ export function createCharactersPage(opts: CharactersPageOptions): CharactersPag
   });
   const hubTools = document.createElement("div");
   hubTools.className = "hub-tools";
-  hubTools.append(back, refresh, activity);
+  hubTools.append(refresh, activity);
   const hubTitle = document.createElement("h2");
   hubTitle.className = "hub-title";
   const hubSummary = document.createElement("p");
   hubSummary.className = "hub-summary";
+  const hubName = document.createElement("div");
+  hubName.className = "hub-name";
+  hubName.append(hubTitle, hubSummary);
+  const hubHead = document.createElement("header");
+  hubHead.className = "hub-head";
+  hubHead.append(hubName, hubTools);
   const hubStatus = document.createElement("p");
   hubStatus.className = "activity-status";
   hubStatus.setAttribute("role", "status");
-  const tabs = document.createElement("div");
-  tabs.className = "activity-modes";
-  tabs.setAttribute("role", "group");
-  tabs.setAttribute("aria-label", "Show");
-  const tabButtons = new Map<Tab, HTMLButtonElement>();
-  for (const [t, label] of TABS) {
-    const b = panelButton(`hub-tab-${t}`, label, () => showTab(t));
-    tabButtons.set(t, b);
-    tabs.append(b);
-  }
+  const tabs = tabStrip(
+    "hub-tabs",
+    "Character",
+    TABS.map(([key, label]) => ({ key, label, action: `hub-tab-${key}` })),
+    (t) => showTab(t),
+  );
+  const tabButtons = new Map<Tab, HTMLButtonElement>(TABS.map(([t]) => [t, tabs.button(t)]));
   const body = document.createElement("div");
   body.className = "hub-body";
-  hubBox.append(hubTools, hubTitle, hubSummary, hubStatus, tabs, body);
+  hubBox.append(hubHead, hubStatus, tabs.el, body);
 
-  root.append(searchBox, hubBox);
+  const layout = document.createElement("div");
+  layout.className = "items-layout";
+  layout.append(listBox, empty, hubBox);
+  root.append(layout);
 
   // ---- moderation controls (kept across redraws so a half-typed reason survives) ----------------
   const modAction = action(document.createElement("select"), "hub-action");
@@ -597,7 +683,13 @@ export function createCharactersPage(opts: CharactersPageOptions): CharactersPag
       reason,
     };
     houseStatus.textContent = "Looking at the house…";
-    opts.housePreview({ seq: modSeq, name: h.name, interior: house.interior, action: act, to });
+    opts.housePreview({
+      seq: modSeq,
+      name: h.name,
+      interior: house.interior,
+      action: act,
+      to,
+    });
   };
 
   const houseConfirm = (p: HousePreview, asked: NonNullable<typeof pendingPreview>) => {
@@ -637,10 +729,10 @@ export function createCharactersPage(opts: CharactersPageOptions): CharactersPag
 
   // ---- behaviour -------------------------------------------------------------------------------
   const search = () => {
-    seq += 1;
-    lastQuery = query.value.trim();
+    stopTimer();
+    searchSeq += 1;
     status.textContent = "Searching…";
-    opts.search(seq, lastQuery);
+    opts.search(searchSeq, query.value.trim());
   };
 
   const ask = (name: string) => {
@@ -664,27 +756,17 @@ export function createCharactersPage(opts: CharactersPageOptions): CharactersPag
     houseStatus.textContent = "";
     editor.clear();
     editLog.clear();
-    searchBox.hidden = true;
+    empty.hidden = true;
     hubBox.hidden = false;
+    hubBox.scrollTop = 0;
+    drawList();
     hubTitle.textContent = name;
     hubSummary.textContent = "";
     // Shown again once the hub arrives, for a role with the activity log.
     activity.hidden = true;
-    tabs.hidden = true;
+    tabs.el.hidden = true;
     body.replaceChildren();
     ask(name);
-  };
-
-  const closeHub = () => {
-    cancelQuestion();
-    openName = null;
-    hub = null;
-    hubBox.hidden = true;
-    searchBox.hidden = false;
-    if (lastQuery !== null) {
-      search();
-    }
-    query.focus();
   };
 
   const showTab = (t: Tab) => {
@@ -714,7 +796,7 @@ export function createCharactersPage(opts: CharactersPageOptions): CharactersPag
       ...inForce,
     ].join(" · ");
     activity.hidden = !opts.can("activityLog");
-    tabs.hidden = false;
+    tabs.el.hidden = false;
     tabButtons.get("chat")?.toggleAttribute("hidden", h.chat === undefined);
     tabButtons.get("edit")?.toggleAttribute("hidden", !opts.can("characterEditor"));
     if (
@@ -723,9 +805,8 @@ export function createCharactersPage(opts: CharactersPageOptions): CharactersPag
     ) {
       tab = "overview";
     }
-    for (const [t, b] of tabButtons) {
-      b.setAttribute("aria-pressed", String(t === tab));
-    }
+    tabs.show(tab);
+    body.dataset.tab = tab;
     body.replaceChildren(...drawTab(h));
   };
 
@@ -734,48 +815,38 @@ export function createCharactersPage(opts: CharactersPageOptions): CharactersPag
     switch (tab) {
       case "overview": {
         const where = `${s.position.map} (${s.position.x}, ${s.position.y}), facing ${s.position.facing}`;
-        const stats = createTable<[string, number]>({
-          label: "Stats",
-          columns: [
-            { label: "Stat", cell: (r) => r[0] },
-            { label: "Points", cell: (r) => String(r[1]), numeric: true },
-          ],
-          empty: "",
-          key: (r) => r[0],
-        });
-        stats.setRows(STAT_LABELS.map(([k, label]) => [label, s.stats[k]]));
+        // Every skill in a few short columns, highest first, so the sheet fits without scrolling.
         // Keyed by skill key: two skills may share a display name.
-        const skills = createTable<[string, number, string]>({
-          label: "Skills",
-          columns: [
-            { label: "Skill", cell: (r) => r[0] },
-            { label: "Level", cell: (r) => String(r[1]), numeric: true },
-          ],
-          empty: "",
-          key: (r) => r[2],
-        });
-        skills.setRows(
-          content().classes.skills.map((k) => [
-            k.display ?? k.skill,
-            s.skills[k.skill] ?? 0,
-            k.skill,
-          ]),
-        );
+        const skills = content()
+          .classes.skills.map((k, i) => ({
+            key: k.skill,
+            label: k.display ?? k.skill,
+            level: s.skills[k.skill] ?? 0,
+            at: i,
+          }))
+          .sort((a, b) => b.level - a.level || a.at - b.at);
         return [
-          section(
-            "Character",
-            facts([
-              ["Class", classLabel(s.classCode)],
-              ["Level", String(s.level)],
-              ["Experience", `${s.exp} of ${s.expNeeded}`],
-              ["HP", `${s.hp} of ${s.hpMax}`],
-              ["SP", `${s.sp} of ${s.spMax}`],
-              ["Hunger", String(s.hunger)],
-              ["Faction", factionLabel(s.faction)],
-              ["Wanted", s.wanted ? "Yes" : "No"],
-              ["Sex", sexLabel(s.sex) || `Sex ${s.sex}`],
-              ["Head", String(s.head)],
-            ]),
+          wide(
+            section(
+              "Character",
+              levels(
+                "Character",
+                (
+                  [
+                    ["Class", classLabel(s.classCode)],
+                    ["Level", String(s.level)],
+                    ["Experience", `${s.exp} of ${s.expNeeded}`],
+                    ["HP", `${s.hp} of ${s.hpMax}`],
+                    ["SP", `${s.sp} of ${s.spMax}`],
+                    ["Hunger", String(s.hunger)],
+                    ["Faction", factionLabel(s.faction)],
+                    ["Wanted", s.wanted ? "Yes" : "No"],
+                    ["Sex", sexLabel(s.sex) || `Sex ${s.sex}`],
+                    ["Head", String(s.head)],
+                  ] as const
+                ).map(([label, level]) => ({ key: label, label, level })),
+              ),
+            ),
           ),
           section(
             "Where",
@@ -798,8 +869,20 @@ export function createCharactersPage(opts: CharactersPageOptions): CharactersPag
               ["Last saved", `${activityTime(h.lastSaved)} UTC`],
             ]),
           ),
-          section("Stats", stats.el),
-          section("Skills", skills.el),
+          wide(
+            section(
+              "Stats",
+              levels(
+                "Stats",
+                STAT_LABELS.map(([k, label]) => ({
+                  key: k,
+                  label,
+                  level: s.stats[k],
+                })),
+              ),
+            ),
+          ),
+          wide(section("Skills, highest first", levels("Skills", skills))),
         ];
       }
       case "items": {
@@ -899,7 +982,7 @@ export function createCharactersPage(opts: CharactersPageOptions): CharactersPag
         ];
       }
       case "edit":
-        return editor.sections;
+        return [editor.el];
       case "edits":
         editLog.show(h.name, h.edits);
         return editLog.sections;
@@ -938,7 +1021,10 @@ export function createCharactersPage(opts: CharactersPageOptions): CharactersPag
             label: "Addresses",
             columns: [
               { label: "Address", cell: (r) => r.address },
-              { label: "Last seen (UTC)", cell: (r) => activityTime(r.lastSeen) },
+              {
+                label: "Last seen (UTC)",
+                cell: (r) => activityTime(r.lastSeen),
+              },
             ],
             empty: "No address is recorded.",
             key: (r) => r.address,
@@ -967,25 +1053,22 @@ export function createCharactersPage(opts: CharactersPageOptions): CharactersPag
     }
   };
 
-  status.textContent = HUB_TEXT.searchHelp;
-
   return {
     el: root,
     onShow() {
       // A question left open when the page was last left is not asked again.
       cancelQuestion();
+      search();
       if (openName) {
         ask(openName);
-      } else {
-        search();
       }
     },
     receiveList(msg) {
-      if (msg.seq !== seq) {
+      if (msg.seq !== searchSeq) {
         return;
       }
-      results.setRows(msg.rows);
-      results.el.hidden = msg.rows.length === 0;
+      listRows = msg.rows;
+      drawList();
       status.textContent =
         msg.rows.length === 0
           ? HUB_TEXT.noMatches
@@ -998,7 +1081,7 @@ export function createCharactersPage(opts: CharactersPageOptions): CharactersPag
       if (!msg.hub) {
         hub = null;
         activity.hidden = true;
-        tabs.hidden = true;
+        tabs.el.hidden = true;
         body.replaceChildren();
         hubStatus.textContent = msg.error ?? HUB_TEXT.notFound(openName);
         return;
@@ -1087,7 +1170,9 @@ export function createCharactersPage(opts: CharactersPageOptions): CharactersPag
     },
     reset() {
       cancelQuestion();
+      stopTimer();
       seq += 1;
+      searchSeq += 1;
       pendingMod = null;
       // Nothing the hub showed stays in the page, hidden or not.
       body.replaceChildren();
@@ -1104,15 +1189,14 @@ export function createCharactersPage(opts: CharactersPageOptions): CharactersPag
       houseStatus.textContent = "";
       editor.clear();
       editLog.clear();
-      lastQuery = null;
       openName = null;
       hub = null;
       query.value = "";
-      results.setRows([]);
-      results.el.hidden = true;
-      status.textContent = HUB_TEXT.searchHelp;
+      listRows = [];
+      drawList();
+      status.textContent = "";
       hubBox.hidden = true;
-      searchBox.hidden = false;
+      empty.hidden = false;
     },
   };
 }

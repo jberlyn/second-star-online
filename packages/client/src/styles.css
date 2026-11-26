@@ -2086,6 +2086,152 @@ body {
 .activity-run {
   margin: 12px 0;
 }
+/* The Activity Log laid out like the content editors: its views as tabs, the filters in one row,
+   and the rows in a panel of their own, an item's totals beside them. */
+.activity-log > .control-panel-tabs.activity-tabs {
+  position: static;
+  margin: 12px 20px 0;
+  padding: 0;
+  background: none;
+  border-bottom-color: var(--ui-line-strong);
+}
+.activity-log .control-panel-tab[aria-selected="true"] {
+  background: var(--ui-wood-2);
+  border-color: var(--ui-line-strong) var(--ui-line-strong) var(--ui-wood-2);
+}
+.activity-log .activity-filters {
+  align-items: flex-end;
+  padding: 8px 20px;
+  background: var(--ui-wood-2);
+  border-bottom: 0;
+  margin: 0 20px;
+  border: 1px solid var(--ui-line-strong);
+  border-top: 0;
+  border-radius: 0 0 6px 6px;
+}
+.activity-log .activity-filters .control-panel-field {
+  padding: 0;
+}
+.activity-log .activity-filters > .control-panel-btn {
+  margin: 0 0 1px;
+}
+.activity-log .activity-filters .control-panel-field-help {
+  display: none;
+}
+.activity-search > .activity-status {
+  margin: 8px 20px;
+}
+.activity-results {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 0 20px 16px;
+}
+.activity-rows {
+  flex: 1 1 520px;
+  min-width: 0;
+  border: 1px solid var(--ui-line-strong);
+  border-radius: 6px;
+  background: var(--ui-wood-1);
+}
+.activity-rows:not(:has(> .control-panel-table-wrap > table:not([hidden]))) {
+  display: none;
+}
+.activity-rows > .control-panel-btn {
+  margin: 8px 10px;
+}
+.activity-results > .activity-totals {
+  flex: 0 1 300px;
+  min-width: 240px;
+  margin: 0;
+  padding-top: 4px;
+  border: 1px solid var(--ui-line-strong);
+  border-radius: 6px;
+  background: var(--ui-wood-1);
+}
+.activity-totals .activity-subtitle {
+  margin: 4px 10px 6px;
+}
+.activity-reconcile-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin: 12px 20px 0;
+}
+.activity-reconcile-intro {
+  flex: 1 1 auto;
+  max-width: 70em;
+  margin: 0;
+  color: var(--ui-text-dim);
+}
+.activity-log .activity-reconcile-head > .control-panel-btn {
+  flex: none;
+  margin: 0;
+}
+.activity-runs {
+  margin: 0 20px 16px;
+}
+.activity-run {
+  margin: 0 0 8px;
+  border: 1px solid var(--ui-line-strong);
+  border-radius: 6px;
+  background: var(--ui-wood-1);
+}
+.activity-run > summary {
+  padding: 6px 10px;
+  cursor: pointer;
+}
+.activity-run > summary > .activity-subtitle {
+  display: inline;
+  margin: 0;
+}
+.activity-run-differs > summary > .activity-subtitle {
+  color: #f0b429;
+}
+.activity-run > .activity-status {
+  margin: 8px 10px;
+}
+/* On a wide screen the page fills the window: the tabs and filters stay put, and the rows (and an
+   item's totals) scroll in their own panels. */
+@media (min-width: 900px) {
+  .control-panel-main > .activity-log {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+  .control-panel-main > .activity-log > * {
+    flex: none;
+  }
+  .control-panel-main > .activity-log > .activity-search:not([hidden]),
+  .control-panel-main > .activity-log > .activity-reconcile:not([hidden]) {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+  .activity-search > *,
+  .activity-reconcile > * {
+    flex: none;
+  }
+  .activity-search > .activity-results {
+    flex: 1 1 auto;
+    min-height: 0;
+    flex-wrap: nowrap;
+    align-items: stretch;
+  }
+  .activity-results > .activity-rows,
+  .activity-results > .activity-totals {
+    max-height: 100%;
+    overflow-y: auto;
+    align-self: flex-start;
+  }
+  .activity-reconcile > .activity-runs {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+  }
+}
 /* The Characters page and player hub (ui/characters.ts). */
 .characters [hidden],
 .hub [hidden] {
@@ -2192,6 +2338,162 @@ body {
 .hub-edit-changes {
   margin: 0;
   padding-left: 16px;
+}
+/* The Characters page laid out like the content editors (ui/characters.ts): the list on the left,
+   the chosen character beside it in a panel of its own, with its tabs kept in view. */
+.characters .characters-list-box .control-panel-field {
+  padding-top: 0;
+}
+.characters-count {
+  margin: 0 0 6px;
+}
+.characters-list-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+.characters-online,
+.characters-offline {
+  font-size: 11px;
+}
+.characters-online {
+  color: #8fd88f;
+}
+.characters-offline {
+  color: var(--ui-text-muted);
+}
+.characters .items-list-meta {
+  display: block;
+  margin-left: 0;
+}
+.characters-saved {
+  font-size: 10px;
+}
+.hub-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+.characters .hub-title {
+  margin: 0 0 2px;
+}
+.characters .hub-summary {
+  margin: 0;
+}
+.characters .hub-tools {
+  padding: 0;
+}
+.characters .hub .activity-status:empty {
+  display: none;
+}
+.characters .hub .activity-status,
+.characters .hub .activity-subtitle,
+.characters .hub-facts,
+.characters .hub-list,
+.characters .hub-edit-grid,
+.characters .hub-edit-note,
+.characters .hub-edit-bag,
+.characters .hub-edit-check {
+  margin-left: 0;
+  margin-right: 0;
+}
+.characters .hub-section .activity-filters {
+  padding-left: 0;
+  padding-right: 0;
+}
+.characters .hub-body {
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 8px 24px;
+  padding: 8px 0 4px;
+}
+.characters .hub-body[data-tab="edit"] {
+  display: block;
+  padding-bottom: 0;
+}
+.characters .hub:has(.hub-editor) {
+  padding-bottom: 0;
+}
+.hub-levels {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 0 20px;
+  margin: 0 0 8px;
+}
+.hub-level {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 0;
+  border-bottom: 1px dotted var(--ui-wood-3);
+}
+.hub-level dt {
+  color: var(--ui-text-soft);
+}
+.hub-level dd {
+  margin: 0;
+  color: #eee;
+  font-variant-numeric: tabular-nums;
+}
+.hub-edit-grid.hub-edit-compact {
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 2px 20px;
+}
+.hub-edit-compact > .control-panel-field {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 1px 0;
+}
+.hub-edit-compact > .control-panel-field > input {
+  flex: none;
+  width: 4.5em;
+  padding-top: 2px;
+  padding-bottom: 2px;
+}
+.characters .hub-edit-bag {
+  display: block;
+  columns: 2 280px;
+  column-gap: 24px;
+}
+.characters .hub-edit-bag-row {
+  margin-bottom: 4px;
+  break-inside: avoid;
+}
+.hub-edit-part {
+  margin: 10px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ui-text-soft);
+}
+.hub-edit-tab > .balance-row-title + .hub-edit-part {
+  margin-top: 0;
+}
+.hub-edit-save {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 16px;
+}
+.hub-edit-save > .control-panel-field {
+  flex: 1 1 220px;
+  max-width: 340px;
+}
+.hub-edit-save > .hub-edit-check {
+  margin: 0;
+}
+.hub-edit-save-buttons {
+  display: flex;
+  gap: 6px;
+}
+.hub-editor .control-panel-form-actions .activity-status {
+  margin: 0;
+}
+.hub-editor .control-panel-form-actions .activity-status:empty {
+  display: none;
 }
 /* The hub's houses (issue #36): each row's Revoke and Transfer. */
 .hub-house-actions {

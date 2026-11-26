@@ -15,7 +15,7 @@ afterEach(() => installContent(classic));
 test("the character editor's skills, classes and item suggestions follow a publish", () => {
   const editor = createCharacterEditor({ save: () => true, host: document.body });
   const host = document.createElement("div");
-  host.append(...editor.sections);
+  host.append(editor.el);
   const skillInputs = () => host.querySelectorAll('[data-action^="hub-edit-skill-"]').length;
   const before = skillInputs();
   expect(before).toBe(classicData.classes.skills.length);

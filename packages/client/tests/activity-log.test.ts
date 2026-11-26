@@ -108,12 +108,23 @@ describe("asking for rows", () => {
     expect(sent.map((q) => q.name)).toEqual(["Al"]);
   });
 
-  test("Item flow asks for an item, and the mode buttons say which is on", () => {
+  test("the arrow keys move between the views, as tabs do", () => {
+    const { $ } = page();
+    $("activity-mode-timeline").focus();
+    $("activity-mode-timeline").dispatchEvent(
+      new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }),
+    );
+    expect($("activity-mode-item").getAttribute("aria-selected")).toBe("true");
+    expect(document.activeElement).toBe($("activity-mode-item"));
+    expect($<HTMLInputElement>("activity-name").placeholder).toContain("Gold");
+  });
+
+  test("Item flow asks for an item, and the tabs say which is on", () => {
     const { sent, $ } = page();
-    expect($("activity-mode-timeline").getAttribute("aria-pressed")).toBe("true");
+    expect($("activity-mode-timeline").getAttribute("aria-selected")).toBe("true");
     $("activity-mode-item").click();
-    expect($("activity-mode-item").getAttribute("aria-pressed")).toBe("true");
-    expect($("activity-mode-timeline").getAttribute("aria-pressed")).toBe("false");
+    expect($("activity-mode-item").getAttribute("aria-selected")).toBe("true");
+    expect($("activity-mode-timeline").getAttribute("aria-selected")).toBe("false");
     $<HTMLInputElement>("activity-name").value = "Apple";
     $("activity-show").click();
     expect(sent.at(-1)).toMatchObject({ scope: "item", name: "Apple" });
@@ -210,7 +221,7 @@ describe("showing rows", () => {
     p.receive({ seq: 1, rows: [row()], more: false });
     expect(cells()).toEqual([]);
     expect($<HTMLInputElement>("activity-name").value).toBe("");
-    expect($("activity-mode-timeline").getAttribute("aria-pressed")).toBe("true");
+    expect($("activity-mode-timeline").getAttribute("aria-selected")).toBe("true");
     expect(status()).toBe("Type a character's name and choose Show.");
   });
 
@@ -290,7 +301,7 @@ describe("the Reconciliation section (issue #35)", () => {
     expect(sent).toEqual([{ seq: 1, run: false }]);
     expect(recon()?.hidden).toBe(false);
     expect(p.el.querySelector<HTMLElement>(".activity-search")?.hidden).toBe(true);
-    expect($("activity-mode-reconcile").getAttribute("aria-pressed")).toBe("true");
+    expect($("activity-mode-reconcile").getAttribute("aria-selected")).toBe("true");
     // Shown again: asked again.
     p.onShow();
     expect(sent).toEqual([
@@ -329,7 +340,24 @@ describe("the Reconciliation section (issue #35)", () => {
     links[0]?.click();
     expect(queries.at(-1)).toMatchObject({ scope: "item", name: "Steel Sword", before: null });
     expect(p.el.querySelector<HTMLElement>(".activity-search")?.hidden).toBe(false);
-    expect($("activity-mode-item").getAttribute("aria-pressed")).toBe("true");
+    expect($("activity-mode-item").getAttribute("aria-selected")).toBe("true");
+  });
+
+  test("each run folds under its heading: the newest open, a run with differences marked", () => {
+    const { p, $ } = reconPage();
+    $("activity-mode-reconcile").click();
+    p.receiveReconcile({
+      seq: 1,
+      runs: [
+        run({ mismatches: 0, rows: [] }),
+        run({ id: "run1", at: "2026-11-24T04:00:01.000Z", rows: [item()], mismatches: 1 }),
+      ],
+    });
+    const runs = [...p.el.querySelectorAll<HTMLDetailsElement>("details.activity-run")];
+    expect(runs.map((r) => r.open)).toEqual([true, false]);
+    expect(runs.map((r) => r.classList.contains("activity-run-differs"))).toEqual([false, true]);
+    // The heading is what opens and folds a run.
+    expect(runs[1]?.querySelector("summary h2")?.textContent).toContain("1 of 40 items differ");
   });
 
   test("Run now asks for a run and shows what it found; an older answer is ignored", () => {

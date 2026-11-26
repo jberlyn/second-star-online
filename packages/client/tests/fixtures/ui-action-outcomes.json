@@ -3305,6 +3305,15 @@
     "errors": []
   },
   {
+    "action": "activity-modes",
+    "tag": "DIV",
+    "events": ["keydown"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
     "action": "activity-mode-timeline",
     "tag": "BUTTON",
     "events": ["click"],
@@ -3407,6 +3416,15 @@
     "action": "activity-reconcile-run",
     "tag": "BUTTON",
     "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "activity-modes",
+    "tag": "DIV",
+    "events": ["keydown"],
     "hidden": false,
     "changed": false,
     "calls": [],
@@ -3523,16 +3541,7 @@
   {
     "action": "characters-query",
     "tag": "INPUT",
-    "events": ["keydown"],
-    "hidden": false,
-    "changed": false,
-    "calls": [],
-    "errors": []
-  },
-  {
-    "action": "characters-search",
-    "tag": "BUTTON",
-    "events": ["click"],
+    "events": ["input", "keydown"],
     "hidden": false,
     "changed": false,
     "calls": [],
@@ -3540,15 +3549,6 @@
   },
   {
     "action": "characters-open",
-    "tag": "TR",
-    "events": ["click", "keydown"],
-    "hidden": false,
-    "changed": false,
-    "calls": [],
-    "errors": []
-  },
-  {
-    "action": "hub-back",
     "tag": "BUTTON",
     "events": ["click"],
     "hidden": false,
@@ -3569,6 +3569,15 @@
     "action": "hub-activity",
     "tag": "BUTTON",
     "events": ["click"],
+    "hidden": true,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-tabs",
+    "tag": "DIV",
+    "events": ["keydown"],
     "hidden": true,
     "changed": false,
     "calls": [],
@@ -5377,25 +5386,7 @@
     "errors": []
   },
   {
-    "action": "characters-search",
-    "tag": "BUTTON",
-    "events": ["click"],
-    "hidden": false,
-    "changed": false,
-    "calls": [],
-    "errors": []
-  },
-  {
     "action": "characters-open",
-    "tag": "TR",
-    "events": ["click"],
-    "hidden": false,
-    "changed": false,
-    "calls": [],
-    "errors": []
-  },
-  {
-    "action": "hub-back",
     "tag": "BUTTON",
     "events": ["click"],
     "hidden": false,
@@ -5415,6 +5406,15 @@
   {
     "action": "hub-activity",
     "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-tabs",
+    "tag": "DIV",
     "events": ["click"],
     "hidden": false,
     "changed": false,
@@ -5506,6 +5506,69 @@
     "action": "hub-house-to",
     "tag": "INPUT",
     "events": ["input"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-tab",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-tab",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-tab",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-tab",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-tab",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-tab",
+    "tag": "BUTTON",
+    "events": ["click"],
+    "hidden": false,
+    "changed": false,
+    "calls": [],
+    "errors": []
+  },
+  {
+    "action": "hub-edit-tab",
+    "tag": "BUTTON",
+    "events": ["click"],
     "hidden": false,
     "changed": false,
     "calls": [],
