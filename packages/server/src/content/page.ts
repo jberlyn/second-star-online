@@ -483,6 +483,12 @@ export function contentIntent(
           currency: d.bindings.currency.item ?? null,
           maxSide: SPRITE_MAX_SIDE,
           packPictures: service.packPictures(),
+          houseTypes: d.houses.types.map((t) => ({
+            house: t.house,
+            footprint: t.footprint,
+            member: t.ghost.member,
+            ...(t.ghost.picture !== undefined ? { picture: t.ghost.picture } : {}),
+          })),
         },
       };
     }

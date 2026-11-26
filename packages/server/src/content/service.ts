@@ -2314,21 +2314,33 @@ export class ContentService {
   draftPicture(actor: ContentActor, change: PictureChange): ContentResult<string> {
     const base = this.draftContent();
     const uploads = new Set(base.art.items.map((a) => a.name.toLowerCase()));
-    const plan = planPicture(change, base.items.items, base.art.items, (name) => {
-      const n = name.toLowerCase();
-      return uploads.has(n) || this.packArt.sprites.items.has(n);
-    });
+    const plan = planPicture(
+      change,
+      base.items.items,
+      base.art.items,
+      (name) => {
+        const n = name.toLowerCase();
+        return uploads.has(n) || this.packArt.sprites.items.has(n);
+      },
+      base.houses.types,
+    );
     if (!plan.ok) {
       return fail(plan.error);
     }
-    const wrote = this.writeDraftRows(actor, plan.rows, ["items", "art"]);
+    const wrote = this.writeDraftRows(
+      actor,
+      plan.rows,
+      change.op === "house" ? ["houses", "art"] : ["items", "art"],
+    );
     if (!wrote.ok) {
       return fail("the picture does not match the art rows' schema", wrote.problems);
     }
     const what =
       change.op === "pile"
         ? change.pile
-        : `${base.items.items.find((i) => i.name.toLowerCase() === change.item.toLowerCase())?.name ?? change.item}'s picture`;
+        : change.op === "house"
+          ? `${base.houses.types.find((t) => t.house.toLowerCase() === change.house.toLowerCase())?.house ?? change.house}'s placement preview`
+          : `${base.items.items.find((i) => i.name.toLowerCase() === change.item.toLowerCase())?.name ?? change.item}'s picture`;
     return { ok: true, value: `${what} is in the draft.` };
   }
 

@@ -4676,6 +4676,13 @@ body {
   gap: 6px;
   align-items: center;
 }
+.house-art-preview {
+  display: block;
+  max-width: 100%;
+  image-rendering: pixelated;
+  border: 1px solid var(--ui-trim);
+}
+
 .item-art-messages {
   margin: 0;
   padding-left: 18px;

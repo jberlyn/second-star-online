@@ -76,6 +76,10 @@ export function usedArt(raw: ContentData): {
   for (const v of data.houses.vehicles ?? []) {
     note(sprites.items, v.picture, `the ${v.name}`);
   }
+  // A house type's uploaded placement preview (issue #10).
+  for (const t of data.houses.types) {
+    note(sprites.items, t.ghost.picture, `the ${t.house}'s placement preview`);
+  }
   // The engine's currency piles, drawn for a pile of the currency whatever it is called.
   for (const pile of CURRENCY_PILES) {
     note(sprites.items, pile.name, "the currency's piles");

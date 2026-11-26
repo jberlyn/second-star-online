@@ -20,7 +20,7 @@
  * - **Pictures & Sounds** (issue #29): item pictures (item-art.ts), worn layers (worn-art.ts),
  *   bodies (body-art.ts), spell effects (fx-art.ts), tiles (tile-art.ts) and sounds (sound-art.ts),
  *   one kind at a time, with bulk uploads. The Items, Creatures and Spells pages show one record's
- *   panel through `itemPanels`, `monsterBody` and `spellEffect`.
+ *   panel through `itemPanels`, `monsterBody`, `spellEffect` and `housePreview`.
  */
 import type { ArtFrameId } from "@secondstaronline/data";
 import type {
@@ -77,6 +77,7 @@ import {
   panelButton,
 } from "./control-panel-kit.ts";
 import { createFxArtPicker, createSpellEffects } from "./fx-art.ts";
+import { createHouseArtPanel } from "./house-art.ts";
 import { createItemArtPicker, createItemPictures } from "./item-art.ts";
 import { createSounds } from "./sound-art.ts";
 import { createTiles } from "./tile-art.ts";
@@ -234,6 +235,8 @@ export interface ContentPage {
   monsterBody(saved: () => void): MonsterBodyPanel | null;
   /** The Spells page's cast-effect panel. Null with no art to draw it. */
   spellEffect(saved: () => void): RecordPanel | null;
+  /** The House types tab's placement preview panel (issue #10). Null with no art to draw it. */
+  housePreview(saved: () => void): RecordPanel | null;
   /** The Pictures & Sounds page: every picture and sound, one kind at a time. */
   readonly artEl: HTMLElement;
   /** Picture work set up and not yet saved. */
@@ -1157,6 +1160,56 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
     return spellEffectMade;
   }
 
+  /** The House types tab's placement preview panel, once made. */
+  let housePreviewMade: RecordPanel | null = null;
+  function housePreview(saved: () => void): RecordPanel | null {
+    if (housePreviewMade || !artOptions) {
+      return housePreviewMade;
+    }
+    let justSaved = false;
+    const panel = createHouseArtPanel({
+      ...artOptions,
+      saved() {
+        justSaved = true;
+        refreshAll();
+        saved();
+      },
+    });
+    let mine = 0;
+    let shown: string | null = null;
+    housePreviewMade = {
+      el: panel.el,
+      show(house: string, force = false) {
+        const at = ++mine;
+        const same = shown !== null && shown.toLowerCase() === house.toLowerCase();
+        shown = house;
+        const keep = !force && same && !justSaved && panel.pending();
+        justSaved = false;
+        if (keep) {
+          return;
+        }
+        void askItemArt()
+          .then((view) => {
+            if (at === mine && shown !== null) {
+              panel.show(house, view);
+            }
+          })
+          .catch(() => {
+            if (at === mine) {
+              panel.clear();
+            }
+          });
+      },
+      clear() {
+        mine += 1;
+        shown = null;
+        panel.clear();
+      },
+      pending: () => panel.pending(),
+    };
+    return housePreviewMade;
+  }
+
   // ---- the row view: where it is used, and removing it ----------------------------------------
   const editor = document.createElement("div");
   editor.className = "content-editor";
@@ -1772,6 +1825,7 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
     itemPanels,
     monsterBody,
     spellEffect,
+    housePreview,
     onHide: () => sounds?.stop(),
     receive(msg) {
       switch (msg.t) {

@@ -272,17 +272,22 @@ export const CRAFT_TABS: AreaTab[] = [
 
 /**
  * The Houses & Vehicles page. `removeVehicle` opens a vehicle's removal, which asks what happens to
- * its riders, the parked ones and its deeds.
+ * its riders, the parked ones and its deeds; `preview` is each house type's placement preview
+ * panel (issue #10).
  */
 export const HOUSE_TABS = (
   vehicleNumbers: AreaTab,
   removeVehicle?: (name: string) => void,
+  preview?: () => RecordPanelLike | null,
 ): AreaTab[] => [
   {
     kind: "records",
     label: "House types",
-    help: "Each kind of house players can build: its size and tiles.",
-    part: p("houses", "types", "House types", "", { noun: "house type" }),
+    help: "Each kind of house players can build: its size, its tiles, what is inside and the picture shown while placing it.",
+    part: p("houses", "types", "House types", "", {
+      noun: "house type",
+      ...(preview ? { panel: preview } : {}),
+    }),
   },
   {
     kind: "records",

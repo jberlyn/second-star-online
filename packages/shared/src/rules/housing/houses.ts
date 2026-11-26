@@ -81,6 +81,15 @@ export function houseAnchor(t: HouseType, hx: number, hy: number): { x: number; 
   return { x: hx + t.anchor.dx, y: hy + t.anchor.dy };
 }
 
+/**
+ * Where a house type's uploaded ghost (`ghost.picture`, issue #10) is drawn over the hovered tile:
+ * its anchor goes on the footprint's top-left corner, in playfield pixels (0-based).
+ */
+export function ghostPicturePoint(t: HouseType, hx: number, hy: number): { x: number; y: number } {
+  const a = houseAnchor(t, hx, hy);
+  return { x: (a.x - 1) * 32, y: (a.y - 1) * 32 };
+}
+
 const wordAt = (rows: readonly string[], x: number, y: number): string =>
   (rows[y - 1] ?? "").split(" ").filter((w) => w !== "")[x - 1] ?? "";
 

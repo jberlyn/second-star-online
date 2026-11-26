@@ -172,7 +172,13 @@ describe("Only server systems create items", () => {
       // The Packs page (issue #34): a checked pack file by its import id, a pack by its id.
       contentPackApply: ["importId:string"],
       contentPackRemove: ["id:string"],
-      contentPicture: ["change.item:string", "change.art.file:string", "change.picture:string"],
+      // A house type's placement preview (issue #10) names the house type, checked by the server.
+      contentPicture: [
+        "change.item:string",
+        "change.art.file:string",
+        "change.picture:string",
+        "change.house:string",
+      ],
       // A worn layer change (issue #29, stage 3): a layer's name, its frames' uploaded files by
       // SHA-256 (checked by the schema), an item by key. A sheet to cut into frames, by SHA-256.
       contentWorn: ["change.layer:string", "change.frames{}:string", "change.item:string"],

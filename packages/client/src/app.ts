@@ -995,6 +995,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
           controlPanel.go("content", () =>
             contentPage.openRow({ dataset: "houses", part: "vehicles", key: name }),
           ),
+        () => contentPage.housePreview(() => housesArea.published()),
       ),
     },
     areaDeps,
@@ -1730,7 +1731,8 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         const ghost: Ghost = { house: msg.house, slot: msg.slot, tile: null, img: null };
         model.ghost = ghost;
         const t = houseType(msg.house);
-        if (t) {
+        // An uploaded ghost is drawn from the items atlas (ui/placement.ts).
+        if (t && t.ghost.picture === undefined) {
           const img = new Image();
           img.onload = () => {
             ghost.img = img;

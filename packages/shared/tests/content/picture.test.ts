@@ -9,8 +9,10 @@ import {
   defaultItemAnchor,
   faintEdges,
   guessTransparency,
+  housePlacementPicture,
   itemPictureReport,
   type PictureArtRow,
+  type PictureHouseType,
   type PictureItem,
   type Pixels,
   planPicture,
@@ -235,5 +237,79 @@ describe("what a picture change writes", () => {
     expect(rows(planPicture({ op: "pile", pile: "SmallGold", art: null }, items, [], exists))).toBe(
       "SmallGold has no upload to take out.",
     );
+  });
+
+  // Issue #10: a house type's placement preview is uploaded on the House types form.
+  describe("a house type's placement preview", () => {
+    const hall = {
+      house: "Stone Guild Hall",
+      guild: true,
+      ghost: { member: 3, width: 96, height: 97, regX: 48, regY: 49, shiftX: 0, shiftY: 0 },
+    };
+    const houses: PictureHouseType[] = [hall];
+    const named = "Stone Guild Hall (placement)";
+    const plan = (change: Parameters<typeof planPicture>[0], up: PictureArtRow[] = []) =>
+      rows(planPicture(change, items, up, exists, houses));
+
+    test("is named after the house", () => {
+      expect(housePlacementPicture("Stone Guild Hall")).toBe(named);
+    });
+
+    test("an upload sets the picture and names it on the type, keeping the rest of the row", () => {
+      expect(plan({ op: "house", house: "stone guild hall", art })).toEqual([
+        {
+          ref: { dataset: "art", part: "items", key: named },
+          op: "set",
+          data: { name: named, file: FILE, regX: 16, regY: -2 },
+        },
+        {
+          ref: { dataset: "houses", part: "types", key: "Stone Guild Hall" },
+          op: "set",
+          data: { ...hall, ghost: { ...hall.ghost, picture: named } },
+        },
+      ]);
+    });
+
+    test("a new upload over one the type already names changes only the picture", () => {
+      const withPic: PictureHouseType[] = [{ ...hall, ghost: { ...hall.ghost, picture: named } }];
+      const up = [{ name: named, file: FILE, regX: 0, regY: 0 }];
+      expect(
+        rows(planPicture({ op: "house", house: hall.house, art }, items, up, exists, withPic)),
+      ).toEqual([
+        {
+          ref: { dataset: "art", part: "items", key: named },
+          op: "set",
+          data: { name: named, file: FILE, regX: 16, regY: -2 },
+        },
+      ]);
+    });
+
+    test("taking it out removes the upload and goes back to the built-in picture", () => {
+      const withPic: PictureHouseType[] = [{ ...hall, ghost: { ...hall.ghost, picture: named } }];
+      const up = [{ name: named, file: FILE, regX: 0, regY: 0 }];
+      expect(
+        rows(
+          planPicture({ op: "house", house: hall.house, art: null }, items, up, exists, withPic),
+        ),
+      ).toEqual([
+        { ref: { dataset: "art", part: "items", key: named }, op: "remove", data: null },
+        {
+          ref: { dataset: "houses", part: "types", key: "Stone Guild Hall" },
+          op: "set",
+          data: hall,
+        },
+      ]);
+      expect(plan({ op: "house", house: hall.house, art: null })).toBe(
+        "Stone Guild Hall has no placement preview of its own to take out.",
+      );
+    });
+
+    test("an unknown house or one too long to name a picture is refused", () => {
+      expect(plan({ op: "house", house: "Castle", art })).toBe("There is no house type Castle.");
+      const long = { ...hall, house: "H".repeat(70) };
+      expect(
+        rows(planPicture({ op: "house", house: long.house, art }, items, [], exists, [long])),
+      ).toMatch(/too long to name its picture/);
+    });
   });
 });

@@ -8,12 +8,15 @@
  * Refusals arrive as chat lines and leave placement on.
  */
 import {
+  ghostPicturePoint,
   ghostRect,
   houseType,
   MAP_HEIGHT,
   MAP_WIDTH,
   PLAYFIELD_RECT,
 } from "@secondstaronline/shared";
+
+import { type Assets, drawSprite } from "../assets.ts";
 
 export interface Ghost {
   house: string;
@@ -42,7 +45,19 @@ export function ghostTopLeft(g: Ghost): { x: number; y: number } | null {
   return { x: r.left - PLAYFIELD_RECT.left, y: r.top - PLAYFIELD_RECT.top };
 }
 
-export function drawGhost(ctx: CanvasRenderingContext2D, g: Ghost | null): void {
+/**
+ * Draws the ghost: a house type's uploaded picture (`ghost.picture`, issue #10) from the items
+ * atlas with its anchor on the footprint's top-left corner, else its `Houses` member.
+ */
+export function drawGhost(ctx: CanvasRenderingContext2D, g: Ghost | null, assets?: Assets): void {
+  const t = g?.tile ? houseType(g.house) : null;
+  if (g?.tile && t?.ghost.picture !== undefined) {
+    if (assets) {
+      const at = ghostPicturePoint(t, g.tile.x, g.tile.y);
+      drawSprite(ctx, assets, "items", t.ghost.picture, at.x, at.y);
+    }
+    return;
+  }
   const at = g?.img ? ghostTopLeft(g) : null;
   if (g?.img && at) {
     ctx.drawImage(g.img, at.x, at.y);

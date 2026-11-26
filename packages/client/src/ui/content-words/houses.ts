@@ -113,8 +113,12 @@ export const housesWords: WordBook = {
   },
   "types.ghost": {
     label: "Placement preview picture",
-    help: "The see-through picture shown while choosing where to build.",
+    help: "The see-through picture shown while choosing where to build. Upload one in the Placement preview panel above; these numbers place the game's built-in pictures.",
     more: true,
+  },
+  "types.ghost.picture": {
+    label: "Uploaded picture",
+    help: "The picture the Placement preview panel saved, shown instead of the picture number. Leave off to use the picture number.",
   },
   "types.ghost.member": { label: "Picture number" },
   "types.ghost.width": { label: "Width (pixels)" },

@@ -818,6 +818,11 @@ export const contentPictureSchema = z.strictObject({
       pile: z.enum(["SmallGold", "MediumGold", "LargeGold"]),
       art: pictureSettings.nullable(),
     }),
+    z.strictObject({
+      op: z.literal("house"),
+      house: z.string().min(1).max(80),
+      art: pictureSettings.nullable(),
+    }),
   ]),
 });
 
@@ -836,6 +841,16 @@ export interface ContentItemArtView {
   packPictures: string[];
   /** The largest side an item picture may have. */
   maxSide: number;
+  /**
+   * Each house type as the draft would publish it, for its placement preview panel (issue #10):
+   * its footprint, where it is drawn from the hovered tile, its `Houses` member and its upload.
+   */
+  houseTypes?: {
+    house: string;
+    footprint: { w: number; h: number };
+    member: number;
+    picture?: string;
+  }[];
 }
 
 /**

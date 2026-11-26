@@ -257,11 +257,18 @@ export type PictureChange =
   | { op: "upload"; item: string; art: PictureSettings }
   | { op: "choose"; item: string; picture: string }
   | { op: "remove"; item: string }
-  | { op: "pile"; pile: CurrencyPile; art: PictureSettings | null };
+  | { op: "pile"; pile: CurrencyPile; art: PictureSettings | null }
+  /**
+   * A house type's placement preview (issue #10): its upload, named `<house> (placement)`, and the
+   * type's `ghost.picture`, set or taken out together.
+   */
+  | { op: "house"; house: string; art: PictureSettings | null };
 
 /** One row a picture change writes. */
 export interface PictureRowChange {
-  ref: { dataset: "items" | "art"; part: "items"; key: string };
+  ref:
+    | { dataset: "items" | "art"; part: "items"; key: string }
+    | { dataset: "houses"; part: "types"; key: string };
   op: "set" | "remove";
   data: unknown;
 }
@@ -285,6 +292,23 @@ export function pictureArtRow(name: string, s: PictureSettings): PictureArtRow {
 const artRef = (key: string) => ({ dataset: "art" as const, part: "items" as const, key });
 const itemRef = (key: string) => ({ dataset: "items" as const, part: "items" as const, key });
 
+/** The item picture the House types form's upload gives a house type's ghost (issue #10). */
+export function housePlacementPicture(house: string): string {
+  return `${house} (placement)`;
+}
+
+/** The longest picture name an `art/items` row takes. */
+const PICTURE_NAME_MAX = 80;
+
+/** What a house picture change reads of a house type. */
+export interface PictureHouseType {
+  house: string;
+  /** The rest of the ghost is kept as it is. */
+  ghost: { picture?: string; [field: string]: unknown };
+}
+
+const houseRef = (key: string) => ({ dataset: "houses" as const, part: "types" as const, key });
+
 /** An item row without its `sprite`. */
 function withoutSprite<T extends PictureItem>(item: T): T {
   const { sprite: _sprite, ...rest } = item;
@@ -302,14 +326,20 @@ function withoutSprite<T extends PictureItem>(item: T): T {
  * - Choosing a picture only sets `sprite` (none for the item's own name); its own upload goes
  *   when nothing else draws it.
  * - A pile is an `art/items` row under the engine's name.
+ * - A house type's placement preview is an `art/items` row named `<house> (placement)`, and the
+ *   type's `ghost.picture` names it (read from the type's row as the draft has it now).
  */
-export function planPicture<T extends PictureItem>(
+export function planPicture<T extends PictureItem, H extends PictureHouseType = PictureHouseType>(
   change: PictureChange,
   items: readonly T[],
   art: readonly PictureArtRow[],
   exists: (name: string) => boolean,
+  houses: readonly H[] = [],
 ): { ok: true; rows: PictureRowChange[] } | { ok: false; error: string } {
   const upload = (name: string) => art.find((a) => sameName(a.name, name));
+  if (change.op === "house") {
+    return planHousePicture(change, houses, upload);
+  }
   if (change.op === "pile") {
     const row = upload(change.pile);
     if (change.art === null) {
@@ -365,4 +395,47 @@ export function planPicture<T extends PictureItem>(
   return rows.length > 0
     ? { ok: true, rows }
     : { ok: false, error: `${item.name} already draws ${change.picture}.` };
+}
+
+/** A house type's placement preview change (issue #10): its upload and the type's `ghost.picture`. */
+function planHousePicture<H extends PictureHouseType>(
+  change: { house: string; art: PictureSettings | null },
+  houses: readonly H[],
+  upload: (name: string) => PictureArtRow | undefined,
+): { ok: true; rows: PictureRowChange[] } | { ok: false; error: string } {
+  const type = houses.find((t) => sameName(t.house, change.house));
+  if (!type) {
+    return { ok: false, error: `There is no house type ${change.house}.` };
+  }
+  const own = upload(housePlacementPicture(type.house));
+  const name = own?.name ?? housePlacementPicture(type.house);
+  const current = type.ghost.picture;
+  const rows: PictureRowChange[] = [];
+  if (change.art === null) {
+    if (own) {
+      rows.push({ ref: artRef(own.name), op: "remove", data: null });
+    }
+    if (current !== undefined) {
+      const { picture: _picture, ...ghost } = type.ghost;
+      rows.push({ ref: houseRef(type.house), op: "set", data: { ...type, ghost } });
+    }
+    return rows.length > 0
+      ? { ok: true, rows }
+      : { ok: false, error: `${type.house} has no placement preview of its own to take out.` };
+  }
+  if (name.length > PICTURE_NAME_MAX) {
+    return {
+      ok: false,
+      error: `${type.house}'s name is too long to name its picture: shorten it to ${PICTURE_NAME_MAX - " (placement)".length} letters or fewer.`,
+    };
+  }
+  rows.push({ ref: artRef(name), op: "set", data: pictureArtRow(name, change.art) });
+  if (current === undefined || !sameName(current, name)) {
+    rows.push({
+      ref: houseRef(type.house),
+      op: "set",
+      data: { ...type, ghost: { ...type.ghost, picture: name } },
+    });
+  }
+  return { ok: true, rows };
 }

@@ -512,7 +512,7 @@ export function createPlayfield(assets: Assets): Playfield {
         }
       }
       // The placement ghost, sprite 360 at locZ 3000.
-      drawGhost(ctx, model.ghost);
+      drawGhost(ctx, model.ghost, assets);
       if (black) {
         // The picture stays until the respawn map is drawn.
         model.deathStage = "frozen";

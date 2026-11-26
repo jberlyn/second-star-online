@@ -32,6 +32,12 @@ const houseType = z.strictObject({
     regY: int,
     shiftX: int,
     shiftY: int,
+    /**
+     * An item picture (an upload or a pack's, issue #10) drawn as the ghost instead of `member`,
+     * with its anchor on the footprint's top-left corner; the fields above are then unused. The
+     * House types form's upload names it `<house> (placement)`.
+     */
+    picture: text.max(80).optional(),
   }),
   /** Added to the hovered tile when placing a house: the footprint's top-left tile. */
   anchor: z.strictObject({ dx: int, dy: int }),
