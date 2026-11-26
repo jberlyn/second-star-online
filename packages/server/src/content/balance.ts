@@ -12,6 +12,9 @@ import {
   BALANCE_DROP_WHO,
   BALANCE_HEAL_EFFECTS,
   BALANCE_LIMITS,
+  KILL_XP_ADJUST,
+  LEVEL_COUNTING,
+  MONSTER_LEVEL_DISPLAY,
   ROSTER_SLOTS,
 } from "@secondstaronline/data/schema";
 import {
@@ -80,6 +83,23 @@ const choiceField = <T extends string>(
   min: 0,
   max: 0,
   choices: values.map((value) => ({ value, label: labels[value] })),
+  ...(help ? { help } : {}),
+});
+
+/** A list of counts typed with commas, each within `limits`, at most `maxItems`. */
+const listField = (
+  path: string[],
+  label: string,
+  limits: { min: number; max: number },
+  maxItems: number,
+  help?: string,
+): BalanceFieldView => ({
+  path,
+  label,
+  unit: "list",
+  min: limits.min,
+  max: limits.max,
+  maxItems,
   ...(help ? { help } : {}),
 });
 
@@ -427,6 +447,150 @@ export const BALANCE_GROUPS: readonly BalanceGroupDef[] = [
             "seconds",
             BALANCE_LIMITS.lootSeconds,
             "Player drops and items placed with /drop never disappear. 1.6 never removed ground items.",
+          ),
+        ],
+      },
+    ],
+  },
+  {
+    id: "levels",
+    title: "Levels and experience",
+    help: "How much experience a kill gives, how much each character level takes, and what a level gives. A monster's own XP and level are set on the Creatures & NPCs page; gear that adds kill XP (a Ring of Experience) on the Items page.",
+    rows: [
+      {
+        part: "killXp",
+        key: null,
+        label: "Experience from kills",
+        fields: [
+          choiceField(
+            ["adjust"],
+            "The killer's level",
+            KILL_XP_ADJUST,
+            {
+              minusLevel: "Takes its level off the XP (1.6)",
+              none: "Changes nothing: every kill gives the same",
+              levelDifference: "Compares the monster's level with it",
+            },
+            "Takes its level off: a monster gives less as you level, and nothing once your level reaches its XP. Changes nothing: a monster always gives the same XP, so the level curve below must grow steeply instead. Compares: more for a monster above your level, less for one below (a monster with no level counts as your level).",
+          ),
+          field(
+            ["bonus"],
+            "Added to every kill",
+            "count",
+            BALANCE_LIMITS.xp,
+            "After the monster's own XP and any gear's. 1.6 added 10.",
+          ),
+          listField(
+            ["thresholds"],
+            "Extra XP once the XP is above",
+            BALANCE_LIMITS.xp,
+            BALANCE_LIMITS.listItems.max,
+            "Each one the XP is above adds the extra below, tested in order on the growing XP. Rising numbers, separated by commas; empty for none. 1.6: 100, 150, 200, 250, 300, 350, 400.",
+          ),
+          field(["thresholdBonus"], "Extra XP for each", "count", BALANCE_LIMITS.xp),
+          field(
+            ["belowPercent"],
+            "Comparing levels: percent less for each level the monster is below",
+            "count",
+            BALANCE_LIMITS.percent,
+          ),
+          field(
+            ["abovePercent"],
+            "Comparing levels: percent more for each level the monster is above",
+            "count",
+            BALANCE_LIMITS.percent,
+          ),
+          field(
+            ["maxPercent"],
+            "Comparing levels: at most this percent of the XP",
+            "count",
+            BALANCE_LIMITS.percent,
+            "100 means a monster above you gives no more than its XP.",
+          ),
+          field(
+            ["fromLevel", "flat"],
+            "A monster with no XP of its own gives",
+            "count",
+            BALANCE_LIMITS.xp,
+            "Set its level on the Creatures & NPCs page and leave its XP empty: it gives this plus the amount below for each level.",
+          ),
+          field(
+            ["fromLevel", "perLevel"],
+            "Plus, for each of its levels",
+            "count",
+            BALANCE_LIMITS.xp,
+          ),
+          field(
+            ["noSpecies"],
+            "A monster that is not on the Creatures & NPCs page gives",
+            "count",
+            BALANCE_LIMITS.xp,
+            "Such as a shopkeeper's stand-in. 1.6 gave 30.",
+          ),
+        ],
+      },
+      {
+        part: "levels",
+        key: null,
+        label: "Character levels",
+        fields: [
+          listField(
+            ["firstLevels"],
+            "XP for the first levels",
+            BALANCE_LIMITS.xp,
+            BALANCE_LIMITS.listItems.max,
+            "Exact XP for level 1, 2, 3… separated by commas. Levels past the list use the formula below. 1.6: 30, 400.",
+          ),
+          field(["start"], "Formula: start at", "count", BALANCE_LIMITS.xp),
+          field(
+            ["perLevel"],
+            "Formula: plus this times the level",
+            "count",
+            BALANCE_LIMITS.xp,
+            "1.6: 400 plus 2 times the level.",
+          ),
+          field(
+            ["exponent"],
+            "Formula: the level raised to the power",
+            "count",
+            BALANCE_LIMITS.exponent,
+            "1 is a straight line; 2 squares the level, so later levels take much more.",
+          ),
+          field(
+            ["growthPercent"],
+            "Formula: then grows by this percent each level",
+            "count",
+            BALANCE_LIMITS.growth,
+            "Compounding: 10 makes each level take about 10% more than the last, as in games where a monster always gives the same XP. 0 for none.",
+          ),
+          choiceField(
+            ["counting"],
+            "XP is counted",
+            LEVEL_COUNTING,
+            {
+              perLevel: "From one level to the next (1.6)",
+              total: "In total, from level 1",
+            },
+            "From one level to the next: the list and formula give the XP each level takes, and the XP bar starts again at 0 each level. In total: they give the total XP that reaches the next level, and the bar shows the running total.",
+          ),
+          {
+            ...field(
+              ["cap"],
+              "Highest level",
+              "count",
+              { min: 1, max: BALANCE_LIMITS.level.max },
+              "Characters stop levelling here; their XP still counts. Empty for no highest level (1.6 had none).",
+            ),
+            optional: true,
+          },
+          field(["hpPerLevel"], "Most HP gained each level", "count", BALANCE_LIMITS.vitals),
+          field(["spPerLevel"], "Most SP gained each level", "count", BALANCE_LIMITS.vitals),
+          choiceField(
+            ["showMonsterLevels"],
+            "Monster levels",
+            MONSTER_LEVEL_DISPLAY,
+            { hidden: "Hidden (1.6)", shown: "Shown beside their names" },
+            'Shown: a monster with a level reads "Wolf (level 3)" in the hover tip and an NPC\'s Bio. Monsters already on a map show the change once it is loaded again.',
           ),
         ],
       },

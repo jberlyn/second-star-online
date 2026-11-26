@@ -35,6 +35,8 @@ export interface Balance {
   timings: NonNullable<BalanceData["timings"]>;
   combat: NonNullable<BalanceData["combat"]>;
   monsters: NonNullable<BalanceData["monsters"]>;
+  killXp: NonNullable<BalanceData["killXp"]>;
+  levels: NonNullable<BalanceData["levels"]>;
 }
 
 /** The spell effects with amounts, in the order the Balance page lists them. */
@@ -134,6 +136,33 @@ export const BALANCE_DEFAULTS: Readonly<Balance> = {
     factionSlotRandomN: 35,
     npcSpawn: { randomN: 60, passAtMost: 2 },
   },
+  // 1.6's kill XP (issue #42): 30 for a name with no species, +10 (`Regged`, always on), +10 for
+  // each of 100, 150 … 400 the growing value is above, less the killer's level. The level-difference
+  // and from-level numbers are SSO's, read only when a pack picks them.
+  killXp: {
+    noSpecies: 30,
+    fromLevel: { flat: 10, perLevel: 5 },
+    bonus: 10,
+    thresholds: [100, 150, 200, 250, 300, 350, 400],
+    thresholdBonus: 10,
+    adjust: "minusLevel",
+    belowPercent: 10,
+    abovePercent: 5,
+    maxPercent: 150,
+  },
+  // 1.6's level curve: 30 XP from level 1, 400 from level 2, then 400 + 2 × level, counted within
+  // each level; +1 HP and SP max a level; no cap; monster levels never shown.
+  levels: {
+    counting: "perLevel",
+    firstLevels: [30, 400],
+    start: 400,
+    perLevel: 2,
+    exponent: 1,
+    growthPercent: 0,
+    hpPerLevel: 1,
+    spPerLevel: 1,
+    showMonsterLevels: "hidden",
+  },
 };
 
 /**
@@ -164,6 +193,8 @@ export function fullBalance(data: BalanceData | undefined): Balance {
     timings: part("timings"),
     combat: part("combat"),
     monsters: part("monsters"),
+    killXp: part("killXp"),
+    levels: part("levels"),
   };
 }
 

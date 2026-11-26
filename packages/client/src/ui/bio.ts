@@ -25,7 +25,12 @@
  * field for saving whether or not it was edited (the server ignores an unchanged one); a bio drawn
  * over it before closing loses the edit.
  */
-import { MEDAL_SLOT_WIDTH, medalStrip, PROFILE_MAX } from "@secondstaronline/shared";
+import {
+  MEDAL_SLOT_WIDTH,
+  medalStrip,
+  PROFILE_MAX,
+  withMonsterLevel,
+} from "@secondstaronline/shared";
 
 import type { Assets } from "../assets.ts";
 import { action } from "./action.ts";
@@ -46,6 +51,7 @@ export interface BioWindow {
   window: GameWindow;
   show(v: {
     name: string;
+    level?: number;
     bio: string[];
     profile: string[];
     buy: boolean;
@@ -179,7 +185,7 @@ export function createBioWindow(a: Assets, layer: WindowLayer, act: BioActions):
     },
     show(v) {
       mode = "npc";
-      win.setTitle(v.name);
+      win.setTitle(withMonsterLevel(v.name, v.level));
       bio.textContent = v.bio.join("\n");
       profile.textContent = v.profile.join("\n");
       profile.hidden = false;

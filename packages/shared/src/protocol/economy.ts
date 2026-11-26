@@ -122,6 +122,8 @@ export type EconomyServerMsg =
   | {
       t: "bio";
       name: string;
+      /** The NPC's level, when the world shows monster levels and its species has one (#42). */
+      level?: number;
       bio: string[];
       profile: string[];
       buy: boolean;

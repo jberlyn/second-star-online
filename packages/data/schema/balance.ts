@@ -5,7 +5,8 @@
  * the defaults. The Classic pack writes 1.6's values out.
  *
  * Small groups are one row each (`spellHits`, `buffs`, `castPower`, `regen`, `hunger`, `death`,
- * `vehicles`, `cannon`, `drops`, `timings`, `combat`, `monsters`); lists of like things are keyed
+ * `vehicles`, `cannon`, `drops`, `timings`, `combat`, `monsters`, `killXp`, `levels`); lists of
+ * like things are keyed
  * rows (`spellEffects` by effect), so a pack update that changes one value notices only its row.
  * Each vehicle's full hull is its `houses.vehicles` row's (issue #44).
  *
@@ -50,6 +51,16 @@ export const BALANCE_LIMITS = {
   lootSeconds: { min: 60, max: 7 * 24 * 60 * 60 },
   /** A damage floor: damage below this rolls instead (at least 1, so a hit always does 1). */
   floorBelow: { min: 1, max: 10_000 },
+  /** An amount of experience. */
+  xp: { min: 0, max: 1_000_000_000 },
+  /** A percentage of kill XP. */
+  percent: { min: 0, max: 10_000 },
+  /** How much more each level of the level curve needs than the last, in percent. */
+  growth: { min: 0, max: 100 },
+  /** The power the level is raised to in the level curve (1: straight, 2: squared …). */
+  exponent: { min: 1, max: 4 },
+  /** The most entries in a list (bonus thresholds, the first levels' XP). */
+  listItems: { min: 0, max: 100 },
 } as const;
 
 const bounded = (l: { min: number; max: number }) => z.number().int().min(l.min).max(l.max);
@@ -355,6 +366,74 @@ export const combatSchema = z.strictObject({
   pushOneIn: bounded(BALANCE_LIMITS.oneIn),
 });
 
+/** How kill XP follows the levels of the killer and the monster (issue #42). */
+export const KILL_XP_ADJUST = ["minusLevel", "none", "levelDifference"] as const;
+
+/**
+ * Kill XP (issue #42): what killing a monster gives the killer's character level. In order:
+ *
+ * 1. the species' base XP for the kind of kill (`xpMelee` or `xpSpell`); a species with neither
+ *    works it out from its level (`fromLevel`: `flat + perLevel × level`), and a name with no
+ *    species gives `noSpecies`;
+ * 2. plus the worn gear's `killXp` (item rules; Classic: the Ring of Experience's 5);
+ * 3. replaced by the monster's fixed kill XP (`rules.killXp`; Classic: Cow and Holy Shield, 5);
+ * 4. plus `bonus` (1.6's `Regged` bonus, always on: 10);
+ * 5. plus `thresholdBonus` for each of `thresholds` the value is above, tested in order on the
+ *    growing value (1.6: 10 for each of 100, 150 … 400);
+ * 6. adjusted by the levels (`adjust`): `minusLevel` takes the killer's level off (1.6), `none`
+ *    keeps it whatever the level (RuneScape), and `levelDifference` scales it by the monster's
+ *    level against the killer's: `belowPercent` less for each level the monster is below, and
+ *    `abovePercent` more for each level above, between 0 and `maxPercent` percent (a monster with
+ *    no level counts as the killer's level). Never below 0.
+ */
+export const killXpSchema = z
+  .strictObject({
+    noSpecies: bounded(BALANCE_LIMITS.xp),
+    fromLevel: z.strictObject({
+      flat: bounded(BALANCE_LIMITS.xp),
+      perLevel: bounded(BALANCE_LIMITS.xp),
+    }),
+    bonus: bounded(BALANCE_LIMITS.xp),
+    thresholds: z.array(bounded(BALANCE_LIMITS.xp)).max(BALANCE_LIMITS.listItems.max),
+    thresholdBonus: bounded(BALANCE_LIMITS.xp),
+    adjust: z.enum(KILL_XP_ADJUST),
+    belowPercent: bounded(BALANCE_LIMITS.percent),
+    abovePercent: bounded(BALANCE_LIMITS.percent),
+    maxPercent: bounded(BALANCE_LIMITS.percent),
+  })
+  .refine((k) => k.thresholds.every((t, i) => i === 0 || t > (k.thresholds[i - 1] ?? 0)), {
+    path: ["thresholds"],
+    message: "thresholds must rise",
+  });
+
+/** How a level's XP is counted (issue #42). */
+export const LEVEL_COUNTING = ["perLevel", "total"] as const;
+/** Whether players see monster levels. */
+export const MONSTER_LEVEL_DISPLAY = ["hidden", "shown"] as const;
+
+/**
+ * The character level curve and what each level gives (issue #42). Leaving level L takes, while
+ * `firstLevels` lasts, its entry for L (the first is level 1's), then
+ * `floor((start + perLevel × L^exponent) × (1 + growthPercent / 100)^(L − 1))`. With `counting`
+ * `perLevel` that is the XP from L to L + 1, counted from 0 within each level with leftovers
+ * carried (1.6: 30, 400, then 400 + 2 × L); with `total` it is the running total that reaches
+ * L + 1, and the XP bar shows the running total. `cap` is the highest level (absent: none). Each
+ * level gained adds `hpPerLevel` and `spPerLevel` to the most HP and SP (1.6: 1 and 1).
+ * `showMonsterLevels` shows each monster's level (`monsters.json` `level`) beside its name.
+ */
+export const levelsSchema = z.strictObject({
+  counting: z.enum(LEVEL_COUNTING),
+  firstLevels: z.array(bounded(BALANCE_LIMITS.xp)).max(BALANCE_LIMITS.listItems.max),
+  start: bounded(BALANCE_LIMITS.xp),
+  perLevel: bounded(BALANCE_LIMITS.xp),
+  exponent: bounded(BALANCE_LIMITS.exponent),
+  growthPercent: bounded(BALANCE_LIMITS.growth),
+  cap: bounded({ min: 1, max: BALANCE_LIMITS.level.max }).optional(),
+  hpPerLevel: bounded(BALANCE_LIMITS.vitals),
+  spPerLevel: bounded(BALANCE_LIMITS.vitals),
+  showMonsterLevels: z.enum(MONSTER_LEVEL_DISPLAY),
+});
+
 export const balanceDataSchema = z.strictObject({
   spellEffects: z
     .array(spellEffectRowSchema)
@@ -374,6 +453,8 @@ export const balanceDataSchema = z.strictObject({
   timings: timingsSchema.optional(),
   combat: combatSchema.optional(),
   monsters: monstersBalanceSchema.optional(),
+  killXp: killXpSchema.optional(),
+  levels: levelsSchema.optional(),
 });
 
 export type FlatAmount = z.infer<typeof flatAmountSchema>;
@@ -387,4 +468,6 @@ export type BalanceDrops = z.infer<typeof dropsSchema>;
 export type BalanceTimings = z.infer<typeof timingsSchema>;
 export type BalanceCombat = z.infer<typeof combatSchema>;
 export type BalanceMonsters = z.infer<typeof monstersBalanceSchema>;
+export type BalanceKillXp = z.infer<typeof killXpSchema>;
+export type BalanceLevels = z.infer<typeof levelsSchema>;
 export type BalanceData = z.infer<typeof balanceDataSchema>;

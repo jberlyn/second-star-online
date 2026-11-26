@@ -4,7 +4,16 @@
  */
 import { describe, expect, test } from "bun:test";
 
-import { ADMINISTRATOR, type ServerMsg, skillIndex } from "@secondstaronline/shared";
+import { classicData } from "@secondstaronline/data/classic";
+import {
+  ADMINISTRATOR,
+  BALANCE_DEFAULTS,
+  buildContentStore,
+  type ContentData,
+  installContent,
+  type ServerMsg,
+  skillIndex,
+} from "@secondstaronline/shared";
 
 import { seededRng } from "../src/rng.ts";
 import { onArenaTile, setAttackHeld } from "../src/systems/combat/melee.ts";
@@ -15,6 +24,7 @@ import {
   type LiveMonster,
   leansToward,
   type MonsterSlot,
+  monsterView,
   species,
 } from "../src/systems/monsters/slots.ts";
 import {
@@ -482,6 +492,39 @@ describe("melee", () => {
     expect(hits.at(-1)).toMatchObject({ kill: true });
     expect(map.slots[0]?.live).toBeNull();
     expect(a.char.vitals.exp).toBe(23);
+  });
+
+  test("issue #42: a world that compares levels gives more for a monster above you, and shows its level", () => {
+    const d = structuredClone(classicData) as ContentData;
+    d.balance = {
+      ...d.balance,
+      killXp: { ...BALANCE_DEFAULTS.killXp, adjust: "levelDifference" },
+      levels: { ...BALANCE_DEFAULTS.levels, showMonsterLevels: "shown" },
+    };
+    const slime = d.monsters.monsters.find((m) => m.name === "Slime");
+    if (slime) {
+      slime.level = 10;
+    }
+    installContent(buildContentStore(d));
+    try {
+      const map = testMap("x1000y992");
+      const { join, run } = setup([map], undefined, rngByN());
+      const a = player("a", map, 5, 5);
+      a.facing = "E";
+      a.char.stats.str = 20;
+      join(a);
+      const m = live(map, 1, "Slime", 6, 5);
+      expect(monsterView(map.slots[0] as MonsterSlot)).toMatchObject({ name: "Slime", level: 10 });
+      m.hp = 0;
+      (map.slots[0] as MonsterSlot).pause = 10_000;
+      setAttackHeld(a, true);
+      run(2);
+      // The Slime's 24, 9 levels above a level-1 killer: +5% a level, 145%, rounded down: 34,
+      // which passes level 1's 30 with 4 over.
+      expect(a.char.vitals).toMatchObject({ level: 2, exp: 4 });
+    } finally {
+      installContent(buildContentStore(classicData as ContentData));
+    }
   });
 
   test("bug fixed: XP overflow carries over and a kill can raise several levels", () => {

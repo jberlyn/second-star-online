@@ -3,6 +3,8 @@
  * one place, with their sheet, items, houses, moderation and history. 1.6 had nothing like it: staff
  * read and edited the character's text files by hand. Pure.
  */
+import type { BalanceLevels } from "@secondstaronline/data";
+
 import { content } from "../../content/store.ts";
 import type { SkillValues } from "../core/fighter.ts";
 import { factionByKey } from "../social/factions.ts";
@@ -124,6 +126,8 @@ export interface CharacterHub {
   edits: CharacterEditRow[];
   /** The world's hunger limits for the editor (a client's store has no balance rows). */
   hunger: HungerLimits;
+  /** The world's level curve and level rewards (the balance row `levels`), for the editor. */
+  levels?: BalanceLevels;
   /** The houses they own, in the order they were built (issue #36). */
   houses: HubHouse[];
 }

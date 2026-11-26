@@ -1006,7 +1006,7 @@ export function createCharactersPage(opts: CharactersPageOptions): CharactersPag
       hub = msg.hub;
       openName = msg.hub.name;
       hubStatus.textContent = "";
-      editor.load(msg.hub.name, msg.hub.sheet, msg.hub.hunger);
+      editor.load(msg.hub.name, msg.hub.sheet, msg.hub.hunger, msg.hub.levels);
       editLog.show(msg.hub.name, msg.hub.edits);
       draw();
     },

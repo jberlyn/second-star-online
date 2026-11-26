@@ -102,5 +102,27 @@
     "slotOneIn": 5,
     "factionSlotRandomN": 35,
     "npcSpawn": { "randomN": 60, "passAtMost": 2 }
+  },
+  "killXp": {
+    "noSpecies": 30,
+    "fromLevel": { "flat": 10, "perLevel": 5 },
+    "bonus": 10,
+    "thresholds": [100, 150, 200, 250, 300, 350, 400],
+    "thresholdBonus": 10,
+    "adjust": "minusLevel",
+    "belowPercent": 10,
+    "abovePercent": 5,
+    "maxPercent": 150
+  },
+  "levels": {
+    "counting": "perLevel",
+    "firstLevels": [30, 400],
+    "start": 400,
+    "perLevel": 2,
+    "exponent": 1,
+    "growthPercent": 0,
+    "hpPerLevel": 1,
+    "spPerLevel": 1,
+    "showMonsterLevels": "hidden"
   }
 }

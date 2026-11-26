@@ -749,10 +749,14 @@ export function radarText(
 }
 
 /**
- * The experience-band text: the band for `ExpNeeded − exp`; at 10000 or more no band sets the band
- * text, so the line is the bare name (an unset local is empty).
+ * The experience-band text: the band for `ExpNeeded − exp`; at 10000 or more (or at the level cap)
+ * no band sets the band text, so the line is the bare name (an unset local is empty).
  */
 export function inxitionText(name: string, expNeeded: number, exp: number): string {
+  // At the level cap (issue #42; 1.6 had none) there is no next level: no band, the bare name.
+  if (expNeeded <= 0) {
+    return name;
+  }
   const gap = expNeeded - exp;
   let t = "";
   const bands: [number, string][] = [

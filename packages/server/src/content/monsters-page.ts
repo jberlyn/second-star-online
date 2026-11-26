@@ -97,6 +97,7 @@ const FIELD_LABELS: Record<string, string> = {
   hp: "Hit points",
   attack: "Attack",
   defense: "Defense",
+  level: "Level",
   xpMelee: "XP for a melee kill",
   xpSpell: "XP for a spell kill",
   skillXp: "Skill XP per kill",

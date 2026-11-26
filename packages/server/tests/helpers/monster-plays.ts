@@ -14,6 +14,7 @@ import {
   monsterSkillCap,
   NO_EQUIPMENT,
   type Rng,
+  speciesKillXp,
 } from "@secondstaronline/shared";
 
 import {
@@ -127,7 +128,7 @@ export const INTELLIGENCE = [0, 10, 11, 15, 16, 20, 21, 25, 26, 30, 31, 50, 100]
 export function plays(name: string) {
   const sp = species(name);
   const ring = { ...NO_EQUIPMENT, ring: "Ring of Experience" };
-  const xp = sp?.xpMelee ?? 30;
+  const xp = speciesKillXp(sp, "melee");
   return {
     rules: rules(name),
     damage: damage(name, defenseOf(name)),

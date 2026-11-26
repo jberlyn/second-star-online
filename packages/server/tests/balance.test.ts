@@ -56,6 +56,8 @@ describe("the balance dataset and its defaults", () => {
       monsters: BALANCE_DEFAULTS.monsters,
       vehicles: BALANCE_DEFAULTS.vehicles,
       cannon: BALANCE_DEFAULTS.cannon,
+      killXp: BALANCE_DEFAULTS.killXp,
+      levels: BALANCE_DEFAULTS.levels,
     });
   });
 
@@ -251,6 +253,7 @@ describe("the Balance page on a running server", () => {
         "buffs",
         "vitals",
         "drops",
+        "levels",
         "timings",
         "combat",
         "monsters",

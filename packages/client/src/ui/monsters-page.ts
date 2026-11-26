@@ -171,7 +171,7 @@ const GROUP_KEYS: Record<string, { record: string[]; form: string[] }> = {
     form: [...BEHAVIOUR_MAIN, ...BEHAVIOUR_MORE].filter(([w]) => w === "form").map(([, k]) => k),
   },
   combat: { record: [], form: ["affinities", "skillCap"] },
-  xp: { record: ["xpMelee", "xpSpell", "skillXp"], form: ["killXp", "killBroadcast"] },
+  xp: { record: ["level", "xpMelee", "xpSpell", "skillXp"], form: ["killXp", "killBroadcast"] },
   lists: { record: [], form: ["lists"] },
 };
 
@@ -1227,21 +1227,36 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
     const xp = group(
       "xp",
       "Rewards",
-      "The XP a player gets for killing it, and an optional announcement.",
+      "Its level, the XP a player gets for killing it, and an optional announcement.",
+      labelled(
+        "Level",
+        intInput(
+          work.record.level,
+          0,
+          100_000,
+          true,
+          "Level",
+          (n) => setKey(work.record, "level", n ?? undefined),
+          edited,
+          invalid,
+          "No level",
+        ),
+        "Shown beside its name only when the Game Rules page shows monster levels. Kill XP can compare it with the killer's level, and a monster with no XP of its own takes its XP from it (Game Rules page, Levels and experience).",
+      ),
       labelled(
         "XP for a melee kill",
         intInput(
           work.record.xpMelee,
           0,
           1_000_000_000,
-          false,
+          true,
           "XP for a melee kill",
-          (n) => {
-            work.record.xpMelee = n;
-          },
+          (n) => setKey(work.record, "xpMelee", n ?? undefined),
           edited,
           invalid,
+          "From its level",
         ),
+        "Leave it empty to work it out from the monster's level.",
       ),
       labelled(
         "XP for a spell kill",
@@ -1249,13 +1264,12 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
           work.record.xpSpell,
           0,
           1_000_000_000,
-          false,
+          true,
           "XP for a spell kill",
-          (n) => {
-            work.record.xpSpell = n;
-          },
+          (n) => setKey(work.record, "xpSpell", n ?? undefined),
           edited,
           invalid,
+          "From its level",
         ),
       ),
       labelled(
@@ -1299,7 +1313,7 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
             invalid,
             "Not used",
           ),
-          "Replaces the melee kill XP, after any XP ring bonus is counted.",
+          "Replaces the melee and spell kill XP, and any XP gear's bonus.",
         ),
       ),
     );

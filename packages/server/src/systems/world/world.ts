@@ -21,6 +21,7 @@ import {
   effectiveStats,
   emptyAssassinState,
   emptyBag,
+  expShown,
   FACING_DELTA,
   type Facing,
   type Faction,
@@ -1151,7 +1152,12 @@ export function createWorld(npcs: NpcStore = archiveNpcStore()): World {
 
 /** My HP, SP and XP for my own client, with the hull while aboard (the HP bar shows it). */
 export function vitalsView(p: Player): VitalsView {
-  const v = { ...p.char.vitals };
+  const v: VitalsView = { ...p.char.vitals };
+  // Counted as a running total, or at the level cap, the XP bar shows other figures (issue #42).
+  const levels = content().balance.levels;
+  if (levels.counting === "total" || v.expNeeded <= 0) {
+    v.shown = expShown(v, levels);
+  }
   return p.vehicle && p.hull !== null ? { ...v, hull: { hp: p.hull, max: hullMax(p.vehicle) } } : v;
 }
 

@@ -33,6 +33,7 @@ import {
   TICK_MS,
   tileAt,
   tileName,
+  withMonsterLevel,
 } from "@secondstaronline/shared";
 
 import { type Assets, loadAssets } from "./assets.ts";
@@ -231,8 +232,9 @@ export function hoverName(model: Model, hit: Pick): string | null {
     const item = model.ground.get(hit.id);
     return item ? groundTipName(item.name) : null;
   }
-  // A monster or NPC whose species an operator renamed shows the name players know it by.
-  return monsterLabel(hit.name);
+  // A monster or NPC whose species an operator renamed shows the name players know it by, with
+  // its level when the world shows monster levels (issue #42).
+  return withMonsterLevel(monsterLabel(hit.name), model.monsters.get(hit.slot)?.level);
 }
 
 /**
@@ -997,11 +999,11 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
       id: "rules-area",
       title: "Game Rules",
       intro:
-        "The rules for the whole game rather than for one item or creature: hunger and death, timings, combat, how monsters move and spawn, money and tiles.",
+        "The rules for the whole game rather than for one item or creature: hunger and death, levels and experience, timings, combat, how monsters move and spawn, money and tiles.",
       tabs: [
         pageTab(
           "Numbers",
-          "Hunger, death, drops, timings, combat and monsters. Pick a tab, or search.",
+          "Hunger, death, drops, levels and experience, timings, combat and monsters. Pick a tab, or search.",
           balancePage,
         ),
         ...GAME_RULE_TABS,

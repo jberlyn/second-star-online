@@ -157,7 +157,8 @@ export const statTableSchema = z.strictObject({
 export type StatTable = z.infer<typeof statTableSchema>;
 
 /**
- * A level curve (shared with character levels, #42): what leaving each level takes. Level L reads
+ * A skill level curve: what leaving each level takes (character levels have their own curve, the
+ * balance row `levels`, #42, since a character level has no ceiling). Level L reads
  * `table[L]` while the table lasts, then `formula` (which may read only `level`, L). `counting`
  * says how the table and formula are read and shown: `perLevel`, the XP from L to L + 1 (counted
  * from 0 within each level, leftovers carried); `total`, the running total that reaches L + 1. XP

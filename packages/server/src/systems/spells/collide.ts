@@ -37,6 +37,7 @@ import {
   rollLoot,
   type SpellTarget,
   smokeBody,
+  speciesKillXp,
   spellByName,
   spellHitOnMonster,
   spellOfFx,
@@ -624,12 +625,12 @@ function checkForDead(
   if (v.level < 1) {
     return true;
   }
-  const xp = meleeKillXp(sp?.xpSpell ?? 30, m.name, owner.char.equip);
+  const xp = meleeKillXp(speciesKillXp(sp, "spell"), m.name, owner.char.equip);
   const broadcast = firstMatch(content().monsters.rules.killBroadcasts, m.name);
   if (broadcast) {
     res.broadcasts.push({ from: owner.name, text: broadcast.text.replace("{}", owner.name) });
   }
-  v.exp += xpGained(xp, v.level);
+  v.exp += xpGained(xp, v.level, sp?.level);
   owner.vitalsDirty = true;
   // One line for each level gained.
   for (let n = checkLevelUp(v); n > 0; n--) {

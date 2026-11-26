@@ -62,9 +62,18 @@ export const monsterSchema = z.strictObject({
   attack: int.min(0).max(1_000_000_000).nullable(),
   /** Cast line 3: subtracted from melee AttPower. */
   defense: int.min(0).max(1_000_000_000),
-  /** Base XP, melee kill table and spell kill table. */
-  xpMelee: int.min(0).max(1_000_000_000),
-  xpSpell: int.min(0).max(1_000_000_000),
+  /**
+   * The monster's level (issue #42), 0 to 100,000. Absent: none. The balance row
+   * `levels.showMonsterLevels` shows it to players beside the name; the kill XP model's
+   * `levelDifference` adjustment and `fromLevel` base read it. Classic sets none.
+   */
+  level: int.min(0).max(100_000).optional(),
+  /**
+   * Base XP, melee kill table and spell kill table. Absent: the balance row `killXp.fromLevel`
+   * works it out from the species' `level` (0 without one).
+   */
+  xpMelee: int.min(0).max(1_000_000_000).optional(),
+  xpSpell: int.min(0).max(1_000_000_000).optional(),
   /**
    * The XP a kill gives each `xp`-model skill the weapon trains, replacing the skills' own `kill`
    * amount. Kill XP for the character level is `xpMelee`/`xpSpell`.
@@ -149,7 +158,10 @@ export const monsterDefinitionSchema = z.strictObject({
   noQuests: on,
   /** Never casts monster spells (`casting.neverCasts`). */
   neverCasts: on,
-  /** The kill XP after the ring, in place of `xpMelee` (`rules.killXp`). */
+  /**
+   * The kill XP after the ring, in place of `xpMelee` or `xpSpell` (`rules.killXp`): a fixed base
+   * that XP gear does not raise (Classic: Cow and Holy Shield, 5).
+   */
   killXp: int.min(0).max(1_000_000_000).optional(),
   /** Broadcast on a kill, `{}` the killer's name (`rules.killBroadcasts`). */
   killBroadcast: z.string().min(1).max(200).optional(),

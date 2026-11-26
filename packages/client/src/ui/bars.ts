@@ -181,16 +181,21 @@ export function createBars(a: Assets): Bars {
       const hull = v.hull;
       hpFillBox.style.width = hull ? fillWidth(hull.hp, hull.max) : fillWidth(v.hp, v.hpMax);
       spFillBox.style.width = fillWidth(v.sp, v.spMax);
-      // XP is held toward the next level, so the bar empties on a level-up. A value at or past
-      // the destination (data saved before a level check ran) shows full; there is no level cap.
-      xpFillBox.style.width = fillWidth(v.exp, v.expNeeded);
+      // XP is held toward the next level, so the bar empties on a level-up. A world that counts
+      // XP as a running total sends the total against the next level's (issue #42); at the level
+      // cap the bar shows full with no target.
+      const have = v.shown?.have ?? v.exp;
+      const need = v.shown ? v.shown.need : v.expNeeded;
+      // The fill is the way through the level either way.
+      xpFillBox.style.width = need === null ? fillWidth(1, 1) : fillWidth(v.exp, v.expNeeded);
       hpText.textContent = hull
         ? `Hull ${grouped(hull.hp)} / ${grouped(hull.max)}`
         : `${grouped(v.hp)} / ${grouped(v.hpMax)} HP`;
       spText.textContent = `${grouped(v.sp)} / ${grouped(v.spMax)} SP`;
-      xpText.textContent = `${grouped(v.exp)} / ${grouped(v.expNeeded)} XP`;
+      xpText.textContent =
+        need === null ? `${grouped(have)} XP` : `${grouped(have)} / ${grouped(need)} XP`;
       const first = hull ? `Hull ${hull.hp} of ${hull.max}` : `HP ${v.hp} of ${v.hpMax}`;
-      sr.textContent = `${first}, SP ${v.sp} of ${v.spMax}, level ${v.level}, XP ${v.exp} of ${v.expNeeded}`;
+      sr.textContent = `${first}, SP ${v.sp} of ${v.spMax}, level ${v.level}, ${need === null ? `XP ${have}, highest level` : `XP ${have} of ${need}`}`;
     },
     setOptions(opts) {
       el.classList.toggle("bars-colorblind", opts.colorblind);

@@ -45,6 +45,7 @@ import {
   SKILL_KEYS,
   type SwingSound,
   shattersText,
+  speciesKillXp,
   startSwing,
   swingBlocked,
   train,
@@ -522,12 +523,12 @@ function smash(
   if (v.level < 1) {
     return;
   }
-  const killXp = meleeKillXp(sp?.xpMelee ?? 30, m.name, p.char.equip);
+  const killXp = meleeKillXp(speciesKillXp(sp, "melee"), m.name, p.char.equip);
   const broadcast = firstMatch(content().monsters.rules.killBroadcasts, m.name);
   if (broadcast) {
     ev.broadcast = broadcast.text.replace("{}", p.name);
   }
-  v.exp += xpGained(killXp, v.level);
+  v.exp += xpGained(killXp, v.level, sp?.level);
   p.vitalsDirty = true;
   // Skill gain, then the level check.
   const f = fighterOf(p);

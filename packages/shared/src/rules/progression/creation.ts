@@ -6,6 +6,7 @@ import type { SexRow as SexContentRow, StartClassRow } from "@secondstaronline/d
 
 import { content, onContent } from "../../content/store.ts";
 import { skillsFromKeys } from "../core/fighter.ts";
+import { levelCost } from "./progression.ts";
 
 /** A sex's code, as `classes.json` `creation.sexes` lists it (Classic: 1 Male, 2 Female). */
 export type Sex = number;
@@ -218,7 +219,7 @@ export function startingCharacter(c: CreationChoice): StartingCharacter {
     sp: start.sp,
     spMax: start.sp,
     exp: 0,
-    expNeeded: 30,
+    expNeeded: levelCost(1),
     stats: { str: c.str, sta: c.sta, int: c.int, wis: c.wis, dex: c.dex },
     skills: startingSkills(c.classCode),
     gold: other.gold,

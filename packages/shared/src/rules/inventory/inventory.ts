@@ -332,6 +332,14 @@ export function monsterLabel(name: string): string {
   return content().monster(name)?.display ?? name;
 }
 
+/**
+ * A monster's name with its level, as players see it when the world shows monster levels
+ * (issue #42): "Wolf (level 3)". With no level, the name alone.
+ */
+export function withMonsterLevel(name: string, level: number | undefined): string {
+  return level === undefined ? name : `${name} (level ${level})`;
+}
+
 /** The atlas art for an item key: its `sprite` when it has one, else the key itself. */
 export function itemSprite(key: string): string {
   return content().item(key)?.sprite ?? key;

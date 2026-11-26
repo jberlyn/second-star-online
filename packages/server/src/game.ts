@@ -83,6 +83,7 @@ import {
   sortFaction,
   startingCharacter,
   startingPowers,
+  syncLevel,
   TEXT,
   TIMED_HUB_ACTIONS,
   vehicleBody,
@@ -706,6 +707,13 @@ export function createGame(deps: GameDeps): Game {
       for (const o of world.players.values()) {
         if (o.char.skillXp) {
           o.char.skillXp = normaliseXp(o.char.skills, o.char.skillXp, o.char.faction);
+        }
+        // The character level under a changed curve (issue #42): same level, its XP need worked
+        // out again, and a level-up for XP that now reaches it.
+        const was = o.char.vitals.expNeeded;
+        const gained = syncLevel(o.char.vitals);
+        if (gained > 0 || o.char.vitals.expNeeded !== was) {
+          o.vitalsDirty = true;
         }
       }
     }
@@ -3487,6 +3495,8 @@ export function createGame(deps: GameDeps): Game {
       };
       // XP held to the current content (a curve change, a model switch while offline).
       p.char.skillXp = normaliseXp(p.char.skills, p.char.skillXp ?? [], p.char.faction);
+      // The character level likewise (issue #42): its XP need under the curve now.
+      syncLevel(p.char.vitals);
       p.jailUntil = jailUntil;
       p.muteUntil = muteUntil;
       p.ignore = loadIgnores(db, c.accountId);

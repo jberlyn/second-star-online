@@ -15,6 +15,7 @@ import {
   monsterLabel,
   type NpcFile,
   type Rng,
+  shownMonsterLevel,
 } from "@secondstaronline/shared";
 
 import { hears } from "../chat/ignore.ts";
@@ -172,6 +173,7 @@ export function clickNpc(room: Room, p: Player, slotNo: number, rng: Rng): NpcOu
     return none;
   }
   p.bio = { slot: slotNo, npc: m.name };
+  const level = shownMonsterLevel(m.name);
   p.keyLock = true;
   return {
     out: [
@@ -180,6 +182,7 @@ export function clickNpc(room: Room, p: Player, slotNo: number, rng: Rng): NpcOu
         msg: {
           t: "bio",
           name: m.name,
+          ...(level === undefined ? {} : { level }),
           bio: [...data.bio],
           profile: [...data.profile],
           buy: data.sells.length > 0,

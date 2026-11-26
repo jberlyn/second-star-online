@@ -18,6 +18,7 @@ import {
   MONSTER_STEP_FRAMES,
   type MonsterView,
   onContent,
+  shownMonsterLevel,
 } from "@secondstaronline/shared";
 
 export interface LiveMonster {
@@ -113,9 +114,11 @@ export function monsterView(s: MonsterSlot): MonsterView {
   if (!m) {
     throw new Error(`slot ${s.slot} is empty`);
   }
+  const level = shownMonsterLevel(m.name);
   return {
     slot: s.slot,
     name: m.name,
+    ...(level === undefined ? {} : { level }),
     body: bodyOf(m.name),
     x: m.x,
     y: m.y,

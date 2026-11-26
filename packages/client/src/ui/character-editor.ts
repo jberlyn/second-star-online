@@ -10,6 +10,7 @@
  * - **The log** lists each edit with its admin, reason and changes. Undo puts an edit's old values
  *   back, with a reason of its own; the server refuses it when something it set has changed since.
  */
+import type { BalanceLevels } from "@secondstaronline/data";
 import {
   BAG_SLOTS,
   type CharacterEditRow,
@@ -139,7 +140,7 @@ export interface CharacterEditor {
   readonly sections: HTMLElement[];
   /** Fills the form from the hub's sheet (a new hub, or after a save). */
   /** `hunger`: the world's hunger limits, sent with the character. */
-  load(name: string, sheet: CharacterSheet, hunger: HungerLimits): void;
+  load(name: string, sheet: CharacterSheet, hunger: HungerLimits, levels?: BalanceLevels): void;
   /** The server's answer to a save. */
   result(ok: boolean, text: string): void;
   /** Forgets the half-typed reason and the last result. */
@@ -194,6 +195,8 @@ export function createCharacterEditor(opts: CharacterEditorOptions): CharacterEd
   derived.className = "control-panel-field-help hub-edit-note";
   // The world's hunger limits come with each character (the server's balance rows).
   let hungerLimits: HungerLimits | undefined;
+  /** The world's level curve, as the server sent it (the client's store has the defaults). */
+  let levelRules: BalanceLevels | undefined;
   const hungerHelp = (l: HungerLimits) =>
     `0 to ${l.max}; a new character starts at ${l.start}, a death sets ${l.afterDeath}.`;
   const hungerField = formField("Hunger", hunger, "…");
@@ -482,7 +485,7 @@ export function createCharacterEditor(opts: CharacterEditorOptions): CharacterEd
     faction.value = c.faction ?? "";
     factionCount.value = String(c.factionCount);
     wanted.value = String(c.wanted);
-    derived.textContent = `Experience needed ${c.expNeeded}, HP max ${c.hpMax}, SP max ${c.spMax}. They follow the level: each level up or down moves HP and SP max by one.`;
+    derived.textContent = `Experience needed ${c.expNeeded}, HP max ${c.hpMax}, SP max ${c.spMax}. They follow the level: each level up or down moves them as a level-up does.`;
     for (const f of STAT_FIELDS) {
       (stats.get(f) as HTMLInputElement).value = String(c[f]);
     }
@@ -597,7 +600,7 @@ export function createCharacterEditor(opts: CharacterEditorOptions): CharacterEd
       status.textContent = EDIT_TEXT.nothing;
       return;
     }
-    const after = deriveEdit(c, set);
+    const after = deriveEdit(c, set, levelRules);
     const errors = editErrors(c, after, hungerLimits ? { hunger: hungerLimits } : {});
     if (errors.length > 0) {
       status.textContent = errors.join(" ");
@@ -628,8 +631,9 @@ export function createCharacterEditor(opts: CharacterEditorOptions): CharacterEd
 
   return {
     sections: [core, statsBox, skillsBox, goldBox, bagBox, wornBox, storeBox, placeBox, saveBox],
-    load(n, sheet, limits) {
+    load(n, sheet, limits, levels) {
       hungerLimits = limits;
+      levelRules = levels;
       if (hungerNote) {
         hungerNote.textContent = hungerHelp(limits);
       }

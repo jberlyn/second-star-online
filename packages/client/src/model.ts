@@ -100,6 +100,8 @@ export type MemberRectLookup = (member: string) => readonly [number, number, num
 export interface ClientMonster {
   slot: number;
   name: string;
+  /** Its level, when the world shows monster levels (issue #42). */
+  level?: number;
   body: number;
   x: number;
   y: number;
@@ -271,6 +273,7 @@ function toMonster(v: MonsterView): ClientMonster {
   return {
     slot: v.slot,
     name: v.name,
+    ...(v.level === undefined ? {} : { level: v.level }),
     body: v.body,
     x: v.x,
     y: v.y,

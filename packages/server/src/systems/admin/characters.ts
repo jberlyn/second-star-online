@@ -20,6 +20,7 @@ import {
   type CharacterSheet,
   type ChatLogRow,
   can,
+  content,
   EQUIP_FIELD,
   EQUIP_SLOTS,
   type Equipment,
@@ -318,6 +319,7 @@ export function characterHub(
     mute: live(deps.mute(c.accountId)),
     edits: deps.edits(c.characterId),
     hunger: hungerLimits(),
+    levels: content().balance.levels,
     houses: deps.houses(c.characterId),
     history: deps
       .history(c.accountId, HUB_HISTORY)

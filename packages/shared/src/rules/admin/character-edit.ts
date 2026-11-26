@@ -16,6 +16,8 @@
  *   the value it set (`undoConflicts`).
  */
 
+import type { BalanceLevels } from "@secondstaronline/data";
+
 import { MAP_HEIGHT, MAP_WIDTH } from "../../constants.ts";
 import { content } from "../../content/store.ts";
 import {
@@ -46,6 +48,7 @@ import {
   sexLabel,
   sexOf,
 } from "../progression/creation.ts";
+import { levelCost } from "../progression/progression.ts";
 import type { StatKey } from "../progression/stats.ts";
 import { factionByKey } from "../social/factions.ts";
 import { type CharacterSheet, factionLabel } from "./characters.ts";
@@ -222,12 +225,13 @@ export function hungerLimits(): HungerLimits {
   return { max: Math.max(start, h.afterDeath, h.stuffed), start, afterDeath: h.afterDeath };
 }
 
-/** Experience needed for the next level at `level`: 30 at level 1, 400 at 2, then 400 + 2·level. */
-export function expNeededAt(level: number): number {
-  if (level <= 1) {
-    return 30;
-  }
-  return level === 2 ? 400 : 400 + level + level;
+/**
+ * Experience needed for the next level at `level`, by the world's level curve (`levels`, which the
+ * server sends with a character since only its store has the world's balance; Classic: 30 at
+ * level 1, 400 at 2, then 400 + 2·level). 0 at the level cap.
+ */
+export function expNeededAt(level: number, levels?: BalanceLevels): number {
+  return levelCost(Math.max(1, level), levels);
 }
 
 /** The sheet as the editor sees it. */
@@ -329,6 +333,7 @@ function movedSkills(
 export function deriveEdit(
   current: EditableCharacter,
   changes: Partial<EditableCharacter>,
+  levels: BalanceLevels = content().balance.levels,
 ): EditableCharacter {
   const after: EditableCharacter = structuredClone({ ...current, ...changes });
   // Skills typed in are laid over the current ones: an edit may name only some.
@@ -338,10 +343,10 @@ export function deriveEdit(
   }
   if (after.level !== current.level && Number.isInteger(after.level)) {
     const d = after.level - current.level;
-    after.expNeeded = expNeededAt(after.level);
-    after.hpMax = Math.max(1, current.hpMax + d);
-    after.spMax = Math.max(0, current.spMax + d);
-    if (changes.exp === undefined) {
+    after.expNeeded = expNeededAt(after.level, levels);
+    after.hpMax = Math.max(1, current.hpMax + d * levels.hpPerLevel);
+    after.spMax = Math.max(0, current.spMax + d * levels.spPerLevel);
+    if (changes.exp === undefined && after.expNeeded > 0) {
       after.exp = Math.min(after.exp, after.expNeeded - 1);
     }
   }
@@ -421,7 +426,12 @@ export function editErrors(
   if (!isInt(after.level, 1, L.levelMax)) {
     errors.push(`Level: a whole number from 1 to ${L.levelMax}.`);
   }
-  if (!isInt(after.exp, 0, Math.max(0, after.expNeeded - 1))) {
+  if (after.expNeeded <= 0) {
+    // At the level cap: XP keeps counting, with nothing more to reach.
+    if (!isInt(after.exp, 0, Number.MAX_SAFE_INTEGER)) {
+      errors.push("Experience: a whole number, 0 or more.");
+    }
+  } else if (!isInt(after.exp, 0, Math.max(0, after.expNeeded - 1))) {
     errors.push(
       `Experience: a whole number from 0 to ${Math.max(0, after.expNeeded - 1)} (one less than the ${after.expNeeded} needed).`,
     );

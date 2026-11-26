@@ -151,6 +151,8 @@ export interface PlayerView {
 export interface MonsterView {
   slot: number;
   name: string;
+  /** Its level, sent only when the world shows monster levels and its species has one (#42). */
+  level?: number;
   /** `Chars` body: members `<body>-F<1..4>-<N|S|W|E>`. */
   body: number;
   x: number;
@@ -169,6 +171,12 @@ export interface VitalsView {
   spMax: number;
   exp: number;
   expNeeded: number;
+  /**
+   * What the XP bar shows when it is not `exp` of `expNeeded` (issue #42): the running total
+   * against the total that reaches the next level, when the world counts XP that way, or a null
+   * `need` at the level cap. Absent: `exp` of `expNeeded`.
+   */
+  shown?: { have: number; need: number | null };
   /** Aboard a vehicle: its hull, which hits wear instead of HP. The HP bar shows it. */
   hull?: { hp: number; max: number };
 }

@@ -320,6 +320,7 @@ const RECORD_FIELDS = [
   "hp",
   "attack",
   "defense",
+  "level",
   "xpMelee",
   "xpSpell",
   "skillXp",

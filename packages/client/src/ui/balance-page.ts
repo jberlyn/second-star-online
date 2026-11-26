@@ -115,8 +115,28 @@ export function duration(s: number): string {
 /** Frames in seconds, to two places at most (148 → 7.4). */
 const seconds = (frames: number) => String(Number((frames / FPS).toFixed(2)));
 
+/** A value as its input holds it: a list's entries separated by commas. */
+export function inputText(v: unknown, f: BalanceFieldView): string {
+  if (f.unit === "list") {
+    return Array.isArray(v) ? v.join(", ") : "";
+  }
+  return String(v ?? "");
+}
+
+/** A list field's typed entries, or null when one is not a whole number. */
+export function listValues(text: string): number[] | null {
+  const parts = text
+    .split(",")
+    .map((x) => x.trim())
+    .filter((x) => x !== "");
+  return parts.every((x) => /^\d+$/.test(x)) ? parts.map(Number) : null;
+}
+
 /** A value as the page writes it: frames also in seconds, a counter as the interval it gives. */
 export function shownValue(v: unknown, f: BalanceFieldView): string {
+  if (f.unit === "list") {
+    return Array.isArray(v) ? (v.length === 0 ? "none" : v.join(", ")) : "none";
+  }
   if (f.unit === "choice") {
     return f.choices?.find((c) => c.value === v)?.label ?? (typeof v === "string" ? v : "none");
   }
@@ -221,6 +241,19 @@ export function fieldError(text: string, f: BalanceFieldView): string | null {
   const t = text.trim();
   if (f.unit === "choice") {
     return f.choices?.some((c) => c.value === t) ? null : `${f.label}: pick one`;
+  }
+  if (f.unit === "list") {
+    const values = listValues(t);
+    if (values === null) {
+      return `${f.label}: whole numbers, separated by commas`;
+    }
+    if (values.some((n) => n < f.min || n > f.max)) {
+      return `${f.label}: each from ${f.min} to ${f.max}`;
+    }
+    if (f.maxItems !== undefined && values.length > f.maxItems) {
+      return `${f.label}: at most ${f.maxItems}`;
+    }
+    return null;
   }
   if (t === "" && f.optional) {
     return null;
@@ -344,7 +377,7 @@ export function createBalancePage(
     el.append(
       pageHeading(
         "Game Rules",
-        "The numbers that apply to the whole game rather than to one item or creature: hunger and death, timings, combat and how monsters move and spawn. Pick a tab, or search. Saving puts your changes with the other unpublished changes: players get them once you publish.",
+        "The numbers that apply to the whole game rather than to one item or creature: hunger and death, levels and experience, timings, combat and how monsters move and spawn. Pick a tab, or search. Saving puts your changes with the other unpublished changes: players get them once you publish.",
       ),
     );
   }
@@ -402,7 +435,10 @@ export function createBalancePage(
   const dirty = (r: RowUi) =>
     r.rangeErrors.size > 0 ||
     r.inputs.some(
-      ({ field, input }) => input.value.trim() !== String(at(r.filled.value, field.path) ?? ""),
+      ({ field, input }) =>
+        (field.unit === "list"
+          ? (listValues(input.value) ?? []).join(", ")
+          : input.value.trim()) !== inputText(at(r.filled.value, field.path), field),
     );
 
   const errors = (r: RowUi) => [
@@ -451,7 +487,7 @@ export function createBalancePage(
   const fill = (r: RowUi) => {
     r.filled = { value: structuredClone(r.view.draft), fingerprint: r.view.fingerprint };
     for (const { field, input } of r.inputs) {
-      input.value = String(at(r.view.draft, field.path) ?? "");
+      input.value = inputText(at(r.view.draft, field.path), field);
     }
     fillRanges(r);
   };
@@ -546,11 +582,20 @@ export function createBalancePage(
       data = r.filled.value;
       for (const { field, input } of r.inputs) {
         const t = input.value.trim();
-        // An optional amount left empty is taken out (its parts are all empty: `errors`).
+        // An optional amount left empty is taken out (its parts are all empty: `errors`), and an
+        // optional value of the row's own (the highest level) with it.
         data =
           t === "" && field.optional
-            ? without(data, field.path.slice(0, -1))
-            : withValue(data, field.path, field.unit === "choice" ? t : Number(t));
+            ? without(data, field.path.length > 1 ? field.path.slice(0, -1) : field.path)
+            : withValue(
+                data,
+                field.path,
+                field.unit === "choice"
+                  ? t
+                  : field.unit === "list"
+                    ? (listValues(t) ?? [])
+                    : Number(t),
+              );
       }
     }
     const change: BalanceChange = {
@@ -739,6 +784,11 @@ export function createBalancePage(
           sel.append(o);
         }
         input = sel;
+      } else if (f.unit === "list") {
+        const list = noAutofill(action(document.createElement("input"), "balance-value"));
+        list.placeholder = "none";
+        list.title = `Whole numbers from ${f.min} to ${f.max}, separated by commas`;
+        input = list;
       } else {
         const num = noAutofill(action(document.createElement("input"), "balance-value"));
         num.type = "number";

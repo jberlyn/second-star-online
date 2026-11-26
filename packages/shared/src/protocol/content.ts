@@ -1031,7 +1031,8 @@ export interface BalanceFieldView {
    * How the page shows it: a count, frames (also shown in seconds), a `random(n)` roll, a multiple
    * of the caster's power, a chance of 1 in N, or a counter's target (a counter that starts at 1
    * and acts on reaching it, so every target − 1 frames), seconds of real time (also shown in
-   * minutes, hours or days), or a pick from `choices` (`min` and `max` are then 0).
+   * minutes, hours or days), a pick from `choices` (`min` and `max` are then 0), or a `list` of
+   * counts typed with commas, each from `min` to `max`, at most `maxItems` (issue #42).
    */
   /** `passFrames`: frames counted down in both of a frame's actor passes, so twice a frame. */
   unit:
@@ -1043,7 +1044,10 @@ export interface BalanceFieldView {
     | "oneIn"
     | "counter"
     | "seconds"
-    | "choice";
+    | "choice"
+    | "list";
+  /** A `list` field's most entries. */
+  maxItems?: number;
   /** A `choice` field's values, each with the label the page shows for it. */
   choices?: { value: string; label: string }[];
   min: number;
