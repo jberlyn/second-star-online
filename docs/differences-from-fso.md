@@ -29,12 +29,12 @@ An entry uses this shape; `Pinned by` is optional:
 
 | Section | Entries |
 |---|---:|
-| [Design changes](#design-changes) | 85 |
+| [Design changes](#design-changes) | 86 |
 | [Fixed bugs](#fixed-bugs) | 303 |
 | [Kept on purpose](#kept-on-purpose) | 12 |
 | [Server authority and exploits](#server-authority-and-exploits) | 138 |
 | [Not in SSO](#not-in-sso) | 40 |
-| **Total** | **578** |
+| **Total** | **579** |
 
 By system (the code folder that holds the change):
 
@@ -545,6 +545,15 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Pinned by:** `death: the dying player gets { t: "death" } after the tick's vitals, once, and nobody else does` (packages/server/tests/monsters.test.ts); `death: black for one draw, then frozen until the respawn map is drawn` (packages/client/tests/death-stage.test.ts)
 
 ### Other design changes
+
+#### Guild halls belong to their guild
+- **Kind:** Other
+- **What you notice:** A guild hall is the guild's, whoever built it. It stands while any member of the guild, its leader included, logs in at least every other month; a builder who has left the guild no longer keeps it up. Members furnish it whatever its header says. Disbanding a guild with a hall warns "Disbanding the guild demolishes its hall and everything inside. Press Disband again to disband it.", and a second Disband before the Guild Center closes demolishes every hall of the guild. While a hall stands, Disband is refused with "Empty the Guild Vault before you disband the guild." until the vault is empty. A disbanded guild's name is then free for anyone. Guild Keys, doors, vaults and boards work as before: every member's Guild Key opens the guild's doors, every member may use the vault and read the board, and exile or leaving takes those away at once.
+- **1.6:** A hall, its door, its vault and the Guild Key were tied together only by the guild's name. A hall decayed by its builder's logins alone, even after the builder left the guild. Disbanding left the hall, door and vault in the world, unusable, until anyone founded a guild of that name and inherited them.
+- **SSO:** Each hall's blueprint names its guild by id (`houses.guild_id`), set when a member builds it. The decay clock counts a hall as seen when a member of that guild is seen; its list entry keeps the builder's name. A hall is not its builder's house: its demolition leaves the builder's House Vault alone, and an admin's revoke or transfer of it never moves or destroys that vault. The Guild Vault is the guild's, shared by all its halls, and stays when the last hall decays, for the guild's next hall. A disband demolishes every hall of the guild as decay does and empties the vault, logging what they held as `demolish` world events; the vault's contents are lost only when no hall is left to reach them. Doors, vaults and boards still match the guild's name, which is now safe: a live guild's name is its own, and a disbanded guild leaves nothing for its name to find. There are no ranks: the leader controls who may open the doors and vault by inviting and exiling, and Guild Keys stay generic. Every put and take at a vault is already in the staff Activity Log. On the first start after the upgrade, each existing hall is matched to its guild by its Guild Vault (or, failing that, its header). A hall whose guild is disbanded or gone is demolished, and a disbanded guild's vault is emptied, both logged.
+- **Why:** Matching by name let a new guild inherit a dead one's hall and vault, kept a hall standing for a builder who had left, and left disbanded guilds' halls in the world forever (issue #16).
+- **In the code:** `packages/server/src/systems/social/guild-halls.ts` (`endGuild`, `settleHalls`), `packages/server/src/systems/social/guilds.ts` (`guildAction`), `packages/server/src/systems/housing/houses.ts` (`placeHouseIntent`, `monthCheck`, `dropFlag`, `demolish`, `isHall`), `packages/server/migrations/20261126_81_guild_halls.sql`
+- **Pinned by:** `design change: a hall names its guild by id and keeps it over a restart`; `design change: its members furnish it by the guild, whatever its header says`; `design change: any member keeps the hall standing; a builder who left does not`; `design change: refused while the vault holds items, warned, then the halls go and the name is free`; `design change: the warning lapses when the Guild Center closes`; `design change: a hall is matched to its live guild at start, by its vault`; `design change: a disbanded guild's hall is demolished and its vault emptied at start` (packages/server/tests/guild-halls-db.test.ts)
 
 #### Building furniture requires facing a Carpentry Bench
 - **Kind:** Other
@@ -3177,14 +3186,14 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **In the code:** `packages/shared/src/rules/social/guilds.ts` (`loadGuildLines`)
 - **Pinned by:** `bug fixed: a line not starting with a letter keeps its first character; empty lines go` (packages/shared/tests/social/guilds.test.ts)
 
-#### Only a disbanded guild's leader may found its name again
+#### A disbanded guild's name is free, and nothing of the old guild comes with it
 - **Kind:** Bug fixed
-- **What you notice:** After a guild disbands, anyone else who tries to found a guild of the same name is told "This guild name is already taken!". The leader who disbanded it may found it again, and gets back its Guild Vault, Guild Key doors and hall.
+- **What you notice:** Anyone may found a guild with a disbanded guild's name. The new guild starts with no hall and an empty Guild Vault: the old guild's halls were demolished and its vault emptied when it disbanded.
 - **1.6:** Anyone could found a guild with a disbanded guild's name and inherit what it left behind, because vaults, doors and halls are all found by guild name. Nobody was warned.
-- **SSO:** The disbanded row keeps its last leader, and only that character may reuse the name. Former members are still kicked at their next login, as for any re-founded guild.
-- **Why:** A stranger should not walk into a dead guild's vault and hall; its leader re-founding it is the one case where taking them back is right. How guilds should own their halls, doors and vaults is open in [issue #16](https://github.com/jberlyn/second-star-online/issues/16).
-- **In the code:** `packages/server/src/systems/social/guilds.ts` (`guildCreate`), `packages/server/src/systems/economy/containers.ts` (`mayUseContainer`)
-- **Pinned by:** `bug fixed: only the leader who disbanded a guild may found its name again`; `a guild of the same name created again: an old member is kicked at login` (packages/server/tests/guilds.test.ts); `create, join, exile and disband are written with the fields; a restart reads them` (packages/server/tests/guilds-db.test.ts)
+- **SSO:** A disband takes the guild's halls and vault with it (see [Guild halls belong to their guild](#guild-halls-belong-to-their-guild)), so a name finds nothing of an earlier guild. Founding the name makes a new guild row with a new id, which replaces the disbanded one. Former members are still kicked at their next login, as for any re-founded guild.
+- **Why:** A stranger should not walk into a dead guild's vault and hall. An earlier fix let only the disbanding leader reuse the name, which kept a name reserved for good once that leader stopped playing (issue #16).
+- **In the code:** `packages/server/src/systems/social/guilds.ts` (`guildCreate`), `packages/server/src/systems/social/guild-halls.ts` (`endGuild`), `packages/server/src/persistence/guilds.ts` (`saveGuild`)
+- **Pinned by:** `bug fixed: a disbanded guild's name is free for anyone, with nothing of the old guild's`; `a guild of the same name created again: an old member is kicked at login` (packages/server/tests/guilds.test.ts); `create, join, exile and disband are written with the fields; a restart reads them` (packages/server/tests/guilds-db.test.ts); `design change: refused while the vault holds items, warned, then the halls go and the name is free` (packages/server/tests/guild-halls-db.test.ts)
 
 #### Abdicating names the new leader and redraws your screen
 - **Kind:** Bug fixed
@@ -4307,7 +4316,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **Kind:** Exploit closed
 - **What you notice:** You can open and use a personal, house or guild vault only when its rules allow you; a refused house or guild vault says “You can't open a vault that's not yours!”
 - **1.6:** Chest and vault requests had no ownership or position check. A house door was its only protection.
-- **SSO:** Placed containers must be faced; a carried crate or cabinet is opened from the bag. A personal or house vault belongs to its owner by exact name; a House Key opens only its holder's door. A guild vault belongs to its named guild's members, and only a disbanded guild's last leader may found its name again, getting its vault back (see [Only a disbanded guild's leader may found its name again](#only-a-disbanded-guilds-leader-may-found-its-name-again)). A carried crate or cabinet belongs to its carrier, while placed crates, cabinets and chests, quest chests and the Cauldron can be used by anyone facing them. A forbidden house or guild vault answers with the SSO refusal, modeled on the mailbox's ownership line; standing away from it gives the original standing-in-front line instead. A forbidden deposit is refused before the drop line and takes nothing. An open vault or container keeps the keys locked until Cancel and closes on a map change, so it is never used from elsewhere (see "A vault stays where you opened it").
+- **SSO:** Placed containers must be faced; a carried crate or cabinet is opened from the bag. A personal or house vault belongs to its owner by exact name; a House Key opens only its holder's door. A guild vault belongs to its named guild's members, and a disbanded guild's vault is emptied, so a guild founded later under that name does not get it back (see [Guild halls belong to their guild](#guild-halls-belong-to-their-guild)). A carried crate or cabinet belongs to its carrier, while placed crates, cabinets and chests, quest chests and the Cauldron can be used by anyone facing them. A forbidden house or guild vault answers with the SSO refusal, modeled on the mailbox's ownership line; standing away from it gives the original standing-in-front line instead. A forbidden deposit is refused before the drop line and takes nothing. An open vault or container keeps the keys locked until Cancel and closes on a map change, so it is never used from elsewhere (see "A vault stays where you opened it").
 - **Why:** Anyone could otherwise read and loot any vault.
 - **In the code:** `packages/server/src/systems/economy/containers.ts` (`mayUseContainer`, `openContainer`, `depositContainer`, `withdrawContainer`), `packages/server/src/systems/economy/vault.ts` (`openVault`)
 - **Pinned by:** `Alice opens her House Vault; Bob gets the refusal`; `Bob's Drop into Alice's vault is refused before the drop line; nothing is taken`; `a guild vault refuses anyone outside the guild, and opens for a member`; `a click not in front gives the line and pauses 4` (packages/server/tests/doors.test.ts); `a carried crate is the carrier's: once it leaves the bag its window takes nothing` (packages/server/tests/craft.test.ts); `a House Key opens and closes only its holder's door` (packages/shared/tests/housing/doors.test.ts)
@@ -4424,12 +4433,12 @@ Changes that move authority from the client to the server and close exploits tha
 
 #### The header names its owner exactly
 - **Kind:** Exploit closed
-- **What you notice:** Only a house's owner may place or take its furniture, whatever its header says; a guild hall uses the exact name of your guild.
+- **What you notice:** Only a house's owner may place or take its furniture, whatever its header says; in a guild hall, only its guild's members may.
 - **1.6:** The header test accepted a name followed by apostrophe-s anywhere in the header, so Bob could pass the test in “Jimbob's House” and place furniture or take Jimbob's Stove, Anvil and Alchemy Lab. A shop owner who retitled their shop with the `title` command to name someone else (“Ann's Market”) handed that player the furniture.
-- **SSO:** In a personal house's interior the house's owner, by its record, decides: a custom title changes nothing, and an admin's transfer (issue #36) moves the right with the house. Elsewhere a personal header must begin with “<name>'s ”; a guild hall header must equal “Hall of the <guild>”, so a guild its last leader founds again under that name matches the old hall (see [Only a disbanded guild's leader may found its name again](#only-a-disbanded-guilds-leader-may-found-its-name-again)).
+- **SSO:** In a personal house's interior the house's owner, by its record, decides: a custom title changes nothing, and an admin's transfer (issue #36) moves the right with the house. A guild hall's interior is its guild's, by the guild's id (see [Guild halls belong to their guild](#guild-halls-belong-to-their-guild)). Elsewhere a personal header must begin with “<name>'s ”, and a guild hall header must equal “Hall of the <guild>”.
 - **Why:** One player's name inside another's allowed theft of furniture, and a header is text an owner can change.
 - **In the code:** `packages/shared/src/rules/housing/houses.ts` (`headDrop`, `houseDrop`), `packages/server/src/systems/housing/houses.ts` (`dropFlag`)
-- **Pinned by:** `your guild's hall is 0` (packages/shared/tests/housing/houses.test.ts); `SSO: the header must begin with '<name>'s ' or equal 'Hall of the <guild>'` (packages/shared/tests/ledger-pins-b.test.ts); `a custom shop title keeps furniture with the owner, and a transfer moves it` (packages/server/tests/house-admin.test.ts)
+- **Pinned by:** `your guild's hall is 0` (packages/shared/tests/housing/houses.test.ts); `SSO: the header must begin with '<name>'s ' or equal 'Hall of the <guild>'` (packages/shared/tests/ledger-pins-b.test.ts); `a custom shop title keeps furniture with the owner, and a transfer moves it` (packages/server/tests/house-admin.test.ts); `design change: its members furnish it by the guild, whatever its header says` (packages/server/tests/guild-halls-db.test.ts)
 
 #### Door relock is one server timer per map
 - **Kind:** Architecture
@@ -4444,7 +4453,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **Kind:** Architecture
 - **What you notice:** A demolished house's lost interior is removed, and so is the owner's House Vault once their last house is gone; if someone is inside, its interior is deleted when they leave.
 - **1.6:** Decay removed the house record and reverted the outdoor tiles, but the now-unreachable interior map and vault file stayed on disk. A missing map returned a character to the start point.
-- **SSO:** The sweep also deletes the interior and its items. The House Vault is one per owner, opened from each of their houses, so its contents are deleted only with the owner's last house; while another house of theirs stands, the vault stays. An occupied interior waits until its occupant leaves, while a logged-out character saved there moves to the fallback map (see [Every character has a respawn point](#every-character-has-a-respawn-point)).
+- **SSO:** The sweep also deletes the interior and its items. The House Vault is one per owner, opened from each of their houses, so its contents are deleted only with the owner's last house; while another house of theirs stands, the vault stays. A guild hall is not its builder's house: its decay leaves the builder's House Vault alone, and the Guild Vault stays while the guild does (see [Guild halls belong to their guild](#guild-halls-belong-to-their-guild)). An occupied interior waits until its occupant leaves, while a logged-out character saved there moves to the fallback map (see [Every character has a respawn point](#every-character-has-a-respawn-point)).
 - **Why:** The contents were unreachable either way; the server need not keep unreachable rows forever. A vault another house still opens is not unreachable.
 - **In the code:** `packages/server/src/systems/housing/houses.ts` (`demolish`)
 - **Pinned by:** `a stale owner's house is demolished by the day's sweep: tiles revert, Exit and mailbox go, the interior is deleted`; `SSO: offline characters saved in a deleted interior go to the fallback point, not their respawn point` (packages/server/tests/houses-db.test.ts); `SSO: decay deletes the House Vault's contents, and an occupied interior waits for its occupant` (packages/server/tests/ledger-pins-b.test.ts); `SSO: demolishing one of two houses keeps the owner's House Vault; the last one empties it` (packages/server/tests/house-admin.test.ts)
@@ -4771,10 +4780,10 @@ Changes that move authority from the client to the server and close exploits tha
 - **Kind:** Exploit closed
 - **What you notice:** Guild actions use current membership and leadership, and accepting an invitation requires the inviter to remain online and in charge.
 - **1.6:** Clients could overwrite or delete guild files, join without an invitation and use path-like guild names to read other files, including character files containing passwords. An ex-leader's open screen still allowed exile, abdication and disbanding, and could crown a stale selection. A peer accept sent after its leader left was lost.
-- **SSO:** Guild and member rows and each character's Guild field are written together. Each action checks current membership and leadership, names resolve to rows rather than paths, and Accept requires a pending invitation from an online current leader. A disbanded row remains so offline members can be told on login, and only its last leader may create its name again, reusing the old row's id and so its vault, Guild Key doors and hall (see [the fix](#only-a-disbanded-guilds-leader-may-found-its-name-again)).
+- **SSO:** Guild and member rows and each character's Guild field are written together. Each action checks current membership and leadership, names resolve to rows rather than paths, and Accept requires a pending invitation from an online current leader. A disbanded row remains so offline members can be told on login, until anyone founds its name again as a new row with a new id (see [the fix](#a-disbanded-guilds-name-is-free-and-nothing-of-the-old-guild-comes-with-it)).
 - **Why:** Unchecked file and action requests allowed guild hijacking, forgery, disclosure and disbanding.
 - **In the code:** `packages/server/src/systems/social/guilds.ts` (`guildAction`, `guildAnswer`, `guildCreate`)
-- **Pinned by:** `divergence: a stale target (exiled since) is refused`, `divergence: ACCEPT after the inviter left joins nothing` (packages/server/tests/guilds.test.ts); `create, join, exile and disband are written with the fields; a restart reads them` (packages/server/tests/guilds-db.test.ts); `bug fixed: only the leader who disbanded a guild may found its name again` (packages/server/tests/guilds.test.ts)
+- **Pinned by:** `divergence: a stale target (exiled since) is refused`, `divergence: ACCEPT after the inviter left joins nothing` (packages/server/tests/guilds.test.ts); `create, join, exile and disband are written with the fields; a restart reads them` (packages/server/tests/guilds-db.test.ts); `bug fixed: a disbanded guild's name is free for anyone, with nothing of the old guild's` (packages/server/tests/guilds.test.ts)
 
 #### Faction membership and power are server state
 - **Kind:** Exploit closed

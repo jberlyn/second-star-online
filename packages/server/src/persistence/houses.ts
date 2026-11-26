@@ -23,10 +23,11 @@ export function loadHouses(db: Db): HouseRecord[] {
         item2: string;
         tiles: string;
         interior: string;
+        guild_id: string;
       },
       []
     >(
-      `SELECT h.owner_id, c.name, h.map_name, h.item1, h.item2, h.tiles, h.interior
+      `SELECT h.owner_id, c.name, h.map_name, h.item1, h.item2, h.tiles, h.interior, h.guild_id
        FROM houses h JOIN characters c ON c.id = h.owner_id ORDER BY h.updated_at`,
     )
     .all()
@@ -38,6 +39,7 @@ export function loadHouses(db: Db): HouseRecord[] {
       item2: placed(r.item2) as Placed,
       tiles: JSON.parse(r.tiles) as HouseRecord["tiles"],
       interior: r.interior,
+      ...(r.guild_id === "" ? {} : { guildId: r.guild_id }),
     }));
 }
 
@@ -66,7 +68,8 @@ export function saveHouses(
 ): void {
   db.query("DELETE FROM houses").run();
   const ins = db.prepare(
-    "INSERT INTO houses (owner_id, map_name, item1, item2, tiles, interior, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    `INSERT INTO houses (owner_id, map_name, item1, item2, tiles, interior, guild_id, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
   );
   for (const h of houses) {
     ins.run(
@@ -76,6 +79,7 @@ export function saveHouses(
       JSON.stringify(h.item2),
       JSON.stringify(h.tiles),
       h.interior,
+      h.guildId ?? "",
       now,
     );
   }

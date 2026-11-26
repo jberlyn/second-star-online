@@ -142,8 +142,9 @@ export function placeHouseIntent(
   const type = use.type;
   const m = room.map;
   const outdoor = parseOutdoor(m.name);
-  // Any guild member can build a hall for their guild.
+  // Any guild member can build a hall for their guild; it is the guild's, by id (issue #16).
   const guild = p.guild;
+  const guildId = type.guild ? guildIdNamed(world, guild) : null;
   const check = checkPlacement({
     type,
     hx,
@@ -233,6 +234,7 @@ export function placeHouseIntent(
     item2: plan.item2,
     tiles: plan.tiles,
     interior: plan.interior,
+    ...(guildId === null ? {} : { guildId }),
   };
   world.houses.set(rec.interior, rec);
   world.houseList.push({
@@ -264,7 +266,7 @@ function parseOutdoor(name: string): { mx: number; my: number } | null {
  * not been seen this month or last. Returns the houses to demolish.
  */
 export function monthCheck(world: World, p: Player, month: string, day: string): HouseListEntry[] {
-  if (refreshOwner(world.houseList, p.id, month)) {
+  if (refreshOwner(world.houseList, p.id, month, hallSeenBy(world, p))) {
     world.housesDirty = true;
   }
   if (world.houseSweepDay === day) {
@@ -277,6 +279,22 @@ export function monthCheck(world: World, p: Player, month: string, day: string):
     world.housesDirty = true;
   }
   return r.demolish;
+}
+
+/**
+ * Which list entries a guild hall's are, and whether `p` keeps each one standing: a hall is seen
+ * when any member of its guild, its leader included, is seen; its builder counts only while a
+ * member (issue #16).
+ */
+function hallSeenBy(world: World, p: Player): (interior: string) => boolean | null {
+  const mine = p.guild === "" ? null : guildIdNamed(world, p.guild);
+  return (interior) => {
+    const h = world.houses.get(interior);
+    if (!h || h.guildId === undefined) {
+      return null;
+    }
+    return mine !== null && h.guildId === mine;
+  };
 }
 
 /**
@@ -303,24 +321,43 @@ export function houseIn(world: World, map: string): HouseRecord | null {
 }
 
 /**
- * The do-not-drop flag where `p` stands: a personal house's owner by its blueprint, a guild hall
- * (or any other room) by its header (`houseDrop`).
+ * Whether a blueprint is a guild hall: it names a guild, or its type is a hall's (a type since
+ * removed counts as a hall when nothing stands outside it, as 1.6's halls had no mailbox or lamp).
+ */
+export const isHall = (h: HouseRecord): boolean =>
+  h.guildId !== undefined || (houseTypeOf(h)?.guild ?? h.item1 === null);
+
+/**
+ * The do-not-drop flag where `p` stands: a personal house's owner by its blueprint, a guild hall's
+ * members by its guild's id, any other room by its header (`houseDrop`).
  */
 export function dropFlag(world: World, p: Player): 0 | 1 {
   const h = houseIn(world, p.map.name);
-  const house = h
-    ? { mine: h.ownerId === p.id, hall: houseTypeOf(h)?.guild ?? h.item1 === null }
-    : null;
+  let house: { mine: boolean } | null = null;
+  if (h && !isHall(h)) {
+    house = { mine: h.ownerId === p.id };
+  } else if (h?.guildId !== undefined) {
+    house = { mine: p.guild !== "" && guildIdNamed(world, p.guild) === h.guildId };
+  }
   return houseDrop(p.map.title, p.name, p.guild, house);
+}
+
+/** The id of the live guild named `name` (any case), or null. */
+function guildIdNamed(world: World, name: string): string | null {
+  const g = world.guilds.get(name.toLowerCase());
+  return g && !g.disbanded ? g.id : null;
 }
 
 /** An owner's House Vault, the container every house of theirs opens. */
 export const houseVaultOf = (owner: string): string => `${owner}'s House Vault`;
 
-/** Whether `ownerId` owns a house (any blueprint names them). */
+/**
+ * Whether `ownerId` owns a house of their own (a blueprint names them that is not a guild hall: a
+ * hall is its guild's, whoever built it).
+ */
 export function ownsAHouse(world: World, ownerId: string): boolean {
   for (const h of world.houses.values()) {
-    if (h.ownerId === ownerId) {
+    if (h.ownerId === ownerId && !isHall(h)) {
       return true;
     }
   }
@@ -373,8 +410,10 @@ export function demolish(
   world.houses.delete(interior);
   world.housesDirty = true;
   world.interiorsToDelete.add(rec.interior);
-  // The House Vault is the owner's, shared by all their houses: it goes with their last one.
-  if (!ownsAHouse(world, rec.ownerId)) {
+  // The House Vault is the owner's, shared by all their houses: it goes with their last one. A
+  // guild hall's builder keeps theirs, and the Guild Vault is the guild's: it stays while the guild
+  // does, for its next hall (issue #16).
+  if (!isHall(rec) && !ownsAHouse(world, rec.ownerId)) {
     const vault = houseVaultOf(rec.ownerName);
     logWorldLines(world, "demolish", world.containers.get(vault) ?? [], [], {
       other: vault,

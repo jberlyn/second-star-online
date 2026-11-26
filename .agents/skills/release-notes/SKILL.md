@@ -27,7 +27,7 @@ Base every claim on the code as it was **at the tag being described**, not the w
 
 Changes that the next release after `v1.17.0` must list under Upgrade Notes (confirm each in the code at the tag):
 
-- None yet.
+- **Migration 81 (`20261126_81_guild_halls.sql`, issue #16) and the first start after it.** Adds `houses.guild_id`. At the first start, each existing guild hall is matched to its guild by the Guild Vault inside it (or its "Hall of the <guild>" header). **A hall whose guild is disbanded, or that matches no guild, is demolished, and every disbanded guild's Guild Vault is emptied.** Both are logged as `demolish` world events in the Activity Log. Operators who want to save a disbanded guild's vault must move its items before upgrading. A disbanded guild's name is then free for anyone to found.
 
 ## 2. Choose the version
 

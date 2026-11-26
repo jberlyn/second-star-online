@@ -435,6 +435,7 @@ import { classOpenIntent, classPromoteIntent } from "./systems/progression/class
 import { type AssassinDeps, endRemovedGame, setAssassinMode } from "./systems/social/assassin.ts";
 import { bioRequest, profileSave } from "./systems/social/bios.ts";
 import { friendsCommand, friendsEntry } from "./systems/social/friends.ts";
+import { settleHalls } from "./systems/social/guild-halls.ts";
 import {
   type GuildDeps,
   guildAction,
@@ -965,7 +966,11 @@ export function createGame(deps: GameDeps): Game {
   for (const g of loadGuilds(db)) {
     world.guilds.set(g.name.toLowerCase(), g);
   }
-  const guildDeps: GuildDeps = { newId: () => Bun.randomUUIDv7(), now: isoNow };
+  const guildDeps: GuildDeps = {
+    newId: () => Bun.randomUUIDv7(),
+    now: isoNow,
+    loadMap: (name) => loadMap(name),
+  };
   // The treasure list is built at server start.
   resetTreasure(world, settings.treasureMaps, rng);
   const mapCache = new Map<string, WorldMap | null>();
@@ -3141,6 +3146,17 @@ export function createGame(deps: GameDeps): Game {
     };
   };
 
+  // Every guild hall names its guild by id, and a disbanded guild leaves nothing behind (issue
+  // #16): halls built before are matched to their guild, and those of a guild that is gone are
+  // demolished, their interiors deleted just below.
+  settleHalls(world, loadMap);
+  if (world.housesDirty || world.containersDirty.size > 0) {
+    db.transaction(() => {
+      persistItems([]);
+      persistHouses();
+    })();
+  }
+
   // House interiors whose house is gone (a crash between a demolition and its deferred delete, or
   // an interior held back while someone stood in it) are deleted at start.
   {
@@ -3907,8 +3923,17 @@ export function createGame(deps: GameDeps): Game {
           deliver(guildView(world, p, msg.name));
           return;
         case "guildAction":
-          deliver(guildAction(world, p, msg.act, msg.viewing, msg.member));
-          persistItems([]);
+          deliver(guildAction(world, p, msg.act, msg.viewing, msg.member, guildDeps));
+          if (world.housesDirty) {
+            // A disband's halls go with the guild's row, in one write (issue #16).
+            db.transaction(() => {
+              persistItems([]);
+              persistHouses();
+            })();
+            flushInteriorDeletes();
+          } else {
+            persistItems([]);
+          }
           return;
         // Mail and message boards.
         case "mailUi":

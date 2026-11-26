@@ -51,8 +51,12 @@ export function loadGuilds(db: Db): StoredGuild[] {
   }));
 }
 
-/** Writes a guild and replaces its member lines. */
+/**
+ * Writes a guild and replaces its member lines. A guild founded with a disbanded guild's name is a
+ * new row: the disbanded one of that name goes (issue #16).
+ */
 export function saveGuild(db: Db, g: StoredGuild): void {
+  db.query("DELETE FROM guilds WHERE name = ? AND id <> ?").run(g.name, g.id);
   db.query(
     `INSERT INTO guilds (id, name, alignment, colour, leader_id, leader_name, disbanded, listed_at,
        created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)

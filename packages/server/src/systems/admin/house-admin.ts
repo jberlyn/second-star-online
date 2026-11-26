@@ -29,7 +29,7 @@ import {
 import type { CasinoDeps } from "../casino/index.ts";
 import { containerCapacity } from "../economy/containers.ts";
 import type { ShopLedger } from "../economy/shop.ts";
-import { houseVaultOf, ownsAHouse } from "../housing/houses.ts";
+import { houseVaultOf, isHall, ownsAHouse } from "../housing/houses.ts";
 import { closeMailAt } from "../mail/mail.ts";
 import { npcFileNamed, setNpcFile } from "../monsters/npcfiles.ts";
 import { warp } from "../world/tick.ts";
@@ -137,8 +137,11 @@ export function hubHouses(world: World, characterId: string, deps: HouseAdminDep
     .map((h) => hubHouse(world, h, deps));
 }
 
-/** The guild a guild hall's fixtures are named for, or null for a house of a player. */
-function hallGuild(m: WorldMap | null): string | null {
+/**
+ * The guild a guild hall's fixtures are named for, or null for a house of a player. Exported for
+ * the start's matching of halls built before they named their guild by id (issue #16).
+ */
+export function hallGuild(m: WorldMap | null): string | null {
   for (const g of m?.ground ?? []) {
     if (isFixtureKind(g.item, "guildVault")) {
       const match = /^The (.+)'s Guild Vault$/i.exec(g.item);
@@ -198,10 +201,13 @@ export function housePreview(
     // Demolition works on the outdoor map; without it nothing would be demolished.
     return { ok: false, text: HOUSE_ADMIN_TEXT.noMap(rec.map) };
   }
-  // The owner's other houses decide the vault: it is one per owner.
-  const others = [...world.houses.values()].some(
-    (h) => h.ownerId === owner.characterId && h !== rec,
-  );
+  // The owner's other houses decide the vault: it is one per owner. A guild hall is its guild's
+  // (issue #16): it neither opens its builder's House Vault nor decides its fate.
+  const others =
+    isHall(rec) ||
+    [...world.houses.values()].some(
+      (h) => h.ownerId === owner.characterId && h !== rec && !isHall(h),
+    );
   const vaultName = houseVaultOf(rec.ownerName);
   const vault = { name: vaultName, items: [...(world.containers.get(vaultName) ?? [])] };
   let vaultFate: HousePreview["vaultFate"];

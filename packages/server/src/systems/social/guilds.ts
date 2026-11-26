@@ -32,13 +32,16 @@ import {
 import { hears } from "../chat/ignore.ts";
 import { logChat } from "../chat/log.ts";
 import { chatWait, silenced } from "../chat/speech.ts";
-import type { GroundItem, GuildRow, Outgoing, Player, World } from "../world/world.ts";
+import type { GroundItem, GuildRow, Outgoing, Player, World, WorldMap } from "../world/world.ts";
+import { emptyGuildVault, endGuild, guildVaultOf, HALL_TEXT, hallsOf } from "./guild-halls.ts";
 
 export interface GuildDeps {
   /** A new row id. */
   newId(): string;
   /** ISO time for `created_at`. */
   now(): string;
+  /** The map loader, for the halls a disband demolishes (issue #16). */
+  loadMap?: (name: string) => WorldMap | null;
 }
 
 const chat = (to: Player, text: string): Outgoing => ({
@@ -164,6 +167,7 @@ export function guildCenterClick(world: World, p: Player, center: GroundItem): O
 
 /** CANCEL or OK: the input lock is off again, the screen gone. */
 export function guildClose(p: Player): void {
+  p.guildDisbandArmed = false;
   if (p.guildScreen) {
     p.guildScreen = false;
     p.keyLock = false;
@@ -172,17 +176,18 @@ export function guildClose(p: Player): void {
 
 /** Closes the screen as Leave, Disband and 1.6's "Guild Created" do (back to the previous frame). */
 function closeScreen(p: Player): Outgoing {
+  p.guildDisbandArmed = false;
   p.guildScreen = false;
   p.keyLock = false;
   return { to: p.id, msg: { t: "guild", screen: null } };
 }
 
 /**
- * Create's OK: the keys unlock at once; the name is sanitised; an empty one, a live guild of that
- * name, or a disbanded one you did not lead when it disbanded gets the alert; otherwise "Guild
- * created!", the screen closes, and you join the guild with the Hail. A guild's vault, Guild Key
- * doors and hall are found by its name, so only the leader who disbanded a guild may found it again
- * and take them back. 1.6 let anyone re-create the name and inherit them (a bug fixed).
+ * Create's OK: the keys unlock at once; the name is sanitised; an empty one, or a live guild of
+ * that name, gets the alert; otherwise "Guild created!", the screen closes, and you join the guild
+ * with the Hail. A disbanded guild's name is free for anyone: the new guild is a new row, and the
+ * old one left no hall or vault behind for the name to find (issue #16). 1.6 let anyone re-create
+ * the name and inherit its vault, doors and hall (a bug fixed).
  */
 export function guildCreate(
   world: World,
@@ -197,7 +202,7 @@ export function guildCreate(
   p.keyLock = false;
   const name = sanitiseGuildName(typed);
   const old = world.guilds.get(name.toLowerCase());
-  if (name === "" || (old && (!old.disbanded || old.leaderId !== p.id))) {
+  if (name === "" || (old && !old.disbanded)) {
     return [{ to: p.id, msg: { t: "alert", text: GUILD_TEXT.taken } }];
   }
   // A loop, not `Math.max(...)`: a spread of every guild row ever made would pass the engine's
@@ -208,7 +213,7 @@ export function guildCreate(
   }
   const listedAt = last + 1;
   const g: GuildRow = {
-    id: old?.id ?? deps.newId(),
+    id: deps.newId(),
     name,
     alignment,
     colour: 0,
@@ -219,8 +224,10 @@ export function guildCreate(
     listedAt,
     createdAt: deps.now(),
   };
-  if (old && old.name.toLowerCase() !== name.toLowerCase()) {
-    world.guilds.delete(old.name.toLowerCase());
+  // The disbanded row of that name is replaced (`saveGuild` deletes it). Anything it still held
+  // goes now, as its disband would have taken it.
+  if (old) {
+    emptyGuildVault(world, old);
   }
   world.guilds.set(name.toLowerCase(), g);
   dirty(world, g);
@@ -250,10 +257,14 @@ export function guildAction(
   act: "leave" | "disband" | "exile" | "abdicate",
   viewing: string,
   member: string | undefined,
+  deps?: Pick<GuildDeps, "loadMap">,
 ): Outgoing[] {
   if (!p.guildScreen) {
     return [];
   }
+  // Only a Disband straight after the warning disbands.
+  const armed = p.guildDisbandArmed;
+  p.guildDisbandArmed = false;
   if (!lingoEq(viewing, p.guild)) {
     return [chat(p, GUILD_TEXT.notMember)];
   }
@@ -283,11 +294,24 @@ export function guildAction(
       if (!leader) {
         return [];
       }
+      // The guild's halls and vault go with it (issue #16): the leader is warned first, and the
+      // vault must be emptied while a hall still reaches it.
+      const halls = hallsOf(world, g.id);
+      if (halls.length > 0) {
+        if ((world.containers.get(guildVaultOf(g.name))?.length ?? 0) > 0) {
+          return [chat(p, HALL_TEXT.emptyVault)];
+        }
+        if (!armed) {
+          p.guildDisbandArmed = true;
+          return [chat(p, HALL_TEXT.warn(halls.length))];
+        }
+      }
       const listeners = channel(world, g);
       g.disbanded = true;
       g.members = [];
       dirty(world, g);
       const out = pushLoadGuild2(world, g, listeners);
+      out.push(...endGuild(world, g, deps?.loadMap ?? (() => null)));
       out.push(closeScreen(p));
       return out;
     }

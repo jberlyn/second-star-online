@@ -275,18 +275,19 @@ export function headDrop(header: string, name: string, guild: string): 0 | 1 {
 }
 
 /**
- * The do-not-drop flag in a room that may be a house (issue #36): in a personal house's interior
- * the house's owner, by its blueprint, may furnish it and nobody else, whatever its header says (a
- * shop retitled "Chris's Market" stays its owner's); a guild hall, or a room that is no house,
- * keeps the header test (`headDrop`).
+ * The do-not-drop flag in a room that may be a house: in a house's interior its owner decides,
+ * whatever its header says. A personal house is its owner's by its blueprint (issue #36: a shop
+ * retitled "Chris's Market" stays its owner's), and a guild hall its guild's, by id (issue #16).
+ * `mine` says whether `name` is that owner. A room that is no house keeps the header test
+ * (`headDrop`).
  */
 export function houseDrop(
   header: string,
   name: string,
   guild: string,
-  house: { mine: boolean; hall: boolean } | null,
+  house: { mine: boolean } | null,
 ): 0 | 1 {
-  if (house && !house.hall) {
+  if (house) {
     return house.mine ? 0 : 1;
   }
   return headDrop(header, name, guild);
@@ -325,11 +326,21 @@ export function monthIndex(month: string): number | null {
   return mm >= 1 && mm <= 12 ? Number(m[1]) * 12 + mm - 1 : null;
 }
 
-/** The last-login update: every entry of the owner gets `month`. */
-export function refreshOwner(list: HouseListEntry[], ownerId: string, month: string): boolean {
+/**
+ * The last-login update: every entry of the owner gets `month`. `hall` says, for an entry that is
+ * a guild hall's, whether this player keeps it standing (any member of its guild, issue #16); null
+ * for any other house, which only its owner keeps.
+ */
+export function refreshOwner(
+  list: HouseListEntry[],
+  ownerId: string,
+  month: string,
+  hall: (interior: string) => boolean | null = () => null,
+): boolean {
   let changed = false;
   for (const e of list) {
-    if (e.ownerId === ownerId && e.month !== month) {
+    const seen = hall(e.interior) ?? e.ownerId === ownerId;
+    if (seen && e.month !== month) {
       e.month = month;
       changed = true;
     }

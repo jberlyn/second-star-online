@@ -452,33 +452,29 @@ describe("halls, keys, vaults and head drops follow the guild", () => {
     expect(headDrop("Hall of the Knights", "Bob", "Knights")).toBe(0);
   });
 
-  test("bug fixed: only the leader who disbanded a guild may found its name again", () => {
+  test("bug fixed: a disbanded guild's name is free for anyone, with nothing of the old guild's", () => {
     const s = scene();
     const { a, b } = s.full();
+    const old = s.world.guilds.get("knights")?.id;
     s.world.containers.set("The Knights's Guild Vault", ["Gold Crown"]);
     s.open(a);
+    // No hall stands, so nothing reaches the vault: it goes with the guild.
     guildAction(s.world, a, "disband", "Knights", undefined);
-    // A stranger, and a former member, get the taken alert and nothing of the old guild's.
-    for (const p of [s.join("Dave", 2, 2), b]) {
-      s.open(p);
-      const out = guildCreate(s.world, p, "knights", "N", guildDeps);
-      expect(of(out, p.name, "alert")).toEqual([
-        { t: "alert", text: "This guild name is already taken!" },
-      ]);
-      expect(p.guild).toBe("");
-      expect(mayUseContainer(p, "The Knights's Guild Vault")).toBe(false);
-      expect(turnKey("Guild Key", "The Knights's Door", p.name, p.guild).kind).not.toBe("turn");
-      expect(headDrop("Hall of the Knights", p.name, p.guild)).toBe(1);
-      guildClose(p);
-    }
+    expect(s.world.containers.has("The Knights's Guild Vault")).toBe(false);
     expect(s.world.guilds.get("knights")?.disbanded).toBe(true);
-    // The old leader takes the name back, with its vault, door and hall.
-    s.open(a);
-    guildCreate(s.world, a, "knights", "N", guildDeps);
-    expect(a.guild).toBe("knights");
-    expect(mayUseContainer(a, "The Knights's Guild Vault")).toBe(true);
-    expect(s.world.containers.get("The Knights's Guild Vault")).toEqual(["Gold Crown"]);
-    expect(turnKey("Guild Key", "The Knights's Door", a.name, a.guild).kind).toBe("turn");
-    expect(headDrop("Hall of the Knights", a.name, a.guild)).toBe(0);
+    // A former member founds the name: a new guild, with an empty vault.
+    s.open(b);
+    guildCreate(s.world, b, "knights", "N", guildDeps);
+    expect(b.guild).toBe("knights");
+    const g = s.world.guilds.get("knights");
+    expect(g?.disbanded).toBe(false);
+    expect(g?.id).not.toBe(old);
+    expect(g?.leaderName).toBe("Bob");
+    expect(mayUseContainer(b, "The Knights's Guild Vault")).toBe(true);
+    expect(s.world.containers.get("The Knights's Guild Vault")).toBeUndefined();
+    // The old leader is now a stranger to it.
+    expect(mayUseContainer(a, "The Knights's Guild Vault")).toBe(false);
+    expect(turnKey("Guild Key", "The Knights's Door", a.name, a.guild).kind).not.toBe("turn");
+    expect(headDrop("Hall of the Knights", a.name, a.guild)).toBe(1);
   });
 });

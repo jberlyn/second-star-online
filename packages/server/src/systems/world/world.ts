@@ -566,6 +566,11 @@ export interface Player {
   guildInvite: { guildId: string; inviterId: string } | null;
   /** The Guild Center (frame 72) is up. */
   guildScreen: boolean;
+  /**
+   * The leader pressed Disband once while the guild had a hall: the next Disband, before the Guild
+   * Center closes, disbands it (issue #16).
+   */
+  guildDisbandArmed: boolean;
 
   // ---- the casino ---------------------------------------------------------------
   /**
@@ -798,6 +803,7 @@ export function sessionCombatState(): Pick<
   | "guild"
   | "guildInvite"
   | "guildScreen"
+  | "guildDisbandArmed"
   | "slot"
   | "casino"
   | "mailList"
@@ -871,6 +877,7 @@ export function sessionCombatState(): Pick<
     guild: "",
     guildInvite: null,
     guildScreen: false,
+    guildDisbandArmed: false,
     slot: null,
     casino: null,
     mailList: false,
@@ -1096,6 +1103,11 @@ export interface HouseRecord {
   tiles: { code: string; x: number; y: number }[];
   /** The interior map it built. */
   interior: string;
+  /**
+   * A guild hall's guild, by id (issue #16): the hall is the guild's, whoever built it. Absent for
+   * a house of a player.
+   */
+  guildId?: string;
 }
 
 /**
