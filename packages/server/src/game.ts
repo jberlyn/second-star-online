@@ -196,10 +196,12 @@ import {
   listInteriorMapNames,
   listMapPlacements,
   listMapVersions,
+  loadMapRespawns,
   mapVersionData,
   saveMap,
   saveMapExits,
   saveMapLayers,
+  saveMapRespawns,
   saveMapTitle,
   saveMapTitleAndSigns,
 } from "./persistence/maps.ts";
@@ -976,7 +978,12 @@ export function createGame(deps: GameDeps): Game {
     }
     const rec = findMapByCoords(db, c.mx, c.my, c.slot);
     const m = rec
-      ? toWorldMap({ ...rec, slots: slotsFor(rec.id), ground: groundFor(rec.id, rec.name) })
+      ? toWorldMap({
+          ...rec,
+          slots: slotsFor(rec.id),
+          ground: groundFor(rec.id, rec.name),
+          respawns: loadMapRespawns(db, rec.id),
+        })
       : null;
     mapCache.set(key, m);
     return m;
@@ -1308,6 +1315,7 @@ export function createGame(deps: GameDeps): Game {
       // Tiles changed by gathering, seeds and regrowth, with the drops they made.
       for (const m of tiles) {
         saveMapLayers(db, m.id, m.layers, now);
+        saveMapRespawns(db, m.id, m.respawns ?? []);
       }
       for (const e of log) {
         if (e.add) {

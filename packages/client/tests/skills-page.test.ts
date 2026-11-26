@@ -251,6 +251,39 @@ describe("the Skills page", () => {
     });
   });
 
+  test("RuneScape's XP table is one pick: levels 1 to 99, 83 XP for level 2, and it reads back", () => {
+    const { p, calls, seq } = page();
+    p.open("Slash");
+    p.receive({ t: "contentSkills", seq: seq(), view: view(slash("aaaaaaaaaaaaaaaa")) });
+    const model = q<HTMLSelectElement>(p.el, "[data-action='skills-model']");
+    model.value = "xp";
+    model.dispatchEvent(new Event("change"));
+    const shape = q<HTMLSelectElement>(p.el, "[data-action='skills-curve-shape']");
+    shape.value = "runescape";
+    shape.dispatchEvent(new Event("change"));
+    expect(p.el.textContent).toContain("level 99 at 13,034,431");
+    // The preview's levels come from the table: level 2 takes 83 in total.
+    const rows = [...p.el.querySelectorAll(".skills-preview tbody tr")].map(
+      (r) => r.textContent ?? "",
+    );
+    expect(rows.some((r) => r.includes("83"))).toBe(true);
+    q<HTMLButtonElement>(p.el, "[data-action='skills-save']").click();
+    const sent = calls.set.at(-1)?.data as {
+      curve: { curve: { counting: string; table: number[]; cap: number; formula?: unknown } };
+    };
+    expect(sent.curve.curve).toMatchObject({ counting: "total", cap: 99 });
+    expect(sent.curve.curve.formula).toBeUndefined();
+    expect(sent.curve.curve.table.slice(0, 3)).toEqual([0, 83, 174]);
+    expect(sent.curve.curve.table.at(-1)).toBe(13_034_431);
+    // A list by hand: the table is edited in the open, one number a level.
+    shape.value = "table";
+    shape.dispatchEvent(new Event("change"));
+    expect(q<HTMLSelectElement>(p.el, "[data-action='skills-curve-shape']").value).toBe("table");
+    expect(q<HTMLInputElement>(p.el, "[data-action='skills-curve-table']").value).toMatch(
+      /^100, 200, 300/,
+    );
+  });
+
   test("what trains it links to where it is set", () => {
     const { p, calls, seq } = page();
     p.open("Slash");

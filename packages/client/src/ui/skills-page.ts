@@ -33,6 +33,7 @@ import {
   formatXp,
   type PreviewContext,
   previewCap,
+  runescapeTotals,
   type SkillListEntry,
   type SkillSource,
   type SkillTrainer,
@@ -1305,15 +1306,39 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
     shape.append(
       option("formula", "Formula rows"),
       option("growth", "Grows by a percent each level"),
+      option("table", "A list of XP for every level"),
+      option("runescape", "RuneScape's XP table (levels 1 to 99)"),
     );
-    shape.value = c.growth ? "growth" : "formula";
+    // A curve whose list alone covers every level is a list; RuneScape's own list says so.
+    const listOnly = !c.growth && c.formula === undefined && c.table !== undefined;
+    const isRunescape =
+      listOnly &&
+      c.counting === "total" &&
+      c.cap === 99 &&
+      canonical(c.table) === canonical(runescapeTotals());
+    shape.value = isRunescape ? "runescape" : listOnly ? "table" : c.growth ? "growth" : "formula";
     shape.addEventListener("change", () => {
       curveEdit.edited = true;
       if (shape.value === "growth") {
         delete c.formula;
+        delete c.table;
         c.growth = { start: 100, perLevel: 0, exponent: 1, growthPercent: 10 };
+      } else if (shape.value === "runescape") {
+        delete c.formula;
+        delete c.growth;
+        c.counting = "total";
+        c.table = runescapeTotals();
+        c.cap = 99;
+      } else if (shape.value === "table") {
+        delete c.formula;
+        delete c.growth;
+        const highest = c.cap ?? 100;
+        // A start to change: what the curve gave before, one entry per level.
+        c.table = Array.from({ length: highest }, (_, level) => (level + 1) * 100);
+        c.counting = "total";
       } else {
         delete c.growth;
+        delete c.table;
         c.formula = 100;
       }
       drawForm();
@@ -1409,41 +1434,57 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
       labelled(
         "Shape",
         shape,
-        "Growth is the easy way to a curve that gets steeper each level (10% is close to RuneScape's). Formula rows give any shape, step by step.",
+        "Growth is the easy way to a curve that gets steeper each level (10% is close to RuneScape's). RuneScape's table is its exact XP: 83 for level 2, 13,034,431 for 99. A list gives each level by hand; formula rows give any shape, step by step.",
       ),
-      c.growth
-        ? growthEditor(c.growth)
-        : formulaEditor(
-            "skills-curve-formula",
-            c.counting === "total"
-              ? "Total XP needed to reach each level"
-              : "XP needed to go up from each level",
-            formulaRows(c.formula),
-            invalid,
-            (r) => {
-              const f = rowsFormula(r);
-              if (f === undefined) {
-                curveEdit.edited = true;
-                delete c.formula;
-              } else {
-                curveEdit.edited = true;
-                c.formula = f;
-              }
-              edited();
-            },
-            "Use level for the level being left, e.g. Set to 100 then Multiply by level.",
-          ),
+      shape.value === "runescape"
+        ? helpLine(
+            "Level 1 is reached at 0 XP, level 2 at 83 and level 99 at 13,034,431, as in RuneScape. Start new characters at 1 in this skill (Classes, starting skills) so they begin at level 1. Pick “A list of XP for every level” to change single levels.",
+          )
+        : listOnly
+          ? labelled(
+              c.counting === "total"
+                ? "Total XP to reach each next level"
+                : "XP to go up from each level",
+              table,
+              "One number for each level from 0, separated by commas. The list must reach the highest level.",
+            )
+          : c.growth
+            ? growthEditor(c.growth)
+            : formulaEditor(
+                "skills-curve-formula",
+                c.counting === "total"
+                  ? "Total XP needed to reach each level"
+                  : "XP needed to go up from each level",
+                formulaRows(c.formula),
+                invalid,
+                (r) => {
+                  const f = rowsFormula(r);
+                  if (f === undefined) {
+                    curveEdit.edited = true;
+                    delete c.formula;
+                  } else {
+                    curveEdit.edited = true;
+                    c.formula = f;
+                  }
+                  edited();
+                },
+                "Use level for the level being left, e.g. Set to 100 then Multiply by level.",
+              ),
       labelled("Highest level", cap, "Empty means 100."),
       labelled("Stops levelling at", levelCap),
       more(
-        c.table !== undefined || c.counting === "total",
+        (c.table !== undefined && !listOnly) || (c.counting === "total" && !isRunescape),
         "More options",
         labelled("XP is counted", counting),
-        labelled(
-          "XP for the first levels",
-          table,
-          "Exact XP for levels 0, 1, 2… separated by commas. Levels past the list use the growth or formula above.",
-        ),
+        ...(listOnly
+          ? []
+          : [
+              labelled(
+                "XP for the first levels",
+                table,
+                "Exact XP for levels 0, 1, 2… separated by commas. Levels past the list use the growth or formula above.",
+              ),
+            ]),
       ),
     );
     return box;

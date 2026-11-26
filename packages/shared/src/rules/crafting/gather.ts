@@ -11,6 +11,7 @@ import { boundSkillIndex, SKILL_KEYS, skillNorm } from "../core/fighter.ts";
 import { lingoContains, lingoEq, lingoWord, type Rng } from "../core/lingo.ts";
 import { ruleMatches } from "../core/patterns.ts";
 import type { Facing } from "../movement/movement.ts";
+import { oddsAt, rollChance } from "./odds.ts";
 
 let G: ContentStore["gather"]["gathering"];
 
@@ -207,6 +208,46 @@ export function hitCounter(counters: GatherCounters, counter: string, skill: num
 }
 
 /**
+ * The chance a swing at a node harvests, for a node with `odds` (null for one that counts hits):
+ * its odds at the skill, plus `tierBonus` points for each tier the tool is above the node's.
+ */
+export function nodeChance(
+  node: Pick<HarvestNode, "odds" | "tierBonus" | "tier">,
+  toolTier: number,
+  skill: number,
+): number | null {
+  if (!node.odds) {
+    return null;
+  }
+  const above = Math.max(0, toolTier - (node.tier ?? 1));
+  return Math.min(1, oddsAt(node.odds, skill) + ((node.tierBonus ?? 0) * above) / 100);
+}
+
+/**
+ * One swing at a node the tool can work: a node with `odds` harvests on its chance; any other
+ * advances the tool's hit counter, and the hit that empties it harvests (1.6).
+ */
+export function swingHarvests(
+  node: HarvestNode,
+  use: ToolUse,
+  counters: GatherCounters,
+  skill: number,
+  rng: Rng,
+): boolean {
+  const chance = nodeChance(node, use.tier, skill);
+  return chance === null ? hitCounter(counters, use.counter, skill) : rollChance(chance, rng);
+}
+
+/**
+ * A harvest uses the node up (its tile turns into `becomes`): 1 time in `depletes`, rolled after
+ * the harvest; always when it has none (1.6), with no dice.
+ */
+export function harvestUsesUp(node: Pick<HarvestNode, "depletes">, rng: Rng): boolean {
+  const n = node.depletes ?? 1;
+  return n <= 1 || rng.random(n) === 1;
+}
+
+/**
  * A node's ground test: the layer-1 tile under the worked tile must be one of the node's `under`
  * tiles (the shovel's diggable grounds). Off the map nothing passes; a node with no `under` always
  * does.
@@ -372,14 +413,25 @@ export interface FishCatch {
   below?: number | undefined;
   weight: number;
   xp?: number | undefined;
+  /** Only these fishing tools catch it (exact names); any does when left out. */
+  tools?: readonly string[] | undefined;
 }
 
-/** The fish a Fishing skill can catch: those whose range holds it, in the pool's order. */
+/**
+ * The fish a Fishing skill can catch: those whose range holds it, in the pool's order, and, with
+ * a `tool`, that the tool may catch. Without one, every fish in range (the page's preview).
+ */
 export function catchesFor(
   skill: number,
   pool: readonly FishCatch[] = G.fishing?.catches ?? [],
+  tool?: string,
 ): FishCatch[] {
-  return pool.filter((c) => c.from <= skill && (c.below === undefined || skill < c.below));
+  return pool.filter(
+    (c) =>
+      c.from <= skill &&
+      (c.below === undefined || skill < c.below) &&
+      (tool === undefined || !c.tools || c.tools.some((t) => lingoEq(t, tool))),
+  );
 }
 
 /**
@@ -391,8 +443,9 @@ export function pickCatch(
   skill: number,
   rng: Rng,
   pool: readonly FishCatch[] = G.fishing?.catches ?? [],
+  tool?: string,
 ): FishCatch | null {
-  const open = catchesFor(skill, pool);
+  const open = catchesFor(skill, pool, tool);
   if (open.length <= 1) {
     return open[0] ?? null;
   }
@@ -410,8 +463,9 @@ export function pickCatch(
 export function catchShares(
   skill: number,
   pool: readonly FishCatch[] = G.fishing?.catches ?? [],
+  tool?: string,
 ): { fish: string; share: number; xp?: number | undefined }[] {
-  const open = catchesFor(skill, pool);
+  const open = catchesFor(skill, pool, tool);
   const total = open.reduce((n, c) => n + c.weight, 0);
   return open.map((c) => ({ fish: c.fish, share: c.weight / total, xp: c.xp }));
 }
@@ -440,6 +494,8 @@ export function castLine(
   skill: number,
   antiMacro: number,
   rng: Rng,
+  /** The fishing tool cast: a fish that names its tools bites only on one of them. */
+  tool?: string,
 ): {
   fish: string | null;
   catchXp: number | undefined;
@@ -451,7 +507,7 @@ export function castLine(
   let left = antiMacro;
   let caught: FishCatch | null = null;
   if (left > 0 && bite) {
-    caught = pickCatch(skill, rng);
+    caught = pickCatch(skill, rng, G.fishing?.catches ?? [], tool);
     left -= 1;
   }
   const bound = boundSkillIndex("fishing") !== undefined;

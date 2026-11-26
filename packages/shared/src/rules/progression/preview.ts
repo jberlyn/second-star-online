@@ -23,6 +23,7 @@ import {
   type FishCatch,
   fishCheck,
   hitsPerSuccess,
+  nodeChance,
   yieldOdds,
 } from "../crafting/gather.ts";
 import {
@@ -369,8 +370,15 @@ export interface GatherPreviewRow {
   tier: number;
   /** Null when the node can be worked; else why not. */
   why: string | null;
-  /** The swings each success takes (`hitsPerSuccess`); null when it never succeeds. */
+  /**
+   * The swings each success takes (`hitsPerSuccess`), or on average for a node with `odds`; null
+   * when it never succeeds.
+   */
   hits: number | null;
+  /** The node harvests by chance (`odds`), so `hits` is an average. */
+  byChance: boolean;
+  /** The chance a harvest uses the node up (`depletes`). */
+  usesUp: number;
   /** The chance a swing succeeds. */
   success: number;
   /** The chance a success drops from the yield table. */
@@ -417,8 +425,9 @@ export function gatherPreview(
           : tier < (node.tier ?? 1)
             ? `needs tier ${node.tier ?? 1}`
             : null;
+      const chance = nodeChance(node, tier, v);
       const loaded = hitsPerSuccess(data.counterTable, v);
-      const hits = loaded >= 1 ? loaded : null;
+      const hits = chance === null ? (loaded >= 1 ? loaded : null) : chance > 0 ? 1 / chance : null;
       const success = why === null && hits !== null ? 1 / hits : 0;
       const drop = !table
         ? 0
@@ -427,7 +436,17 @@ export function gatherPreview(
             ? 1 / Math.floor(data.findChance)
             : 0
           : 1 / Math.max(1, Math.floor(yieldOdds(table, v)));
-      rows.push({ skill: v, tier, why, hits, success, drop, perSwing: success * drop });
+      rows.push({
+        skill: v,
+        tier,
+        why,
+        hits,
+        byChance: chance !== null,
+        usesUp: 1 / Math.max(1, node.depletes ?? 1),
+        success,
+        drop,
+        perSwing: success * drop,
+      });
     }
   }
   return rows;

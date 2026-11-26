@@ -21,7 +21,7 @@ import {
 
 import { createGame } from "../src/game.ts";
 import { openDatabase } from "../src/persistence/database.ts";
-import { findMapByCoords } from "../src/persistence/maps.ts";
+import { findMapByCoords, loadMapRespawns, saveMapRespawns } from "../src/persistence/maps.ts";
 import { migrate } from "../src/persistence/migrations.ts";
 import { handleChat } from "../src/systems/chat/chat.ts";
 import { setAttackHeld } from "../src/systems/combat/melee.ts";
@@ -823,5 +823,112 @@ describe("tile persistence", () => {
     expect(tileAt(p.map.layers[1], tx, ty)).toBe("P3");
     const rec = findMapByCoords(db, 1000, 992);
     expect(rec && tileAt(rec.layers[1], tx, ty)).toBe("P3");
+  });
+});
+
+describe("RuneScape-style nodes: chance, lasting tiles and respawn timers", () => {
+  /** Classic, with its tree (S3) harvesting every swing, lasting 1 in 4 harvests, back in 60 s. */
+  function withLastingTree(body: () => void) {
+    const d = structuredClone(classicData) as ContentData;
+    const tree = d.gather.harvest.find((n) => n.tile === "S3");
+    if (!tree) {
+      throw new Error("Classic has a tree on S3");
+    }
+    Object.assign(tree, { odds: [{ level: 0, percent: 100 }], depletes: 4, respawn: 60 });
+    installContent(buildContentStore(d));
+    try {
+      body();
+    } finally {
+      installContent(buildContentStore(classicData));
+    }
+  }
+
+  /** A swinger at (5, 6) facing the tree at (5, 5), on a clock the test moves. */
+  function clocked(rng = rngByN()) {
+    let clock = 1_000_000;
+    const map = testMap("x1000y992", [[5, 5]]);
+    const s = setup([map], undefined, rng, () => clock);
+    const a = player("a", map, 5, 6);
+    a.char.equip.weapon = "Axe";
+    s.join(a);
+    const b = player("b", map, 9, 9);
+    s.join(b);
+    const swings = (n: number): Out => {
+      const out: Out = [];
+      let done = 0;
+      setAttackHeld(a, true);
+      while (done < n) {
+        const o = s.run(1);
+        out.push(...o);
+        done += events(o, "a").filter((e) => e.e === "swing").length;
+      }
+      setAttackHeld(a, false);
+      return out;
+    };
+    const at = (ms: number) => {
+      clock = ms;
+    };
+    return { ...s, map, a, swings, at, now: () => clock };
+  }
+
+  test("a lasting tree gives harvests until 1 in 4 fells it, and stands again 60 s later", () => {
+    withLastingTree(() => {
+      const g = clocked(rngByN({ 4: [2, 1] }));
+      g.swings(1);
+      expect(tileAt(g.map.layers[1], 5, 5)).toBe("S3");
+      g.swings(1);
+      expect(tileAt(g.map.layers[1], 5, 5)).toBe("P3");
+      const felledAt = g.now();
+      expect(g.map.respawns).toEqual([
+        { x: 5, y: 5, tile: "S3", becomes: "P3", at: felledAt + 60_000 },
+      ]);
+      g.at(felledAt + 59_999);
+      g.run(1);
+      expect(tileAt(g.map.layers[1], 5, 5)).toBe("P3");
+      g.at(felledAt + 60_000);
+      const out = g.run(1);
+      expect(tileAt(g.map.layers[1], 5, 5)).toBe("S3");
+      expect(events(out, "b")).toContainEqual({ e: "tile", layer: 2, x: 5, y: 5, code: "S3" });
+      expect(g.map.respawns).toEqual([]);
+      expect(g.world.tileLog.has(g.map)).toBe(true);
+    });
+  });
+
+  test("a tile changed while it waits (planted, edited, grown back) is left as it is", () => {
+    withLastingTree(() => {
+      const g = clocked(rngByN({ 4: [1] }));
+      g.swings(1);
+      expect(tileAt(g.map.layers[1], 5, 5)).toBe("P3");
+      const felledAt = g.now();
+      setLayer(g.map, 1, 5, 5, "G1");
+      g.at(felledAt + 60_000);
+      g.run(1);
+      expect(tileAt(g.map.layers[1], 5, 5)).toBe("G1");
+      expect(g.map.respawns).toEqual([]);
+    });
+  });
+
+  test("Classic's tree is felled by every harvest and waits only for regrowth", () => {
+    const g = clocked(rngByN({ 3: ones(), 12: [1] }));
+    setSkill(g.a, "Lumberjacking", 99);
+    g.a.gather.Axe = 1;
+    g.swings(1);
+    expect(tileAt(g.map.layers[1], 5, 5)).toBe("P3");
+    expect(g.map.respawns).toBeUndefined();
+  });
+
+  test("the waiting tiles are saved with the map and read back", () => {
+    const db = openDatabase();
+    migrate(db);
+    const rec = findMapByCoords(db, 1000, 992);
+    if (!rec) {
+      throw new Error("the start map is seeded");
+    }
+    const later = { x: 3, y: 4, tile: "S3", becomes: "P3", at: 2_000 };
+    const sooner = { x: 1, y: 2, tile: "B8", becomes: "G1", at: 1_000 };
+    saveMapRespawns(db, rec.id, [later, sooner]);
+    expect(loadMapRespawns(db, rec.id)).toEqual([sooner, later]);
+    saveMapRespawns(db, rec.id, []);
+    expect(loadMapRespawns(db, rec.id)).toEqual([]);
   });
 });

@@ -533,3 +533,124 @@ describe("craft XP (#37 stage 6)", () => {
     expect(finishCraft(bag, job, 0, rngByN()).xp).toBeUndefined();
   });
 });
+
+describe("RuneScape-style recipes", () => {
+  const rs = () => {
+    const d = structuredClone(classicData) as ContentData;
+    const st = d.craft.stations;
+    st.cook!.recipes.push({
+      input: "Trout",
+      output: "Cooked Trout",
+      burned: "Burned Trout",
+      xp: 70,
+      requires: { needs: "cooking", atLeast: 15 },
+      // 40% at 15, sure from 68 on: RuneScape's stop-burn level.
+      odds: [
+        { level: 15, percent: 40 },
+        { level: 68, percent: 100 },
+      ],
+    });
+    st.build!.recipes = [
+      {
+        input: "Logs",
+        output: "Chair",
+        xp: 25,
+        requires: { needs: "carpentry", atLeast: 10, text: "Practise on something smaller." },
+      },
+    ];
+    st.mix!.sands[0] = { ...st.mix!.sands[0]!, requires: { needs: "level", atLeast: 20 } };
+    installContent(buildContentStore(d));
+  };
+  const classic = () => installContent(buildContentStore(classicData as ContentData));
+
+  test("a recipe's skill level is needed before it starts, in its own words or the engine's", () => {
+    rs();
+    try {
+      const bag = bagOf(["Trout", 1]);
+      const stove = { bag, facing: at("Stove") };
+      expect(startCraft(view({ ...stove, skills: { Cooking: 14 } }), 1).lines).toEqual([
+        "You need Cooking 15 to cook this.",
+      ]);
+      // The requirement reads the crafter's skills, not just the bound one.
+      const who = (cooking: number) => {
+        const skills = classicData.classes.skills.map(() => 0);
+        skills[classicData.classes.skills.findIndex((s) => s.skill === "Cooking")] = cooking;
+        return { level: 1, skills };
+      };
+      expect(
+        startCraft(view({ ...stove, skills: { Cooking: 14 }, who: who(14) }), 1).lines,
+      ).toEqual(["You need Cooking 15 to cook this."]);
+      expect(
+        startCraft(view({ ...stove, skills: { Cooking: 15 }, who: who(15) }), 1).started?.job,
+      ).toEqual({ kind: "Cook", raw: "Trout" });
+      const logs = bagOf(["Logs", 1]);
+      expect(
+        startCraft(
+          view({
+            bag: logs,
+            facing: at("Carpentry Bench"),
+            rightHand: "Saw",
+            skills: { Carpentry: 5 },
+            who: who(0),
+          }),
+          1,
+        ).lines,
+      ).toEqual(["Practise on something smaller."]);
+    } finally {
+      classic();
+    }
+  });
+
+  test("a recipe's own chance replaces the failure table, and is sure from its last level", () => {
+    rs();
+    try {
+      const job: CraftJob = { kind: "Cook", raw: "Trout" };
+      // 40% at 15: a roll of 4000 in 10000 cooks it, 4001 burns it. No failure table draw.
+      const ok = rngByN({ 10000: [4000] });
+      const made = finishCraft(inv(bagOf(["Trout", 1])), job, 15, ok);
+      expect(made.lines).toEqual(["Your Cooked Trout is ready!"]);
+      expect(made.xp).toBe(70);
+      expect(ok.calls).toEqual([10_000]);
+      const burnt = finishCraft(inv(bagOf(["Trout", 1])), job, 15, rngByN({ 10000: [4001] }));
+      expect(burnt.lines).toEqual([CRAFT_TEXT.burned]);
+      expect(burnt.gain).toBe(false);
+      // In between, a straight line: at 41, 40 + 60 × 26/53 = 69.43%.
+      expect(finishCraft(inv(bagOf(["Trout", 1])), job, 41, rngByN({ 10000: [6943] })).gain).toBe(
+        true,
+      );
+      expect(finishCraft(inv(bagOf(["Trout", 1])), job, 41, rngByN({ 10000: [6944] })).gain).toBe(
+        false,
+      );
+      // From 68 on it never burns, and rolls nothing.
+      const sure = rngByN();
+      expect(finishCraft(inv(bagOf(["Trout", 1])), job, 68, sure).gain).toBe(true);
+      expect(sure.calls).toEqual([]);
+    } finally {
+      classic();
+    }
+  });
+
+  test("a set carpentry recipe makes its item and XP in place of the bands' roll", () => {
+    rs();
+    try {
+      const rng = rngByN();
+      const r = finishCraft(inv(bagOf(["Logs", 1])), { kind: "Build", logs: "Logs" }, 50, rng);
+      expect(r.lines).toEqual([CRAFT_TEXT.built("Chair")]);
+      expect(r.xp).toBe(25);
+      // No band was rolled: only the shared failure table drew (it has no odds of its own).
+      expect(rng.calls).toEqual([5, 7, 9]);
+    } finally {
+      classic();
+    }
+  });
+
+  test("Classic's recipes have no level, no chance of their own and no set carpentry", () => {
+    const st = classicData.craft.stations;
+    expect(st.build?.recipes).toBeUndefined();
+    for (const r of [...(st.cook?.recipes ?? []), ...(st.mix?.sands ?? [])]) {
+      expect(r.requires).toBeUndefined();
+      expect(r.odds).toBeUndefined();
+    }
+    expect(st.smith?.repairs.every((r) => r.requires === undefined)).toBe(true);
+  });
+});

@@ -33,3 +33,31 @@ export const requirementSchema = z.strictObject({
   atLeast: z.number().int().min(0).max(1_000_000),
   text: z.string().min(1).optional(),
 });
+
+/**
+ * Odds by level: the chance, in percent, at each listed skill level, read in a straight line
+ * between two points and held flat before the first and after the last (RuneScape's way: 30% at
+ * level 15, 100% at level 68). Levels go up from row to row.
+ */
+export const levelOddsSchema = z
+  .array(
+    z.strictObject({
+      level: z.number().int().min(0).max(100),
+      percent: z.number().min(0).max(100),
+    }),
+  )
+  .min(1)
+  .max(30)
+  .superRefine((rows, ctx) => {
+    rows.forEach((r, i) => {
+      const prev = rows[i - 1];
+      if (prev && r.level <= prev.level) {
+        ctx.addIssue({
+          code: "custom",
+          path: [i, "level"],
+          message: `level ${r.level} comes after level ${prev.level}: list the levels going up`,
+        });
+      }
+    });
+  });
+export type LevelOdds = z.infer<typeof levelOddsSchema>;

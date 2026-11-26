@@ -4,7 +4,7 @@
  * edited into the content store's shared draft.
  *
  * Laid out as the Items page is: a list on the left, and the open part's form behind plain tabs
- * (a harvestable tile: Tile, Tool, Skill, Drops, Sounds and Odds), each with a help line, rare
+ * (a harvestable tile: Tile, Tool, Skill, Harvesting, Drops, Sounds and Odds), each with a help line, rare
  * fields folded under "More options" (open when one has a value), and a dot on each tab that holds
  * settings beyond the basics. Skill tables are shown "from skill N" (the stored rows say "above
  * N - 1"), and how often a spent tile grows back in minutes; what is saved is unchanged.
@@ -84,6 +84,7 @@ type CatchRow = {
   below?: number;
   weight: number;
   xp?: number;
+  tools?: string[];
 };
 
 /**
@@ -95,6 +96,7 @@ const TAB_FIELDS: Record<string, Record<string, readonly string[]>> = {
     tile: ["tile", "becomes", "under", "@regrows"],
     tool: ["can", "tools", "tier"],
     skill: ["skill", "requires", "gains", "xp"],
+    harvest: ["odds", "tierBonus", "depletes", "respawn"],
     drops: ["yield", "treasure", "@yieldTable"],
     sounds: ["hitSound", "successSound", "strikeFx"],
   },
@@ -778,6 +780,37 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
     });
     return input;
   };
+  /** A number input that takes up to two decimal places (a percent such as 0.5). */
+  const decimal = (
+    idName: string,
+    value: number | null | undefined,
+    min: number,
+    max: number,
+    nullable: boolean,
+    label: string,
+    write: (n: number | null) => void,
+  ) => {
+    const input = noAutofill(action(document.createElement("input"), idName));
+    input.type = "number";
+    input.step = "any";
+    input.min = String(min);
+    input.max = String(max);
+    input.value = value === null || value === undefined ? "" : String(value);
+    input.addEventListener("input", () => {
+      const t = input.value.trim();
+      if (t === "" && nullable) {
+        invalid.delete(input);
+        write(null);
+      } else if (!/^\d+(\.\d{1,2})?$/.test(t) || Number(t) < min || Number(t) > max) {
+        invalid.set(input, `${label}: a number from ${min} to ${max}, at most two decimal places`);
+      } else {
+        invalid.delete(input);
+        write(Number(t));
+      }
+      edited();
+    });
+    return input;
+  };
   const check = (idName: string, on: boolean, label: string, write: (on: boolean) => void) => {
     const l = document.createElement("label");
     l.className = "items-check";
@@ -820,7 +853,8 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
     fields: readonly {
       key: keyof T & string;
       label: string;
-      kind: "int" | "text";
+      /** `names`: item names, comma-separated, kept as a list (left out when empty). */
+      kind: "int" | "decimal" | "text" | "names";
       list?: string;
       offset?: number;
       min?: number;
@@ -846,33 +880,63 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
           line.className = "items-list-row";
           for (const f of fields) {
             const control =
-              f.kind === "int"
-                ? int(
+              f.kind === "decimal"
+                ? decimal(
                     `${idPrefix}-${f.key}`,
                     row[f.key] as number | undefined,
-                    f.min ?? -1_000_000,
-                    f.max ?? 1_000_000_000,
-                    f.optional !== undefined,
+                    f.min ?? 0,
+                    f.max ?? 100,
+                    false,
                     `${label}, row ${i + 1}: ${f.label}`,
                     (n) => {
-                      if (n === null && f.optional !== undefined) {
-                        delete (row as Record<string, unknown>)[f.key];
-                      } else {
-                        (row as Record<string, unknown>)[f.key] = n ?? 0;
-                      }
+                      (row as Record<string, unknown>)[f.key] = n ?? 0;
                       changed();
                     },
-                    f.offset ?? 0,
                   )
-                : text(
-                    `${idPrefix}-${f.key}`,
-                    String(row[f.key] ?? ""),
-                    (t) => {
-                      (row as Record<string, unknown>)[f.key] = t;
-                      changed();
-                    },
-                    f.list,
-                  );
+                : f.kind === "names"
+                  ? text(
+                      `${idPrefix}-${f.key}`,
+                      ((row[f.key] as string[] | undefined) ?? []).join(", "),
+                      (t) => {
+                        const parts = t
+                          .split(",")
+                          .map((x) => x.trim())
+                          .filter((x) => x !== "");
+                        if (parts.length === 0) {
+                          delete (row as Record<string, unknown>)[f.key];
+                        } else {
+                          (row as Record<string, unknown>)[f.key] = parts;
+                        }
+                        changed();
+                      },
+                    )
+                  : f.kind === "int"
+                    ? int(
+                        `${idPrefix}-${f.key}`,
+                        row[f.key] as number | undefined,
+                        f.min ?? -1_000_000,
+                        f.max ?? 1_000_000_000,
+                        f.optional !== undefined,
+                        `${label}, row ${i + 1}: ${f.label}`,
+                        (n) => {
+                          if (n === null && f.optional !== undefined) {
+                            delete (row as Record<string, unknown>)[f.key];
+                          } else {
+                            (row as Record<string, unknown>)[f.key] = n ?? 0;
+                          }
+                          changed();
+                        },
+                        f.offset ?? 0,
+                      )
+                    : text(
+                        `${idPrefix}-${f.key}`,
+                        String(row[f.key] ?? ""),
+                        (t) => {
+                          (row as Record<string, unknown>)[f.key] = t;
+                          changed();
+                        },
+                        f.list,
+                      );
             if (f.optional !== undefined) {
               control.placeholder = f.optional;
             }
@@ -1011,6 +1075,15 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
       }
       const skill = view.skills.find((s) => s.skill.toLowerCase() === node.skill.toLowerCase());
       table.setAttribute("aria-label", "Odds by skill and tool tier");
+      const lasts =
+        (node.depletes ?? 1) > 1
+          ? `Each tile gives ${node.depletes} harvests on average before it turns into ${tileText(node.becomes) || node.becomes}.`
+          : `Every harvest turns the tile into ${tileText(node.becomes) || node.becomes}.`;
+      const back =
+        node.respawn !== undefined
+          ? ` It comes back ${waitText(node.respawn * TICK_HZ)} later.`
+          : "";
+      preview.append(helpLine(lasts + back));
       head.append(
         cell("th", "Tools"),
         cell("th", node.skill ? `${skillName(node.skill)} skill` : "Skill"),
@@ -1082,7 +1155,11 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
           return c.why
             ? [c.why, "—", "—", "—", "—", "—"]
             : [
-                c.hits === null ? "never" : String(c.hits),
+                c.hits === null
+                  ? "never"
+                  : c.byChance
+                    ? `about ${Number(c.hits.toFixed(1))}`
+                    : String(c.hits),
                 chanceText(c.success),
                 chanceText(c.drop),
                 c.perSwing.toFixed(3),
@@ -1397,6 +1474,128 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
       ),
     );
 
+    // Harvesting: how a swing harvests, how long the tile lasts, and when it comes back.
+    const how = action(document.createElement("select"), "gathering-how");
+    how.append(
+      option("swings", "After a set number of swings (Swings per harvest)"),
+      option("odds", "By a chance on every swing, better with skill"),
+    );
+    how.value = n.odds ? "odds" : "swings";
+    const oddsBox = document.createElement("div");
+    const drawOdds = () => {
+      oddsBox.replaceChildren();
+      if (!n.odds) {
+        oddsBox.append(
+          helpLine(
+            "Each swing counts down the tool's swings; the swing that reaches 0 harvests. How many swings a harvest takes at each skill value is set once for every tile, on Swings per harvest in the list.",
+          ),
+        );
+        return;
+      }
+      const points = n.odds;
+      const bonus = decimal(
+        "gathering-tier-bonus",
+        n.tierBonus ?? null,
+        0,
+        100,
+        true,
+        "Better tools add",
+        (v) => {
+          if (v === null) {
+            delete n.tierBonus;
+          } else {
+            n.tierBonus = v;
+          }
+        },
+      );
+      bonus.placeholder = "Nothing";
+      oddsBox.append(
+        rowsEditor(
+          "gathering-odds",
+          "Chance each swing harvests",
+          "The chance at a few skill levels, in percent. Between two levels it rises in a straight line; below the first and past the last it stays the same. List the levels going up.",
+          "+ Add a level",
+          points,
+          [
+            { key: "level", label: "At skill", kind: "int", min: 0, max: 100 },
+            { key: "percent", label: "Chance %", kind: "decimal", min: 0, max: 100 },
+          ],
+          () => ({ level: Math.min(100, (points.at(-1)?.level ?? 0) + 10), percent: 100 }),
+        ),
+        labelled(
+          "Better tools add (% per tier)",
+          bonus,
+          "Added to the chance for each tier the tool is above the lowest tier this tile takes, so a better axe chops faster. Empty: tools make no difference.",
+        ),
+      );
+    };
+    drawOdds();
+    how.addEventListener("change", () => {
+      if (how.value === "odds") {
+        // A start to change: a quarter of swings at the tile's required level, nearly all at 99.
+        const from = n.requires && n.requires.needs !== "level" ? n.requires.atLeast : 1;
+        n.odds = [
+          { level: Math.min(from, 98), percent: 25 },
+          { level: 99, percent: 90 },
+        ];
+      } else {
+        delete n.odds;
+        delete n.tierBonus;
+      }
+      drawOdds();
+      edited();
+    });
+    const depletesInput = int(
+      "gathering-depletes",
+      n.depletes ?? null,
+      1,
+      1_000_000,
+      true,
+      "Used up 1 time in",
+      (v) => {
+        if (v === null || v === 1) {
+          delete n.depletes;
+        } else {
+          n.depletes = v;
+        }
+      },
+    );
+    depletesInput.placeholder = "1: every harvest";
+    const respawnInput = int(
+      "gathering-respawn",
+      n.respawn ?? null,
+      1,
+      604_800,
+      true,
+      "Comes back after",
+      (v) => {
+        if (v === null) {
+          delete n.respawn;
+        } else {
+          n.respawn = v;
+        }
+      },
+    );
+    respawnInput.placeholder = "Only as it grows back";
+    const harvestTab = section(
+      "harvest",
+      "Harvesting",
+      "How a swing harvests, how many harvests the tile gives before it is used up, and when it comes back. Leave these as they are for the classic game; use chances, lasting tiles and timers for RuneScape-style skills.",
+      n.odds !== undefined || n.depletes !== undefined || n.respawn !== undefined,
+      labelled("A swing harvests", how),
+      oddsBox,
+      labelled(
+        "Used up 1 time in … harvests",
+        depletesInput,
+        "1 (or empty): every harvest turns the tile. 8: on average it gives 8 harvests before it turns, as an oak gives several logs.",
+      ),
+      labelled(
+        "Comes back after (seconds)",
+        respawnInput,
+        "Once used up, the tile turns back this many seconds later (60 is a minute), whether or not anyone is there. Empty: only “Grows back” on the Tile tab brings it back.",
+      ),
+    );
+
     // Drops.
     const yieldBox = document.createElement("div");
     const drawYield = () => {
@@ -1677,7 +1876,7 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
       preview,
     );
 
-    body.replaceChildren(tileTab, toolTab, skillTab, dropsTab, soundsTab, oddsTab);
+    body.replaceChildren(tileTab, toolTab, skillTab, harvestTab, dropsTab, soundsTab, oddsTab);
     addRestores();
     drawPreview();
     update();
@@ -1937,7 +2136,7 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
           rowsEditor(
             "gathering-catches",
             "Fish caught",
-            "A bite catches one of the fish whose skill range holds the fisher's Fishing skill, picked by weight: a fish of weight 3 is caught three times as often as one of weight 1. Ranges may overlap, so a skilled fisher can still catch small fish. XP is what a catch gives when Fishing rises by XP and catches train it (empty: the skill's own XP).",
+            "A bite catches one of the fish whose skill range holds the fisher's Fishing skill, picked by weight: a fish of weight 3 is caught three times as often as one of weight 1. Ranges may overlap, so a skilled fisher can still catch small fish. “Only with” names the fishing tools that catch it (a harpoon for sharks); empty, any does. XP is what a catch gives when Fishing rises by XP and catches train it (empty: the skill's own XP).",
             "+ Add a fish",
             f.catches as CatchRow[],
             [
@@ -1953,6 +2152,7 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
               },
               { key: "weight", label: "Weight", kind: "int", min: 1, max: 1_000_000 },
               { key: "xp", label: "XP", kind: "int", min: 0, optional: "skill's own" },
+              { key: "tools", label: "Only with", kind: "names", optional: "any fishing tool" },
             ],
             (): CatchRow => ({ fish: "", from: 0, weight: 1 }),
           ),

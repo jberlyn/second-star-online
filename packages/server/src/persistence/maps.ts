@@ -174,6 +174,36 @@ export function saveMapLayers(
   );
 }
 
+/** A used-up harvest node's tile waiting to come back (`harvest[].respawn`); `at` in epoch ms. */
+export interface RespawnRecord {
+  x: number;
+  y: number;
+  tile: string;
+  becomes: string;
+  at: number;
+}
+
+/** A map's waiting respawns, replaced whole, with its tiles. The caller owns the transaction. */
+export function saveMapRespawns(db: Db, id: string, rows: readonly RespawnRecord[]): void {
+  db.query("DELETE FROM tile_respawns WHERE map_id = ?").run(id);
+  const insert = db.query(
+    "INSERT INTO tile_respawns (map_id, x, y, tile, becomes, due_at) VALUES (?, ?, ?, ?, ?, ?)",
+  );
+  for (const r of rows) {
+    insert.run(id, r.x, r.y, r.tile, r.becomes, r.at);
+  }
+}
+
+/** A map's waiting respawns, as saved. */
+export function loadMapRespawns(db: Db, id: string): RespawnRecord[] {
+  return db
+    .query<{ x: number; y: number; tile: string; becomes: string; due_at: number }, [string]>(
+      "SELECT x, y, tile, becomes, due_at FROM tile_respawns WHERE map_id = ? ORDER BY due_at",
+    )
+    .all(id)
+    .map((r) => ({ x: r.x, y: r.y, tile: r.tile, becomes: r.becomes, at: r.due_at }));
+}
+
 /** Keeps the map as it was before an editor save ("versioned"). */
 export function insertMapVersion(
   db: Db,

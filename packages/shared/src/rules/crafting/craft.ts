@@ -8,9 +8,16 @@ import type { CraftData } from "@secondstaronline/data";
 
 import { content, onContent } from "../../content/store.ts";
 import { lingoEq, type Rng } from "../core/lingo.ts";
+import {
+  type Qualifications,
+  type Requirement,
+  requirementMet,
+  requirementText,
+} from "../core/requirements.ts";
 import { menuAction } from "../inventory/equip.ts";
 import { type AddResult, type Bag, invAdd } from "../inventory/inventory.ts";
 import { crystalLine } from "../spells/spells.ts";
+import { type OddsPoint, oddsAt, rollChance } from "./odds.ts";
 
 let ST: CraftData["stations"];
 
@@ -206,6 +213,15 @@ export interface CraftView {
   facing: (station: string) => boolean;
   keyLock: boolean;
   itemPause: number;
+  /** The crafter's level and skills, for a recipe's `requires`; none meets nothing. */
+  who?: Qualifications;
+}
+
+/** A recipe's requirement the crafter does not meet, as its refusal, or null. */
+function unmet(v: CraftView, r: Requirement | undefined, verb: string): string | null {
+  return r && !requirementMet(r, v.who ?? { level: 0, skills: [] })
+    ? requirementText(r, verb)
+    : null;
 }
 
 /**
@@ -287,6 +303,10 @@ function startSmith(v: CraftView, item: string): CraftStartResult {
   if (repairResult(item) === null) {
     return none([CRAFT_TEXT.cantRepair]);
   }
+  const needs = unmet(v, lastRow(smith.repairs, item)?.requires, "repair");
+  if (needs !== null) {
+    return none([needs]);
+  }
   const chunk = smithChunk(item);
   // Any bag line whose icon is the chunk's member: an exact name.
   if (!v.bag.some((l) => l !== null && lingoEq(l.item, chunk))) {
@@ -318,6 +338,10 @@ function startCook(v: CraftView, item: string): CraftStartResult {
   if (cookResult(item) === null) {
     return none([CRAFT_TEXT.cantCook]);
   }
+  const needs = unmet(v, lastRow(cook.recipes, item)?.requires, "cook");
+  if (needs !== null) {
+    return none([needs]);
+  }
   return {
     lines: [CRAFT_TEXT.cookBegin(item)],
     started: {
@@ -345,6 +369,10 @@ function startMix(v: CraftView, item: string): CraftStartResult {
   if (c < 0 || (v.bag[c]?.qty ?? 0) <= 0 || firstSlotNamed(v.bag, sand.crystal) < 0) {
     return none([sand.need]);
   }
+  const needs = unmet(v, sand.requires, "brew");
+  if (needs !== null) {
+    return none([needs]);
+  }
   return {
     lines: [CRAFT_TEXT.mixBegin],
     started: {
@@ -367,6 +395,10 @@ function startBuild(v: CraftView, item: string): CraftStartResult {
   if (carpentry < build.minSkill) {
     return none([CRAFT_TEXT.unskilledBuild]);
   }
+  const needs = unmet(v, buildRecipe(item)?.requires, "build");
+  if (needs !== null) {
+    return none([needs]);
+  }
   return {
     lines: [CRAFT_TEXT.buildBegin],
     started: {
@@ -388,6 +420,45 @@ function recipeFor(rows: readonly { input: string; output: string }[], item: str
     }
   }
   return out;
+}
+
+/** The last row of `rows` whose input is `item`, as `recipeFor` finds its result, or undefined. */
+function lastRow<T extends { input: string }>(rows: readonly T[], item: string): T | undefined {
+  return rows.findLast((r) => lingoEq(item, r.input));
+}
+
+/** The carpentry recipe for the item built with, or undefined (the bands decide). */
+export function buildRecipe(item: string) {
+  return lastRow(ST.build?.recipes ?? [], item);
+}
+
+/** The recipe row a job uses: its `odds`, if it has any, replace the shared failure table. */
+function jobOdds(job: CraftJob): readonly OddsPoint[] | undefined {
+  const st = ST;
+  switch (job.kind) {
+    case "Smith":
+      return undefined;
+    case "Cook":
+      return lastRow(st.cook?.recipes ?? [], job.raw)?.odds;
+    case "Mix":
+      return st.mix?.sands.find(
+        (r) => lingoEq(r.potion, job.potion) && lingoEq(r.crystal, job.crystal),
+      )?.odds;
+    case "Build":
+      return buildRecipe(job.logs)?.odds;
+  }
+}
+
+/**
+ * The chance a craft fails at a skill: one less the recipe's `odds` when it has them, else the
+ * shared failure table's 1 in N (no table row: never).
+ */
+export function failChance(odds: readonly OddsPoint[] | undefined, skill: number): number {
+  if (odds) {
+    return 1 - oddsAt(odds, skill);
+  }
+  const n = failurePool(skill);
+  return n === null || n < 1 ? 0 : 1 / Math.floor(n);
 }
 
 /** What a damaged item repairs into, or null when it cannot be repaired. */
@@ -468,11 +539,16 @@ function craftXp(job: CraftJob, result: string, skill: number): number | undefin
       return st.mix?.sands.find(
         (r) => lingoEq(r.potion, job.potion) && lingoEq(r.crystal, job.crystal),
       )?.xp;
-    case "Build":
+    case "Build": {
+      const recipe = buildRecipe(job.logs);
+      if (recipe) {
+        return recipe.xp;
+      }
       return (st.build?.bands ?? [])
         .filter((b) => skill < b.lt)
         .flatMap((b) => b.results)
         .findLast((r) => lingoEq(r.item, result))?.xp;
+    }
   }
 }
 
@@ -549,11 +625,15 @@ export function finishCraft(
       failed = CRAFT_TEXT.potionOff;
       break;
     case "Build":
-      result = carpentryResult(skill, rng);
+      // A set recipe makes its item; anything else rolls the bands.
+      result = buildRecipe(job.logs)?.output ?? carpentryResult(skill, rng);
       failed = CRAFT_TEXT.buildFailed;
       break;
   }
-  if (failed !== null && rollFailure(skill, rng)) {
+  const odds = jobOdds(job);
+  const fails =
+    failed !== null && (odds ? !rollChance(oddsAt(odds, skill), rng) : rollFailure(skill, rng));
+  if (failed !== null && fails) {
     if (spoiled !== null) {
       return make(spoiled, failed, false);
     }

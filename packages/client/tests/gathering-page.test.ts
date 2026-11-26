@@ -385,11 +385,12 @@ describe("the plain-language form", () => {
       ["Tile", "true"],
       ["Tool", "false"],
       ["Skill", "false"],
+      ["Harvesting", "false"],
       ["Drops", "true"],
       ["Sounds and effect", "true"],
       ["Odds", "false"],
     ]);
-    expect(p.el.querySelectorAll(".items-group > .items-intro")).toHaveLength(6);
+    expect(p.el.querySelectorAll(".items-group > .items-intro")).toHaveLength(7);
     // The rare tool fields are folded away while empty.
     const toolMore = q<HTMLElement>(p.el, "[data-group='tool']").querySelector(
       ".items-more",
@@ -587,5 +588,107 @@ describe("the plain-language form", () => {
       expect(tagText(own.p.el)).toEqual(["Added by you"]);
       expect(own.p.el.querySelector("[data-action='gathering-pack-tile']")).toBeNull();
     });
+  });
+});
+
+describe("RuneScape-style harvesting", () => {
+  test("a chance by level, tool tiers, lasting tiles and a timer are edited, previewed and saved", () => {
+    const { p, sent } = page();
+    q<HTMLButtonElement>(p.el, "[data-action='gathering-open-node']").click();
+    const how = q<HTMLSelectElement>(p.el, "[data-action='gathering-how']");
+    expect(how.value).toBe("swings");
+    how.value = "odds";
+    how.dispatchEvent(new Event("change"));
+    // Two starting points: 25% at level 1, 90% at 99.
+    const levels = [
+      ...p.el.querySelectorAll<HTMLInputElement>("[data-action='gathering-odds-level']"),
+    ];
+    const percents = [
+      ...p.el.querySelectorAll<HTMLInputElement>("[data-action='gathering-odds-percent']"),
+    ];
+    expect(levels.map((i) => i.value)).toEqual(["1", "99"]);
+    typeIn(levels[0] as HTMLInputElement, "15");
+    typeIn(percents[0] as HTMLInputElement, "12.5");
+    typeIn(levels[1] as HTMLInputElement, "60");
+    typeIn(percents[1] as HTMLInputElement, "50");
+    typeIn(q<HTMLInputElement>(p.el, "[data-action='gathering-tier-bonus']"), "10");
+    typeIn(q<HTMLInputElement>(p.el, "[data-action='gathering-depletes']"), "8");
+    typeIn(q<HTMLInputElement>(p.el, "[data-action='gathering-respawn']"), "90");
+    // The preview reads the chance: 12.5% at 15 is about 8 swings; tier 2 adds 10 points.
+    const rows = [...p.el.querySelectorAll(".gathering-preview tbody tr")].map((r) =>
+      [...r.querySelectorAll("td")].map((c) => c.textContent),
+    );
+    const at = (tier: string, v: number) =>
+      rows.find((r) => {
+        const [lo, hi = lo] = (r[1] ?? "").split("-").map(Number);
+        return r[0]?.startsWith(tier) && v >= (lo ?? 0) && v <= (hi ?? 0);
+      });
+    expect(at("Tier 1", 15)?.slice(2, 4)).toEqual(["about 8", "1 in 8 (12.5%)"]);
+    expect(at("Tier 2", 60)?.slice(2, 4)).toEqual(["about 1.7", "1 in 1.7 (60.0%)"]);
+    expect(p.el.querySelector(".gathering-preview")?.textContent).toContain(
+      "Each tile gives 8 harvests on average",
+    );
+    q<HTMLButtonElement>(p.el, "[data-action='gathering-save']").click();
+    const data = sent.at(-1)?.data as { node: Record<string, unknown> };
+    expect(data.node).toMatchObject({
+      odds: [
+        { level: 15, percent: 12.5 },
+        { level: 60, percent: 50 },
+      ],
+      tierBonus: 10,
+      depletes: 8,
+      respawn: 90,
+    });
+    expect(harvestNodeSchema.safeParse(data.node).success).toBe(true);
+    // Back to swings, before a save: the chance and the tool bonus go.
+    const again = page();
+    q<HTMLButtonElement>(again.p.el, "[data-action='gathering-open-node']").click();
+    const how2 = q<HTMLSelectElement>(again.p.el, "[data-action='gathering-how']");
+    how2.value = "odds";
+    how2.dispatchEvent(new Event("change"));
+    typeIn(q<HTMLInputElement>(again.p.el, "[data-action='gathering-tier-bonus']"), "5");
+    typeIn(q<HTMLInputElement>(again.p.el, "[data-action='gathering-depletes']"), "3");
+    how2.value = "swings";
+    how2.dispatchEvent(new Event("change"));
+    q<HTMLButtonElement>(again.p.el, "[data-action='gathering-save']").click();
+    const saved = again.sent.at(-1)?.data as { node: Record<string, unknown> };
+    const back = saved.node;
+    expect(back.odds).toBeUndefined();
+    expect(back.tierBonus).toBeUndefined();
+    expect(back.depletes).toBe(3);
+  });
+
+  test("a percent with more than two decimal places is refused by name", () => {
+    const { p, sent } = page();
+    q<HTMLButtonElement>(p.el, "[data-action='gathering-open-node']").click();
+    const how = q<HTMLSelectElement>(p.el, "[data-action='gathering-how']");
+    how.value = "odds";
+    how.dispatchEvent(new Event("change"));
+    typeIn(q<HTMLInputElement>(p.el, "[data-action='gathering-odds-percent']"), "1.234");
+    const before = sent.length;
+    q<HTMLButtonElement>(p.el, "[data-action='gathering-save']").click();
+    expect(sent.length).toBe(before);
+  });
+
+  test("a fish caught only with named tools saves them as a list", () => {
+    const { p, sent } = page();
+    q<HTMLButtonElement>(p.el, "[data-action='gathering-open-fishing']").click();
+    typeIn(q<HTMLInputElement>(p.el, "[data-action='gathering-catches-tools']"), "Harpoon, Net");
+    q<HTMLButtonElement>(p.el, "[data-action='gathering-save']").click();
+    expect(sent.at(-1)).toMatchObject({
+      op: "fishing",
+      data: { catches: [{ fish: "Fish", tools: ["Harpoon", "Net"] }] },
+    });
+    // Cleared again, before a save: no list at all.
+    const again = page();
+    q<HTMLButtonElement>(again.p.el, "[data-action='gathering-open-fishing']").click();
+    const tools = q<HTMLInputElement>(again.p.el, "[data-action='gathering-catches-tools']");
+    typeIn(tools, "Harpoon");
+    typeIn(tools, "");
+    typeIn(q<HTMLInputElement>(again.p.el, "[data-action='gathering-anti-macro']"), "7");
+    q<HTMLButtonElement>(again.p.el, "[data-action='gathering-save']").click();
+    const fishing = again.sent.at(-1)?.data as { catches: Record<string, unknown>[] };
+    const catches = fishing.catches;
+    expect(catches[0]?.tools).toBeUndefined();
   });
 });

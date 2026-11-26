@@ -18,6 +18,7 @@ import {
   fishingOffset,
   fishingSpot,
   GATHER_TEXT,
+  harvestUsesUp,
   hitCounter,
   isFishingPole,
   isFishingWater,
@@ -40,6 +41,7 @@ import {
   skillValue,
   sprinkleOffset,
   swingCooldowns,
+  swingHarvests,
   TREASURE,
   type TrainExtra,
   tierText,
@@ -59,7 +61,14 @@ import { fighterOf } from "../monsters/attack.ts";
 import { aqsToMap } from "../social/factions.ts";
 import { queueCast } from "../spells/fx.ts";
 import { playerLoc } from "../spells/geometry.ts";
-import { type Outgoing, type Player, type Room, setTile, type World } from "../world/world.ts";
+import {
+  type Outgoing,
+  type Player,
+  type Room,
+  setTile,
+  type World,
+  type WorldMap,
+} from "../world/world.ts";
 
 export interface GatherCtx {
   world: World;
@@ -201,7 +210,7 @@ export function preSwing(room: Room, p: Player, ctx: GatherCtx, ev: GatherEvents
     }
     // The allowance belongs to the tile you fish from, and outlasts a logout.
     const spot = fishingSpot(ctx.world.fishingSpots.get(p.id), p.map.id, p.x, p.y);
-    const r = castLine(p.char.skills[fishing] ?? 0, spot.left, ctx.rng);
+    const r = castLine(p.char.skills[fishing] ?? 0, spot.left, ctx.rng, weapon);
     // The skill trains before the catch drops, as 1.6 rolled it inside the fishing helper: for the
     // cast, then for the catch (with the fish's own XP), as `fishing.trains` says.
     const tier = toolCan(weapon, "Fish")?.tier ?? 0;
@@ -289,10 +298,23 @@ export function toolSwing(room: Room, p: Player, ctx: GatherCtx, ev: GatherEvent
     });
   }
   const skill = skillOf(p, node.skill);
-  if (!hitCounter(p.gather, use.counter, skill)) {
+  if (!swingHarvests(node, use, p.gather, skill, ctx.rng)) {
     return;
   }
-  change(ctx, room, io, 2, t.x, t.y, node.becomes);
+  // A node that lasts (`depletes`) keeps its tile until the harvest that uses it up; one with a
+  // `respawn` comes back that many seconds later.
+  if (harvestUsesUp(node, ctx.rng)) {
+    change(ctx, room, io, 2, t.x, t.y, node.becomes);
+    if (node.respawn !== undefined) {
+      scheduleRespawn(ctx.world, room.map, {
+        x: t.x,
+        y: t.y,
+        tile: code,
+        becomes: node.becomes,
+        at: ctx.now + node.respawn * 1000,
+      });
+    }
+  }
   const found = rollYield(node.yield, skill, ctx.rng);
   if (found) {
     drop(ctx, room, io, found, t.x, t.y, p);
@@ -413,6 +435,38 @@ export function plantSeeds(
   return { out: io.out, planted: true };
 }
 
+/** Remembers a used-up node's tile to bring back, replacing any wait on the same tile. */
+function scheduleRespawn(
+  world: World,
+  m: WorldMap,
+  r: NonNullable<WorldMap["respawns"]>[number],
+): void {
+  m.respawns = [...(m.respawns ?? []).filter((q) => q.x !== r.x || q.y !== r.y), r];
+  world.tileLog.add(m);
+}
+
+/**
+ * Brings back each used-up node whose wait is over, on a tile still showing what it was used up
+ * into; a tile changed since (planted, edited, grown back) just drops its wait.
+ */
+function respawnStep(room: Room, ctx: GatherCtx, io: ItemOut): void {
+  const m = room.map;
+  if (!m.respawns || m.respawns.length === 0) {
+    return;
+  }
+  const due = m.respawns.filter((r) => r.at <= ctx.now);
+  if (due.length === 0) {
+    return;
+  }
+  m.respawns = m.respawns.filter((r) => r.at > ctx.now);
+  ctx.world.tileLog.add(m);
+  for (const r of due) {
+    if (lingoEq(tileAt(m.layers[1], r.x, r.y), r.becomes)) {
+      change(ctx, room, io, 2, r.x, r.y, r.tile);
+    }
+  }
+}
+
 /**
  * A map's world ticks: one regrowth frame per server tick, however many players are on it. A map
  * left empty (its room unloaded) catches up on the frames it missed, up to an hour's worth, when
@@ -433,5 +487,6 @@ export function regrowthStep(room: Room, ctx: GatherCtx, tickNo: number): Outgoi
   for (let i = 0; i < frames; i++) {
     regrowthFrame(hooks, ctx.rng);
   }
+  respawnStep(room, ctx, io);
   return io.out;
 }

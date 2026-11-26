@@ -9,7 +9,7 @@
  */
 import { z } from "zod";
 
-import { requirementSchema, toolCanSchema } from "./common.ts";
+import { levelOddsSchema, requirementSchema, toolCanSchema } from "./common.ts";
 
 const gtRow = z.strictObject({ gt: z.number().int(), value: z.number().int() });
 const ltRow = z.strictObject({ lt: z.number().int(), value: z.number().int() });
@@ -38,6 +38,27 @@ export const harvestNodeSchema = z.strictObject({
   under: z.array(z.string().length(2)).optional(),
   /** What the node needs of the gatherer; a swing without it is refused, told once per press. */
   requires: requirementSchema.optional(),
+  /**
+   * The chance each swing harvests, by the node's skill (RuneScape's way: a yew is slow at level
+   * 60 and quicker at 99). Left out, every swing advances the tool's hit counter and the swing
+   * that empties it harvests (the shared `counterTable`, 1.6's way).
+   */
+  odds: levelOddsSchema.optional(),
+  /**
+   * Percentage points `odds` gains for each tier the tool is above the node's lowest (a better
+   * axe chops faster). Read only with `odds`.
+   */
+  tierBonus: z.number().min(0).max(100).optional(),
+  /**
+   * A harvest uses the node up 1 time in this many: until then the tile stays and keeps giving
+   * (an oak gives several logs before it falls). Left out (or 1), every harvest uses it up (1.6).
+   */
+  depletes: z.number().int().min(1).max(1_000_000).optional(),
+  /**
+   * Seconds after the node is used up until its tile comes back, whoever is on the map. Left out,
+   * only the regrowth checks bring it back (1.6).
+   */
+  respawn: z.number().int().min(1).max(604_800).optional(),
   /** Layer 2 becomes this on success. */
   becomes: z.string().length(2),
   /** Reads the counter table, and is the skill a success trains. */
@@ -155,6 +176,11 @@ export const gatherDataSchema = z
               weight: z.number().int().min(1).max(1_000_000),
               /** The XP a catch gives an `xp`-model skill, replacing its `gather` amount. */
               xp: z.number().int().min(0).max(1_000_000_000).optional(),
+              /**
+               * Only these fishing tools catch it (item names, exactly): a harpoon for sharks, a
+               * net for shrimp. Left out, any fishing tool does.
+               */
+              tools: z.array(z.string().min(1)).min(1).optional(),
             }),
           ),
           fishCheck: z.array(gtRow).min(1),
@@ -222,6 +248,23 @@ export const gatherDataSchema = z
           code: "custom",
           path: ["gathering", "fishing", "catches", i, "below"],
           message: `${c.fish} is caught from skill ${c.from} but only below ${c.below}, so never`,
+        });
+      }
+    });
+    data.harvest.forEach((n, i) => {
+      if (n.tierBonus !== undefined && n.odds === undefined) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["harvest", i, "tierBonus"],
+          message:
+            "a tool tier bonus adds to the odds by level: give the node odds, or leave the bonus off",
+        });
+      }
+      if (n.respawn !== undefined && n.becomes.toLowerCase() === n.tile.toLowerCase()) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["harvest", i, "respawn"],
+          message: "the node never changes its tile, so there is nothing to come back",
         });
       }
     });

@@ -27,9 +27,12 @@ import {
   fishingSpot,
   fishingTrains,
   harvestNode,
+  harvestUsesUp,
   hitCounter,
+  hitsPerSuccess,
   isFishingWater,
   newGatherCounters,
+  nodeChance,
   nodeTier,
   nodeTool,
   orePool,
@@ -41,6 +44,7 @@ import {
   rumourLine,
   seedTile,
   sprinkleOffset,
+  swingHarvests,
   TREASURE,
   tierText,
   tileAt,
@@ -51,6 +55,7 @@ import {
   withTile,
   workedNode,
 } from "../../src/rules/crafting/gather.ts";
+import { oddsAt, rollChance } from "../../src/rules/crafting/odds.ts";
 import { train } from "../../src/rules/progression/progress.ts";
 
 /** Skill `skill` at `value`, trained once from `source`: whether it rose. */
@@ -591,5 +596,119 @@ describe("skill gain", () => {
     expect(gainAt("Lumberjacking", "gather", 100, rng)).toBe(false);
     expect(rng.calls).toEqual([]);
     expect(gainAt("Lumberjacking", "gather", 99, rng)).toBe(true);
+  });
+});
+
+describe("RuneScape-style harvesting", () => {
+  const yew = () => {
+    const tree = harvestNode("S3");
+    if (!tree) {
+      throw new Error("Classic has a tree on S3");
+    }
+    return {
+      ...tree,
+      tier: 2,
+      odds: [
+        { level: 60, percent: 10 },
+        { level: 99, percent: 40 },
+      ],
+      tierBonus: 5,
+      depletes: 8,
+      respawn: 120,
+    };
+  };
+
+  test("odds by level read in a straight line between points, flat past the ends", () => {
+    const pts = [
+      { level: 10, percent: 20 },
+      { level: 50, percent: 60 },
+      { level: 90, percent: 100 },
+    ];
+    expect(oddsAt(pts, 0)).toBeCloseTo(0.2);
+    expect(oddsAt(pts, 10)).toBeCloseTo(0.2);
+    expect(oddsAt(pts, 30)).toBeCloseTo(0.4);
+    expect(oddsAt(pts, 70)).toBeCloseTo(0.8);
+    expect(oddsAt(pts, 100)).toBe(1);
+    expect(oddsAt([{ level: 5, percent: 0.5 }], 99)).toBeCloseTo(0.005);
+    expect(oddsAt([], 50)).toBe(0);
+  });
+
+  test("a chance draws random(10000) in hundredths of a percent; sure and never draw nothing", () => {
+    const rng = rngByN({ 10000: [50, 51] });
+    expect(rollChance(0.005, rng)).toBe(true);
+    expect(rollChance(0.005, rng)).toBe(false);
+    expect(rng.calls).toEqual([10_000, 10_000]);
+    const none = rngByN();
+    expect(rollChance(1, none)).toBe(true);
+    expect(rollChance(0, none)).toBe(false);
+    expect(none.calls).toEqual([]);
+  });
+
+  test("a node with odds harvests by chance, better tools adding their tier bonus", () => {
+    const node = yew();
+    expect(nodeChance(node, 2, 60)).toBeCloseTo(0.1);
+    expect(nodeChance(node, 2, 99)).toBeCloseTo(0.4);
+    // Two tiers above the node's: ten points more.
+    expect(nodeChance(node, 4, 60)).toBeCloseTo(0.2);
+    expect(
+      nodeChance(harvestNode("S3") as NonNullable<ReturnType<typeof harvestNode>>, 9, 99),
+    ).toBeNull();
+    const use = { can: "Chop" as const, tier: 2, counter: "Axe" };
+    const counters = newGatherCounters();
+    // 10% at 60: a roll of 1000 in 10000 harvests, 1001 does not; the hit counter is untouched.
+    expect(swingHarvests(node, use, counters, 60, rngByN({ 10000: [1001] }))).toBe(false);
+    expect(swingHarvests(node, use, counters, 60, rngByN({ 10000: [1000] }))).toBe(true);
+    expect(Object.keys(counters)).toEqual([]);
+  });
+
+  test("a node without odds counts hits, as 1.6 did", () => {
+    const tree = harvestNode("S3") as NonNullable<ReturnType<typeof harvestNode>>;
+    const use = { can: "Chop" as const, tier: 1, counter: "Axe" };
+    const counters = newGatherCounters();
+    const rng = rngByN();
+    let swings = 0;
+    do {
+      swings += 1;
+    } while (!swingHarvests(tree, use, counters, 50, rng));
+    expect(swings).toBe(hitsPerSuccess(classicData.gather.gathering.counterTable, 50));
+    expect(rng.calls).toEqual([]);
+  });
+
+  test("a lasting node is used up 1 time in `depletes`; Classic's every time, with no dice", () => {
+    expect(harvestUsesUp(yew(), rngByN({ 8: [2] }))).toBe(false);
+    expect(harvestUsesUp(yew(), rngByN({ 8: [1] }))).toBe(true);
+    const classic = rngByN();
+    expect(
+      harvestUsesUp(harvestNode("S3") as NonNullable<ReturnType<typeof harvestNode>>, classic),
+    ).toBe(true);
+    expect(classic.calls).toEqual([]);
+  });
+
+  test("a fish that names its tools bites only on them; others take any fishing tool", () => {
+    const pool = [
+      { fish: "Shrimp", from: 0, weight: 1, tools: ["Small Net"] },
+      { fish: "Shark", from: 50, weight: 1, tools: ["Harpoon"] },
+      { fish: "Trout", from: 20, weight: 1 },
+    ];
+    expect(catchesFor(60, pool, "Harpoon").map((c) => c.fish)).toEqual(["Shark", "Trout"]);
+    expect(catchesFor(60, pool, "small net").map((c) => c.fish)).toEqual(["Shrimp", "Trout"]);
+    expect(catchesFor(60, pool, "Fishing Pole").map((c) => c.fish)).toEqual(["Trout"]);
+    // The page's preview, with no tool, shows every fish in range.
+    expect(catchesFor(60, pool).map((c) => c.fish)).toEqual(["Shrimp", "Shark", "Trout"]);
+    expect(pickCatch(10, rngByN(), pool, "Harpoon")).toBeNull();
+  });
+
+  test("Classic's nodes and fish have no odds, lasting, timers or tool limits", () => {
+    for (const n of classicData.gather.harvest) {
+      expect([n.odds, n.tierBonus, n.depletes, n.respawn]).toEqual([
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+      ]);
+    }
+    expect(classicData.gather.gathering.fishing?.catches.every((c) => c.tools === undefined)).toBe(
+      true,
+    );
   });
 });

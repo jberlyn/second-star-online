@@ -574,6 +574,11 @@ export function referencesOf(data: ContentData): Reference[] {
         craft(["build", "bands", i, "results", j, "item"], r.item, null);
       });
     });
+    build.recipes?.forEach((r, i) => {
+      for (const f of ["input", "output"] as const) {
+        craft(["build", "recipes", i, f], r[f], ["build", "recipes", i]);
+      }
+    });
   }
   const cauldron = st.cauldron;
   if (cauldron) {
@@ -629,6 +634,16 @@ export function referencesOf(data: ContentData): Reference[] {
   });
   g.fishing?.catches.forEach((c, i) => {
     gather(["fishing", "catches", i, "fish"], c.fish, null);
+    // A tool goes from the fish's list; the list's last tool takes the fish with it.
+    (c.tools ?? []).forEach((t, j) => {
+      gather(
+        ["fishing", "catches", i, "tools", j],
+        t,
+        (c.tools ?? []).length > 1
+          ? ["fishing", "catches", i, "tools", j]
+          : ["fishing", "catches", i],
+      );
+    });
   });
   g.farming?.seeds.forEach((sd, i) => {
     gather(["farming", "seeds", i, "item"], sd.item, ["farming", "seeds", i]);
@@ -808,6 +823,21 @@ export function referencesOf(data: ContentData): Reference[] {
   data.gather.harvest.forEach((n, i) => {
     skill(harvest, [i, "skill"], (n as { skill?: unknown }).skill);
     needs(harvest, [i, "requires"], n.requires);
+  });
+  // A recipe's requirement (a skill per recipe, RuneScape's way).
+  const craftStations = section("craft", "stations");
+  const cs = data.craft.stations;
+  cs.smith?.repairs.forEach((r, i) => {
+    needs(craftStations, ["smith", "repairs", i, "requires"], r.requires);
+  });
+  cs.cook?.recipes.forEach((r, i) => {
+    needs(craftStations, ["cook", "recipes", i, "requires"], r.requires);
+  });
+  cs.mix?.sands.forEach((r, i) => {
+    needs(craftStations, ["mix", "sands", i, "requires"], r.requires);
+  });
+  cs.build?.recipes?.forEach((r, i) => {
+    needs(craftStations, ["build", "recipes", i, "requires"], r.requires);
   });
   const ladders = section("itemRules", "ladders");
   for (const [name, l] of Object.entries(data.itemRules.ladders)) {

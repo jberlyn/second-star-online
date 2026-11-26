@@ -113,8 +113,25 @@ export interface WorldMap {
   fog: MapFog;
   /** The server tick its regrowth last ran on; an empty map catches up from here. */
   regrowthTick?: number;
+  /**
+   * Used-up harvest nodes waiting to come back (a node's `respawn`), saved with the map's tiles:
+   * at `at` (wall-clock ms) the tile turns back from `becomes` to `tile`, if it is still `becomes`.
+   */
+  respawns?: TileRespawn[];
   /** The server tick an emptied map's door relock falls due on; its next room picks it up. */
   doorLockTick?: number;
+}
+
+/** A used-up harvest node's tile, waiting to come back. */
+export interface TileRespawn {
+  x: number;
+  y: number;
+  /** The tile it comes back as. */
+  tile: string;
+  /** The tile it was used up into: anything else there now (a seed, an edit) cancels it. */
+  becomes: string;
+  /** Wall-clock ms. */
+  at: number;
 }
 
 /** A ground item: an original `Name:px-py` entry with a server id. */
@@ -182,6 +199,7 @@ export function toWorldMap(
   },
 ): WorldMap {
   return {
+    ...(m.respawns && m.respawns.length > 0 ? { respawns: m.respawns } : {}),
     id: m.id,
     name: m.name,
     title: m.title,

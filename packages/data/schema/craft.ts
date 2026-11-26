@@ -9,6 +9,8 @@
  */
 import { z } from "zod";
 
+import { levelOddsSchema, requirementSchema } from "./common.ts";
+
 const gtRow = z.strictObject({ gt: z.number().int(), value: z.number().int() });
 const skillRow = z.union([
   gtRow,
@@ -20,9 +22,24 @@ const timer = z.strictObject({ default: z.number().int().positive(), rows: z.arr
  * recipe, a smithing repair, an alchemy sand or a carpentry result.
  */
 const xp = z.number().int().min(0).max(1_000_000_000).optional();
-const recipe = z.strictObject({ input: z.string().min(1), output: z.string().min(1), xp });
+/**
+ * What a recipe needs of the crafter (a skill or the level, as a harvest node's): without it the
+ * craft is refused before it starts. RuneScape's level per recipe.
+ */
+const requires = requirementSchema.optional();
+/**
+ * The chance a craft of this recipe succeeds, by the craft's skill, in place of the shared
+ * `failure` table (RuneScape's burn chance that falls to nothing at a level).
+ */
+const odds = levelOddsSchema.optional();
+const recipe = z.strictObject({
+  input: z.string().min(1),
+  output: z.string().min(1),
+  xp,
+  requires,
+});
 /** A cooking recipe also names what a burn makes. */
-const cookRecipe = recipe.extend({ burned: z.string().min(1) });
+const cookRecipe = recipe.extend({ burned: z.string().min(1), odds });
 
 /**
  * Each station (`smith`, `cook`, `mix`, `build`, `cauldron`) may be left out: that craft is then off,
@@ -83,6 +100,8 @@ export const craftDataSchema = z.strictObject({
               crystal: z.string(),
               need: z.string(),
               xp,
+              requires,
+              odds,
             }),
           )
           .min(1),
@@ -96,6 +115,22 @@ export const craftDataSchema = z.strictObject({
         /** Carpentry below this cannot build. */
         minSkill: z.number().int(),
         timer,
+        /**
+         * Set recipes (RuneScape's fletching): building with exactly this item in hand makes this
+         * item, in place of the bands' roll. The last matching row wins. An item with no recipe
+         * builds from the bands.
+         */
+        recipes: z
+          .array(
+            z.strictObject({
+              input: z.string().min(1),
+              output: z.string().min(1),
+              xp,
+              requires,
+              odds,
+            }),
+          )
+          .optional(),
         /** Carpentry skill bands in script order; every true `lt` band overwrites the last. */
         bands: z
           .array(

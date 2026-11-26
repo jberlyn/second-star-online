@@ -157,3 +157,38 @@ test("plain words: keys, entry titles, blanks and shapes", () => {
   ).toEqual({ a: "" });
   expect(fits({ type: "object", properties: { k: { const: "x" } } }, { k: "y" })).toBe(false);
 });
+
+test("RuneScape-style recipes: a level, a chance by level and set recipes read back in plain words", () => {
+  const data = JSON.parse(readFileSync(join(CONTENT, "craft.json"), "utf8")) as {
+    stations: {
+      cook: { recipes: Record<string, unknown>[] };
+      build: Record<string, unknown>;
+    };
+  };
+  const st = data.stations;
+  st.cook.recipes[0] = {
+    ...st.cook.recipes[0],
+    requires: { needs: "cooking", atLeast: 15 },
+    odds: [
+      { level: 15, percent: 40.5 },
+      { level: 68, percent: 100 },
+    ],
+  };
+  st.build.recipes = [
+    {
+      input: "Logs",
+      output: "Crate",
+      xp: 25,
+      requires: { needs: "carpentry", atLeast: 10 },
+      odds: [{ level: 10, percent: 100 }],
+    },
+  ];
+  const form = schemaForm(schemaOf("craft", "stations"), st, contentWords("craft", "stations"), {
+    id: "test",
+  });
+  expect(canonical(form.value())).toBe(canonical(st));
+  const text = form.el.textContent ?? "";
+  expect(text).toContain("Chance of success by skill");
+  expect(text).toContain("Set recipes");
+  expect(text).toContain("Skill needed");
+});

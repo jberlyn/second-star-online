@@ -4094,4 +4094,5 @@ db quests rows=40 80965a736456
 db reconcile_items rows=0 da39a3ee5e6b
 db reconcile_runs rows=0 da39a3ee5e6b
 db settings rows=4 4cedfb4be06c
+db tile_respawns rows=0 da39a3ee5e6b
 db vault_items rows=0 da39a3ee5e6b
