@@ -570,6 +570,26 @@ describe("the right panel (frames 50-65)", () => {
     ).toBe(30);
     expect(label?.style.top).toBe("126px");
   });
+  test("SSO addition: a world that shows hunger gets a line under Mysticism; Classic hides it", () => {
+    const { panel } = panelWith([]);
+    const line = () => panel.el.querySelector<HTMLElement>(".page-stats .hunger-line");
+    // Classic (1.6) sends no hunger: the line stays hidden.
+    panel.setHunger(undefined);
+    expect(line()?.hidden).toBe(true);
+    panel.setHunger({ state: "fed" });
+    expect([line()?.hidden, line()?.textContent]).toEqual([false, "Hunger: Fed"]);
+    panel.setHunger({ state: "hungry", percent: 1 });
+    expect(line()?.textContent).toBe("Hunger: Hungry (1%)");
+    panel.setHunger({ state: "stuffed", value: 41_200 });
+    expect(line()?.textContent).toBe("Hunger: Stuffed (41,200)");
+    // On the row under Mysticism, in the values column.
+    expect(line()?.style.top).toBe("306px");
+    expect(line()?.style.left).toBe(
+      panel.el.querySelector<HTMLElement>(".stat-values")?.style.left,
+    );
+    panel.resetCharacter();
+    expect([line()?.hidden, line()?.textContent]).toEqual([true, ""]);
+  });
   test("the six stat icons are centred on the rows and evenly spaced, the head first", () => {
     const { panel } = panelWith([]);
     const icons = [...panel.el.querySelectorAll<HTMLElement>(".stat-head, .stat-icon")];

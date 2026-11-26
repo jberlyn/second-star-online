@@ -115,10 +115,85 @@ export function duration(s: number): string {
 /** Frames in seconds, to two places at most (148 → 7.4). */
 const seconds = (frames: number) => String(Number((frames / FPS).toFixed(2)));
 
-/** A value as its input holds it: a list's entries separated by commas. */
+/** A `steps` value's entries as `[number, value]` pairs (an entry missing a part is skipped). */
+function stepPairs(v: unknown, f: BalanceFieldView): [number, string | number][] {
+  const st = f.steps;
+  if (!st || !Array.isArray(v)) {
+    return [];
+  }
+  return v.flatMap((e) => {
+    const o = e as Record<string, unknown>;
+    const k = o?.[st.key];
+    const x = o?.[st.value];
+    return typeof k === "number" && (typeof x === "string" || typeof x === "number")
+      ? [[k, x] as [number, string | number]]
+      : [];
+  });
+}
+
+/**
+ * A `steps` field's typed lines as its entries, or why they are refused. Each line is
+ * `<number>: <value>`; blank lines are skipped; the entries keep the order typed.
+ */
+export function stepValues(text: string, f: BalanceFieldView): Record<string, unknown>[] | string {
+  const st = f.steps;
+  if (!st) {
+    return `${f.label}: not a list of steps`;
+  }
+  const lines = text
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l !== "");
+  if (f.maxItems !== undefined && lines.length > f.maxItems) {
+    return `${f.label}: at most ${f.maxItems} lines`;
+  }
+  const out: Record<string, unknown>[] = [];
+  const seen = new Set<number>();
+  for (const line of lines) {
+    const m = /^(\d+)\s*:\s*(.*)$/.exec(line);
+    if (!m) {
+      return `${f.label}: each line a whole number, a colon, then ${st.valueKind === "text" ? "the words" : "a whole number"} (${st.example})`;
+    }
+    const n = Number(m[1]);
+    const rest = (m[2] ?? "").trim();
+    if (n < f.min || n > f.max) {
+      return `${f.label}: each number from ${f.min} to ${f.max}`;
+    }
+    if (seen.has(n)) {
+      return `${f.label}: ${n} is there twice`;
+    }
+    seen.add(n);
+    if (st.valueKind === "text") {
+      if (rest.length < st.valueMin) {
+        return `${f.label}: words after the colon on every line`;
+      }
+      if (rest.length > st.valueMax) {
+        return `${f.label}: at most ${st.valueMax} characters after a colon`;
+      }
+      out.push({ [st.key]: n, [st.value]: rest });
+    } else {
+      if (!/^\d+$/.test(rest)) {
+        return `${f.label}: a whole number after each colon`;
+      }
+      const x = Number(rest);
+      if (x < st.valueMin || x > st.valueMax) {
+        return `${f.label}: each from ${st.valueMin} to ${st.valueMax} after the colon`;
+      }
+      out.push({ [st.key]: n, [st.value]: x });
+    }
+  }
+  return out;
+}
+
+/** A value as its input holds it: a list's entries separated by commas, steps one a line. */
 export function inputText(v: unknown, f: BalanceFieldView): string {
   if (f.unit === "list") {
     return Array.isArray(v) ? v.join(", ") : "";
+  }
+  if (f.unit === "steps") {
+    return stepPairs(v, f)
+      .map(([k, x]) => `${k}: ${x}`)
+      .join("\n");
   }
   return String(v ?? "");
 }
@@ -134,6 +209,10 @@ export function listValues(text: string): number[] | null {
 
 /** A value as the page writes it: frames also in seconds, a counter as the interval it gives. */
 export function shownValue(v: unknown, f: BalanceFieldView): string {
+  if (f.unit === "steps") {
+    const pairs = stepPairs(v, f);
+    return pairs.length === 0 ? "none" : pairs.map(([k, x]) => `${k}: ${x}`).join(" · ");
+  }
   if (f.unit === "list") {
     return Array.isArray(v) ? (v.length === 0 ? "none" : v.join(", ")) : "none";
   }
@@ -216,9 +295,7 @@ export function amountPreview(flat: string, power: string | null, randomN: strin
 }
 
 /** Why the typed parts of each optional amount are refused: filled in part. */
-function partialErrors(
-  fields: readonly { field: BalanceFieldView; input: HTMLInputElement | HTMLSelectElement }[],
-) {
+function partialErrors(fields: readonly { field: BalanceFieldView; input: FieldInput }[]) {
   const groups = new Map<string, { label: string; blank: number; all: number }>();
   for (const { field, input } of fields) {
     if (!field.optional) {
@@ -239,6 +316,10 @@ function partialErrors(
 /** Why a typed value is refused, or null. */
 export function fieldError(text: string, f: BalanceFieldView): string | null {
   const t = text.trim();
+  if (f.unit === "steps") {
+    const got = stepValues(t, f);
+    return typeof got === "string" ? got : null;
+  }
   if (f.unit === "choice") {
     return f.choices?.some((c) => c.value === t) ? null : `${f.label}: pick one`;
   }
@@ -323,13 +404,28 @@ export function readRange(
   return r;
 }
 
+/** A field's input: a box, a pick, or (steps) lines. */
+type FieldInput = HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
+
+/** The text a field's input holds, in the form `inputText` writes it (so an untouched one is clean). */
+function typedText(input: FieldInput, f: BalanceFieldView): string {
+  if (f.unit === "list") {
+    return (listValues(input.value) ?? []).join(", ");
+  }
+  if (f.unit === "steps") {
+    const got = stepValues(input.value, f);
+    return typeof got === "string" ? input.value : inputText(got, f);
+  }
+  return input.value.trim();
+}
+
 /** One row's card section. */
 interface RowUi {
   el: HTMLElement;
   view: BalanceRowView;
   inputs: {
     field: BalanceFieldView;
-    input: HTMLInputElement | HTMLSelectElement;
+    input: FieldInput;
     info: HTMLElement;
   }[];
   /** Each amount's range preview, by the amount's path. */
@@ -436,9 +532,7 @@ export function createBalancePage(
     r.rangeErrors.size > 0 ||
     r.inputs.some(
       ({ field, input }) =>
-        (field.unit === "list"
-          ? (listValues(input.value) ?? []).join(", ")
-          : input.value.trim()) !== inputText(at(r.filled.value, field.path), field),
+        typedText(input, field) !== inputText(at(r.filled.value, field.path), field),
     );
 
   const errors = (r: RowUi) => [
@@ -594,7 +688,9 @@ export function createBalancePage(
                   ? t
                   : field.unit === "list"
                     ? (listValues(t) ?? [])
-                    : Number(t),
+                    : field.unit === "steps"
+                      ? stepValues(t, field)
+                      : Number(t),
               );
       }
     }
@@ -774,8 +870,15 @@ export function createBalancePage(
         }
         continue;
       }
-      let input: HTMLInputElement | HTMLSelectElement;
-      if (f.unit === "choice") {
+      let input: FieldInput;
+      if (f.unit === "steps") {
+        const lines = noAutofill(action(document.createElement("textarea"), "balance-value"));
+        lines.className = "balance-steps";
+        lines.rows = 4;
+        lines.placeholder = f.steps?.example ?? "";
+        lines.title = "One a line: a number, a colon, then the value";
+        input = lines;
+      } else if (f.unit === "choice") {
         const sel = action(document.createElement("select"), "balance-value");
         for (const c of f.choices ?? []) {
           const o = document.createElement("option");

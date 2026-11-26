@@ -203,10 +203,32 @@ export const regenSchema = z.strictObject({
   starve: bounded(BALANCE_LIMITS.vitals),
 });
 
-/** Hunger and its thresholds. */
+/** Who sees their own hunger, and how (`hunger.show`): Classic, as 1.6, keeps it hidden. */
+export const HUNGER_SHOW = ["hidden", "words", "percent", "number"] as const;
+
+/**
+ * What being stuffed refuses (`hunger.stuffedRefuses`): every usable item (1.6, healing potions
+ * too), or only food (an item whose use can raise hunger). An item whose use only lowers hunger is
+ * never refused.
+ */
+export const HUNGER_STUFFED_REFUSES = ["all", "food"] as const;
+
+/** The most hunger warnings, and hunger break-odds steps, a world can have. */
+export const HUNGER_STEPS_MAX = 20;
+
+/** A hunger warning's longest line. */
+export const HUNGER_WARNING_TEXT_MAX = 200;
+
+/** The most a hunger break-odds step can add to the break roll's range. */
+export const HUNGER_BREAK_ADD_MAX = 1_000_000;
+
+/**
+ * Hunger and its thresholds. The fields after `afterDeath` came later (hunger as content): a row
+ * may leave them out, and the engine plays its default for each one it leaves out.
+ */
 export const hungerSchema = z
   .strictObject({
-    /** Each frame, hunger falls by 1 with a chance of 1 in this. */
+    /** Each frame, hunger falls by `lose` with a chance of 1 in this. */
     loseOneIn: bounded(BALANCE_LIMITS.oneIn),
     /** Hunger above this regenerates. */
     regenAbove: bounded(BALANCE_LIMITS.hunger),
@@ -216,6 +238,50 @@ export const hungerSchema = z
     stuffed: bounded(BALANCE_LIMITS.hunger),
     /** Hunger after a death. */
     afterDeath: bounded(BALANCE_LIMITS.hunger),
+    /** How much hunger falls each time it falls (0: hunger never falls). Left out: 1. */
+    lose: bounded(BALANCE_LIMITS.hunger).optional(),
+    /**
+     * The most hunger can ever be: food and spells stop there, a new character and a death start
+     * no higher, and a saved character above it is brought down to it. At least `stuffed` and
+     * `afterDeath`. Left out: 50,000, Classic's starting hunger (the most 1.6 ever gave).
+     */
+    max: bounded(BALANCE_LIMITS.hunger).optional(),
+    /** What being stuffed refuses. Left out: every usable item (1.6). */
+    stuffedRefuses: z.enum(HUNGER_STUFFED_REFUSES).optional(),
+    /**
+     * The lines a player is told as hunger falls to or past `at`, at most one a frame (the lowest
+     * passed). Left out: 1.6's three, at 1,500, 1,000 and 500.
+     */
+    warnings: z
+      .array(
+        z.strictObject({
+          at: bounded(BALANCE_LIMITS.hunger),
+          text: z.string().trim().min(1).max(HUNGER_WARNING_TEXT_MAX),
+        }),
+      )
+      .max(HUNGER_STEPS_MAX)
+      .refine((w) => new Set(w.map((x) => x.at)).size === w.length, {
+        message: "each warning needs its own hunger",
+      })
+      .optional(),
+    /**
+     * Above each `above`, `add` more on the equipment break roll's range (a fuller player breaks
+     * gear a little less often). Left out: 1.6's +10, +30, +40, +50 above 20k, 25k, 30k, 40k.
+     */
+    breakOdds: z
+      .array(
+        z.strictObject({
+          above: bounded(BALANCE_LIMITS.hunger),
+          add: bounded({ min: 0, max: HUNGER_BREAK_ADD_MAX }),
+        }),
+      )
+      .max(HUNGER_STEPS_MAX)
+      .refine((b) => new Set(b.map((x) => x.above)).size === b.length, {
+        message: "each step needs its own hunger",
+      })
+      .optional(),
+    /** Whether players see their own hunger on the Stats tab, and how. Left out: hidden (1.6). */
+    show: z.enum(HUNGER_SHOW).optional(),
   })
   .superRefine((h, ctx) => {
     if (h.starveBelow >= h.regenAbove) {
@@ -230,6 +296,22 @@ export const hungerSchema = z
         code: "custom",
         path: ["regenAbove"],
         message: "regenAbove must be at most stuffed",
+      });
+    }
+    // Left out, the maximum is the engine's 50,000.
+    const max = h.max ?? 50_000;
+    if (max < h.stuffed) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["max"],
+        message: "max must be at least stuffed",
+      });
+    }
+    if (max < h.afterDeath) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["afterDeath"],
+        message: "afterDeath must be at most max",
       });
     }
   });
@@ -471,3 +553,4 @@ export type BalanceMonsters = z.infer<typeof monstersBalanceSchema>;
 export type BalanceKillXp = z.infer<typeof killXpSchema>;
 export type BalanceLevels = z.infer<typeof levelsSchema>;
 export type BalanceData = z.infer<typeof balanceDataSchema>;
+export type BalanceHunger = z.infer<typeof hungerSchema>;

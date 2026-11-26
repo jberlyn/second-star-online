@@ -10,6 +10,7 @@
 import type {
   Amount,
   BalanceData,
+  BalanceHunger,
   BalanceSpellEffect,
   FlatAmount,
   SpellAmountOverride,
@@ -27,7 +28,8 @@ export interface Balance {
   buffs: NonNullable<BalanceData["buffs"]>;
   castPower: NonNullable<BalanceData["castPower"]>;
   regen: NonNullable<BalanceData["regen"]>;
-  hunger: NonNullable<BalanceData["hunger"]>;
+  /** Every field present: a row's later fields it leaves out are the defaults'. */
+  hunger: Required<BalanceHunger>;
   death: NonNullable<BalanceData["death"]>;
   vehicles: NonNullable<BalanceData["vehicles"]>;
   cannon: NonNullable<BalanceData["cannon"]>;
@@ -97,7 +99,31 @@ export const BALANCE_DEFAULTS: Readonly<Balance> = {
   },
   // 1.6's regen target `60 - speed + (90 - perk)` with speed always 1: 149 less the perk.
   regen: { periodFrames: 149, regenerate: 1, starve: 1 },
-  hunger: { loseOneIn: 3, regenAbove: 500, starveBelow: 50, stuffed: 35_000, afterDeath: 40_000 },
+  // 1.6's hunger: 1 off on a 1-in-3 roll, stuffed refuses every usable item, three warnings, the
+  // four break-odds steps, and players never see it. 1.6 had no maximum; 50,000, its starting
+  // hunger, is the most it ever gave (food tops out at 43,499), so the cap changes nothing.
+  hunger: {
+    loseOneIn: 3,
+    regenAbove: 500,
+    starveBelow: 50,
+    stuffed: 35_000,
+    afterDeath: 40_000,
+    lose: 1,
+    max: 50_000,
+    stuffedRefuses: "all",
+    warnings: [
+      { at: 1500, text: "You are very hungry." },
+      { at: 1000, text: "You are extremely hungry, you need to eat." },
+      { at: 500, text: "You are starving!" },
+    ],
+    breakOdds: [
+      { above: 20_000, add: 10 },
+      { above: 25_000, add: 30 },
+      { above: 30_000, add: 40 },
+      { above: 40_000, add: 50 },
+    ],
+    show: "hidden",
+  },
   death: { hp: 1, sp: 1, pauseFrames: 90 },
   vehicles: { hullHit: 2, repairPerMinute: 1 },
   cannon: { damage: { flat: 13, randomN: 3 }, reloadFrames: 5 * TICK_HZ },
@@ -185,7 +211,8 @@ export function fullBalance(data: BalanceData | undefined): Balance {
     buffs: part("buffs"),
     castPower: part("castPower"),
     regen: part("regen"),
-    hunger: part("hunger"),
+    // A row written before the later hunger fields existed plays the defaults for them.
+    hunger: { ...structuredClone(BALANCE_DEFAULTS.hunger), ...structuredClone(d.hunger ?? {}) },
     death: part("death"),
     vehicles: structuredClone(d.vehicles ?? BALANCE_DEFAULTS.vehicles),
     cannon: structuredClone(d.cannon ?? BALANCE_DEFAULTS.cannon),

@@ -245,37 +245,107 @@ export function regenTick(counter: number, target: number, hunger: number, v: Vi
 
 // ---- hunger ----------------------------------------------------------------------------
 
-/** The original's hunger-check texts at exact values. */
-export const HUNGER_WARNINGS: Readonly<Record<number, string>> = {
-  1500: "You are very hungry.",
-  1000: "You are extremely hungry, you need to eat.",
-  500: "You are starving!",
-};
-
 /**
- * One frame of hunger: unless the role never gets hungry (1.6: an immortal), `random(3) = 1` and Hunger > 0 takes 1; a warning prints on
- * the frame Hunger drops onto its value (a bug fixed: 1.6 printed it on every frame Hunger sat on
- * the value, about three times).
+ * One frame of hunger: unless the role never gets hungry (1.6: an immortal), on a 1-in-`loseOneIn`
+ * roll (1.6: 3) hunger falls by `lose` (1.6: 1), never below 0. Falling to or past a warning's
+ * `at` tells the player its line, the lowest one passed if a fall passes more than one (1.6 had
+ * three, at 1,500, 1,000 and 500, printed on every frame hunger sat on the value, about three
+ * times; a bug fixed, it prints once). The balance row `hunger` holds every number and line.
  */
 export function hungerTick(
-  hunger: number,
+  stored: number,
   noHunger: boolean,
   rng: Rng,
 ): { hunger: number; warning: string | null } {
+  // Above the maximum (saved before it was lowered, or set some other way): brought down to it.
+  const hunger = clampHunger(stored);
   if (noHunger) {
     return { hunger, warning: null };
   }
-  let h = hunger;
-  if (rng.random(content().balance.hunger.loseOneIn) === 1 && h > 0) {
-    h -= 1;
+  const h = content().balance.hunger;
+  let next = hunger;
+  if (rng.random(h.loseOneIn) === 1 && next > 0) {
+    next = Math.max(0, next - h.lose);
   }
-  const warning = h !== hunger && h < 2000 ? (HUNGER_WARNINGS[h] ?? null) : null;
-  return { hunger: h, warning };
+  return { hunger: next, warning: hungerWarning(hunger, next) };
 }
 
-/** Hunger after a death: the balance row `hunger.afterDeath` (1.6: 40,000). */
+/** The warning a fall from `before` to `after` passes (the lowest), or null. */
+export function hungerWarning(before: number, after: number): string | null {
+  if (after >= before) {
+    return null;
+  }
+  let best: { at: number; text: string } | null = null;
+  for (const w of content().balance.hunger.warnings) {
+    if (w.at < before && w.at >= after && (best === null || w.at < best.at)) {
+      best = w;
+    }
+  }
+  return best?.text ?? null;
+}
+
+/**
+ * Hunger kept from 0 to the balance row's `hunger.max` (Classic 50,000): after eating, a spell, a
+ * death, a new character, and on every frame for a character above it. 1.6 had no maximum, but
+ * nothing in it went above its starting 50,000.
+ */
+export function clampHunger(hunger: number): number {
+  return Math.min(Math.max(0, hunger), content().balance.hunger.max);
+}
+
+/** How a player's hunger reads in words: the thresholds of the balance row `hunger`. */
+export type HungerState = "stuffed" | "fed" | "hungry" | "starving";
+
+/**
+ * Hunger as a state: stuffed at or above `stuffed`, starving below `starveBelow`, hungry at or
+ * below `regenAbove` (no regeneration), else fed.
+ */
+export function hungerState(hunger: number): HungerState {
+  const h = content().balance.hunger;
+  if (hunger >= h.stuffed) {
+    return "stuffed";
+  }
+  if (hunger < h.starveBelow) {
+    return "starving";
+  }
+  if (hunger <= h.regenAbove) {
+    return "hungry";
+  }
+  return "fed";
+}
+
+/** What a player sees of their own hunger (`VitalsView.hunger`). */
+export interface HungerView {
+  state: HungerState;
+  /** `percent`: hunger as a whole percentage of `max`, rounded down (0 to 100). */
+  percent?: number;
+  /** `number`: hunger itself, in hundreds (rounded down), so it changes less often. */
+  value?: number;
+}
+
+/**
+ * What the balance row's `hunger.show` lets a player see of their own hunger, or null when it is
+ * hidden (1.6). A percentage is of the maximum; a number is rounded down to the hundred.
+ */
+export function hungerView(hunger: number): HungerView | null {
+  const h = content().balance.hunger;
+  if (h.show === "hidden") {
+    return null;
+  }
+  const state = hungerState(hunger);
+  if (h.show === "percent") {
+    const value = clampHunger(hunger);
+    return { state, percent: h.max > 0 ? Math.floor((value * 100) / h.max) : 100 };
+  }
+  if (h.show === "number") {
+    return { state, value: Math.floor(hunger / 100) * 100 };
+  }
+  return { state };
+}
+
+/** Hunger after a death: the balance row `hunger.afterDeath` (1.6: 40,000), at most `max`. */
 export function deathHunger(): number {
-  return content().balance.hunger.afterDeath;
+  return clampHunger(content().balance.hunger.afterDeath);
 }
 
 // ---- death -----------------------------------------------------------------------------

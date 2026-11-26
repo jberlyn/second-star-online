@@ -68,7 +68,28 @@
   },
   "castPower": { "staffFireball": { "flat": 1, "randomN": 3 }, "swordFireball": { "flat": 4, "randomN": 3 } },
   "regen": { "periodFrames": 149, "regenerate": 1, "starve": 1 },
-  "hunger": { "loseOneIn": 3, "regenAbove": 500, "starveBelow": 50, "stuffed": 35000, "afterDeath": 40000 },
+  "hunger": {
+    "loseOneIn": 3,
+    "regenAbove": 500,
+    "starveBelow": 50,
+    "stuffed": 35000,
+    "afterDeath": 40000,
+    "lose": 1,
+    "max": 50000,
+    "stuffedRefuses": "all",
+    "warnings": [
+      { "at": 1500, "text": "You are very hungry." },
+      { "at": 1000, "text": "You are extremely hungry, you need to eat." },
+      { "at": 500, "text": "You are starving!" }
+    ],
+    "breakOdds": [
+      { "above": 20000, "add": 10 },
+      { "above": 25000, "add": 30 },
+      { "above": 30000, "add": 40 },
+      { "above": 40000, "add": 50 }
+    ],
+    "show": "hidden"
+  },
   "death": { "hp": 1, "sp": 1, "pauseFrames": 90 },
   "vehicles": { "hullHit": 2, "repairPerMinute": 1 },
   "cannon": { "damage": { "flat": 13, "randomN": 3 }, "reloadFrames": 100 },

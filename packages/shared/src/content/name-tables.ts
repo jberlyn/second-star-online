@@ -229,6 +229,7 @@ export const NAME_TABLES: Record<string, TableInfo> = {
   "itemRules equip.twoHanded": { decides: "two-handed weapons", wins: "any" },
   "itemRules equip.murder": { decides: "items needing the murder flag", wins: "any" },
   "itemRules use.silent": { decides: "Use says and does nothing", wins: "any" },
+  "itemRules use.whenFull": { decides: "usable even by a stuffed player", wins: "any" },
   "itemRules use.usable": { decides: "what Use accepts (food and potions)", wins: "any" },
   "itemRules ground.blocks": { decides: "ground items that stop a walker", wins: "any" },
   "itemRules ground.platforms": {

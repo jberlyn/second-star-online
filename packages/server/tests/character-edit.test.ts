@@ -88,10 +88,10 @@ describe("the editor's rules", () => {
   });
 
   test("the hunger limit follows the world's hunger rows (#19)", () => {
-    // Classic: 50000 (a new character's), with a death at 40000.
+    // Classic: the most hunger can be, 50000 (a new character's), with a death at 40000.
     expect(hungerLimits()).toEqual({ max: 50_000, start: 50_000, afterDeath: 40_000 });
     const d = structuredClone(classicData) as ContentData;
-    d.balance.hunger = { ...BALANCE_DEFAULTS.hunger, afterDeath: 90_000 };
+    d.balance.hunger = { ...BALANCE_DEFAULTS.hunger, max: 90_000, afterDeath: 90_000 };
     installContent(buildContentStore(d));
     try {
       expect(hungerLimits()).toEqual({ max: 90_000, start: 50_000, afterDeath: 90_000 });

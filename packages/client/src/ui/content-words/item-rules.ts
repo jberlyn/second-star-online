@@ -195,6 +195,12 @@ export const itemRulesWords: WordBook = {
     noun: "item",
     more: true,
   },
+  "use.whenFull": {
+    label: "Usable when full",
+    help: "Items a stuffed player can still use (a healing potion, say), whatever the Game Rules page says a full stomach refuses.",
+    noun: "item",
+    more: true,
+  },
   "use.books": {
     label: "Spell book Mysticism",
     help: "The Mysticism needed to read a spell book (1 when no row matches).",

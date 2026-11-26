@@ -39,6 +39,7 @@ import {
   equipSlotFor,
   findSkillIndex,
   formatXp,
+  type HungerView,
   type InventoryView,
   isCrystal,
   itemLabel,
@@ -115,6 +116,8 @@ export interface Panel {
   setStats(s: { str: number; sta: number; int: number; wis: number; dex: number }): void;
   /** The Stats tab's Level row, from the server's vitals. */
   setLevel(level: number): void;
+  /** The Stats tab's Hunger line, from the server's vitals: absent when the world hides it. */
+  setHunger(hunger: HungerView | undefined): void;
   resetCharacter(): void;
   /** Every skill's value by skill key. */
   setSkills(
@@ -192,6 +195,25 @@ function field(text: string, cls: string): HTMLElement {
   el.className = `field ${cls}`;
   el.textContent = text;
   return el;
+}
+
+/** Each hunger state in words. */
+const HUNGER_WORDS: Readonly<Record<HungerView["state"], string>> = {
+  stuffed: "Stuffed",
+  fed: "Fed",
+  hungry: "Hungry",
+  starving: "Starving",
+};
+
+/** The Stats tab's Hunger line: "Hunger: Fed", with a percentage or the number when sent. */
+export function hungerText(h: HungerView): string {
+  const extra =
+    h.percent !== undefined
+      ? ` (${h.percent}%)`
+      : h.value !== undefined
+        ? ` (${h.value.toLocaleString("en-US")})`
+        : "";
+  return `Hunger: ${HUNGER_WORDS[h.state]}${extra}`;
 }
 
 export const BAG_X = (i: number) => 617 + 37 * (i % 5);
@@ -509,6 +531,12 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
   at(levelLabel, 668, 126, 88, 16);
   const levelValue = field("", "level-value");
   at(levelValue, 613, 126, 27, 16);
+  // Hunger, when the world shows it (an SSO addition: 1.6 never showed it): one line on the row
+  // under Mysticism, from the values column across the labels.
+  const hungerLine = field("", "hunger-line");
+  hungerLine.hidden = true;
+  hungerLine.setAttribute("role", "status");
+  at(hungerLine, 613, 306, 143, 16);
   // The head: drawn on a paperdoll-sized canvas, then cropped to its drawn pixels and centred
   // on the icon column and the Level row.
   const head = document.createElement("canvas");
@@ -518,7 +546,7 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
   head.width = 0;
   head.height = 0;
   at(head, ICON_X + ICON_W / 2, LEVEL_MID, 0, 0);
-  statsPage.append(head, levelValue, levelLabel, ...icons, labels, values);
+  statsPage.append(head, levelValue, levelLabel, ...icons, labels, values, hungerLine);
   const drawHead = () => {
     const paint = () => {
       if (!inventory) {
@@ -1186,6 +1214,8 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
       head.width = 0;
       head.height = 0;
       levelValue.textContent = "";
+      hungerLine.hidden = true;
+      hungerLine.textContent = "";
       values.textContent = "";
       gold.textContent = "";
       goldButton.setAttribute("aria-label", GOLD_LABEL);
@@ -1199,6 +1229,10 @@ export function createPanel(a: Assets, act: PanelActions): Panel {
     },
     setLevel(level) {
       levelValue.textContent = String(level);
+    },
+    setHunger(h) {
+      hungerLine.hidden = !h;
+      hungerLine.textContent = h ? hungerText(h) : "";
     },
     setSkills(skills, xp = {}) {
       const rows = skillPageOrder(content().classes).filter((s) => !s.hidden);

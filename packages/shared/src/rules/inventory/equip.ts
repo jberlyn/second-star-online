@@ -10,6 +10,7 @@ import { withoutId } from "../core/fixtures.ts";
 import { lingoEq, type Rng } from "../core/lingo.ts";
 import { anyMatch, lastMatch, ruleMatches } from "../core/patterns.ts";
 import { firstUnmet, type Qualifications } from "../core/requirements.ts";
+import { clampHunger } from "../progression/progression.ts";
 import { behaviourName, hasBehaviour } from "./behaviours.ts";
 
 let R: ContentStore["itemRules"];
@@ -130,18 +131,40 @@ export interface UseOutcome {
 }
 
 /**
- * Hunger at or above this refuses every usable item: "You're stuffed!", and the item is kept. The
- * balance row `hunger.stuffed` (1.6: 35,000).
+ * Hunger at or above this is stuffed: "You're stuffed!", and the item is kept. The balance row
+ * `hunger.stuffed` (1.6: 35,000).
  */
 export function stuffedHunger(): number {
   return content().balance.hunger.stuffed;
 }
 
 /**
+ * Whether a stuffed player is refused the item. An item on `use.whenFull` (an item definition's
+ * "Can be used when full") never is. Otherwise the balance row's `hunger.stuffedRefuses`: `all`
+ * (1.6) refuses every usable item, healing potions too; `food` only an item whose use can raise
+ * hunger (in Classic, potions raise it too). An item whose use only lowers hunger is never
+ * refused: it is what a stuffed player needs.
+ */
+export function stuffedRefuses(name: string): boolean {
+  if (anyMatch(R.use.whenFull ?? [], name)) {
+    return false;
+  }
+  const hunger = R.use.effects.filter((r) => r.stat === "Hunger" && ruleMatches(name, r));
+  const raises = hunger.some((r) => r.flat + (r.randomN && r.randomN > 0 ? r.randomN : 0) > 0);
+  const lowers = hunger.some((r) => r.flat < 0);
+  if (lowers && !raises) {
+    return false;
+  }
+  return content().balance.hunger.stuffedRefuses === "all" || raises;
+}
+
+/**
  * The use handler from the whitelist on, for one item. `v` is HP/SP/Hunger and their caps; the
  * result is the new values. Every `random` of the effect rows is drawn in source order. A player
  * who is already stuffed is refused and keeps the item (1.6 used it up for nothing, and also said
- * "You're stuffed!" on the bite that filled you).
+ * "You're stuffed!" on the bite that filled you), unless being stuffed doesn't refuse it
+ * (`stuffedRefuses`). An effect row may raise or lower hunger; hunger stays from 0 to the balance
+ * row's `hunger.max` (`clampHunger`).
  */
 export function useItem(
   name: string,
@@ -165,7 +188,7 @@ export function useItem(
     out.lines.push(USE_TEXT.cannot(name.includes("#") ? name.slice(0, name.indexOf("#")) : name));
     return out;
   }
-  if (out.hunger >= stuffedHunger()) {
+  if (out.hunger >= stuffedHunger() && stuffedRefuses(name)) {
     out.lines.push(USE_TEXT.stuffed);
     return out;
   }
@@ -184,6 +207,7 @@ export function useItem(
   }
   out.hp = Math.min(out.hp, v.hpMax);
   out.sp = Math.min(out.sp, v.spMax);
+  out.hunger = clampHunger(out.hunger);
   // The eat/drink line, last match wins; a potion's is "You drink the <name>."
   const msg = lastMatch(
     // The book rows (in Classic, those whose pattern holds "Book") are the read lines, not a meal's.

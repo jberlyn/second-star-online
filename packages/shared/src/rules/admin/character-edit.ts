@@ -203,9 +203,8 @@ export const EDIT_LIMITS = {
 } as const;
 
 /**
- * The hunger a character can be given: from 0 to the most the game itself gives, which is the
- * most of a new character's hunger (Classic 50000), the hunger after a death (the balance row
- * `hunger.afterDeath`, Classic 40000) and the stuffed level food stops at (`hunger.stuffed`).
+ * The hunger a character can be given: from 0 to the balance row's `hunger.max` (Classic 50000),
+ * the most hunger can ever be.
  */
 export interface HungerLimits {
   max: number;
@@ -222,7 +221,7 @@ export interface HungerLimits {
 export function hungerLimits(): HungerLimits {
   const h = content().balance.hunger;
   const start = content().classes.creation.otherFields.hunger;
-  return { max: Math.max(start, h.afterDeath, h.stuffed), start, afterDeath: h.afterDeath };
+  return { max: h.max, start: Math.min(start, h.max), afterDeath: Math.min(h.afterDeath, h.max) };
 }
 
 /**

@@ -1032,7 +1032,10 @@ export interface BalanceFieldView {
    * of the caster's power, a chance of 1 in N, or a counter's target (a counter that starts at 1
    * and acts on reaching it, so every target − 1 frames), seconds of real time (also shown in
    * minutes, hours or days), a pick from `choices` (`min` and `max` are then 0), or a `list` of
-   * counts typed with commas, each from `min` to `max`, at most `maxItems` (issue #42).
+   * counts typed with commas, each from `min` to `max`, at most `maxItems` (issue #42), or
+   * `steps`: a list of entries typed one a line as `<number>: <value>`, each entry an object of
+   * `steps.key` (from `min` to `max`) and `steps.value` (a line of text, or a count), at most
+   * `maxItems`, kept in the order typed.
    */
   /** `passFrames`: frames counted down in both of a frame's actor passes, so twice a frame. */
   unit:
@@ -1045,9 +1048,12 @@ export interface BalanceFieldView {
     | "counter"
     | "seconds"
     | "choice"
-    | "list";
-  /** A `list` field's most entries. */
+    | "list"
+    | "steps";
+  /** A `list` or `steps` field's most entries. */
   maxItems?: number;
+  /** A `steps` field's entry: its two keys, and what its value is. */
+  steps?: BalanceStepsView;
   /** A `choice` field's values, each with the label the page shows for it. */
   choices?: { value: string; label: string }[];
   min: number;
@@ -1059,6 +1065,20 @@ export interface BalanceFieldView {
    * filled or left empty together (an amount's three parts).
    */
   optional?: boolean;
+}
+
+/** A `steps` field's entries: `{ [key]: number, [value]: text or count }`. */
+export interface BalanceStepsView {
+  /** The number's key in an entry (`at`). */
+  key: string;
+  /** The value's key in an entry (`text`). */
+  value: string;
+  /** A line of text up to `valueMax` characters, or a count from `valueMin` to `valueMax`. */
+  valueKind: "text" | "count";
+  valueMin: number;
+  valueMax: number;
+  /** How one line is typed, shown as the field's placeholder (`1500: You are very hungry.`). */
+  example: string;
 }
 
 /** One row of the `balance` dataset on the Balance page (issue #19). */

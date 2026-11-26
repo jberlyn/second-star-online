@@ -198,7 +198,7 @@ export function createCharacterEditor(opts: CharacterEditorOptions): CharacterEd
   /** The world's level curve, as the server sent it (the client's store has the defaults). */
   let levelRules: BalanceLevels | undefined;
   const hungerHelp = (l: HungerLimits) =>
-    `0 to ${l.max}; a new character starts at ${l.start}, a death sets ${l.afterDeath}.`;
+    `0 to ${l.max} (the most hunger can be); a new character starts at ${l.start}, a death sets ${l.afterDeath}.`;
   const hungerField = formField("Hunger", hunger, "…");
   const hungerNote = hungerField.querySelector(".control-panel-field-help");
   const core = section(

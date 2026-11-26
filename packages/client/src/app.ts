@@ -1654,6 +1654,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         model.vitals = msg.vitals;
         bars.setVitals(msg.vitals);
         panel.setLevel(msg.vitals.level);
+        panel.setHunger(msg.vitals.hunger);
         return;
       case "delta":
         applyDelta(model, msg.events);

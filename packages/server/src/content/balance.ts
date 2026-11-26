@@ -12,6 +12,11 @@ import {
   BALANCE_DROP_WHO,
   BALANCE_HEAL_EFFECTS,
   BALANCE_LIMITS,
+  HUNGER_BREAK_ADD_MAX,
+  HUNGER_SHOW,
+  HUNGER_STEPS_MAX,
+  HUNGER_STUFFED_REFUSES,
+  HUNGER_WARNING_TEXT_MAX,
   KILL_XP_ADJUST,
   LEVEL_COUNTING,
   MONSTER_LEVEL_DISPLAY,
@@ -23,6 +28,7 @@ import {
   type BalanceFieldView,
   type BalanceGroupView,
   type BalanceRowView,
+  type BalanceStepsView,
   type ContentData,
 } from "@secondstaronline/shared";
 
@@ -100,6 +106,25 @@ const listField = (
   min: limits.min,
   max: limits.max,
   maxItems,
+  ...(help ? { help } : {}),
+});
+
+/** A list of `<number>: <value>` entries typed one a line, each number within `limits`. */
+const stepsField = (
+  path: string[],
+  label: string,
+  limits: { min: number; max: number },
+  maxItems: number,
+  steps: BalanceStepsView,
+  help?: string,
+): BalanceFieldView => ({
+  path,
+  label,
+  unit: "steps",
+  min: limits.min,
+  max: limits.max,
+  maxItems,
+  steps,
   ...(help ? { help } : {}),
 });
 
@@ -348,7 +373,7 @@ export const BALANCE_GROUPS: readonly BalanceGroupDef[] = [
         fields: [
           field(
             ["loseOneIn"],
-            "Chance hunger drops by 1 each frame: 1 in",
+            "Chance hunger drops each frame: 1 in",
             "oneIn",
             BALANCE_LIMITS.oneIn,
           ),
@@ -365,9 +390,78 @@ export const BALANCE_GROUPS: readonly BalanceGroupDef[] = [
             "Full at",
             "count",
             BALANCE_LIMITS.hunger,
-            "From here on, food and potions are refused and kept.",
+            'From here on, Use is refused and the item kept (see "When full, refuse").',
           ),
-          field(["afterDeath"], "Hunger after a death", "count", BALANCE_LIMITS.hunger),
+          choiceField(
+            ["stuffedRefuses"],
+            "When full, refuse",
+            HUNGER_STUFFED_REFUSES,
+            { all: "Every usable item (1.6)", food: "Only food" },
+            'Every usable item: healing potions too, as in 1.6. Only food: an item whose use can raise hunger (Classic\'s potions raise it too). An item that only lowers hunger, or one marked "Can be used when full" on the Items page, is never refused. What an item does to hunger is set there too ("When used"): a positive amount raises it, a negative one lowers it.',
+          ),
+          field(
+            ["max"],
+            "Most hunger can be",
+            "count",
+            BALANCE_LIMITS.hunger,
+            'Nothing goes above this: food and spells stop here, a new character and a death start no higher, and a character saved above it is brought down to it. At least "Full at" and "Hunger after a death". A percentage shown to players is of this. Classic\'s 50000 is its starting hunger, the most 1.6 ever gave.',
+          ),
+          field(
+            ["lose"],
+            "Hunger lost each time it drops",
+            "count",
+            BALANCE_LIMITS.hunger,
+            "0: nobody ever gets hungry. Never below 0.",
+          ),
+          field(
+            ["afterDeath"],
+            "Hunger after a death",
+            "count",
+            BALANCE_LIMITS.hunger,
+            'At most "Most hunger can be".',
+          ),
+          stepsField(
+            ["warnings"],
+            "Warnings",
+            BALANCE_LIMITS.hunger,
+            HUNGER_STEPS_MAX,
+            {
+              key: "at",
+              value: "text",
+              valueKind: "text",
+              valueMin: 1,
+              valueMax: HUNGER_WARNING_TEXT_MAX,
+              example: "1500: You are very hungry.",
+            },
+            "One a line: a hunger, a colon, then what a player is told when their hunger falls to it. Empty: no warnings.",
+          ),
+          stepsField(
+            ["breakOdds"],
+            "A full stomach protects gear",
+            BALANCE_LIMITS.hunger,
+            HUNGER_STEPS_MAX,
+            {
+              key: "above",
+              value: "add",
+              valueKind: "count",
+              valueMin: 0,
+              valueMax: HUNGER_BREAK_ADD_MAX,
+              example: "20000: 10",
+            },
+            "One a line: a hunger, a colon, then how much is added to the gear-break roll above it (bigger is safer). Each one the hunger is above counts. A break roll starts from 1 + 3 × Stamina + 600 for armour, or 500 for a weapon, and breaks on a 1. Empty: hunger makes no difference.",
+          ),
+          choiceField(
+            ["show"],
+            "Players see their hunger",
+            HUNGER_SHOW,
+            {
+              hidden: "Never (1.6)",
+              words: "In words",
+              percent: "As a percentage of full",
+              number: "As a number",
+            },
+            'Shown on the Stats tab under the stats. In words: Stuffed, Fed, Hungry (no longer regenerating) or Starving. A percentage is of "Most hunger can be"; a number is rounded down to the hundred.',
+          ),
         ],
       },
       {
@@ -914,6 +1008,19 @@ export function balanceProblems(
   });
 }
 
+/**
+ * A row's value with the engine's default for each field it leaves out: a row written before a
+ * field existed (the later hunger fields) shows, and saves, what plays. No row: the engine's.
+ */
+export function withEngine(row: unknown, engine: unknown): unknown {
+  if (row === undefined || row === null) {
+    return engine;
+  }
+  const plain = (v: unknown): v is Record<string, unknown> =>
+    v !== null && typeof v === "object" && !Array.isArray(v);
+  return plain(row) && plain(engine) ? { ...structuredClone(engine), ...row } : row;
+}
+
 /** The Balance page's view. */
 export function balanceView(l: BalanceLayers): { groups: BalanceGroupView[]; otherDraft: number } {
   const groups = BALANCE_GROUPS.map((g) => ({
@@ -940,8 +1047,15 @@ export function balanceView(l: BalanceLayers): { groups: BalanceGroupView[]; oth
         fields: def.fields,
         engine,
         pack: rowValue(l.pack, ref) ?? null,
-        published: rowValue(l.published, ref) ?? engine,
-        draft: rowValue(l.draft, ref) ?? engine,
+        // A keyed row's optional parts are left out on purpose (a spell effect's amounts).
+        published:
+          def.key === null
+            ? withEngine(rowValue(l.published, ref), engine)
+            : (rowValue(l.published, ref) ?? engine),
+        draft:
+          def.key === null
+            ? withEngine(rowValue(l.draft, ref), engine)
+            : (rowValue(l.draft, ref) ?? engine),
         edited: l.operatorRows.some((r) => sameRow(r, ref)),
         pending: l.draftRows.find((d) => sameRow(d, ref))?.op ?? null,
         fingerprint: balanceFingerprint(def, l),

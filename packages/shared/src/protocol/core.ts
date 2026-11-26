@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import type { MapFog } from "../rules/admin/worldedit.ts";
 import { NAME_MAX } from "../rules/progression/creation.ts";
+import type { HungerView } from "../rules/progression/progression.ts";
 import { seq } from "./fields.ts";
 
 export const PROTOCOL_VERSION = 1;
@@ -179,6 +180,11 @@ export interface VitalsView {
   shown?: { have: number; need: number | null };
   /** Aboard a vehicle: its hull, which hits wear instead of HP. The HP bar shows it. */
   hull?: { hp: number; max: number };
+  /**
+   * Their own hunger, when the world shows it (the balance row's `hunger.show`): its state, and a
+   * percentage of "Full at" or the value in hundreds when shown that way. Absent: hidden (1.6).
+   */
+  hunger?: HungerView;
 }
 
 export interface MapView {

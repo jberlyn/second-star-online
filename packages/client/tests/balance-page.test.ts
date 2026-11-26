@@ -8,6 +8,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 
 import type { AssetIndex } from "@secondstaronline/data";
 import {
+  type BalanceFieldView,
   type BalanceRowView,
   type ContentBalanceView,
   type ContentRowRef,
@@ -24,8 +25,10 @@ import {
   type BalanceChange,
   createBalancePage,
   fieldError,
+  inputText,
   readRange,
   shownValue,
+  stepValues,
 } from "../src/ui/balance-page.ts";
 import { SNAPSHOT } from "./helpers/menu-helpers.ts";
 
@@ -990,6 +993,125 @@ describe("the plain-language Balance page", () => {
     expect(t.sent.at(-1)?.change.data).toEqual({
       damage: { flat: 20, randomN: 0 },
       reloadFrames: 100,
+    });
+  });
+});
+
+/** A Hunger row with only its warnings (a `steps` field of text). */
+const warningsField: BalanceFieldView & { steps: NonNullable<BalanceFieldView["steps"]> } = {
+  path: ["warnings"],
+  label: "Warnings",
+  unit: "steps",
+  min: 0,
+  max: 100_000,
+  maxItems: 3,
+  steps: {
+    key: "at",
+    value: "text",
+    valueKind: "text",
+    valueMin: 1,
+    valueMax: 20,
+    example: "1500: You are very hungry.",
+  },
+};
+const oddsField: typeof warningsField = {
+  ...warningsField,
+  path: ["breakOdds"],
+  label: "A full stomach protects gear",
+  steps: {
+    key: "above",
+    value: "add",
+    valueKind: "count",
+    valueMin: 0,
+    valueMax: 100,
+    example: "20000: 10",
+  },
+};
+
+const hungerRow = (fp: string): BalanceRowView => {
+  const now = {
+    warnings: [
+      { at: 1500, text: "Very hungry." },
+      { at: 500, text: "Starving!" },
+    ],
+    breakOdds: [{ above: 20_000, add: 10 }],
+  };
+  return {
+    part: "hunger",
+    key: null,
+    label: "Hunger",
+    fields: [
+      { ...warningsField, steps: { ...warningsField.steps } },
+      { ...oddsField, steps: { ...oddsField.steps } },
+    ],
+    engine: now,
+    pack: now,
+    published: now,
+    draft: now,
+    edited: false,
+    pending: null,
+    fingerprint: fp,
+    notice: null,
+  };
+};
+
+describe("a list of steps typed one a line (hunger warnings)", () => {
+  const f = { ...warningsField, steps: { ...warningsField.steps } };
+  const odds = { ...oddsField, steps: { ...oddsField.steps } };
+
+  test("each line is a number, a colon and the value; blank lines are skipped", () => {
+    expect(stepValues("1500: Very hungry.\n\n 500 :Starving! ", f)).toEqual([
+      { at: 1500, text: "Very hungry." },
+      { at: 500, text: "Starving!" },
+    ]);
+    expect(stepValues("", f)).toEqual([]);
+    expect(stepValues("20000: 10", odds)).toEqual([{ above: 20_000, add: 10 }]);
+    expect(
+      inputText(
+        [
+          { at: 1, text: "a" },
+          { at: 2, text: "b" },
+        ],
+        f,
+      ),
+    ).toBe("1: a\n2: b");
+    expect(shownValue([{ above: 5, add: 1 }], odds)).toBe("5: 1");
+    expect(shownValue([], odds)).toBe("none");
+  });
+
+  test("a line without a colon, a repeat, a value out of range or too many lines is refused", () => {
+    expect(fieldError("Very hungry", f)).toMatch(/a colon/);
+    expect(fieldError("5: a\n5: b", f)).toMatch(/twice/);
+    expect(fieldError("5:", f)).toMatch(/words after the colon/);
+    expect(fieldError("5: this line is far too long", f)).toMatch(/at most 20 characters/);
+    expect(fieldError("200000: a", f)).toMatch(/from 0 to 100000/);
+    expect(fieldError("1: a\n2: b\n3: c\n4: d", f)).toMatch(/at most 3 lines/);
+    expect(fieldError("5: lots", odds)).toMatch(/a whole number after each colon/);
+    expect(fieldError("5: 101", odds)).toMatch(/from 0 to 100/);
+    expect(fieldError("1: a\n2: b", f)).toBeNull();
+  });
+
+  test("the page shows them in a box of lines and saves the typed entries", () => {
+    const t = page();
+    t.p.onShow();
+    t.p.receive({ t: "contentBalance", seq: 1, view: view([hungerRow("h".repeat(16))]) });
+    const box = t
+      .row("hunger/")
+      .querySelector<HTMLTextAreaElement>('textarea[data-path="warnings"]') as HTMLTextAreaElement;
+    expect(box.value).toBe("1500: Very hungry.\n500: Starving!");
+    const save = t.button("hunger/", "balance-save");
+    expect(save.disabled).toBe(true);
+    box.value = "2000: Peckish.\n1500: Very hungry.\n500: Starving!";
+    box.dispatchEvent(new Event("input"));
+    expect(save.disabled).toBe(false);
+    save.click();
+    expect(t.sent.at(-1)?.change.data).toEqual({
+      warnings: [
+        { at: 2000, text: "Peckish." },
+        { at: 1500, text: "Very hungry." },
+        { at: 500, text: "Starving!" },
+      ],
+      breakOdds: [{ above: 20_000, add: 10 }],
     });
   });
 });

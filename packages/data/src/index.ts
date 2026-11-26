@@ -25,6 +25,7 @@ export type {
 export type {
   Amount,
   BalanceData,
+  BalanceHunger,
   BalanceKillXp,
   BalanceLevels,
   BalanceSpellEffect,

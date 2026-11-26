@@ -1098,6 +1098,17 @@ body {
   flex: 1 1 240px;
   max-width: 420px;
 }
+/* A list typed one entry a line (hunger warnings): the whole width, a few lines tall. */
+.balance-field:has(.balance-steps) {
+  flex-basis: 100%;
+  max-width: 640px;
+}
+.balance-steps {
+  box-sizing: border-box;
+  width: 100%;
+  resize: vertical;
+  font-family: inherit;
+}
 .balance-status {
   margin: 6px 0 0;
   color: #9fd89f;
@@ -2783,6 +2794,7 @@ body {
 .panel-page .stat-values,
 .panel-page .level-label,
 .panel-page .level-value,
+.panel-page .hunger-line,
 .panel-page .gold-amount,
 .panel-page .skill-names {
   font:
@@ -2800,6 +2812,9 @@ body {
   color: rgb(238, 238, 238);
   white-space: pre;
   line-height: 15px;
+}
+.panel-page .hunger-line[hidden] {
+  display: none;
 }
 .panel-page .skills-clip {
   overflow: hidden;

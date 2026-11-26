@@ -73,6 +73,7 @@ export const ITEM_GROUPS: readonly { id: string; title: string; tables: Definiti
     tables: [
       "itemRules use.usable",
       "itemRules use.silent",
+      "itemRules use.whenFull",
       "itemRules use.effects",
       "itemRules use.messages",
       "itemRules use.refusals",
@@ -132,6 +133,7 @@ export const TABLE_LABELS: Record<DefinitionTable, string> = {
   "itemRules swing.sounds": "Swing sound",
   "itemRules use.usable": "Can be used",
   "itemRules use.silent": "Does nothing when used",
+  "itemRules use.whenFull": "Can be used when full",
   "itemRules use.effects": "Effects when used",
   "itemRules use.messages": "Message when used",
   "itemRules use.refusals": "Message when it can't be used",
@@ -226,6 +228,7 @@ const FIELD_LABELS: Record<string, string> = {
   sound: "Swing sound",
   "use/usable": "Can be used",
   "use/silent": "Does nothing when used",
+  "use/whenFull": "Can be used when full",
   "use/effects": "Effect when used",
   "use/message": "Message when used",
   "use/refusal": "Message when it can't be used",

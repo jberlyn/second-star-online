@@ -189,20 +189,16 @@ function pvpDodgeRoll(skill: number, bonus: number, rng: Rng): number {
 
 // ---- breaks --------------------------------------------------------------------------------
 
-/** The break roll's range: `1 + 3·Sta + base`, plus the hunger terms. */
+/**
+ * The break roll's range: `1 + 3·Sta + base`, plus each of the balance row's `hunger.breakOdds`
+ * steps whose `above` the hunger is over (1.6: +10, +30, +40, +50 above 20k, 25k, 30k, 40k).
+ */
 export function breakOdds(sta: number, hunger: number, base: 600 | 500): number {
   let n = 1 + 3 * sta + base;
-  if (hunger > 20000) {
-    n += 10;
-  }
-  if (hunger > 25000) {
-    n += 30;
-  }
-  if (hunger > 30000) {
-    n += 40;
-  }
-  if (hunger > 40000) {
-    n += 50;
+  for (const step of content().balance.hunger.breakOdds) {
+    if (hunger > step.above) {
+      n += step.add;
+    }
   }
   return n;
 }

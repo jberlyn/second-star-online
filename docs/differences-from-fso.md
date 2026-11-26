@@ -674,7 +674,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 #### Gold moves to the Inventory tab, and Level takes its row on Stats
 - **Kind:** Other
-- **What you notice:** The Inventory tab shows your gold on a line under the bag, centred above your equipment: the bag's small gold picture and the amount with thousands separators. Clicking the gold opens the drop/give dialog (its hover tip says so); there is no separate drop button. The bag sits where it did in 1.6. The Stats tab no longer shows gold; its top row reads your Level, with your character's head (hairstyle, or the helmet you wear) in the icon column. There is no hunger display.
+- **What you notice:** The Inventory tab shows your gold on a line under the bag, centred above your equipment: the bag's small gold picture and the amount with thousands separators. Clicking the gold opens the drop/give dialog (its hover tip says so); there is no separate drop button. The bag sits where it did in 1.6. The Stats tab no longer shows gold; its top row reads your Level, with your character's head (hairstyle, or the helmet you wear) in the icon column. There is no hunger display (a world can show one under Mysticism, the balance row `hunger.show`; Classic, as 1.6, does not).
 - **1.6:** Gold was the top row of the Stats tab, with its drop button and a gold-coin glyph, and the level appeared nowhere on the panel.
 - **SSO:** The gold row sits at y 238-258 with no box, in the gap 1.6 left between the bag (its last quantity field ends at y 232) and the equipment boxes (y 280), centred on the equipment boxes and paperdoll (stage x 693.5). The 15 bag slots keep 1.6's rows (y 116, 153 and 190). The Level row keeps the old gold row's place, value and label columns, and the 30-pixel pitch; its head is the front-facing paperdoll head layer, or the worn helmet's layer, cropped to its pixels, shown 21 pixels tall (the height of the Strength and Mysticism icons, at most 24 wide, proportions kept, pixels unsmoothed) and centred on the icon column. Clothing that hides the head on the paperdoll leaves the Stats portrait visible.
 - **Why:** Gold is something you carry and spend from the bag, and the level is the stat players most want to see.
@@ -3079,9 +3079,9 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** Bug fixed
 - **What you notice:** "You are very hungry.", "You are extremely hungry, you need to eat." and "You are starving!" each appear once as hunger drops past them.
 - **1.6:** The check ran every frame and printed whenever hunger equalled a warning value, while hunger drops on only about a third of frames, so each warning printed about three times.
-- **SSO:** A warning prints on the frame hunger drops onto its value.
+- **SSO:** A warning prints on the frame hunger falls to or past its value (the warnings and their values are the balance row `hunger.warnings`; Classic keeps 1.6's three).
 - **Why:** The warnings were meant to mark the moment hunger reaches each level.
-- **In the code:** `packages/shared/src/rules/progression/progression.ts` (`hungerTick`, `HUNGER_WARNINGS`)
+- **In the code:** `packages/shared/src/rules/progression/progression.ts` (`hungerTick`, `hungerWarning`)
 - **Pinned by:** `bug fixed: a warning prints once, on the frame hunger drops onto the value`; `bug fixed: over many frames each warning prints exactly once` (packages/shared/tests/progression/progression.test.ts)
 
 #### Mage skills cap the same from kills and casts

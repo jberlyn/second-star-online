@@ -150,7 +150,10 @@ export const classesWords: WordBook = {
     help: "The text a new character's profile starts with.",
     long: true,
   },
-  "creation.otherFields.hunger": { label: "Hunger" },
+  "creation.otherFields.hunger": {
+    label: "Hunger",
+    help: "A new character's hunger. At most the Game Rules page's \"Most hunger can be\": a higher value starts at that.",
+  },
   "creation.otherFields.breakCount": {
     label: "Break count",
     help: "An old 1.6 counter saved with each new character.",

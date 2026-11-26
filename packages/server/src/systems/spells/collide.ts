@@ -9,6 +9,7 @@ import {
   cannonballTile,
   cannonDamage,
   checkLevelUp,
+  clampHunger,
   content,
   createFood,
   type DeltaEvent,
@@ -211,7 +212,8 @@ export function playerCollision(room: Room, p: Player, ctx: CollideCtx, res: Col
     }
     const diminish = content().balance.buffs.diminishHunger;
     if (has("Diminish Hunger-3") && diminish.add > 0 && p.char.hunger < diminish.below) {
-      p.char.hunger += diminish.add;
+      // Never past the balance row's `hunger.max`.
+      p.char.hunger = clampHunger(p.char.hunger + diminish.add);
       tell(res.out, p, EFFECT_TEXT.hunger);
     }
     const skinLasts = P * content().balance.buffs.stoneSkinPerPower;

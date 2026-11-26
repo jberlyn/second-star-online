@@ -152,6 +152,8 @@ export const itemDefinitionSchema = z.strictObject({
       usable: z.literal(true).optional(),
       /** `use.silent`: Use says and does nothing. */
       silent: z.literal(true).optional(),
+      /** `use.whenFull`: usable even by a stuffed player. */
+      whenFull: z.literal(true).optional(),
       /** `use.effects`: each adds `flat + random(randomN)` to the stat. */
       effects: z
         .array(

@@ -32,7 +32,9 @@ import {
   type GroundView,
   HOUSE_CLOCK_FRAMES,
   type HouseListEntry,
+  type HungerView,
   hullMax,
+  hungerView,
   type InventoryView,
   isJailMap,
   isWalkable,
@@ -399,6 +401,8 @@ export interface Player {
   deadLock: number;
   /** Vitals changed: send `vitals` and save them. */
   vitalsDirty: boolean;
+  /** The hunger the last `vitals` showed the player (`hungerView`), as a key; "" before any. */
+  hungerSent: string;
 
   // ---- inventory --------------------------------------------------------------
   /** Gold, bag or equipment changed: send `inv` and write it in this tick's transaction. */
@@ -701,6 +705,7 @@ export function sessionCombatState(): Pick<
   | "hitAge"
   | "deadLock"
   | "vitalsDirty"
+  | "hungerSent"
   | "invDirty"
   | "vehicleDirty"
   | "sunk"
@@ -772,6 +777,7 @@ export function sessionCombatState(): Pick<
     hitAge: 0,
     deadLock: 0,
     vitalsDirty: true,
+    hungerSent: "",
     invDirty: true,
     vehicleDirty: false,
     sunk: null,
@@ -1153,12 +1159,23 @@ export function createWorld(npcs: NpcStore = archiveNpcStore()): World {
 /** My HP, SP and XP for my own client, with the hull while aboard (the HP bar shows it). */
 export function vitalsView(p: Player): VitalsView {
   const v: VitalsView = { ...p.char.vitals };
+  // Their own hunger, when the world shows it (the balance row's `hunger.show`).
+  const hunger = hungerView(p.char.hunger);
+  p.hungerSent = hungerKey(hunger);
+  if (hunger) {
+    v.hunger = hunger;
+  }
   // Counted as a running total, or at the level cap, the XP bar shows other figures (issue #42).
   const levels = content().balance.levels;
   if (levels.counting === "total" || v.expNeeded <= 0) {
     v.shown = expShown(v, levels);
   }
   return p.vehicle && p.hull !== null ? { ...v, hull: { hp: p.hull, max: hullMax(p.vehicle) } } : v;
+}
+
+/** A hunger view as a key, to notice when what the player sees of it changes. */
+export function hungerKey(h: HungerView | null): string {
+  return h ? `${h.state}/${h.percent ?? ""}/${h.value ?? ""}` : "-";
 }
 
 export function playerView(p: Player): PlayerView {

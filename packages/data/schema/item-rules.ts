@@ -168,6 +168,11 @@ export const itemRulesDataSchema = z
     use: z.strictObject({
       /** Use says nothing and does nothing: any match. */
       silent: z.array(z.strictObject(pattern)),
+      /**
+       * Usable even by a stuffed player (a healing potion, say), whatever the balance row
+       * `hunger.stuffedRefuses` says; any match wins. Left out: none (1.6).
+       */
+      whenFull: z.array(z.strictObject(pattern)).optional(),
       /** The Mysticism a spell book needs, last match wins, else 1. */
       books: z.array(strictRow({ mysticism: int })),
       /**

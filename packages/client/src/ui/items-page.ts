@@ -1570,12 +1570,17 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
       "When used",
       "What happens when a player uses it from their bag: eating food, drinking a potion, reading a book.",
       flagAt(["use", "usable"], "Players can use it", "items-usable"),
+      flagAt(
+        ["use", "whenFull"],
+        "Can be used when full (a healing potion, say)",
+        "items-use-when-full",
+      ),
       listEditor({
         id: "effects",
         label: "Effects",
         one: "effect",
         path: ["use", "effects"],
-        help: "Each changes a stat by an amount in the range when it is used. Food raises Hunger.",
+        help: "Each changes a stat by an amount in the range when it is used. Food raises Hunger; a negative amount lowers it. The Game Rules page sets what a full stomach refuses and the most hunger can reach.",
         columns: [
           { key: "stat", label: "Stat", kind: "select", options: () => c.stats },
           {

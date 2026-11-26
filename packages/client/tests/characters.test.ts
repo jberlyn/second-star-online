@@ -446,7 +446,7 @@ describe("the editor", () => {
     showHub(hub({ hunger: { max: 90_000, start: 50_000, afterDeath: 90_000 } }));
     $("hub-tab-edit").click();
     expect(p.el.textContent).toContain(
-      "0 to 90000; a new character starts at 50000, a death sets 90000.",
+      "0 to 90000 (the most hunger can be); a new character starts at 50000, a death sets 90000.",
     );
     $<HTMLInputElement>("hub-edit-hunger").value = "60000";
     $<HTMLInputElement>("hub-edit-reason").value = "fed";

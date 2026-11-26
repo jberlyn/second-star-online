@@ -7,8 +7,9 @@ const text = (name: string) => contentReport(name).join("\n");
 
 describe("content report (lists every name rule a name matches)", () => {
   test("every name table in content has a catalogue entry, and every catalogue entry exists", () => {
-    // A table Classic leaves empty (`requires`) has no rows to find, but is catalogued all the same.
-    const emptyInClassic = ["item-rules.json requires"];
+    // A table Classic leaves empty (`requires`, `use.whenFull`) has no rows to find, but is
+    // catalogued all the same.
+    const emptyInClassic = ["item-rules.json requires", "item-rules.json use.whenFull"];
     expect([...patternTables().keys(), ...emptyInClassic].sort()).toEqual(
       Object.keys(TABLES).sort(),
     );

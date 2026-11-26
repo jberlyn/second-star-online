@@ -33,6 +33,7 @@ import {
   deathText,
   EDGE_BLOCKED_TEXT,
   exitTarget,
+  hungerView,
   isJailMap,
   lingoEq,
   lootDecaySeconds,
@@ -106,6 +107,7 @@ import { serverTimer } from "../spells/hazards.ts";
 import { monsterSpells } from "../spells/monsterspells.ts";
 import {
   enterRoom,
+  hungerKey,
   inventoryView,
   leaveRoom,
   type Outgoing,
@@ -460,6 +462,10 @@ export function tick(world: World, deps: TickDeps): TickResult {
       const warning = hungerStep(p, can(p.role, "noHunger"), rng);
       if (warning) {
         tell(p, warning);
+      }
+      // What the player sees of their hunger changed (a world that shows it): send it.
+      if (hungerKey(hungerView(p.char.hunger)) !== p.hungerSent) {
+        p.vitalsDirty = true;
       }
       const bodies: { events: DeltaEvent[] } = { events: [] };
       morphStep(p, bodies);

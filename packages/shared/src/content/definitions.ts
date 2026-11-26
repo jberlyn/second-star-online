@@ -52,6 +52,7 @@ export const DEFINITION_TABLES = [
   "itemRules swing.sounds",
   "itemRules use.usable",
   "itemRules use.silent",
+  "itemRules use.whenFull",
   "itemRules use.effects",
   "itemRules use.messages",
   "itemRules use.refusals",
@@ -161,6 +162,8 @@ export function definitionRows(def: ItemDefinition, key: DefinitionTable): Obj[]
       return def.use?.usable ? [{}] : [];
     case "itemRules use.silent":
       return def.use?.silent ? [{}] : [];
+    case "itemRules use.whenFull":
+      return def.use?.whenFull ? [{}] : [];
     case "itemRules use.effects":
       return (def.use?.effects ?? []).map((r) => ({ ...r }));
     case "itemRules use.messages":
@@ -325,6 +328,9 @@ export function seedDefinition(
         break;
       case "itemRules use.silent":
         use.silent = true;
+        break;
+      case "itemRules use.whenFull":
+        use.whenFull = true;
         break;
       case "itemRules use.effects":
         use.effects = list();
