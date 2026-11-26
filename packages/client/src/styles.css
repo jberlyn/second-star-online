@@ -61,6 +61,55 @@
   /* The item menu's frame: purple outside, lavender inside, around black. */
   --ui-menu-frame: 0 0 0 1px var(--ui-purple-light) inset, 0 0 0 2px #000 inset;
 }
+/*
+ * The Control Panel and Player Settings are read for long stretches, so they take a quieter cut
+ * of the same palette: a nod to 1.6 rather than a copy of it. Surfaces are a soft, nearly flat
+ * walnut (the grain shows faintly only on the bars), the tan pole is a thin muted edge, and the
+ * item menu's purple is greyed down for the current page, the main action and focus. In-game
+ * windows built on these tokens (the crafting window) keep the full-strength values above.
+ */
+.control-panel,
+.settings {
+  --ui-wood-0: #141110;
+  --ui-wood-1: #1b1714;
+  --ui-wood-2: #211c18;
+  --ui-wood-3: #2b241f;
+  --ui-wood-4: #332a24;
+  --ui-wood-5: #3d332b;
+  --ui-well: #131011;
+  --ui-line: #2c2520;
+  --ui-line-strong: #3d322a;
+  --ui-trim-dark: #4c3c2f;
+  --ui-trim: #6e5641;
+  --ui-trim-light: #c4a586;
+  --ui-purple: #634a92;
+  --ui-purple-hover: #7058a2;
+  --ui-purple-light: #a593c8;
+  --ui-purple-pale: #d8cfe8;
+  --ui-purple-dim: #463a5e;
+  --ui-purple-dark: #2d2540;
+  --ui-text: #e6dfd7;
+  --ui-text-soft: #d2c7bb;
+  --ui-text-dim: #b0a396;
+  --ui-text-muted: #908376;
+  --ui-grain:
+    repeating-linear-gradient(
+      178.8deg,
+      rgb(255 200 150 / 1.5%) 0 2px,
+      transparent 2px 7px,
+      rgb(0 0 0 / 7%) 7px 9px,
+      transparent 9px 13px
+    ),
+    repeating-linear-gradient(
+      179.5deg,
+      transparent 0 37px,
+      rgb(0 0 0 / 6%) 37px 41px,
+      transparent 41px 53px
+    );
+  --ui-wood-surface: linear-gradient(180deg, #1d1815, #181412);
+  --ui-wood-raised: var(--ui-grain), linear-gradient(180deg, #241e1a, #1f1a16);
+  --ui-menu-frame: 0 0 0 1px rgb(165 147 200 / 25%) inset;
+}
 * {
   box-sizing: border-box;
 }
@@ -2747,9 +2796,10 @@ body {
   cursor: default;
 }
 
-/* The 1.6 look for the SSO panels (the Control Panel, Server Settings, Player Settings): woodgrain
-   surfaces, tan-trimmed bars like the right panel's pole, and the item menu's purple frame on
-   dialogs, the current page and the main action. Layout is the rules' above; only the paint is here. */
+/* The 1.6 nod for the SSO panels (the Control Panel, Server Settings, Player Settings): soft walnut
+   surfaces, bars edged with a thin line of the right panel's tan pole, and the item menu's purple,
+   muted, on the current page, the main action and dialogs. Flat fills, no bevels: the panels are
+   read for long stretches. Layout is the rules' above; only the paint is here. */
 .control-panel,
 .settings {
   background: var(--ui-wood-surface);
@@ -2783,22 +2833,19 @@ body {
   background: var(--ui-wood-raised);
 }
 .control-panel-header {
-  border-bottom: 2px solid var(--ui-trim);
-  box-shadow: 0 1px 0 #000;
+  border-bottom: 1px solid var(--ui-trim-dark);
 }
 .control-panel-sidebar,
 .settings-nav {
-  border-right: 2px solid var(--ui-trim);
-  box-shadow: 1px 0 0 #000;
+  border-right: 1px solid var(--ui-trim-dark);
 }
 .settings-footer {
-  border-top: 2px solid var(--ui-trim);
+  border-top: 1px solid var(--ui-trim-dark);
 }
 .control-panel-brand,
 .control-panel-heading-title,
 .settings-title {
   color: var(--ui-trim-light);
-  text-shadow: 1px 1px 0 #000;
 }
 .control-panel-group-title,
 .pset-group-title {
@@ -2806,53 +2853,52 @@ body {
 }
 .control-panel-link[aria-current="page"],
 .settings-link[aria-current="page"] {
-  background: linear-gradient(180deg, var(--ui-purple-dim), var(--ui-purple-dark));
-  box-shadow: 0 0 0 1px var(--ui-purple) inset;
+  background: var(--ui-purple-dark);
+  box-shadow: 2px 0 0 var(--ui-purple-light) inset;
 }
 .control-panel-btn,
 .settings-btn,
 .control-panel-rooms {
-  background: linear-gradient(180deg, var(--ui-wood-5), var(--ui-wood-3));
-  border-color: var(--ui-trim);
+  background: var(--ui-wood-4);
+  border-color: var(--ui-trim-dark);
   color: var(--ui-text);
 }
 .control-panel-btn:hover,
 .settings-btn:hover {
-  background: linear-gradient(180deg, #6e3820, var(--ui-wood-4));
-  border-color: var(--ui-trim-light);
+  background: var(--ui-wood-5);
+  border-color: var(--ui-trim);
 }
 .control-panel-btn-primary,
 .settings-save,
 .pset-key-btn.listening {
   color: #fff;
-  background: linear-gradient(180deg, var(--ui-purple-hover), var(--ui-purple));
-  border-color: var(--ui-purple-light);
-  text-shadow: 1px 1px 0 rgb(0 0 0 / 50%);
+  background: var(--ui-purple);
+  border-color: var(--ui-purple-hover);
 }
 .control-panel-btn-primary:hover,
 .settings-save:hover {
-  background: linear-gradient(180deg, #a050f4, var(--ui-purple-hover));
-  border-color: var(--ui-purple-pale);
+  background: var(--ui-purple-hover);
+  border-color: var(--ui-purple-light);
 }
 .control-panel-btn-danger,
 .settings-btn.settings-discard {
-  color: #2a0b0b;
-  background: #ff8a80;
-  border-color: #ff8a80;
-  text-shadow: none;
+  color: #f6e4e1;
+  background: #7e3a34;
+  border-color: #9a4a42;
 }
 .control-panel-btn-danger:hover,
 .settings-btn.settings-discard:hover {
-  background: #ffa59d;
+  background: #8f443d;
+  border-color: #b0584f;
 }
 .control-panel-confirm-box,
 .settings-confirm-box {
-  background: #000;
-  border: 2px solid var(--ui-purple);
-  border-radius: 0;
+  background: var(--ui-wood-1);
+  border: 1px solid var(--ui-purple-dim);
+  border-radius: 4px;
   box-shadow:
     var(--ui-menu-frame),
-    0 4px 16px rgb(0 0 0 / 70%);
+    0 8px 24px rgb(0 0 0 / 55%);
 }
 .control-panel-table th {
   background: var(--ui-wood-2);
@@ -2864,7 +2910,7 @@ body {
 }
 .control-panel ::selection,
 .settings ::selection {
-  background: var(--ui-purple);
+  background: var(--ui-purple-dim);
   color: #fff;
 }
 .control-panel *::-webkit-scrollbar,

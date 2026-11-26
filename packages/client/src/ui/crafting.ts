@@ -1,7 +1,8 @@
 /**
  * The crafting window (issue #45): a recipe station's recipes, made a quantity at a time
  * (RuneScape's "Make X"). An SSO window: 1.6 had no recipes, so it has no 1.6 art; it wears the
- * item menu's purple frame on the panel's woodgrain, like the other SSO panels.
+ * item menu's purple frame on the right panel's woodgrain, at full strength because it sits beside
+ * 1.6's own art (the Control Panel and Player Settings use a softer cut of the same tokens).
  *
  * The list on the left groups the recipes by category, with a search box. Recipes the player can
  * make now stand out; ones short of materials or a tool are greyed; ones above their level (or not
