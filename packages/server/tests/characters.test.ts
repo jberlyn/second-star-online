@@ -203,6 +203,8 @@ describe("the player hub", () => {
     expect(live?.sheet).toMatchObject({ name: "Al", gold: 1234, bank: 50, vault: ["Steel Sword"] });
     expect(live?.sheet.skills.Slash).toBe(7);
     expect(live?.sheet.bag[0]).toEqual({ item: "Apple", qty: expect.any(Number) });
+    // The map is named by its title too, not its code alone.
+    expect(live?.sheet.position.title).toBeTruthy();
     game.leave(al.characterId);
     game.tick();
     const saved = open(game, god.characterId, "Al");

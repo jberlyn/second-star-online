@@ -33,7 +33,7 @@ const p = (
 export const ITEM_RULE_TABS: AreaTab[] = [
   {
     kind: "settings",
-    label: "Using and wearing",
+    label: "Rules for every item",
     help: "What every item shares: how gear is worn and equipped, what using an item does, armour, and what happens when gear breaks.",
     parts: [
       p(
@@ -66,7 +66,7 @@ export const ITEM_RULE_TABS: AreaTab[] = [
   },
   {
     kind: "settings",
-    label: "Abilities by name",
+    label: "Rules by item name",
     help: "Rules that reach every item whose name matches, as Classic gives its own items their abilities. An item's own page overrides them.",
     parts: [
       p(
@@ -100,7 +100,7 @@ export const ITEM_RULE_TABS: AreaTab[] = [
   },
   {
     kind: "settings",
-    label: "Lists",
+    label: "Shop and editor lists",
     help: "The lists of items the editors and player shops use.",
     parts: [
       p("items", "editorItems", "World Editor items", "The items the World Editor can place."),
@@ -226,9 +226,9 @@ export const CLASS_TABS: AreaTab[] = [
   },
   {
     kind: "settings",
-    label: "Skills the game uses",
+    label: "Which skill does what",
     help: "Which skill each of the game's mechanics reads (parrying, fishing, the crafts…). A mechanic with no skill is off.",
-    parts: [p("bindings", "skills", "Skills the game uses", "")],
+    parts: [p("bindings", "skills", "Which skill does what", "")],
   },
 ];
 

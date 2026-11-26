@@ -52,7 +52,13 @@ import {
 import { type Assets, drawSprite } from "../assets.ts";
 import { drawFog, fogLayer } from "../fog.ts";
 import { action, noAutofill } from "./action.ts";
-import { formActions, pageHeading, panelButton, sectionTabs } from "./control-panel-kit.ts";
+import {
+  formActions,
+  moreFields,
+  pageHeading,
+  panelButton,
+  sectionTabs,
+} from "./control-panel-kit.ts";
 
 export interface WorldPageActions {
   /** Asks for the open map (`at`) and, with `list`, every map. */
@@ -221,15 +227,9 @@ export function createWorldPage(actions: WorldPageActions, assets: Assets | null
     s.append(h, intro(help), ...kids);
     return s;
   };
-  /** Fields folded under "More options" (opened when one of them is in use). */
-  const more = (label: string, ...kids: HTMLElement[]) => {
-    const d = document.createElement("details");
-    d.className = "items-more";
-    const s = action(document.createElement("summary"), "world-more-toggle");
-    s.textContent = label;
-    d.append(s, ...kids);
-    return d;
-  };
+  /** A part of the page shown under its own small heading. */
+  const more = (label: string, ...kids: HTMLElement[]) =>
+    moreFields(label === "More options" ? "" : label, ...kids);
   const numInput = (id: string, value: string, label: string) => {
     const i = noAutofill(action(document.createElement("input"), id));
     i.type = "number";
@@ -429,8 +429,11 @@ export function createWorldPage(actions: WorldPageActions, assets: Assets | null
   const stepButtons = document.createElement("div");
   stepButtons.className = "content-buttons world-steps";
   stepButtons.append(undoBtn, redoBtn, copyBtn, cutBtn, deleteBtn);
-  const toolMore = more(
-    "More tools: show or hide layers, stamps",
+  // Showing or hiding layers, and stamps: a tab of their own under the map.
+  const sView = section(
+    "view",
+    "Layers and stamps",
+    "What you see while you work, and copies kept to paste again.",
     labelled(
       "Show layers",
       visBox,
@@ -450,10 +453,9 @@ export function createWorldPage(actions: WorldPageActions, assets: Assets | null
       "Keep something you copied under a name, to paste it again later while this page is open.",
     ),
   );
-  toolMore.classList.add("world-tool-more");
   const toolbar = document.createElement("div");
   toolbar.className = "world-toolbar";
-  toolbar.append(toolRow, toolHelp, currentTile, stepButtons, toolMore);
+  toolbar.append(toolRow, toolHelp, currentTile, stepButtons);
 
   // Canvas.
   const canvas = action(document.createElement("canvas"), "world-canvas");
@@ -587,7 +589,7 @@ export function createWorldPage(actions: WorldPageActions, assets: Assets | null
   // Save, history.
   const saveBtn = panelButton(
     "world-save",
-    "Save changes",
+    "Save and go live",
     () => {
       if (!map || busy || opening) {
         return;
@@ -709,6 +711,7 @@ export function createWorldPage(actions: WorldPageActions, assets: Assets | null
     sText,
     sRules,
     sFog,
+    sView,
     sVersions,
     formActions(buttons, status),
   );
@@ -1509,7 +1512,7 @@ export function createWorldPage(actions: WorldPageActions, assets: Assets | null
     const isDirty = dirty();
     stale.hidden = !(isDirty && v.revision !== filledRevision);
     saveBtn.disabled = busy || opening || !(isDirty || !v.exists);
-    saveBtn.textContent = v.exists ? "Save changes" : "Create this map";
+    saveBtn.textContent = v.exists ? "Save and go live" : "Create this map";
     markUsed();
     dropBtn.hidden = !isDirty;
     undoBtn.disabled = !history.canUndo;
@@ -1542,10 +1545,6 @@ export function createWorldPage(actions: WorldPageActions, assets: Assets | null
       if (sec.dataset.used !== u) {
         sec.dataset.used = u;
       }
-    }
-    // The fog's colour fold opens when the colour is not plain white.
-    if (m.fog.r !== 255 || m.fog.g !== 255 || m.fog.b !== 255) {
-      fogMore.open = true;
     }
   };
 

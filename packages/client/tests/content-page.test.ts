@@ -362,7 +362,30 @@ describe("the Publish Changes page", () => {
     expect(p.el.textContent).toContain("names an item that does not exist");
   });
 
-  test("Cancel this change discards a draft change with the revision it carries", () => {
+  test("a new row reads Added in the change list, an edited one Changed", () => {
+    const { p, last } = page();
+    p.onShow();
+    const row = (key: string, added: boolean) => ({
+      dataset: "items",
+      part: "items",
+      key,
+      op: "set" as const,
+      author: "A",
+      updatedAt: "2026-11-22T01:02:03.000Z",
+      ...(added ? { added: true as const } : {}),
+    });
+    p.receive({
+      t: "contentOverview",
+      seq: last("overview")?.seq ?? 0,
+      overview: overview({ draft: [row("Moonblade", true), row("Ale", false)] }),
+    });
+    const changes = [...p.el.querySelectorAll("tbody tr")]
+      .map((tr) => tr.querySelectorAll("td")[1]?.textContent)
+      .filter((t) => t === "Added" || t === "Changed");
+    expect(changes).toEqual(["Added", "Changed"]);
+  });
+
+  test("Cancel this change asks first, then discards the change with the revision it carries", async () => {
     const { p, last, count } = page();
     p.onShow();
     p.receive({
@@ -383,6 +406,16 @@ describe("the Publish Changes page", () => {
       }),
     });
     (p.el.querySelector('[data-action="content-draft-discard"]') as HTMLButtonElement).click();
+    // It asks first: Keep it sends nothing, Cancel the change sends the discard.
+    expect(last("discard")).toBeUndefined();
+    (
+      p.el.querySelector('[data-action="control-panel-confirm-cancel"]') as HTMLButtonElement
+    ).click();
+    await Promise.resolve();
+    expect(last("discard")).toBeUndefined();
+    (p.el.querySelector('[data-action="content-draft-discard"]') as HTMLButtonElement).click();
+    (p.el.querySelector('[data-action="control-panel-confirm-ok"]') as HTMLButtonElement).click();
+    await Promise.resolve();
     expect(last("discard")?.args).toEqual([
       { dataset: "balance", part: "hulls", key: "Boat" },
       "r".repeat(16),

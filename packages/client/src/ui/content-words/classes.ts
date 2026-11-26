@@ -253,32 +253,15 @@ export const classesWords: WordBook = {
     noun: "head",
   },
   "creation.sexes.[].heads.[]": { label: "Head number" },
-  "creation.statBudget": { label: "Stat points note", more: true },
-  "creation.startingVitals": { label: "Starting HP and SP note", more: true },
-  "creation.startingMap": { label: "Starting map note", more: true },
-  "creation.nameRules": { label: "Name rules note", more: true },
-  "creation.*.rule": {
-    label: "Note",
-    help: "A note about 1.6; the game doesn't read it.",
-    long: true,
-  },
-  "creation.*.written": {
-    label: "Note",
-    help: "A note about 1.6; the game doesn't read it.",
-    long: true,
-  },
-  "creation.*.notes": { label: "More notes", long: true },
-  "creation.startingMap.value": {
-    label: "Note",
-    help: "A note about 1.6; the game doesn't read it.",
-  },
+  // 1.6 notes kept with the data (how 1.6 did it): the game reads none of them, so they are kept
+  // as they are and not shown.
+  "creation.statBudget": { hidden: true },
+  "creation.startingVitals": { hidden: true },
+  "creation.startingMap": { hidden: true },
+  "creation.nameRules": { hidden: true },
   "creation.otherFields": { label: "New characters start with" },
   "creation.otherFields.gold": { label: "Gold" },
-  "creation.otherFields.faction": {
-    label: "Faction note",
-    help: "Not read by the game.",
-    more: true,
-  },
+  "creation.otherFields.faction": { hidden: true },
   "creation.otherFields.profile": {
     label: "Profile text",
     help: "The text a new character's profile starts with.",
@@ -288,11 +271,8 @@ export const classesWords: WordBook = {
     label: "Hunger",
     help: "A new character's hunger. At most the Game Rules page's \"Most hunger can be\": a higher value starts at that.",
   },
-  "creation.otherFields.breakCount": {
-    label: "Break count",
-    help: "An old 1.6 counter saved with each new character.",
-    more: true,
-  },
+  // An old 1.6 counter saved with each new character, which nothing in play reads.
+  "creation.otherFields.breakCount": { hidden: true },
 
   // Weapon skills: what a weapon trains.
   skillGain: { label: "Weapon skills" },

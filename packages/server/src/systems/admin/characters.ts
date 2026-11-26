@@ -117,6 +117,8 @@ export interface HubDeps {
   ipBan(key: string): IpBanRecord | null;
   /** A map's name by id, or the id when that map is gone. */
   mapName(mapId: string): string;
+  /** A map's title by its name (`x1000y992` → "Test map"), or null for none. */
+  mapTitle?(name: string): string | null;
   /** The houses they own, as the hub lists them (issue #36: `hubHouses`). */
   houses(characterId: string): HubHouse[];
   now(): string;
@@ -302,6 +304,16 @@ export function characterHub(
     sheet = storedSheet(world, stored);
     times = stored;
   }
+  // The maps by their titles too, so a sheet reads "x1000y992, Test map", not a code alone.
+  const titled = <P extends { map: string }>(at: P): P => {
+    const title = deps.mapTitle?.(at.map);
+    return title ? { ...at, title } : at;
+  };
+  sheet = {
+    ...sheet,
+    position: titled(sheet.position),
+    respawn: sheet.respawn ? titled(sheet.respawn) : null,
+  };
   const now = deps.now();
   const live = (r: ModerationRecord | null) => (isActive(r, now) ? r : null);
   // Addresses are `/banip`'s, as on `/banlist`: without it an IP ban shows as made, not where.

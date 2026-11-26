@@ -54,7 +54,7 @@ export const bindingsWords: WordBook = {
   },
 
   skills: {
-    label: "Skills the game uses",
+    label: "Which skill does what",
     help: "Which skill does each job. Off: that job is turned off.",
   },
   "skills.parry": skill("Parry", "Rolled to dodge melee hits."),

@@ -631,6 +631,17 @@ interface Records {
   dirty(): boolean;
 }
 
+/** A noun's plural: "recipe" → "recipes", "class" → "classes", "entry" → "entries". */
+export function plural(noun: string): string {
+  if (/[^aeiou]y$/.test(noun)) {
+    return `${noun.slice(0, -1)}ies`;
+  }
+  if (/(s|x|z|ch|sh)$/.test(noun)) {
+    return `${noun}es`;
+  }
+  return `${noun}s`;
+}
+
 function recordsView(id: string, deps: AreaPageDeps, part: AreaPart): Records {
   const el = document.createElement("div");
   el.className = "items-layout content-area-records";
@@ -638,9 +649,15 @@ function recordsView(id: string, deps: AreaPageDeps, part: AreaPart): Records {
   listBox.className = "items-list-box";
   const search = noAutofill(action(document.createElement("input"), `${id}-search`));
   search.type = "search";
-  search.placeholder = "Search";
-  search.setAttribute("aria-label", `Search ${part.title.toLowerCase()}`);
-  search.className = "content-area-search";
+  search.placeholder = `Search ${part.title.toLowerCase()}`;
+  search.id = `${id}-search`;
+  const searchLabel = document.createElement("label");
+  searchLabel.className = "control-panel-field-label";
+  searchLabel.htmlFor = search.id;
+  searchLabel.textContent = "Search";
+  const searchField = document.createElement("div");
+  searchField.className = "control-panel-field balance-field content-area-search";
+  searchField.append(searchLabel, search);
   const newBtn = panelButton(`${id}-new`, `+ New ${part.noun ?? "entry"}`, () => startNew());
   newBtn.hidden = part.fixed === true;
   const count = document.createElement("p");
@@ -648,7 +665,7 @@ function recordsView(id: string, deps: AreaPageDeps, part: AreaPart): Records {
   const list = document.createElement("ul");
   list.className = "items-list";
   list.setAttribute("aria-label", part.title);
-  listBox.append(newBtn, search, count, list);
+  listBox.append(newBtn, searchField, count, list);
 
   const formBox = document.createElement("section");
   formBox.className = "items-form";
@@ -697,10 +714,25 @@ function recordsView(id: string, deps: AreaPageDeps, part: AreaPart): Records {
   const draw = () => {
     const words = search.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
     const label = (key: string | null) => (key === null ? "" : (part.labelOf?.(key) ?? key));
-    const rows = (listing?.rows ?? []).filter((r) =>
-      words.every((w) => `${r.key ?? ""} ${label(r.key)}`.toLowerCase().includes(w)),
-    );
-    count.textContent = `${rows.length} of ${listing?.rows.length ?? 0}`;
+    // A–Z by the name shown (numbers in order: "Class 2" before "Class 10"), as on the Items page.
+    const rows = (listing?.rows ?? [])
+      .filter((r) => words.every((w) => `${r.key ?? ""} ${label(r.key)}`.toLowerCase().includes(w)))
+      .sort((a, b) =>
+        label(a.key).localeCompare(label(b.key), undefined, { numeric: true, sensitivity: "base" }),
+      );
+    const total = listing?.rows.length ?? 0;
+    const noun = part.noun ?? "entry";
+    count.textContent =
+      total === 0
+        ? part.fixed === true
+          ? "None."
+          : `None yet. Use + New ${noun} to add one.`
+        : words.length > 0
+          ? rows.length === 0
+            ? "Nothing matches."
+            : `${rows.length} of ${total}`
+          : `${total} ${total === 1 ? noun : plural(noun)}`;
+    searchField.hidden = total === 0;
     list.replaceChildren(
       ...rows.map((r) => {
         const li = document.createElement("li");
@@ -870,7 +902,7 @@ export function createAreaPage(cfg: AreaConfig, deps: AreaPageDeps): AreaPage {
   bar.className = "balance-draft";
   const barText = document.createElement("span");
   barText.textContent =
-    "Changes you save here wait with your other unpublished changes until you publish them.";
+    "Saving here puts your change in the draft: the unpublished changes that wait until someone publishes them.";
   bar.append(barText, panelButton(`${cfg.id}-publish`, "Review and publish…", deps.openContent));
   const form = document.createElement("div");
   form.className = "content-area-tabs";

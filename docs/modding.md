@@ -831,7 +831,7 @@ The editors combine the mechanics the engine has: a new kind of activity, such a
 
 `packages/data/content/bindings.json` names the content the engine needs for its mechanics, so no mechanic depends on a 1.6 name in code. A binding a world leaves out turns its mechanic off. The currency is the exception: the [content contract](#the-content-contract) requires one.
 
-Each top-level field is one row, edited on the Control Panel's page for it (the currency, cannon and bodies on Game Rules' **Currency and bodies**, the start on Skills & Classes' **New characters**, the skills on **Skills the game uses**):
+Each top-level field is one row, edited on the Control Panel's page for it (the currency, cannon and bodies on Game Rules' **Currency and bodies**, the start on Skills & Classes' **New characters**, the skills on **Which skill does what**):
 
 | Row | What it holds | Classic | Left out |
 |---|---|---|---|

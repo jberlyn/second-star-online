@@ -142,7 +142,8 @@ function page() {
     body: () => null,
   });
   document.body.append(p.el);
-  const q = <T extends Element>(sel: string) => p.el.querySelector(sel) as T;
+  const q = <T extends Element>(sel: string) =>
+    (p.el.querySelector(sel) ?? p.spells.querySelector(sel)) as T;
   const qa = (sel: string) => [...p.el.querySelectorAll<HTMLElement>(sel)];
   return { p, asked, sets, spells, npcAsks, npcSets, q, qa };
 }
@@ -423,29 +424,16 @@ describe("the plain-language form", () => {
     );
   });
 
-  test("tabs with settings carry a mark; More options opens when one of its fields is set", () => {
+  test("tabs with settings carry a mark; the less used fields are always shown", () => {
     const t = page();
     openOrc(t);
     const group = (id: string) => t.q<HTMLElement>(`section[data-group="${id}"]`);
     expect(group("lists").dataset.used).toBe("true");
     expect(group("behaviour").dataset.used).toBe("false");
-    expect(group("behaviour").querySelector<HTMLDetailsElement>(".items-more")?.open).toBe(false);
+    expect(group("behaviour").querySelector(".items-more")?.closest("details")).toBeNull();
     const box = group("behaviour").querySelector<HTMLInputElement>('input[type="checkbox"]');
     box?.click();
     expect(group("behaviour").dataset.used).toBe("true");
-    // A monster that is already big opens the fold.
-    const big = page();
-    big.p.onShow();
-    big.p.open("Orc");
-    big.p.receive({
-      t: "contentMonsters",
-      seq: big.asked.at(-1)?.seq ?? 0,
-      view: view(orc("a".repeat(16), { form: { name: "Orc", footprint: true } })),
-    });
-    expect(
-      big.q('section[data-group="behaviour"]').querySelector<HTMLDetailsElement>(".items-more")
-        ?.open,
-    ).toBe(true);
   });
 
   test("Restore this tab shows only where the monster differs from the pack", () => {
@@ -481,7 +469,7 @@ describe("the plain-language form", () => {
     // Any other flag is listed as it is, with Take it out: nothing to type.
     const out = t.q<HTMLButtonElement>('[data-action="monsters-npc-flag-out"]');
     expect(out.closest("li")?.textContent).toContain("Custom");
-    expect(out.closest("details")?.open).toBe(true);
+    expect(out.closest("details")).toBeNull();
     expect(t.p.el.querySelector('[data-action="monsters-npc-flags"]')).toBeNull();
     // Taken out, it goes with the next save.
     t.q<HTMLButtonElement>('[data-action="monsters-npc-flag-out"]').click();
@@ -493,9 +481,11 @@ describe("the plain-language form", () => {
     const t = page();
     openOrc(t);
     const pick = t.q('[data-list="spells"]');
-    const box = pick.querySelector<HTMLInputElement>('input[type="checkbox"]');
-    expect(box?.checked).toBe(false);
-    box?.click();
+    expect(pick.querySelector('input[type="checkbox"]')).toBeNull();
+    const add = t.q<HTMLSelectElement>('[data-action="monsters-spells-pick"]');
+    add.value = "Splash";
+    add.dispatchEvent(new Event("change"));
+    expect(pick.querySelector<HTMLInputElement>('input[type="checkbox"]')?.checked).toBe(true);
     t.q<HTMLButtonElement>('[data-action="monsters-npc-save"]').click();
     expect(t.npcSets.at(-1)?.s.spells).toEqual(["Splash"]);
   });

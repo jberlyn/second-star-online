@@ -28,6 +28,11 @@ export interface PanelPage {
   group: string;
   /** Your role needs this to see the page (the server checks every request again). */
   permission: Permission;
+  /**
+   * Its saves go live at once (Server Settings, World), not into the draft the content pages
+   * share: its sidebar link says so.
+   */
+  live?: boolean;
   el: HTMLElement;
   /** Runs each time the page is shown: ask the server for what it lists. */
   onShow?(): void;
@@ -277,6 +282,14 @@ export function createControlPanel(opts: ControlPanelOptions): ControlPanel {
       a.className = "control-panel-link";
       a.dataset.page = p.id;
       a.textContent = p.title;
+      if (p.live) {
+        const tag = document.createElement("span");
+        tag.className = "control-panel-live";
+        tag.textContent = "Live";
+        tag.title = "Saving here applies at once, for everyone: there is nothing to publish.";
+        a.append(tag);
+        a.setAttribute("aria-label", `${p.title} (saves go live at once)`);
+      }
       a.addEventListener("click", () => go(p.id));
       entries.push({ group: p.group, el: a });
     }

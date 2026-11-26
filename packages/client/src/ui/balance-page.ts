@@ -634,6 +634,8 @@ export function createBalancePage(
     r.stale.hidden = !(isDirty && r.filled.fingerprint !== v.fingerprint);
     const errs = errors(r);
     r.save.disabled = r.busy || !isDirty || errs.length > 0;
+    // A row's Save shows once something in it is changed (and while its save is on its way).
+    r.save.hidden = !isDirty && !r.busy;
     r.reset.title =
       v.pack === null
         ? "Puts back the game's default value once published."

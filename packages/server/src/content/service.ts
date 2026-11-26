@@ -1995,6 +1995,17 @@ export class ContentService {
    * The art problems of `next`: rows whose files are missing or misshapen, and art taken away
    * while content still draws or plays it.
    */
+  /** Whether a worn layer has frames to draw: the packs' or the draft's uploads (`<layer>-…`). */
+  private hasWornFrames(layer: string): boolean {
+    const k = `${layer.toLowerCase()}-`;
+    const uploads = this.art
+      ? keysOf(this.art.build(this.draftContent(this.draft()).art).index)
+      : emptyKeys();
+    return [...this.packArt.sprites.paperdoll, ...uploads.sprites.paperdoll].some(
+      (s) => s.toLowerCase() === k.slice(0, -1) || s.toLowerCase().startsWith(k),
+    );
+  }
+
   private artProblems(next: ContentData, incoming?: ArtKeys): ContentProblem[] {
     // A spell run that hides before the frame its effect acts on (issue #29, stage 5).
     const triggers = fxTriggerProblems(next, this.published);
@@ -4321,9 +4332,17 @@ export class ContentService {
     const copy = structuredClone(
       own ?? seedDefinition(from.name, resolveIn(from.name, compiled), compiled.items),
     );
-    // The copy is drawn when worn as the item it was copied from, unless it already says how.
+    // The copy is drawn when worn as the item it was copied from, unless it already says how, or
+    // the original draws nothing worn (a Torch): pointing at worn frames that do not exist would
+    // leave a copy that can't be published.
     const layer = copy.slot === undefined ? undefined : PAPERDOLL_LAYER_OF_SLOT[copy.slot];
-    if (layer && !(copy.paperdoll ?? []).some((a) => a.layer === layer)) {
+    const fromLayer = wornLayerOf(compiled.itemRules, from.name)?.layer ?? null;
+    if (
+      layer &&
+      fromLayer !== null &&
+      this.hasWornFrames(fromLayer) &&
+      !(copy.paperdoll ?? []).some((a) => a.layer === layer)
+    ) {
       copy.paperdoll = [...(copy.paperdoll ?? []), { layer, becomes: from.name }];
     }
     // A skill tier that named the item it was copied from names the copy.
@@ -4447,6 +4466,39 @@ export class ContentService {
       this.dropAction(ref);
     })();
     return { ok: true, value: undefined };
+  }
+
+  /**
+   * `draftDiscard` for one row of the Publish Changes list: a new item or monster (one only the
+   * draft has) takes its rows with it (its definition, a monster's NPC file), which would
+   * otherwise be left describing something that does not exist and block the publish.
+   */
+  draftDiscardRow(ref: RowRef): ContentResult {
+    const r = this.draftDiscard(ref);
+    if (!r.ok || ref.key === null) {
+      return r;
+    }
+    const key = ref.key;
+    const fresh =
+      (ref.dataset === "items" &&
+        ref.part === "items" &&
+        this.draftItem(this.published, key) === undefined) ||
+      (ref.dataset === "monsters" &&
+        ref.part === "monsters" &&
+        this.draftMonster(this.published, key) === undefined);
+    if (!fresh) {
+      return r;
+    }
+    const along: RowRef[] = [{ dataset: ref.dataset, part: "definitions", key }];
+    if (ref.dataset === "monsters") {
+      along.push(npcFileRef(key));
+    }
+    for (const a of along) {
+      if (this.draft().some((d) => sameRow(d, a))) {
+        this.draftDiscard(a);
+      }
+    }
+    return r;
   }
 
   /** Drops the world cleanup of the item or monster a row is, if it has one waiting. */

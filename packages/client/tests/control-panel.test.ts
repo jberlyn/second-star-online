@@ -18,7 +18,13 @@ import { runApp } from "../src/app.ts";
 import type { Assets } from "../src/assets.ts";
 import type { Connection } from "../src/net.ts";
 import { type ControlPanelActions, createControlPanel } from "../src/ui/control-panel.ts";
-import { confirmBox, confirmChoice, createTable, formField } from "../src/ui/control-panel-kit.ts";
+import {
+  confirmBox,
+  confirmChoice,
+  createTable,
+  formField,
+  newDialog,
+} from "../src/ui/control-panel-kit.ts";
 import { createWindowLayer } from "../src/ui/window.ts";
 import { menuClick, menuTexts, SNAPSHOT, titles } from "./helpers/menu-helpers.ts";
 
@@ -647,5 +653,58 @@ describe("leaving a page (issue #29, stage 7 review)", () => {
     cp.reset();
     expect(hidden).toEqual(["settings", "logs", "logs"]);
     cp.el.remove();
+  });
+});
+
+describe("pages that save live", () => {
+  test("a page whose saves go live at once says so on its sidebar link; the others do not", () => {
+    const page = (id: string, title: string, live: boolean) => ({
+      id,
+      title,
+      group: "Server",
+      permission: "settings" as Permission,
+      el: document.createElement("div"),
+      ...(live ? { live: true } : {}),
+    });
+    const cp = createControlPanel({
+      pages: [page("settings", "Server Settings", true), page("items", "Items", false)],
+      links: [],
+      actions: {} as ControlPanelActions,
+      can: () => true,
+    });
+    document.body.append(cp.el);
+    cp.open();
+    const link = (id: string) =>
+      cp.el.querySelector<HTMLElement>(`.control-panel-link[data-page="${id}"]`);
+    expect(link("settings")?.querySelector(".control-panel-live")?.textContent).toBe("Live");
+    expect(link("settings")?.getAttribute("aria-label")).toBe(
+      "Server Settings (saves go live at once)",
+    );
+    expect(link("items")?.querySelector(".control-panel-live")).toBeNull();
+    cp.el.remove();
+  });
+});
+
+describe("a + New dialog (control-panel-kit newDialog)", () => {
+  test("its button opens the form over the page; Cancel and Escape close it", () => {
+    const d = newDialog("things-new", "+ New thing", "New thing");
+    const name = document.createElement("input");
+    d.append(name);
+    document.body.append(d.el);
+    const shade = d.el.querySelector<HTMLElement>(".control-panel-dialog") as HTMLElement;
+    expect(shade.hidden).toBe(true);
+    // Never taken for an open question (a page finds those by this class).
+    expect(d.el.querySelector(".control-panel-confirm")).toBeNull();
+    d.el.querySelector<HTMLButtonElement>("[data-action='things-new']")?.click();
+    expect(d.open).toBe(true);
+    expect(document.activeElement).toBe(name);
+    d.el.querySelector<HTMLButtonElement>("[data-action='things-new-cancel']")?.click();
+    expect(d.open).toBe(false);
+    d.open = true;
+    d.el
+      .querySelector<HTMLElement>("[role='dialog']")
+      ?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    expect(d.open).toBe(false);
+    d.el.remove();
   });
 });

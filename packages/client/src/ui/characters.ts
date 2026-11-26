@@ -265,6 +265,11 @@ function andList(words: readonly string[]): string {
 }
 
 /** A house's row text: `Small House on x1000y992 (10, 5)`. */
+/** A map as the sheet shows it: its title beside its code ("Test map, x1000y992"), or the code. */
+function mapText(at: { map: string; title?: string }): string {
+  return at.title ? `${at.title}, ${at.map}` : at.map;
+}
+
 export function houseLabel(h: HubHouse): string {
   return `${h.type ?? "House"} on ${h.map} (${h.x}, ${h.y})`;
 }
@@ -776,7 +781,7 @@ export function createCharactersPage(opts: CharactersPageOptions): CharactersPag
 
   const presenceText = (h: CharacterHub) =>
     h.presence === "playing"
-      ? `Online on ${h.sheet.position.map}`
+      ? `Online on ${mapText(h.sheet.position)}`
       : h.presence === "editing"
         ? "Online, in an editor or the Control Panel"
         : "Offline";
@@ -814,7 +819,7 @@ export function createCharactersPage(opts: CharactersPageOptions): CharactersPag
     const s = h.sheet;
     switch (tab) {
       case "overview": {
-        const where = `${s.position.map} (${s.position.x}, ${s.position.y}), facing ${s.position.facing}`;
+        const where = `${mapText(s.position)} (${s.position.x}, ${s.position.y}), facing ${s.position.facing}`;
         // Every skill in a few short columns, highest first, so the sheet fits without scrolling.
         // Keyed by skill key: two skills may share a display name.
         const skills = content()
@@ -855,7 +860,7 @@ export function createCharactersPage(opts: CharactersPageOptions): CharactersPag
               [
                 "Respawn point",
                 s.respawn
-                  ? `${s.respawn.map} (${s.respawn.x}, ${s.respawn.y})`
+                  ? `${mapText(s.respawn)} (${s.respawn.x}, ${s.respawn.y})`
                   : "The server's fallback point",
               ],
               ["Riding", s.vehicle ?? "Nothing"],

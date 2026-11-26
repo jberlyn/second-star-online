@@ -597,7 +597,10 @@ export function createFxArtPicker(opts: FxArtOptions, idPrefix = "fx-art"): FxAr
   frameSel.setAttribute("aria-label", "The frame shown beside the player");
   frameSel.addEventListener("change", () => drawAll());
   const scaleFig = figure(scale, "Beside a player (drag to move it)");
-  scaleFig.prepend(frameSel);
+  const frameRow = document.createElement("label");
+  frameRow.className = "fx-art-frame";
+  frameRow.append("Frame shown ", frameSel);
+  scaleFig.prepend(frameRow);
   previews.append(
     figure(motion, "Playing at the game's speed beside a player; the box is the hit box."),
     scaleFig,

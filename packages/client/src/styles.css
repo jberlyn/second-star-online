@@ -1022,6 +1022,21 @@ body {
   border-radius: 4px;
   padding: 4px 6px;
 }
+/* Every box to type in or pick from looks the same across the Control Panel (a page's own rules,
+   being more specific, still win). */
+:where(.control-panel)
+  :where(
+    input:not([type="checkbox"], [type="radio"], [type="file"], [type="color"], [type="range"]),
+    select,
+    textarea
+  ) {
+  font: inherit;
+  color: #eee;
+  background: var(--ui-well);
+  border: 1px solid var(--ui-purple-dim);
+  border-radius: 4px;
+  padding: 4px 6px;
+}
 .control-panel-field-help {
   margin: 0;
   color: var(--ui-text-muted);
@@ -1190,7 +1205,6 @@ body {
 }
 .items-list {
   max-height: 60vh;
-  min-height: 120px;
   overflow-y: auto;
   margin: 0;
   padding: 0;
@@ -1417,14 +1431,29 @@ body {
 .items-more-picks[open] > summary {
   margin-bottom: 4px;
 }
+/* A section's less used fields (control-panel-kit.ts `moreFields`): after its main ones, under a
+   thin line, never folded away. */
 .items-more {
-  margin: 16px 0 4px;
-  padding: 8px 12px;
-  border: 1px solid var(--ui-wood-4);
-  border-radius: 4px;
+  margin: 14px 0 4px;
+  padding: 8px 0 0;
+  border-top: 1px dashed var(--ui-wood-4);
 }
-.items-more[open] > summary {
-  margin-bottom: 4px;
+.items-more[hidden] {
+  display: none;
+}
+.items-more-title {
+  margin: 0 0 4px;
+  color: var(--ui-text-dim);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.items-pick-add {
+  margin-top: 4px;
+}
+.items-pick-add[hidden] {
+  display: none;
 }
 .items-group-foot {
   display: flex;
@@ -1681,6 +1710,23 @@ body {
   background: var(--ui-wood-1);
   border-top: 1px solid var(--ui-wood-5);
   border-radius: 0 0 6px 6px;
+}
+/* An editor form scrolls on its own: its tabs stick to its very top and its Save bar to its very
+   bottom, with nothing scrolling into a gap above or below them. */
+.items-form {
+  padding-bottom: 0;
+}
+.items-form::after {
+  content: "";
+  display: block;
+  height: 12px;
+}
+.items-form:has(> .control-panel-form-actions)::after {
+  display: none;
+}
+.items-form .control-panel-tabs {
+  top: -12px;
+  padding-top: 8px;
 }
 .control-panel-own-save > .control-panel-form-actions {
   display: none;
@@ -4771,12 +4817,30 @@ body {
   align-items: flex-start;
 }
 .content-area-search {
+  flex: 0 0 auto;
+  margin: 8px 0 0;
+  padding: 4px 0;
+}
+.content-area-search[hidden] {
+  display: none;
+}
+.content-area-search > input {
   width: 100%;
-  margin: 8px 0 4px;
   box-sizing: border-box;
 }
 .content-area-records .items-list-box > .control-panel-btn {
   margin-bottom: 4px;
+}
+/* Every list's "+ New …" button is as wide as its words, as on the Items page. */
+.items-list-box > .control-panel-btn,
+.items-list-box > .items-new > .control-panel-new {
+  display: inline-block;
+  align-self: flex-start;
+  width: auto;
+}
+/* A list with nothing in it shows its count line ("None yet…"), not an empty box. */
+.items-list:empty {
+  display: none;
 }
 .content-area-row .balance-tags:empty,
 .content-area-row .control-panel-field-help[hidden] {
@@ -4827,8 +4891,20 @@ body {
   border: 1px solid var(--ui-wood-4);
   border-radius: 4px;
 }
+/* A group inside a group: a line down its left, not another box. */
 .schema-form-block .schema-form-block {
-  background: var(--ui-wood-1);
+  margin: 6px 0 2px;
+  padding: 2px 0 2px 10px;
+  background: none;
+  border: 0;
+  border-left: 2px solid var(--ui-wood-4);
+  border-radius: 0;
+}
+/* An optional section's tick box carries its name, as its title. */
+.schema-form-optional > .schema-form-set {
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
 }
 .schema-form-block-title {
   margin: 0 0 4px;
@@ -4862,27 +4938,166 @@ body {
 .schema-form-list-row > .schema-form-optional {
   flex: 1 1 300px;
 }
-.schema-form-entry {
+/* A list of bigger entries (schema-form.ts, pick mode): their names on the left, the one picked
+   in full beside them. */
+.schema-form-pick {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 10px;
+}
+.schema-form-pick-side {
+  flex: 0 1 220px;
+  min-width: 160px;
+  display: flex;
+  flex-direction: column;
+}
+.schema-form-pick-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 420px;
+  overflow-y: auto;
   border: 1px solid var(--ui-wood-4);
   border-radius: 4px;
   background: var(--ui-wood-1);
 }
-.schema-form-entry > summary {
+.schema-form-pick-list:empty {
+  display: none;
+}
+.schema-form-pick-name {
+  flex: 0 0 auto;
+  padding: 5px 9px;
+  border: 0;
+  border-bottom: 1px solid var(--ui-wood-3);
+  background: none;
+  color: var(--ui-text-soft);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.schema-form-pick-name:last-child {
+  border-bottom: 0;
+}
+.schema-form-pick-name:hover {
+  background: var(--ui-wood-3);
+  color: #fff;
+}
+.schema-form-pick-name[aria-current="true"] {
+  background: var(--ui-purple-dark);
+  color: #fff;
+  box-shadow: inset 3px 0 0 var(--ui-purple-light);
+}
+.schema-form-pick-name:focus-visible {
+  outline: 2px solid var(--ui-purple-light);
+  outline-offset: -2px;
+}
+.schema-form-pick-detail {
+  flex: 1 1 340px;
+  min-width: 0;
+  border: 1px solid var(--ui-wood-4);
+  border-radius: 4px;
+  background: var(--ui-wood-1);
+}
+.schema-form-pick-detail[hidden],
+.schema-form-entry[hidden] {
+  display: none;
+}
+.schema-form-entry-head {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 4px 8px;
-  cursor: pointer;
-  color: var(--ui-text);
-}
-.schema-form-entry[open] > summary {
+  padding: 5px 10px;
   border-bottom: 1px solid var(--ui-wood-3);
+  color: #fff;
+  font-weight: 600;
 }
 .schema-form-entry > .schema-form-object,
 .schema-form-entry > .schema-form-union,
 .schema-form-entry > .schema-form-optional,
-.schema-form-entry > .schema-form-list {
-  padding: 6px 10px 10px;
+.schema-form-entry > .schema-form-list,
+.schema-form-entry > input,
+.schema-form-entry > select,
+.schema-form-entry > textarea {
+  margin: 8px 10px 10px;
+}
+/* A list of short entries (schema-form.ts, table mode): one row each, the fields as columns. */
+.schema-form-table-wrap {
+  overflow-x: auto;
+}
+.schema-form-table {
+  border-collapse: collapse;
+  min-width: 100%;
+}
+.schema-form-table th {
+  padding: 2px 6px 4px 0;
+  color: var(--ui-text-dim);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  white-space: nowrap;
+}
+.schema-form-table td {
+  padding: 3px 6px 3px 0;
+  border-top: 1px solid var(--ui-wood-3);
+  vertical-align: top;
+}
+.schema-form-table td > input[type="text"],
+.schema-form-table td > select {
+  width: 100%;
+  min-width: 5em;
+  box-sizing: border-box;
+}
+.schema-form-table td > .schema-form-number {
+  max-width: 8em;
+}
+.schema-form-table .schema-form-table-tools {
+  width: 1%;
+  white-space: nowrap;
+  padding-right: 0;
+}
+.schema-form-table-notes {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 2px 10px;
+  margin: 6px 0 0;
+  color: var(--ui-text-muted);
+  font-size: 12px;
+}
+.schema-form-table-notes dt {
+  color: var(--ui-text-dim);
+}
+.schema-form-table-notes dd {
+  margin: 0;
+}
+/* A message the game fills in: the words it fills in, under its box; a click puts one in. */
+.schema-form-slots {
+  margin: 3px 0 0;
+  color: var(--ui-text-muted);
+  font-size: 12px;
+}
+.schema-form-slot {
+  padding: 0 5px;
+  border: 1px solid var(--ui-wood-5);
+  border-radius: 3px;
+  background: var(--ui-wood-2);
+  color: var(--ui-purple-pale);
+  font:
+    12px ui-monospace,
+    monospace;
+  cursor: pointer;
+}
+.schema-form-slot:hover:not(:disabled) {
+  border-color: var(--ui-purple-light);
+}
+/* A long text starts one line high and grows with what it holds. */
+textarea.schema-form-long {
+  field-sizing: content;
+  min-height: 0;
+  max-height: 24em;
+  font: inherit;
 }
 .schema-form-entry-title {
   flex: 1 1 auto;
@@ -5229,4 +5444,180 @@ body {
 }
 .class-checks li > span:last-of-type {
   flex: 1;
+}
+/* A "+ New …" dialog (control-panel-kit.ts `newDialog`): over the whole page, its fields stacked. */
+.control-panel-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgb(0 0 0 / 55%);
+}
+.control-panel-dialog[hidden] {
+  display: none;
+}
+.control-panel-dialog-box {
+  width: min(460px, calc(100vw - 32px));
+  max-height: calc(100vh - 64px);
+  overflow-y: auto;
+  padding: 16px;
+  background: var(--ui-wood-1);
+  border: 1px solid var(--ui-purple-dim);
+  border-radius: 4px;
+}
+.control-panel-dialog-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.control-panel-dialog-title {
+  margin: 0 0 10px;
+  color: #fff;
+  font-size: 16px;
+}
+.control-panel-dialog-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+.control-panel-dialog-body input,
+.control-panel-dialog-body select {
+  width: 100%;
+  box-sizing: border-box;
+}
+.control-panel-dialog-body > * {
+  flex: 0 0 auto;
+  max-width: none;
+}
+/* A record's head (content-area-page.ts): its name, with Copy at the right of the same line. */
+.content-area-records .items-form-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.schema-form-union {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 6px;
+}
+select.schema-form-shape {
+  flex: 0 0 auto;
+}
+.schema-form-union-body:empty {
+  display: none;
+}
+.fx-art-frame {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+  color: var(--ui-text-soft);
+  font-size: 12px;
+}
+.fx-art-frame > input {
+  width: 4.5em;
+}
+/* A Save bar keeps room for its status line, so it does not grow (and move its buttons, or cover
+   the form) when "Saved…" appears. */
+.control-panel-form-actions > .balance-status,
+.control-panel-form-actions > .balance-status:empty {
+  display: block;
+  min-height: 1.35em;
+  margin: 4px 0 0;
+}
+.control-panel-tabs-legend {
+  align-self: center;
+  margin-left: auto;
+  color: var(--ui-text-muted);
+  font-size: 12px;
+}
+.control-panel-tabs-legend[hidden] {
+  display: none;
+}
+/* A map box's title (settings.ts `mapBox`): the name of the map typed, beside its code. */
+.settings-map-title {
+  color: var(--ui-text-muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.settings-map-title:empty {
+  display: none;
+}
+/* A page's own sections (content-area-page.ts: Items, Rules…) are a switcher bar, drawn apart from
+   the tabs inside the record you open, so the two rows never read as one set of tabs. */
+.content-area-page > .control-panel-tabs {
+  gap: 4px;
+  margin: 12px 20px 0;
+  padding: 4px;
+  background: var(--ui-wood-2);
+  border: 1px solid var(--ui-wood-4);
+  border-radius: 6px;
+}
+.content-area-page > .control-panel-tabs > .control-panel-tab {
+  margin: 0;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 4px;
+  font-weight: 600;
+}
+.content-area-page > .control-panel-tabs > .control-panel-tab[aria-selected="true"] {
+  background: var(--ui-purple-dark);
+  border: 0;
+  color: #fff;
+  box-shadow: inset 0 -2px 0 var(--ui-purple-light);
+}
+.settings-map-title.settings-map-bad {
+  color: #e8c46a;
+  white-space: normal;
+}
+/* An editor form's header (its record's name and tags) sticks to the top of the form, over the
+   form's own padding, with the section tabs stuck under it (control-panel-kit.ts `sectionTabs`). */
+.items-form > .items-form-head.control-panel-sticky-head {
+  position: sticky;
+  top: -12px;
+  z-index: 4;
+  margin: -12px -16px 0;
+  padding: 12px 16px 4px;
+  background: var(--ui-wood-1);
+}
+.control-panel-dialog-note {
+  margin: 0 0 12px;
+}
+/* File pickers ("Choose files") look like the Control Panel's own buttons, not the browser's. */
+.control-panel input[type="file"] {
+  color: var(--ui-text-soft);
+  font: inherit;
+}
+.control-panel input[type="file"]::file-selector-button {
+  margin-right: 8px;
+  padding: 5px 12px;
+  border: 1px solid var(--ui-wood-5);
+  border-radius: 4px;
+  background: var(--ui-wood-3);
+  color: var(--ui-text);
+  font: inherit;
+  cursor: pointer;
+}
+.control-panel input[type="file"]::file-selector-button:hover {
+  background: var(--ui-wood-4);
+  color: #fff;
+}
+/* A sidebar page whose saves go live at once (control-panel.ts `PanelPage.live`). */
+.control-panel-live {
+  margin-left: 6px;
+  padding: 0 5px;
+  border: 1px solid #8a6a2a;
+  border-radius: 3px;
+  color: #e8c46a;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  vertical-align: 1px;
 }

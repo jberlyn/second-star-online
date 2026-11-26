@@ -866,7 +866,12 @@ export function createItemArtPicker(opts: ItemArtOptions): ItemArtPicker {
   const choose = action(document.createElement("input"), "item-art-choose");
   choose.type = "text";
   choose.setAttribute("list", listId);
-  choose.placeholder = "A picture the game has";
+  choose.placeholder = "Type or pick its name";
+  choose.id = `${listId}-input`;
+  const chooseLabel = document.createElement("label");
+  chooseLabel.className = "control-panel-field-label";
+  chooseLabel.htmlFor = choose.id;
+  chooseLabel.textContent = "Or use a picture the game already has:";
   const useBtn = panelButton("item-art-use", "Use this picture", () => {
     if (!item || !view) {
       return;
@@ -939,7 +944,7 @@ export function createItemArtPicker(opts: ItemArtOptions): ItemArtPicker {
   uploadRow.append(file, templateLink("item-art-template"));
   const chooseRow = document.createElement("div");
   chooseRow.className = "content-buttons";
-  chooseRow.append(choose, choices, useBtn);
+  chooseRow.append(chooseLabel, choose, choices, useBtn);
   const rules = document.createElement("p");
   rules.className = "item-art-rules";
   rules.textContent = ITEM_PICTURE_RULES;

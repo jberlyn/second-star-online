@@ -79,9 +79,10 @@ export interface CharacterSheet {
   /** Frames of play left in the faction. */
   factionCount: number;
   wanted: boolean;
-  position: { map: string; x: number; y: number; facing: string };
+  /** Where it stands; `title` is the map's title, when it has one. */
+  position: { map: string; title?: string; x: number; y: number; facing: string };
   /** The respawn point, or null for the operator's fallback point. */
-  respawn: { map: string; x: number; y: number } | null;
+  respawn: { map: string; title?: string; x: number; y: number } | null;
   vehicle: string | null;
   /** Gold in hand as it is saved: the purse plus any blackjack stake held at the table. */
   gold: number;

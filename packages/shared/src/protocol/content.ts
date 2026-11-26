@@ -1039,6 +1039,8 @@ export interface ContentDraftView extends ContentRowRef {
   updatedAt: string;
   /** The row's revision, for a row a discard must name (as `ContentRowDetail.revision`). */
   revision?: string;
+  /** A row the published content does not have yet: a new item, creature, spell… */
+  added?: true;
 }
 
 /** One value a Balance page row edits: where it sits in the row, and its limits (issue #19). */

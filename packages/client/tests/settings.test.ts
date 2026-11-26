@@ -157,6 +157,46 @@ function win() {
 }
 
 describe("the Server Settings page", () => {
+  test("a map box offers the server's maps and names the one typed, without counting as a change", () => {
+    const w = createSettingsPanel({ ...NO_ROLES, save: () => {}, load: () => {} });
+    document.body.append(w.el);
+    w.show(PAGES, ROWS, {
+      roles: [],
+      staff: [],
+      maps: [
+        { name: "x1000y992", title: "Test map" },
+        { name: "x0y100", title: "Brinkston" },
+      ],
+    });
+    const options = [...w.el.querySelectorAll<HTMLOptionElement>("#settings-map-names option")];
+    expect(options.map((o) => [o.value, o.label])).toEqual([
+      ["x1000y992", "x1000y992 · Test map"],
+      ["x0y100", "x0y100 · Brinkston"],
+    ]);
+    const start = w.el.querySelector('[data-key="startPoint"]') as HTMLElement;
+    const box = start.querySelector<HTMLInputElement>("input[list='settings-map-names']");
+    expect(start.querySelector(".settings-map-title")?.textContent).toBe("Test map");
+    expect(w.changes()).toBe(0);
+    if (box) {
+      box.value = "x0y100";
+      box.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+    expect(start.querySelector(".settings-map-title")?.textContent).toBe("Brinkston");
+    if (box) {
+      box.value = "x5y5";
+      box.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+    expect(start.querySelector(".settings-map-title")?.textContent).toBe("no map there yet");
+    // A map's title is not its code: the box says so.
+    if (box) {
+      box.value = "Brinkston";
+      box.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+    expect(start.querySelector(".settings-map-title")?.textContent).toContain("not a map");
+    expect(start.querySelector(".settings-map-bad")).not.toBeNull();
+    w.el.remove();
+  });
+
   test("a sidebar link per page; the first page opens, every explanation shown, not hovered", () => {
     const { el, link, shownKeys } = win();
     expect([...el.querySelectorAll(".settings-link")].map((a) => a.textContent)).toEqual([

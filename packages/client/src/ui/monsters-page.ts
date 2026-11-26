@@ -9,8 +9,8 @@
  * - One Save changes sends the rules and stats, then the name players see once the first is saved.
  * - A change carries the monster as the page showed it (`fingerprint`); the server refuses it if
  *   someone changed the monster since (here or in the Content page's JSON editor).
- * - Rarely used fields fold under "More options", which opens by itself when one of them is set; a
- *   tab that holds settings shows a dot (`data-used`).
+ * - Rarely used fields come last in their tab, below a thin line; a tab that holds settings shows
+ *   a dot (`data-used`). The monster spells are a tab of their own (`spells`).
  * - The Picture tab uses #29's body panel; removing a monster goes through the Content page's
  *   where-used report and removal form (#28).
  * - Its NPC file's loot, spells and flags (the Loot & spells tab) save at once, outside the draft,
@@ -33,6 +33,8 @@ import { action, noAutofill } from "./action.ts";
 import type { MonsterBodyPanel } from "./content-page.ts";
 import {
   formActions,
+  moreFields,
+  newDialog,
   pageHeading,
   panelButton,
   sectionTabs,
@@ -97,6 +99,8 @@ export type MonstersAnswer =
 
 export interface MonstersPage {
   readonly el: HTMLElement;
+  /** The monster spells every monster shares, for a tab of their own. */
+  readonly spells: HTMLElement;
   onShow(): void;
   /** Unsaved changes: the form's, the NPC file's, the spells card's and the body panel's. */
   changes(): number;
@@ -126,7 +130,7 @@ const BEHAVIOUR_MAIN: readonly Flag[] = [
   ["form", "neverCasts", "Never casts spells"],
 ];
 
-/** The Behaviour tab's rarely used settings, under "More options". */
+/** The Behaviour tab's rarely used settings, after its main ones. */
 const BEHAVIOUR_MORE: readonly Flag[] = [
   ["form", "footprint", "Big: takes up 3×2 tiles"],
   ["form", "clearsBlock", "Others can walk through it"],
@@ -264,10 +268,7 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
   };
 
   // ---- a new monster ----
-  const newBox = document.createElement("details");
-  newBox.className = "items-new";
-  const newSummary = action(document.createElement("summary"), "monsters-new-toggle");
-  newSummary.textContent = "+ New monster";
+  const newBox = newDialog("monsters-new-toggle", "+ New monster", "New monster");
   const newName = noAutofill(action(document.createElement("input"), "monsters-new-name"));
   newName.maxLength = 40;
   const newDisplay = noAutofill(action(document.createElement("input"), "monsters-new-display"));
@@ -313,7 +314,6 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
   newDisplay.id = "monsters-new-display";
   newFrom.id = "monsters-new-copy";
   newBox.append(
-    newSummary,
     labelled(
       "Copy an existing monster (optional)",
       newFrom,
@@ -327,9 +327,9 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
     labelled("Name players see (optional)", newDisplay),
     namesList,
     itemsList,
-    createBtn,
     newStatus,
   );
+  newBox.actions(createBtn);
 
   // ---- the list ----
   const listBox = document.createElement("section");
@@ -362,7 +362,7 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
   const filters = document.createElement("div");
   filters.className = "items-filters";
   filters.append(labelled("Search", search), labelled("Show", kindSel));
-  listBox.append(newBox, filters, listCount, listEl);
+  listBox.append(newBox.el, filters, listCount, listEl);
 
   // ---- the form ----
   const form = document.createElement("section");
@@ -526,14 +526,10 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
   const tabs = sectionTabs(form, "monsters");
   form.append(header, noticeLine, stale, tabs.el, rules, formActions(buttons, status));
 
-  // The monster spells card: every monster spell, shared by all monsters.
-  const spellsBox = document.createElement("details");
+  // The monster spells: every monster spell, shared by all monsters, shown on a tab of its own
+  // (`MonstersPage.spells`).
+  const spellsBox = document.createElement("section");
   spellsBox.className = "balance-row monsters-spells";
-  const spellsSummary = action(document.createElement("summary"), "monsters-spells-toggle");
-  spellsSummary.textContent = "Monster spells (shared by every monster)";
-  const spellsHelp = intro(
-    "The spells monsters can cast. Give a monster a spell in its Loot & spells tab. Saved changes go in the draft.",
-  );
   const spellsRows = document.createElement("div");
   const spellsStatus = statusLine();
   const spellsAdd = panelButton("monsters-spells-add", "+ Add a monster spell", () => {
@@ -577,7 +573,7 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
   const spellsButtons = document.createElement("div");
   spellsButtons.className = "content-buttons";
   spellsButtons.append(spellsSave, spellsUndo);
-  spellsBox.append(spellsSummary, spellsHelp, spellsRows, spellsAdd, spellsButtons, spellsStatus);
+  spellsBox.append(spellsRows, spellsAdd, spellsButtons, spellsStatus);
 
   const loading = document.createElement("p");
   loading.className = "balance-loading";
@@ -588,7 +584,7 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
   empty.className = "items-empty-form";
   empty.textContent = "Pick a monster on the left to see and change how it plays.";
   layout.append(listBox, empty, form);
-  el.append(draftLine, spellsBox, loading, layout);
+  el.append(draftLine, loading, layout);
 
   // ---- state ----
   let seq = 0;
@@ -781,8 +777,8 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
     return t;
   };
   /**
-   * Tick boxes for a list of values: the ticked ones in view, the rest folded under `more` (a wall
-   * of thirty spells at once is hard to read).
+   * Tick boxes for the values picked, and a drop-down (`more`) of the rest: picking one there
+   * ticks it (a wall of thirty spells at once is hard to read).
    */
   const pickMany = (
     listId: string,
@@ -797,14 +793,35 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
     box.dataset.list = listId;
     const on = document.createElement("div");
     on.className = "items-checks";
-    const rest = document.createElement("details");
-    rest.className = "items-more-picks";
-    const restSummary = action(document.createElement("summary"), `monsters-${listId}-more`);
-    restSummary.textContent = more;
-    const off = document.createElement("div");
-    off.className = "items-checks";
-    rest.append(restSummary, off);
-    for (const v of [...values].sort((a, b) => a.localeCompare(b))) {
+    const none = document.createElement("p");
+    none.className = "control-panel-field-help";
+    none.textContent = "None.";
+    const add = action(document.createElement("select"), `monsters-${listId}-pick`);
+    add.className = "items-pick-add";
+    add.setAttribute("aria-label", more.replace(/…$/, ""));
+    const sorted = [...values].sort((a, b) => a.localeCompare(b));
+    const ticks = new Map<string, HTMLElement>();
+    const fillAdd = () => {
+      const first = document.createElement("option");
+      first.value = "";
+      first.textContent = more;
+      add.replaceChildren(
+        first,
+        ...sorted
+          .filter((v) => !on.contains(ticks.get(v) ?? null))
+          .map((v) => {
+            const o = document.createElement("option");
+            o.value = v;
+            o.textContent = v;
+            return o;
+          }),
+      );
+      add.value = "";
+      add.hidden = add.options.length <= 1;
+      none.hidden = on.querySelector("input") !== null;
+    };
+    on.append(none);
+    for (const v of sorted) {
       const tick = check(
         has.has(v),
         v,
@@ -818,18 +835,22 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
         },
         edited,
       );
-      (has.has(v) ? on : off).append(tick);
+      ticks.set(v, tick);
+      if (has.has(v)) {
+        on.append(tick);
+      }
     }
-    if (on.children.length === 0) {
-      const none = document.createElement("p");
-      none.className = "control-panel-field-help";
-      none.textContent = "None.";
-      on.append(none);
-    }
-    box.append(on);
-    if (off.children.length > 0) {
-      box.append(rest);
-    }
+    add.addEventListener("change", () => {
+      const tick = ticks.get(add.value);
+      if (!tick) {
+        return;
+      }
+      on.append(tick);
+      tick.querySelector("input")?.click();
+      fillAdd();
+    });
+    fillAdd();
+    box.append(on, add);
     return box;
   };
   const setKey = (o: Obj, k: string, v: unknown) => {
@@ -858,16 +879,8 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
       markUsed();
       update();
     };
-    /** Fields folded under "More options", open when one of them has a value. */
-    const more = (open: boolean, ...controls: HTMLElement[]) => {
-      const box = document.createElement("details");
-      box.className = "items-more";
-      box.open = open;
-      const summary = action(document.createElement("summary"), "monsters-more-toggle");
-      summary.textContent = "More options";
-      box.append(summary, ...controls);
-      return box;
-    };
+    /** A section's less used fields, shown after its main ones. */
+    const more = (_used: boolean, ...controls: HTMLElement[]) => moreFields("", ...controls);
     const group = (id: string, label: string, help: string, ...controls: HTMLElement[]) => {
       const sec = document.createElement("section");
       sec.className = "balance-row items-group";
@@ -1668,21 +1681,16 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
       );
       flagsArea.append(li);
     }
-    const flagsMore = document.createElement("details");
-    flagsMore.className = "items-more";
-    flagsMore.open = others().length > 0;
-    // Nothing to show when every flag is one of the two above.
-    flagsMore.hidden = others().length === 0;
-    const flagsSummary = action(document.createElement("summary"), "monsters-more-toggle");
-    flagsSummary.textContent = "More options";
-    flagsMore.append(
-      flagsSummary,
+    const flagsMore = moreFields(
+      "",
       labelled(
         "Other flags",
         flagsArea,
         "Kept in its NPC file for scripts and other tools. The game itself reads only the two above.",
       ),
     );
+    // Nothing to show when every flag is one of the two above.
+    flagsMore.hidden = others().length === 0;
     npcBody.replaceChildren(
       info,
       card(
@@ -1911,8 +1919,8 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
     });
     listCount.textContent =
       rows.length === list.length
-        ? `${list.length} monsters`
-        : `${rows.length} of ${list.length} monsters`;
+        ? `${list.length} creatures`
+        : `${rows.length} of ${list.length} creatures`;
     listEl.replaceChildren(
       ...rows.map((m) => {
         const li = document.createElement("li");
@@ -2074,6 +2082,7 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
 
   return {
     el,
+    spells: spellsBox,
     onShow: ask,
     changes: () =>
       (dirty() && !busy ? 1 : 0) +
@@ -2280,6 +2289,7 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
       search.value = "";
       kindSel.value = "all";
       newName.value = "";
+      newBox.open = false;
       newDisplay.value = "";
       newFrom.value = "";
       newStatus.textContent = "";

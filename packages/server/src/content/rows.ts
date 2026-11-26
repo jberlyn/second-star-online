@@ -108,6 +108,18 @@ export function rowLabel(r: RowRef): string {
   return r.key === null ? `${r.dataset}/${r.part}` : `${r.dataset}/${r.part}/${r.key}`;
 }
 
+/**
+ * A row as an operator reads it in a message: the entry's own name ("Assasin"), or, for a part
+ * that is one row, the part in words ("Chat", "Starting vitals"). `rowLabel` is the path, for logs.
+ */
+export function rowName(r: RowRef): string {
+  if (r.key !== null) {
+    return r.key;
+  }
+  const words = r.part.replace(/([a-z0-9])([A-Z])/g, "$1 $2").toLowerCase();
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
 /** Whether two refs name the same row (keys ignore case). */
 export function sameRow(a: RowRef, b: RowRef): boolean {
   return (

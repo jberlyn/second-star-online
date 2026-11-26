@@ -515,6 +515,8 @@ export type AdminServerMsg =
       rows: SettingRow[];
       roles: RoleRow[];
       staff: StaffRow[];
+      /** Every map, by its name (`x1000y992`) and its title, so map boxes can offer them. */
+      maps?: { name: string; title: string }[];
     }
   /**
    * The Server Settings window's SAVE: applied for everyone online, or refused whole with the

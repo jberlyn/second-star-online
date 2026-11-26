@@ -1695,6 +1695,10 @@ export function createGame(deps: GameDeps): Game {
     addresses: (accountId) => accountAddresses(db, accountId),
     ipBan: (key) => ipBan(db, key),
     mapName: (id) => findMapById(db, id)?.name ?? id,
+    mapTitle: (name) => {
+      const at = /^x(-?\d+)y(-?\d+)$/.exec(name);
+      return at ? findMapByCoords(db, Number(at[1]), Number(at[2]), 0)?.title || null : null;
+    },
     houses: (id) => hubHouses(world, id, houseAdminDeps),
     now: isoNow,
   };
@@ -2501,6 +2505,7 @@ export function createGame(deps: GameDeps): Game {
         holders: holders.get(r.id) ?? 0,
       })),
       staff: staffAccounts(db).map((a) => ({ name: a.name, role: a.role })),
+      maps: listMapPlacements(db).map((m) => ({ name: m.name, title: m.title })),
     };
   };
 

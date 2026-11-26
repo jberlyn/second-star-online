@@ -66,7 +66,11 @@ export interface SettingsPanel {
   show(
     pages: readonly SettingPage[],
     rows: readonly SettingRow[],
-    lists?: { roles: readonly RoleRow[]; staff: readonly StaffRow[] },
+    lists?: {
+      roles: readonly RoleRow[];
+      staff: readonly StaffRow[];
+      maps?: readonly { name: string; title: string }[];
+    },
   ): void;
   /** The server's answer to a save (`settingsResult`). */
   result(r: SettingsResult): void;
@@ -111,6 +115,31 @@ const MAX_POINTS = 30;
 
 /** `treasureMaps` holds at most 100 (server/src/settings.ts). */
 const MAX_MAPS = 100;
+
+/** The maps a map box offers as you type (the server's list), and each one's title by name. */
+const MAP_LIST_ID = "settings-map-names";
+const mapTitles = new Map<string, string>();
+
+/** A map box: offers the known maps, and says the title of the one typed beside it. */
+function mapBox(m: HTMLInputElement): { title: HTMLElement; say(): void } {
+  m.setAttribute("list", MAP_LIST_ID);
+  const title = document.createElement("span");
+  title.className = "settings-map-title";
+  const say = () => {
+    const v = m.value.trim().toLowerCase();
+    const known = mapTitles.get(v);
+    title.textContent =
+      v === ""
+        ? ""
+        : (known ??
+          (MAP_NAME.test(v)
+            ? "no map there yet"
+            : "not a map: pick one from the list, or type its code (x0y100)"));
+    title.classList.toggle("settings-map-bad", v !== "" && known === undefined);
+  };
+  m.addEventListener("input", say);
+  return { title, say };
+}
 
 /** One map name per line; blank lines are dropped. */
 export function parseMaps(text: string): string[] {
@@ -433,12 +462,14 @@ function createRow(r: SettingRow, onChange: () => void): RowState {
       const m = input("text", "settings-map", r.label);
       m.placeholder = "none";
       m.spellcheck = false;
+      const box = mapBox(m);
       read = () => (m.value.trim() === "" ? null : m.value.trim());
       write = (v) => {
         m.value = typeof v === "string" ? v : "";
+        box.say();
       };
       fields.push(m);
-      control.append(m);
+      control.append(m, box.title);
       break;
     }
     case "point": {
@@ -457,15 +488,17 @@ function createRow(r: SettingRow, onChange: () => void): RowState {
         s.textContent = t;
         return s;
       };
+      const box = mapBox(m);
       read = () => ({ map: m.value.trim(), x: num(x.value), y: num(y.value) });
       write = (v) => {
         const p = isPoint(v) ? v : { map: "", x: 1, y: 1 };
         m.value = p.map;
         x.value = String(p.x);
         y.value = String(p.y);
+        box.say();
       };
       fields.push(m, x, y);
-      control.append(m, tag("x"), x, tag("y"), y);
+      control.append(m, tag("x"), x, tag("y"), y, box.title);
       break;
     }
     case "points": {
@@ -475,7 +508,7 @@ function createRow(r: SettingRow, onChange: () => void): RowState {
         noun: "point",
         max: MAX_POINTS,
         columns: [
-          { label: "Map", placeholder: "Map, like x1000y992" },
+          { label: "Map", placeholder: "Map, like x1000y992", list: MAP_LIST_ID },
           { label: "x", numeric: true },
           { label: "y", numeric: true },
         ],
@@ -501,7 +534,7 @@ function createRow(r: SettingRow, onChange: () => void): RowState {
         id: "settings-maps",
         noun: "map",
         max: MAX_MAPS,
-        columns: [{ label: "Map", placeholder: "Map, like x1000y992" }],
+        columns: [{ label: "Map", placeholder: "Map, like x1000y992", list: MAP_LIST_ID }],
       });
       read = () =>
         list
@@ -896,14 +929,17 @@ export function createSettingsPanel(actions: SettingsActions): SettingsPanel {
     actions.save(values());
   };
 
-  const saveButton = button("settings-save", "settings-save", "Save", save);
+  // Saving applies at once, for everyone online: the button says so.
+  const saveButton = button("settings-save", "settings-save", "Save and apply now", save);
   footer.append(
     status,
     button("settings-revert", "settings-revert", "Revert", () => actions.load()),
     saveButton,
   );
   pane.append(title, intro, list, results, footer);
-  stage.append(nav, pane, confirm);
+  const mapNames = document.createElement("datalist");
+  mapNames.id = MAP_LIST_ID;
+  stage.append(nav, pane, confirm, mapNames);
 
   return {
     el: stage,
@@ -912,6 +948,18 @@ export function createSettingsPanel(actions: SettingsActions): SettingsPanel {
       rows = [...nextRows];
       roleRows = [...(lists?.roles ?? [])];
       staffRows = [...(lists?.staff ?? [])];
+      if (lists?.maps) {
+        mapTitles.clear();
+        mapNames.replaceChildren(
+          ...lists.maps.map((m) => {
+            mapTitles.set(m.name.toLowerCase(), m.title || "a map with no title");
+            const o = document.createElement("option");
+            o.value = m.name;
+            o.label = m.title ? `${m.name} · ${m.title}` : m.name;
+            return o;
+          }),
+        );
+      }
       links.replaceChildren(
         ...pages.map((p) => {
           const a = action(document.createElement("button"), "settings-page");

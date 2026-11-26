@@ -42,7 +42,14 @@ import {
 } from "@secondstaronline/shared";
 
 import { action, noAutofill } from "./action.ts";
-import { formActions, pageHeading, panelButton, sectionTabs } from "./control-panel-kit.ts";
+import {
+  formActions,
+  moreFields,
+  newDialog,
+  pageHeading,
+  panelButton,
+  sectionTabs,
+} from "./control-panel-kit.ts";
 import { canonical } from "./items-page.ts";
 
 /** A Skills page change as the page sends it. */
@@ -490,22 +497,12 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
     p.textContent = text;
     return p;
   };
-  /** Fields folded under a summary ("More options"), open when one of them is in use. */
-  const more = (open: boolean, text: string, ...controls: HTMLElement[]) => {
-    const box = document.createElement("details");
-    box.className = "items-more";
-    box.open = open;
-    const summary = action(document.createElement("summary"), "skills-more-toggle");
-    summary.textContent = text;
-    box.append(summary, ...controls);
-    return box;
-  };
+  /** A section's less used fields, shown after its main ones (under `text`, unless "More options"). */
+  const more = (_used: boolean, text: string, ...controls: HTMLElement[]) =>
+    moreFields(text === "More options" ? "" : text, ...controls);
 
   // ---- a new skill ----
-  const newBox = document.createElement("details");
-  newBox.className = "items-new";
-  const newSummary = action(document.createElement("summary"), "skills-new-toggle");
-  newSummary.textContent = "+ New skill";
+  const newBox = newDialog("skills-new-toggle", "+ New skill", "New skill");
   const newKey = noAutofill(action(document.createElement("input"), "skills-new-key"));
   newKey.maxLength = 40;
   const newDisplay = noAutofill(action(document.createElement("input"), "skills-new-display"));
@@ -565,7 +562,6 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
   newModel.addEventListener("change", showNewCurve);
   showNewCurve();
   newBox.append(
-    newSummary,
     labelled(
       "ID",
       newKey,
@@ -575,9 +571,9 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
     labelled("How it goes up", newModel),
     newCurveField,
     curvesList,
-    createBtn,
     newStatus,
   );
+  newBox.actions(createBtn);
 
   // ---- the list ----
   const listBox = document.createElement("section");
@@ -593,7 +589,7 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
   const filters = document.createElement("div");
   filters.className = "items-filters";
   filters.append(labelled("Search", search));
-  listBox.append(newBox, filters, listCount, listEl);
+  listBox.append(newBox.el, filters, listCount, listEl);
 
   // ---- the form ----
   const form = document.createElement("section");
@@ -1837,7 +1833,7 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
         ...(v.bindings.length > 0
           ? [
               helpLine(
-                `The game's ${v.bindings.join(", ")} rule${v.bindings.length === 1 ? " uses" : "s use"} it, so it can't be removed. Point ${v.bindings.length === 1 ? "that rule" : "those rules"} at another skill first, on the Skills the game uses tab.`,
+                `The game's ${v.bindings.join(", ")} rule${v.bindings.length === 1 ? " uses" : "s use"} it, so it can't be removed. Point ${v.bindings.length === 1 ? "that rule" : "those rules"} at another skill first, on the Which skill does what tab.`,
               ),
             ]
           : []),
@@ -1967,7 +1963,7 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
     if (u.bindings.length > 0) {
       const b = document.createElement("p");
       b.className = "balance-stale";
-      b.textContent = `The ${u.bindings.join(", ")} binding${u.bindings.length === 1 ? " names" : "s name"} it: point ${u.bindings.length === 1 ? "it" : "them"} at another skill first, on the Skills the game uses tab.`;
+      b.textContent = `The ${u.bindings.join(", ")} binding${u.bindings.length === 1 ? " names" : "s name"} it: point ${u.bindings.length === 1 ? "it" : "them"} at another skill first, on the Which skill does what tab.`;
       lines.push(b);
     }
     const ul = document.createElement("ul");
@@ -2112,6 +2108,7 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
             newKey.value = "";
             newDisplay.value = "";
             newCurve.value = "";
+            newBox.open = false;
             openKey = save.key;
             shown = null;
           }
@@ -2167,6 +2164,7 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
       usage = null;
       search.value = "";
       newKey.value = "";
+      newBox.open = false;
       newDisplay.value = "";
       newCurve.value = "";
       newStatus.textContent = "";

@@ -92,7 +92,7 @@ test("a number out of its limits, or not whole, does not read", () => {
   expect(form.value()).toEqual({ n: 4 });
 });
 
-test("an optional field is ticked on and off; a list's entries are added, moved and removed", () => {
+test("an optional value is set by filling its box and cleared by emptying it; a list's entries are added, moved and removed", () => {
   const schema: JsonSchema = {
     type: "object",
     properties: {
@@ -105,16 +105,15 @@ test("an optional field is ticked on and off; a list's entries are added, moved 
   const form = schemaForm(schema, { note: null, tags: ["a", "b"] }, contentWords("x", "y"), {
     id: "t",
   });
-  const tick = form.el.querySelector<HTMLInputElement>("[data-action='t-set']");
-  const toggle = () => {
-    if (tick) {
-      tick.checked = !tick.checked;
-      tick.dispatchEvent(new Event("change"));
-    }
-  };
-  toggle();
-  expect(form.value()).toEqual({ note: "", tags: ["a", "b"] });
-  toggle();
+  const note = form.el.querySelector<HTMLInputElement>("[data-action='t-text']");
+  expect(note?.placeholder).toBe("None");
+  if (note) {
+    note.value = "hello";
+  }
+  expect(form.value()).toEqual({ note: "hello", tags: ["a", "b"] });
+  if (note) {
+    note.value = "";
+  }
   expect(form.value()).toEqual({ note: null, tags: ["a", "b"] });
   form.el.querySelectorAll<HTMLButtonElement>("[data-action='t-down']")[0]?.click();
   expect(form.value()).toEqual({ note: null, tags: ["b", "a"] });
@@ -236,4 +235,92 @@ test("an object with nothing under More options shows no empty fold", () => {
     contentWords("craft", "recipes"),
   );
   expect(form.el.querySelector(".schema-form-more")).toBeNull();
+});
+
+test("a list of short entries is a table; a list of bigger ones names them beside the one picked", () => {
+  const row: JsonSchema = {
+    type: "object",
+    properties: { level: { type: "integer" }, percent: { type: "number" } },
+    required: ["level", "percent"],
+  };
+  const big: JsonSchema = {
+    type: "object",
+    properties: {
+      name: { type: "string" },
+      steps: { type: "array", items: { type: "string" } },
+    },
+    required: ["name", "steps"],
+  };
+  const schema: JsonSchema = {
+    type: "object",
+    properties: { odds: { type: "array", items: row }, quests: { type: "array", items: big } },
+    required: ["odds", "quests"],
+  };
+  const value = {
+    odds: [
+      { level: 1, percent: 50 },
+      { level: 10, percent: 90 },
+    ],
+    quests: [
+      { name: "Water God", steps: ["a"] },
+      { name: "Fire God", steps: ["b", "c"] },
+    ],
+  };
+  const form = schemaForm(schema, value, contentWords("x", "y"), { id: "t" });
+  // No fold anywhere.
+  expect(form.el.querySelector("details")).toBeNull();
+  // The short entries: a table, a row each, its fields as columns.
+  const table = form.el.querySelector("table.schema-form-table") as HTMLTableElement;
+  expect([...table.querySelectorAll("thead th")].map((th) => th.textContent)).toEqual([
+    "Level",
+    "Percent",
+    "Order and remove",
+  ]);
+  expect(table.querySelectorAll("tbody tr")).toHaveLength(2);
+  // The bigger entries: their names listed, the first shown, the others hidden.
+  const names = [...form.el.querySelectorAll<HTMLButtonElement>(".schema-form-pick-name")];
+  expect(names.map((b) => b.textContent)).toEqual(["Water God", "Fire God"]);
+  const panes = [...form.el.querySelectorAll<HTMLElement>(".schema-form-pick-panes > *")];
+  expect(panes.map((p) => p.hidden)).toEqual([false, true]);
+  names[1]?.click();
+  expect(
+    [...form.el.querySelectorAll<HTMLElement>(".schema-form-pick-panes > *")].map((p) => p.hidden),
+  ).toEqual([true, false]);
+  // Its ↑ moves the picked one, and the whole value reads back in the new order.
+  form.el.querySelector<HTMLButtonElement>(".schema-form-pick-detail [data-move='up']")?.click();
+  expect((form.value() as typeof value).quests.map((q) => q.name)).toEqual([
+    "Fire God",
+    "Water God",
+  ]);
+  expect((form.value() as typeof value).odds).toEqual(value.odds);
+});
+
+test("a message the game fills in is one line, listing its words; a click puts one in", () => {
+  const schema: JsonSchema = {
+    type: "object",
+    properties: {
+      joined: { type: "object", properties: { text: { type: "string" } }, required: ["text"] },
+    },
+    required: ["joined"],
+  };
+  const form = schemaForm(
+    schema,
+    { joined: { text: "{NAME} joined {GUILD}" } },
+    contentWords("social", "chat"),
+    {
+      id: "t",
+    },
+  );
+  // The one-field group is drawn as its field: no box round it.
+  expect(form.el.querySelector(".schema-form-block")).toBeNull();
+  const box = form.el.querySelector<HTMLInputElement>("[data-action='t-text']");
+  expect(box?.tagName).toBe("INPUT");
+  const slots = [...form.el.querySelectorAll<HTMLButtonElement>("[data-action='t-slot']")];
+  expect(slots.map((b) => b.textContent)).toEqual(["{NAME}", "{GUILD}"]);
+  if (box) {
+    box.value = "Welcome, ";
+    box.setSelectionRange(9, 9);
+  }
+  slots[0]?.click();
+  expect(form.value()).toEqual({ joined: { text: "Welcome, {NAME}" } });
 });

@@ -1,7 +1,7 @@
 /**
  * The plain words of the content forms (schema-form.ts): each field's label and help line, the
- * labels of its choices, the names it is offered as you type, and the fields folded under "More
- * options". Each dataset has its own dictionary (content-words/), keyed by a field's path in its
+ * labels of its choices, the names it is offered as you type, and the rarely used fields (drawn
+ * after the main ones). Each dataset has its own dictionary (content-words/), keyed by a field's path in its
  * row: `"spells.sp"` is the SP field of a spell (part `spells`), `"spells.spByBody.[].pattern"` a
  * pattern in one of its body rows. A field a dictionary does not name falls back to the words for
  * its key shared by every dataset (`COMMON`), then to its key in plain words.

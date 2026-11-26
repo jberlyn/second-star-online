@@ -17,7 +17,13 @@ import {
 } from "@secondstaronline/shared";
 
 import { action, noAutofill } from "./action.ts";
-import { confirmBox, formField, pageHeading, panelButton } from "./control-panel-kit.ts";
+import {
+  confirmBox,
+  formField,
+  moreFields,
+  pageHeading,
+  panelButton,
+} from "./control-panel-kit.ts";
 
 export interface PacksPageActions {
   view(seq: number): void;
@@ -99,15 +105,12 @@ export function createPacksPage(
     s.append(h, p, ...kids);
     return s;
   };
-  /** Details folded under a summary line. */
-  const fold = (title: string, ...kids: HTMLElement[]) => {
-    const d = document.createElement("details");
-    d.className = "items-more";
-    const s = action(document.createElement("summary"), "packs-more-toggle");
-    s.textContent = title;
-    d.append(s, ...kids);
-    return d;
-  };
+  /** Less used fields or facts, shown after the main ones (under `title`, unless "More options"). */
+  const fold = (title: string, ...kids: HTMLElement[]) =>
+    moreFields(
+      title === "More options" ? "" : title === "More details" ? "Details" : title,
+      ...kids,
+    );
   const help = (text: string) => {
     const p = document.createElement("p");
     p.className = "control-panel-field-help";
@@ -156,13 +159,10 @@ export function createPacksPage(
     );
     box.append(head, tags, help(describe(p)));
     box.append(
-      fold(
-        "More details",
-        help(
-          [`Pack ID: ${p.id}`, p.sso ? `made for Second Star Online ${p.sso}` : ""]
-            .filter(Boolean)
-            .join(" · "),
-        ),
+      help(
+        [`Pack ID: ${p.id}`, p.sso ? `made for Second Star Online ${p.sso}` : ""]
+          .filter(Boolean)
+          .join(" · "),
       ),
     );
     if (p.source === "imported" && p.state !== "removed at next start") {

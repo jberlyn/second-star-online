@@ -58,7 +58,7 @@ The UI files are:
 - [packages/client/src/ui/content-page.ts](../../packages/client/src/ui/content-page.ts): the Control Panel's Publish Changes page (unpublished changes, history, problems, where a row is used) and the Pictures & Sounds page's panels.
 - [packages/client/src/ui/content-areas.ts](../../packages/client/src/ui/content-areas.ts): which content page and tab edits each dataset part (`homeOf`), with their titles and help lines.
 - [packages/client/src/ui/content-area-page.ts](../../packages/client/src/ui/content-area-page.ts): the generic content page: a list beside a form, settings cards, and Save, Undo, Restore, Cancel and Remove, each naming the row's revision.
-- [packages/client/src/ui/schema-form.ts](../../packages/client/src/ui/schema-form.ts): a form drawn from a row's JSON Schema: lists, drop-downs, optional parts behind a tick box, names suggested as you type, "More options".
+- [packages/client/src/ui/schema-form.ts](../../packages/client/src/ui/schema-form.ts): a form drawn from a row's JSON Schema: rows, tables or a list of names beside the picked entry for lists, drop-downs, empty-means-none optional values, the words a message fills in, names suggested as you type; nothing folds.
 - [packages/client/src/ui/content-words.ts](../../packages/client/src/ui/content-words.ts) and `content-words/`: each part's field labels, help lines and choices in plain words.
 - [packages/client/src/ui/content-diff.ts](../../packages/client/src/ui/content-diff.ts): what a pack update changed, as plain lines.
 - [packages/client/src/ui/content-requests.ts](../../packages/client/src/ui/content-requests.ts): the content pages' row, draft and discard requests as promises.

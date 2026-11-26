@@ -18,19 +18,11 @@ const PERKS: Record<string, string> = {
 };
 
 export const socialWords: WordBook = {
-  // Notes on how the game uses a part, kept with the data for reference.
-  "*.rule": {
-    label: "How it works (notes)",
-    help: "A description of what the game does here. Changing it changes nothing in play.",
-    long: true,
-    more: true,
-  },
+  // Notes on how the game uses a part, kept with the data: nothing in play reads them, so they
+  // are kept as they are and not shown.
+  "*.rule": { hidden: true },
   // Most of the game's messages: `{NAME}` and the like stand for the names they are built from.
-  "*.text": {
-    label: "Message",
-    help: "Words in {CURLY BRACKETS} are filled in by the game, such as {NAME} for the player's name.",
-    long: true,
-  },
+  "*.text": { label: "Message", long: true },
 
   // ---- Factions (one row is one faction) ----
   "factions.key": {
@@ -175,11 +167,7 @@ export const socialWords: WordBook = {
     help: "Told to the admin who pardons. {NAME} is the murderer.",
   },
   "murder.flagRule": { label: "Who becomes a murderer", more: true },
-  "murder.*.sender": {
-    label: "Who sends it (note)",
-    help: "A note on who the message comes from. Changing it changes nothing in play.",
-    more: true,
-  },
+  "murder.*.sender": { hidden: true },
 
   // ---- Quest replies ----
   "questReplies.give": { label: "Giving an item to an NPC" },
@@ -267,10 +255,7 @@ export const socialWords: WordBook = {
   },
   "assassin.end.lines": { label: "Lines", noun: "line" },
   "assassin.prizes": { label: "Prizes", more: true },
-  "assassin.prizes.archived": {
-    label: "1.6's prize line (note)",
-    help: "The prizes are set on the Server Settings page.",
-  },
+  "assassin.prizes.archived": { hidden: true },
   "assassin.prizes.awarded": { label: "Places that win a prize" },
   "assassin.statue": { label: "Assassin Statue", help: "The statue that shows the top assassins." },
   "assassin.statue.item": { label: "Statue item", names: "item" },
@@ -309,11 +294,7 @@ export const socialWords: WordBook = {
   "highScores.perLine": { label: "Entries per line", more: true },
   "highScores.separator": { label: "Between entries", more: true },
   "highScores.tableSize": { label: "Players on the table" },
-  "highScores.oneSaveIn": {
-    label: "1.6's save chance (note)",
-    help: "1.6 sent a score on 1 save in this many; scores now go in on every save.",
-    more: true,
-  },
+  "highScores.oneSaveIn": { hidden: true },
 
   // ---- Guilds ----
   "guilds.texts": {
@@ -530,7 +511,7 @@ export const socialWords: WordBook = {
   "medals.awards.[].stats.{}": { label: "Amount" },
 
   // ---- Mail ----
-  "mail.texts": { label: "Messages", help: "{NAME} is the sender." },
+  "mail.texts": { label: "Messages", help: "Where a message has {NAME}, it is the sender." },
   "mail.texts.notInFront": said("Not standing at the mailbox"),
   "mail.texts.notYours": said("Someone else's mailbox"),
   "mail.texts.checking": said("Checking mail"),

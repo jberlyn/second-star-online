@@ -1,12 +1,14 @@
 /**
  * A form drawn from a content row's shape (the JSON Schema the server sends with a row): every
  * field as a plain control, in plain words, so no content needs typing as JSON. Objects are groups
- * of fields, lists are rows you add, remove and move, a pick from a fixed set is a drop-down, an
- * optional value is a tick box that shows its fields, and a value that can take several shapes
- * asks which one. Names of things the game has (items, monsters, skills…) are offered as you type.
+ * of fields; lists are rows, a table, or a list of names beside the picked entry, added, removed and
+ * moved; a pick from a fixed set is a drop-down; an optional plain value is a box left empty for
+ * none, and an optional group a tick box named after it; a value that can take several shapes asks
+ * which one; and a message the game fills in lists the words it fills in. Nothing folds open and
+ * shut. Names of things the game has (items, monsters, skills…) are offered as you type.
  *
  * The words come from `FormWords` (content-words.ts): each field's label, its help line, the
- * labels of its choices, and whether it is a rarely used one folded under "More options". A field
+ * labels of its choices, and whether it is a rarely used one, drawn after the main ones. A field
  * with no words of its own is named from its key ("periodFrames" → "Period frames").
  *
  * An SSO page part: 1.6 had no content editor.
@@ -42,7 +44,7 @@ export interface JsonSchema {
 export interface FieldWords {
   label?: string;
   help?: string;
-  /** Folded under "More options" in its group. */
+  /** Rarely used: drawn after its group's main fields (never folded away). */
   more?: boolean;
   /** Not shown (an internal id the game keeps in step on its own); its value is kept. */
   hidden?: boolean;
@@ -277,7 +279,13 @@ function shapeName(s: JsonSchema): string {
 }
 
 /** The text an entry of a list is called by in its header: its name, or the first words it has. */
-export function entryTitle(v: unknown, at: number): string {
+export function entryTitle(
+  v: unknown,
+  at: number,
+  labelOf: (key: string) => string = humanize,
+  /** A field's value in words (a pick's label), or the value itself. */
+  wordsOf: (key: string, value: string) => string = (_k, value) => value,
+): string {
   if (v !== null && typeof v === "object" && !Array.isArray(v)) {
     const o = v as Record<string, unknown>;
     for (const k of [
@@ -304,20 +312,22 @@ export function entryTitle(v: unknown, at: number): string {
     ]) {
       const x = o[k];
       if (typeof x === "string" && x.trim() !== "") {
-        return x.length > 48 ? `${x.slice(0, 45)}…` : x;
+        const w = wordsOf(k, x);
+        return w.length > 48 ? `${w.slice(0, 45)}…` : w;
       }
       if (typeof x === "number") {
-        return `${humanize(k)} ${x}`;
+        return `${labelOf(k)} ${x}`;
       }
     }
   }
   if (v !== null && typeof v === "object" && !Array.isArray(v)) {
-    // No field that names it: its first words.
-    const first = Object.values(v as Record<string, unknown>).find(
-      (x) => typeof x === "string" && x.trim() !== "",
-    ) as string | undefined;
+    // No field that names it: its first words (a pick's in words).
+    const first = Object.entries(v as Record<string, unknown>).find(
+      ([, x]) => typeof x === "string" && x.trim() !== "",
+    ) as [string, string] | undefined;
     if (first) {
-      return first.length > 48 ? `${first.slice(0, 45)}…` : first;
+      const w = wordsOf(first[0], first[1]);
+      return w.length > 48 ? `${w.slice(0, 45)}…` : w;
     }
     // Numbers only: its first few values ("Faces 1, 1, 1 · Bonus 50").
     const bits = Object.entries(v as Record<string, unknown>)
@@ -327,7 +337,7 @@ export function entryTitle(v: unknown, at: number): string {
           (Array.isArray(x) && x.length > 0 && x.every((y) => typeof y === "number")),
       )
       .slice(0, 3)
-      .map(([k, x]) => `${humanize(k)} ${Array.isArray(x) ? x.join(", ") : x}`);
+      .map(([k, x]) => `${labelOf(k)} ${Array.isArray(x) ? x.join(", ") : x}`);
     if (bits.length > 0) {
       const t = bits.join(" · ");
       return t.length > 48 ? `${t.slice(0, 45)}…` : t;
@@ -348,6 +358,12 @@ interface Built {
   get(): unknown;
   /** A plain control that sits inline with its label (a number, a text, a pick, a tick box). */
   inline: boolean;
+  /** Shown under the control (the words a message fills in). */
+  note?: HTMLElement;
+  /** Help to show when the field's own words have none (a group drawn as its one field). */
+  help?: string;
+  /** It shows its own title (a section turned on by a tick box named after it). */
+  titled?: boolean;
 }
 
 let uid = 0;
@@ -455,7 +471,12 @@ export function schemaForm(
   };
 
   const text = (s: JsonSchema, v: unknown, w: FieldWords, label: string): Built => {
-    const long = w.long || (s.maxLength ?? 0) > 200;
+    const now = typeof v === "string" ? v : "";
+    // A message the game fills in ("{NAME} has logged on"): one line, with the words it fills in
+    // listed under it.
+    const slots = [...new Set(now.match(/\{[A-Z][A-Z0-9_]*\}/g) ?? [])];
+    const template = slots.length > 0 && !now.includes("\n") && now.length <= 160;
+    const long = !template && (w.long === true || (s.maxLength ?? 0) > 200);
     const c = lock(
       noAutofill(
         action(
@@ -467,9 +488,10 @@ export function schemaForm(
     if (!long) {
       c.type = "text";
     } else {
-      (c as unknown as HTMLTextAreaElement).rows = 3;
+      (c as unknown as HTMLTextAreaElement).rows = 1;
+      c.classList.add("schema-form-long");
     }
-    c.value = typeof v === "string" ? v : "";
+    c.value = now;
     if (s.maxLength !== undefined) {
       c.maxLength = s.maxLength;
     }
@@ -480,6 +502,30 @@ export function schemaForm(
       }
     }
     c.addEventListener("input", changed);
+    let note: HTMLElement | undefined;
+    if (template) {
+      note = document.createElement("p");
+      note.className = "schema-form-slots";
+      note.append("The game fills in ");
+      slots.forEach((slot, i) => {
+        // Click one to put it where the cursor is.
+        const b = action(document.createElement("button"), `${opts.id}-slot`);
+        b.type = "button";
+        b.className = "schema-form-slot";
+        b.textContent = slot;
+        b.disabled = opts.readOnly === true;
+        b.setAttribute("aria-label", `Insert ${slot}`);
+        b.addEventListener("click", () => {
+          const at = c.selectionStart ?? c.value.length;
+          const to = c.selectionEnd ?? at;
+          c.setRangeText(slot, at, to, "end");
+          c.focus();
+          changed();
+        });
+        note?.append(...(i > 0 ? [" "] : []), b);
+      });
+      note.append(".");
+    }
     return {
       el: c,
       get: () => {
@@ -489,6 +535,7 @@ export function schemaForm(
         return c.value;
       },
       inline: true,
+      ...(note ? { note } : {}),
     };
   };
 
@@ -549,6 +596,43 @@ export function schemaForm(
     label: string,
     absent: null | undefined,
   ): Built => {
+    const scalar =
+      s.enum !== undefined || s.type === "integer" || s.type === "number" || s.type === "string";
+    if (scalar) {
+      // A plain value: its box left empty (or "None" picked) means it is not set.
+      const has = v !== null && v !== undefined;
+      const inner = build(s, has ? v : blank(s), path, label);
+      const c = inner.el as HTMLInputElement | HTMLSelectElement;
+      const NONE = "__none";
+      if (c instanceof HTMLSelectElement) {
+        const o = document.createElement("option");
+        o.value = NONE;
+        o.textContent = "None";
+        c.prepend(o);
+        c.value = has ? c.value : NONE;
+        if (!has) {
+          c.value = NONE;
+        }
+      } else {
+        c.placeholder = "None";
+        if (!has) {
+          c.value = "";
+        }
+      }
+      // An empty text that was there stays there, not "none".
+      const keepEmpty = v === "";
+      return {
+        el: c,
+        get: () => {
+          if (c instanceof HTMLSelectElement ? c.value === NONE : c.value.trim() === "") {
+            return keepEmpty ? "" : absent;
+          }
+          return inner.get();
+        },
+        inline: true,
+        ...(inner.note ? { note: inner.note } : {}),
+      };
+    }
     const wrap = document.createElement("div");
     wrap.className = "schema-form-optional";
     const box = lock(action(document.createElement("input"), `${opts.id}-set`));
@@ -557,7 +641,7 @@ export function schemaForm(
     box.checked = has;
     const tick = document.createElement("label");
     tick.className = "schema-form-set";
-    tick.append(box, absent === undefined ? " Set" : " Has one");
+    tick.append(box, ` ${label}`);
     const holder = document.createElement("div");
     holder.className = "schema-form-optional-body";
     let inner: Built | null = has ? build(s, v, path, label) : null;
@@ -579,6 +663,7 @@ export function schemaForm(
       el: wrap,
       get: () => (box.checked && inner ? inner.get() : absent),
       inline: false,
+      titled: true,
     };
   };
 
@@ -609,10 +694,10 @@ export function schemaForm(
       holder.replaceChildren(inner.el);
       changed();
     });
-    const pick = document.createElement("label");
-    pick.className = "schema-form-shape";
-    pick.append("Kind: ", sel);
-    wrap.append(pick, holder);
+    // The field's label names it; the drop-down picks which kind of value it is.
+    sel.setAttribute("aria-label", `${label}: kind`);
+    sel.classList.add("schema-form-shape");
+    wrap.append(sel, holder);
     return { el: wrap, get: () => inner.get(), inline: false };
   };
 
@@ -641,13 +726,19 @@ export function schemaForm(
       t.htmlFor = id;
       t.textContent = label;
       row.append(control, t);
+    } else if (built.titled) {
+      row.append(built.el);
     } else {
       row.append(l, built.el);
     }
-    if (help) {
+    if (built.note) {
+      row.append(built.note);
+    }
+    const said = help ?? built.help;
+    if (said) {
       const h = document.createElement("p");
       h.className = "control-panel-field-help";
-      h.textContent = help;
+      h.textContent = said;
       row.append(h);
     }
     return row;
@@ -660,33 +751,27 @@ export function schemaForm(
         : {};
     const box = document.createElement("div");
     box.className = "schema-form-object";
-    /** One group of fields: the inline row, the blocks and the "More options" fold. */
+    /**
+     * One group of fields: the inline row and the blocks, then the less used fields after them
+     * (`FieldWords.more`), shown too: nothing is folded away.
+     */
     const bucket = () => {
       const inlineRow = document.createElement("div");
       inlineRow.className = "balance-fields schema-form-fields";
       const blocks = document.createElement("div");
       blocks.className = "schema-form-blocks";
-      const more = document.createElement("details");
-      more.className = "items-more schema-form-more";
-      const moreSum = action(document.createElement("summary"), `${opts.id}-more`);
-      moreSum.textContent = "More options";
       const moreInline = document.createElement("div");
       moreInline.className = "balance-fields schema-form-fields";
-      more.append(moreSum, moreInline);
-      return { inlineRow, blocks, more, moreInline, moreUsed: false };
+      const more = document.createElement("div");
+      more.className = "schema-form-blocks";
+      return { inlineRow, blocks, more, moreInline };
     };
     type Bucket = ReturnType<typeof bucket>;
     const fill = (into: HTMLElement, b: Bucket) => {
-      b.more.open = b.moreUsed;
-      if (b.inlineRow.childElementCount > 0) {
-        into.append(b.inlineRow);
-      }
-      if (b.blocks.childElementCount > 0) {
-        into.append(b.blocks);
-      }
-      // The fold holds its summary and inline row: show it only with a field in it.
-      if (b.more.childElementCount > 2 || b.moreInline.childElementCount > 0) {
-        into.append(b.more);
+      for (const part of [b.inlineRow, b.blocks, b.moreInline, b.more]) {
+        if (part.childElementCount > 0) {
+          into.append(part);
+        }
       }
     };
     // Top-level fields may be grouped under tabs (`FieldWords.tab`), in the order first named.
@@ -704,6 +789,8 @@ export function schemaForm(
       return b;
     };
     const getters: [string, () => unknown][] = [];
+    /** The fields shown, to draw a group of one field as that field. */
+    const shown: { built: Built; help: string | undefined }[] = [];
     const required = new Set(s.required ?? []);
     for (const [k, p] of Object.entries(s.properties ?? {})) {
       const fp = [...path, k];
@@ -735,10 +822,8 @@ export function schemaForm(
       getters.push([k, built.get]);
       const row = fieldRow(built, label, fw.help, true);
       const b = bucketOf(fw);
+      shown.push({ built, help: fw.help });
       if (fw.more) {
-        if (o[k] !== undefined && o[k] !== null && o[k] !== false) {
-          b.moreUsed = true;
-        }
         if (built.inline) {
           b.moreInline.append(row);
         } else {
@@ -787,23 +872,75 @@ export function schemaForm(
       box.append(strip, ...panes);
       pick(0);
     }
-    return {
-      el: box,
-      get: () => {
-        const out: Record<string, unknown> = {};
-        for (const [k, g] of getters) {
-          const x = g();
-          if (x !== undefined) {
-            out[k] = x;
-          }
+    const get = () => {
+      const out: Record<string, unknown> = {};
+      for (const [k, g] of getters) {
+        const x = g();
+        if (x !== undefined) {
+          out[k] = x;
         }
-        return out;
-      },
-      inline: false,
+      }
+      return out;
     };
+    const only = shown.length === 1 ? shown[0] : undefined;
+    if (path.length > 0 && tabs.size === 0 && only?.built.inline) {
+      // A group of one plain field (a message's `{ text }`): drawn as that field, under the
+      // group's own label, with no box round it.
+      return {
+        el: only.built.el,
+        get,
+        inline: true,
+        ...(only.built.note ? { note: only.built.note } : {}),
+        ...(only.help ? { help: only.help } : {}),
+      };
+    }
+    return { el: box, get, inline: false };
   };
 
-  /** A list: each entry a row (a value) or a card (a group of fields), added, moved and removed. */
+  /**
+   * The columns of a list drawn as a table: an entry is a group of two to six plain fields (a
+   * number, a short text, a pick or a tick box), each one always there. Null otherwise.
+   */
+  const tableColumns = (
+    item: JsonSchema,
+    fp: string[],
+  ): { key: string; schema: JsonSchema; label: string; help?: string }[] | null => {
+    if (item.type !== "object" || !item.properties || variantsOf(item)) {
+      return null;
+    }
+    const required = new Set(item.required ?? []);
+    const cols: { key: string; schema: JsonSchema; label: string; help?: string }[] = [];
+    for (const [k, p] of Object.entries(item.properties)) {
+      const fw = words.field([...fp, k]);
+      if (fw.hidden || (p.const !== undefined && required.has(k))) {
+        continue;
+      }
+      const scalar =
+        p.enum !== undefined ||
+        p.type === "integer" ||
+        p.type === "number" ||
+        p.type === "boolean" ||
+        (p.type === "string" && fw.long !== true && (p.maxLength ?? 0) <= 200);
+      if (!required.has(k) || !scalar) {
+        return null;
+      }
+      cols.push({
+        key: k,
+        schema: p,
+        label: fw.label ?? humanize(k),
+        ...(fw.help ? { help: fw.help } : {}),
+      });
+    }
+    return cols.length >= 2 && cols.length <= 6 ? cols : null;
+  };
+
+  /**
+   * A list, drawn by what its entries are:
+   * - one plain value each (a name, a number): a row of its own, with ↑ ↓ and Remove;
+   * - a few plain fields each: a table, one entry a row;
+   * - anything bigger: the entries listed by name on the left, and the one picked shown in full
+   *   beside them (nothing folds open and shut).
+   */
   const list = (
     item: JsonSchema,
     v: unknown,
@@ -816,130 +953,330 @@ export function schemaForm(
     const arr = Array.isArray(v) ? v : [];
     const box = document.createElement("div");
     box.className = "schema-form-list";
-    const rows = document.createElement("div");
-    rows.className = "schema-form-list-rows";
     const empty = document.createElement("p");
     empty.className = "schema-form-empty";
     empty.textContent = "None yet.";
-    const plain = !withoutNull(item).inner.properties && !variantsOf(withoutNull(item).inner);
-    const entries: { el: HTMLElement; built: Built }[] = [];
     const noun = w.noun ?? "entry";
-    const redraw = () => {
-      rows.replaceChildren(...entries.map((e) => e.el));
-      empty.hidden = entries.length > 0;
-      entries.forEach((e, i) => {
-        const up = e.el.querySelector<HTMLButtonElement>(":scope > * [data-move='up']");
-        const down = e.el.querySelector<HTMLButtonElement>(":scope > * [data-move='down']");
-        if (up) {
-          up.disabled = i === 0 || opts.readOnly === true;
-        }
-        if (down) {
-          down.disabled = i === entries.length - 1 || opts.readOnly === true;
-        }
-        const title = e.el.querySelector<HTMLElement>(":scope > summary .schema-form-entry-title");
-        if (title) {
-          let now: unknown;
-          try {
-            now = e.built.get();
-          } catch {
-            now = null;
-          }
-          title.textContent = entryTitle(now, i);
-        }
-      });
-      add.disabled =
-        opts.readOnly === true || (s.maxItems !== undefined && entries.length >= s.maxItems);
+    const cols = tableColumns(item, fp);
+    const mode: "rows" | "table" | "pick" = cols
+      ? "table"
+      : build(item, blank(item), fp, label).inline
+        ? "rows"
+        : "pick";
+    type Entry = { el: HTMLElement; built: Built };
+    const entries: Entry[] = [];
+    /** The entry shown in full (pick mode). */
+    let picked: Entry | null = null;
+    const fresh = JSON.stringify(blank(item));
+    const labelOf = (k: string) => words.field([...fp, k]).label ?? humanize(k);
+    const titleOf = (e: Entry) => {
+      let now: unknown;
+      try {
+        now = e.built.get();
+      } catch {
+        now = null;
+      }
+      // A new entry nothing has been filled in on yet is called so.
+      if (JSON.stringify(now) === fresh) {
+        return `New ${noun}`;
+      }
+      return entryTitle(
+        now,
+        entries.indexOf(e),
+        labelOf,
+        (k, value) => words.field([...fp, k]).choices?.[value] ?? value,
+      );
     };
-    const tools = (entry: { el: HTMLElement; built: Built }) => {
+
+    const mk = (text: string, aria: string, move: string, target: () => Entry | null) => {
+      // An entry's Remove is `-remove-entry`, never the page's own `-remove` (a class's Remove,
+      // issue #15): one action, one control.
+      const b = action(
+        document.createElement("button"),
+        `${opts.id}-${move === "remove" ? "remove-entry" : move}`,
+      );
+      b.type = "button";
+      b.className = "control-panel-btn control-panel-btn-plain schema-form-mini";
+      b.textContent = text;
+      b.setAttribute("aria-label", aria);
+      b.dataset.move = move;
+      b.disabled = opts.readOnly === true;
+      b.addEventListener("click", (e) => {
+        e.preventDefault();
+        const entry = target();
+        const i = entry ? entries.indexOf(entry) : -1;
+        if (!entry || i < 0) {
+          return;
+        }
+        if (move === "up" && i > 0) {
+          entries.splice(i - 1, 0, ...entries.splice(i, 1));
+        } else if (move === "down" && i < entries.length - 1) {
+          entries.splice(i + 1, 0, ...entries.splice(i, 1));
+        } else if (move === "remove") {
+          entries.splice(i, 1);
+          if (picked === entry) {
+            picked = entries[Math.min(i, entries.length - 1)] ?? null;
+          }
+        }
+        redraw();
+        changed();
+      });
+      return b;
+    };
+    const tools = (target: () => Entry | null) => {
       const t = document.createElement("span");
       t.className = "schema-form-entry-tools";
-      const mk = (text: string, aria: string, move: string, run: () => void) => {
-        // An entry's Remove is `-remove-entry`, never the page's own `-remove` (a class's Remove,
-        // issue #15): one action, one control.
-        const b = action(
-          document.createElement("button"),
-          `${opts.id}-${move === "remove" ? "remove-entry" : move}`,
-        );
-        b.type = "button";
-        b.className = "control-panel-btn control-panel-btn-plain schema-form-mini";
-        b.textContent = text;
-        b.setAttribute("aria-label", aria);
-        b.dataset.move = move;
-        b.disabled = opts.readOnly === true;
-        b.addEventListener("click", (e) => {
-          e.preventDefault();
-          run();
-          redraw();
-          changed();
-        });
-        return b;
-      };
-      const at = () => entries.indexOf(entry);
       t.append(
-        mk("↑", "Move up", "up", () => {
-          const i = at();
-          if (i > 0) {
-            entries.splice(i - 1, 0, ...entries.splice(i, 1));
-          }
-        }),
-        mk("↓", "Move down", "down", () => {
-          const i = at();
-          if (i < entries.length - 1) {
-            entries.splice(i + 1, 0, ...entries.splice(i, 1));
-          }
-        }),
-        mk("Remove", `Remove this ${noun}`, "remove", () => {
-          entries.splice(at(), 1);
-        }),
+        mk("↑", `Move this ${noun} up`, "up", target),
+        mk("↓", `Move this ${noun} down`, "down", target),
+        mk("Remove", `Remove this ${noun}`, "remove", target),
       );
       return t;
     };
-    const make = (x: unknown, open: boolean) => {
-      const built = build(item, x, fp, `${label} ${noun}`);
-      let el: HTMLElement;
-      const entry: { el: HTMLElement; built: Built } = { el: document.createElement("div"), built };
-      if (plain) {
-        el = document.createElement("div");
-        el.className = "schema-form-list-row";
-        el.append(built.el, tools(entry));
-      } else {
-        const d = document.createElement("details");
-        d.className = "schema-form-entry";
-        d.open = open;
-        const sum = action(document.createElement("summary"), `${opts.id}-entry`);
-        const title = document.createElement("span");
-        title.className = "schema-form-entry-title";
-        sum.append(title, tools(entry));
-        d.append(sum, built.el);
-        // The header follows the entry's name as it is typed.
-        built.el.addEventListener("input", () => {
-          let now: unknown;
-          try {
-            now = built.get();
-          } catch {
-            now = null;
-          }
-          title.textContent = entryTitle(now, entries.indexOf(entry));
-        });
-        el = d;
+    const setMoves = (t: HTMLElement, i: number) => {
+      const up = t.querySelector<HTMLButtonElement>("[data-move='up']");
+      const down = t.querySelector<HTMLButtonElement>("[data-move='down']");
+      const rm = t.querySelector<HTMLButtonElement>("[data-move='remove']");
+      if (up) {
+        up.disabled = i <= 0 || opts.readOnly === true;
       }
-      entry.el = el;
+      if (down) {
+        down.disabled = i < 0 || i >= entries.length - 1 || opts.readOnly === true;
+      }
+      if (rm) {
+        rm.disabled = i < 0 || opts.readOnly === true;
+      }
+    };
+
+    // ---- the parts each mode draws into ----
+    let rows: HTMLElement;
+    let names: HTMLElement | null = null;
+    let detailTitle: HTMLElement | null = null;
+    let detailTools: HTMLElement | null = null;
+    let detail: HTMLElement | null = null;
+    if (mode === "table" && cols) {
+      const wrap = document.createElement("div");
+      wrap.className = "schema-form-table-wrap";
+      const table = document.createElement("table");
+      table.className = "schema-form-table";
+      table.setAttribute("aria-label", label);
+      const head = document.createElement("thead");
+      const tr = document.createElement("tr");
+      for (const c of cols) {
+        const th = document.createElement("th");
+        th.scope = "col";
+        th.textContent = c.label;
+        tr.append(th);
+      }
+      const last = document.createElement("th");
+      last.className = "schema-form-table-tools";
+      const hidden = document.createElement("span");
+      hidden.className = "sr-only";
+      hidden.textContent = "Order and remove";
+      last.append(hidden);
+      tr.append(last);
+      head.append(tr);
+      rows = document.createElement("tbody");
+      table.append(head, rows);
+      wrap.append(table);
+      box.append(wrap);
+      const helps = cols.filter((c) => c.help);
+      if (helps.length > 0) {
+        const notes = document.createElement("dl");
+        notes.className = "schema-form-table-notes";
+        for (const c of helps) {
+          const dt = document.createElement("dt");
+          dt.textContent = c.label;
+          const dd = document.createElement("dd");
+          dd.textContent = c.help ?? "";
+          notes.append(dt, dd);
+        }
+        box.append(notes);
+      }
+    } else if (mode === "pick") {
+      const split = document.createElement("div");
+      split.className = "schema-form-pick";
+      const side = document.createElement("div");
+      side.className = "schema-form-pick-side";
+      names = document.createElement("div");
+      names.className = "schema-form-pick-list";
+      names.setAttribute("role", "list");
+      names.setAttribute("aria-label", label);
+      side.append(names);
+      detail = document.createElement("div");
+      detail.className = "schema-form-pick-detail";
+      const head = document.createElement("div");
+      head.className = "schema-form-entry-head";
+      detailTitle = document.createElement("span");
+      detailTitle.className = "schema-form-entry-title";
+      detailTools = tools(() => picked);
+      head.append(detailTitle, detailTools);
+      rows = document.createElement("div");
+      rows.className = "schema-form-pick-panes";
+      detail.append(head, rows);
+      split.append(side, detail);
+      box.append(split);
+    } else {
+      rows = document.createElement("div");
+      rows.className = "schema-form-list-rows";
+      box.append(rows);
+    }
+
+    const redraw = () => {
+      rows.replaceChildren(...entries.map((e) => e.el));
+      empty.hidden = entries.length > 0;
+      if (mode === "pick" && names && detail && detailTitle && detailTools) {
+        if (picked === null || !entries.includes(picked)) {
+          picked = entries[0] ?? null;
+        }
+        names.replaceChildren(
+          ...entries.map((e) => {
+            const b = action(document.createElement("button"), `${opts.id}-entry`);
+            b.type = "button";
+            b.className = "schema-form-pick-name";
+            b.setAttribute("role", "listitem");
+            b.textContent = titleOf(e);
+            if (e === picked) {
+              b.setAttribute("aria-current", "true");
+            }
+            b.addEventListener("click", () => {
+              picked = e;
+              redraw();
+            });
+            return b;
+          }),
+        );
+        for (const e of entries) {
+          e.el.hidden = e !== picked;
+        }
+        detail.hidden = picked === null;
+        detailTitle.textContent = picked ? titleOf(picked) : "";
+        setMoves(detailTools, picked ? entries.indexOf(picked) : -1);
+      } else {
+        entries.forEach((e, i) => {
+          const t = e.el.querySelector<HTMLElement>(".schema-form-entry-tools");
+          if (t) {
+            setMoves(t, i);
+          }
+        });
+      }
+      add.disabled =
+        opts.readOnly === true || (s.maxItems !== undefined && entries.length >= s.maxItems);
+    };
+
+    const make = (x: unknown): Entry => {
+      const entry: Entry = { el: document.createElement("div"), built: null as unknown as Built };
+      if (mode === "table" && cols) {
+        const o =
+          x !== null && typeof x === "object" && !Array.isArray(x)
+            ? (x as Record<string, unknown>)
+            : {};
+        const tr = document.createElement("tr");
+        const cells = cols.map((c) => {
+          const built = build(
+            c.schema,
+            c.key in o ? o[c.key] : blank(c.schema),
+            [...fp, c.key],
+            c.label,
+          );
+          const td = document.createElement("td");
+          built.el.setAttribute("aria-label", c.label);
+          td.append(built.el, ...(built.note ? [built.note] : []));
+          tr.append(td);
+          return { key: c.key, built };
+        });
+        const td = document.createElement("td");
+        td.className = "schema-form-table-tools";
+        td.append(tools(() => entry));
+        tr.append(td);
+        // Fields not shown (an internal id, a constant) are kept as they were.
+        const shownKeys = new Set(cols.map((c) => c.key));
+        const kept = Object.entries(item.properties ?? {}).filter(([k]) => !shownKeys.has(k));
+        entry.el = tr;
+        entry.built = {
+          el: tr,
+          get: () => {
+            const out: Record<string, unknown> = {};
+            for (const [k, p] of kept) {
+              const keep = p.const !== undefined ? p.const : o[k];
+              if (keep !== undefined) {
+                out[k] = keep;
+              } else if ((item.required ?? []).includes(k)) {
+                out[k] = blank(p);
+              }
+            }
+            for (const c of cells) {
+              out[c.key] = c.built.get();
+            }
+            // Keep the schema's key order, as the form read it.
+            const ordered: Record<string, unknown> = {};
+            for (const k of Object.keys(item.properties ?? {})) {
+              if (k in out) {
+                ordered[k] = out[k];
+              }
+            }
+            return ordered;
+          },
+          inline: false,
+        };
+        return entry;
+      }
+      const built = build(item, x, fp, `${label} ${noun}`);
+      entry.built = built;
+      if (mode === "rows") {
+        const el = document.createElement("div");
+        el.className = "schema-form-list-row";
+        el.append(
+          built.el,
+          tools(() => entry),
+        );
+        if (built.note) {
+          el.append(built.note);
+        }
+        entry.el = el;
+      } else {
+        const el = document.createElement("div");
+        el.className = "schema-form-entry";
+        el.append(built.el);
+        // The entry's name in the list follows it as it is typed.
+        el.addEventListener("input", () => {
+          const i = entries.indexOf(entry);
+          const b = names?.children[i];
+          if (b) {
+            b.textContent = titleOf(entry);
+          }
+          if (picked === entry && detailTitle) {
+            detailTitle.textContent = titleOf(entry);
+          }
+        });
+        entry.el = el;
+      }
       return entry;
     };
     for (const x of arr) {
-      entries.push(make(x, arr.length <= 2));
+      entries.push(make(x));
     }
     const add = action(document.createElement("button"), `${opts.id}-add`);
     add.type = "button";
     add.className = "control-panel-btn control-panel-btn-plain schema-form-add";
     add.textContent = `+ Add ${noun}`;
     add.addEventListener("click", () => {
-      entries.push(make(blank(item), true));
+      const e = make(blank(item));
+      entries.push(e);
+      picked = e;
       redraw();
       changed();
-      entries.at(-1)?.el.querySelector<HTMLElement>("input, select, textarea")?.focus();
+      // The new entry's name comes into view in the list, and its first field takes the cursor.
+      names?.querySelector<HTMLElement>("[aria-current='true']")?.scrollIntoView?.({
+        block: "nearest",
+      });
+      e.el.querySelector<HTMLElement>("input, select, textarea")?.focus();
     });
-    box.append(rows, empty, add);
+    if (mode === "pick" && names) {
+      names.parentElement?.append(empty, add);
+    } else {
+      box.append(empty, add);
+    }
     redraw();
     return {
       el: box,

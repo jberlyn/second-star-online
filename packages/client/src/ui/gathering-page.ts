@@ -5,7 +5,7 @@
  *
  * Laid out as the Items page is: a list on the left, and the open part's form behind plain tabs
  * (a harvestable tile: Tile, Tool, Skill, Harvesting, Drops, Sounds and Odds), each with a help line, rare
- * fields folded under "More options" (open when one has a value), and a dot on each tab that holds
+ * fields last, below a thin line, and a dot on each tab that holds
  * settings beyond the basics. Skill tables are shown "from skill N" (the stored rows say "above
  * N - 1"), and how often a spent tile grows back in minutes; what is saved is unchanged.
  *
@@ -37,7 +37,13 @@ import {
 
 import { type Assets, drawSprite } from "../assets.ts";
 import { action, noAutofill } from "./action.ts";
-import { formActions, pageHeading, panelButton, sectionTabs } from "./control-panel-kit.ts";
+import {
+  formActions,
+  moreFields,
+  pageHeading,
+  panelButton,
+  sectionTabs,
+} from "./control-panel-kit.ts";
 import { canonical } from "./items-page.ts";
 import { chanceText } from "./skills-page.ts";
 
@@ -248,15 +254,9 @@ function intro(text: string): HTMLParagraphElement {
   p.textContent = text;
   return p;
 }
-/** Fields folded under "More options", open when one of them has a value. */
-function more(open: boolean, ...controls: HTMLElement[]): HTMLDetailsElement {
-  const box = document.createElement("details");
-  box.className = "items-more";
-  box.open = open;
-  const summary = action(document.createElement("summary"), "gathering-more-toggle");
-  summary.textContent = "More options";
-  box.append(summary, ...controls);
-  return box;
+/** A section's less used fields, shown after its main ones. */
+function more(_used: boolean, ...controls: HTMLElement[]): HTMLElement {
+  return moreFields("", ...controls);
 }
 /** One tab of the form: its title, its help line, and whether it holds settings (its tab's dot). */
 function section(
@@ -1199,7 +1199,8 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
     form.hidden = false;
     const n = work.node;
     const named = tileName(n.tile);
-    title.textContent = openIndex === -1 ? "New harvestable tile" : `${n.can} ${named || n.tile}`;
+    title.textContent =
+      openIndex === -1 ? "New harvestable tile" : `${n.can} ${named || `tile ${n.tile}`}`;
     subtitle.textContent = openIndex === -1 ? "" : `Node ${openIndex + 1} · tile ${n.tile}`;
 
     // Tile.
@@ -1674,7 +1675,7 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
           const others = shared
             .map((i) => {
               const o = view?.nodes[i]?.node;
-              return o ? `${o.can} ${tileName(o.tile) || o.tile}` : `node ${i + 1}`;
+              return o ? `${o.can} ${tileName(o.tile) || `tile ${o.tile}`}` : `node ${i + 1}`;
             })
             .join(", ");
           fields.append(
@@ -2408,7 +2409,7 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
           b.setAttribute("aria-current", "true");
         }
         const name = document.createElement("span");
-        name.textContent = `${n.node.can} ${tileName(n.node.tile) || n.node.tile}`;
+        name.textContent = `${n.node.can} ${tileName(n.node.tile) || `tile ${n.node.tile}`}`;
         const meta = document.createElement("span");
         meta.className = "items-list-meta";
         meta.textContent = [

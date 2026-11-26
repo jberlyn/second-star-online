@@ -8,7 +8,7 @@
  * The form speaks the operator's words, not the tables': a tab per job the item can do (Basics,
  * Picture, Weapon, Armour, When used, Tool, Breaking, On the ground), each tab marked when the item
  * has settings there, damage typed as "from … to …" rather than `flat + random(n)`, protection as
- * "less damage" rather than a signed delta, and the rarely used fields folded under "More options".
+ * "less damage" rather than a signed delta, and the rarely used fields last, below a thin line.
  *
  * Changes go into the content store's shared draft, so the Content page publishes, undoes and
  * notices them like any other row. A change carries the item as the page showed it (`fingerprint`),
@@ -35,6 +35,8 @@ import type { ItemPanels } from "./content-page.ts";
 import { contentWords } from "./content-words.ts";
 import {
   formActions,
+  moreFields,
+  newDialog,
   pageHeading,
   panelButton,
   sectionTabs,
@@ -405,10 +407,7 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
   };
 
   // ---- a new item ----
-  const newBox = document.createElement("details");
-  newBox.className = "items-new";
-  const newSummary = action(document.createElement("summary"), "items-new-toggle");
-  newSummary.textContent = "+ New item";
+  const newBox = newDialog("items-new-toggle", "+ New item", "New item");
   const newName = noAutofill(action(document.createElement("input"), "items-new-name"));
   newName.maxLength = 40;
   const newDisplay = noAutofill(action(document.createElement("input"), "items-new-display"));
@@ -451,7 +450,6 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
     "primary",
   );
   newBox.append(
-    newSummary,
     field(
       "Copy an existing item (optional)",
       newFrom,
@@ -466,9 +464,9 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
       "Its permanent name inside the game: maps and saved characters use it, so it can't change later.",
     ),
     field("Name players see (optional)", newDisplay, "items-new-display"),
-    createBtn,
     newStatus,
   );
+  newBox.actions(createBtn);
 
   // ---- the list ----
   const listBox = document.createElement("section");
@@ -499,7 +497,7 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
   const filters = document.createElement("div");
   filters.className = "items-filters";
   filters.append(field("Search", search, "items-search"), field("Show", kindSel, "items-kind"));
-  listBox.append(newBox, filters, listCount, listEl);
+  listBox.append(newBox.el, filters, listCount, listEl);
 
   // ---- the form ----
   const form = document.createElement("section");
@@ -846,8 +844,8 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
   };
 
   /**
-   * Tick boxes for a list of values: the ticked ones in view, the rest folded under `more` (forty
-   * abilities or skills at once are a wall).
+   * Tick boxes for the values picked, and a drop-down (`more`, "Add an ability…") of the rest:
+   * picking one there ticks it (forty abilities or skills at once are a wall).
    */
   const pickMany = (
     listId: string,
@@ -863,14 +861,33 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
     box.dataset.list = listId;
     const on = document.createElement("div");
     on.className = "items-checks";
-    const rest = document.createElement("details");
-    rest.className = "items-more-picks";
-    const restSummary = action(document.createElement("summary"), `items-${listId}-more`);
-    restSummary.textContent = more;
-    const off = document.createElement("div");
-    off.className = "items-checks";
-    rest.append(restSummary, off);
+    const none = document.createElement("p");
+    none.className = "control-panel-field-help";
+    none.textContent = "None.";
+    const add = action(document.createElement("select"), `items-${listId}-pick`);
+    add.className = "items-pick-add";
+    add.setAttribute("aria-label", more.replace(/…$/, ""));
     const sorted = [...values].sort((a, b) => text(a).localeCompare(text(b)));
+    const ticks = new Map<string, HTMLElement>();
+    const fillAdd = () => {
+      const first = document.createElement("option");
+      first.value = "";
+      first.textContent = more;
+      add.replaceChildren(
+        first,
+        ...sorted
+          .filter((v) => !has.has(v) && !on.contains(ticks.get(v) ?? null))
+          .map((v) => {
+            const o = document.createElement("option");
+            o.value = v;
+            o.textContent = text(v);
+            return o;
+          }),
+      );
+      add.value = "";
+      add.hidden = add.options.length <= 1;
+      none.hidden = on.querySelector("input") !== null;
+    };
     for (const v of sorted) {
       const tick = check(has.has(v), text(v), id(v), (ticked) => {
         if (ticked) {
@@ -880,15 +897,24 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
         }
         write(values.filter((x) => has.has(x)));
       });
-      (has.has(v) ? on : off).append(tick);
+      ticks.set(v, tick);
+      if (has.has(v)) {
+        on.append(tick);
+      }
     }
-    if (on.children.length === 0) {
-      const none = document.createElement("p");
-      none.className = "control-panel-field-help";
-      none.textContent = "None.";
-      on.append(none);
-    }
-    box.append(on, rest);
+    add.addEventListener("change", () => {
+      const v = add.value;
+      const tick = ticks.get(v);
+      if (!tick) {
+        return;
+      }
+      on.append(tick);
+      tick.querySelector("input")?.click();
+      fillAdd();
+    });
+    on.append(none);
+    fillAdd();
+    box.append(on, add);
     return box;
   };
 
@@ -1097,16 +1123,8 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
       return;
     }
     const item = shown;
-    /** Fields folded under "More options", open when one of them has a value. */
-    const more = (open: boolean, ...controls: HTMLElement[]) => {
-      const box = document.createElement("details");
-      box.className = "items-more";
-      box.open = open;
-      const summary = action(document.createElement("summary"), "items-more-toggle");
-      summary.textContent = "More options";
-      box.append(summary, ...controls);
-      return box;
-    };
+    /** A section's less used fields, shown after its main ones. */
+    const more = (_used: boolean, ...controls: HTMLElement[]) => moreFields("", ...controls);
     const has = (...paths: string[][]) => paths.some((p) => clean(at(work, p)) !== undefined);
     const group = (id: string, label: string, help: string, ...controls: HTMLElement[]) => {
       const sec = document.createElement("section");
@@ -1209,7 +1227,7 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
           "Add a class…",
           (picked) => put(work, ["classes"], picked.length > 0 ? picked.map(Number) : undefined),
         ),
-        "Only characters of these classes can equip it (a +1 of it too). Leave none ticked for every class.",
+        "Only characters of these classes can equip it (a +1 of it too). Add none for every class.",
       ),
       abilities,
       listEditor({
@@ -2334,6 +2352,7 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
       search.value = "";
       kindSel.value = "all";
       newName.value = "";
+      newBox.open = false;
       newDisplay.value = "";
       newFrom.value = "";
       newStatus.textContent = "";

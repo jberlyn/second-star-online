@@ -410,11 +410,11 @@ describe("the plain-language form", () => {
       ["Odds", "false"],
     ]);
     expect(p.el.querySelectorAll(".items-group > .items-intro")).toHaveLength(7);
-    // The rare tool fields are folded away while empty.
+    // The rare tool fields come after the main ones, shown.
     const toolMore = q<HTMLElement>(p.el, "[data-group='tool']").querySelector(
       ".items-more",
-    ) as HTMLDetailsElement;
-    expect(toolMore.open).toBe(false);
+    ) as HTMLElement;
+    expect(toolMore.closest("details")).toBeNull();
     expect(toolMore.contains(q(p.el, "[data-action='gathering-tools']"))).toBe(true);
     // The tool action reads in words, and says which tools can do it now.
     const can = q<HTMLSelectElement>(p.el, "[data-action='gathering-can']");
@@ -432,7 +432,7 @@ describe("the plain-language form", () => {
     expect(q<HTMLButtonElement>(p.el, "[data-action='gathering-remove-node']").hidden).toBe(false);
   });
 
-  test("a tile with special tools opens its More options; a new tile cannot be removed", () => {
+  test("a tile with special tools marks its Tool tab; a new tile cannot be removed", () => {
     const { p, seq } = page();
     q<HTMLButtonElement>(p.el, "[data-action='gathering-open-node']").click();
     typeIn(q<HTMLInputElement>(p.el, "[data-action='gathering-tools']"), "Gold Axe");
@@ -447,8 +447,6 @@ describe("the plain-language form", () => {
       })(),
       result: { ok: true, text: "Node 1 is in the draft." },
     });
-    const toolMore = q<HTMLElement>(p.el, "[data-group='tool'] .items-more") as HTMLDetailsElement;
-    expect(toolMore.open).toBe(true);
     expect(q<HTMLElement>(p.el, "[data-group='tool']").dataset.used).toBe("true");
     q<HTMLButtonElement>(p.el, "[data-action='gathering-new-node']").click();
     expect(q<HTMLElement>(p.el, ".items-form h2").textContent).toBe("New harvestable tile");

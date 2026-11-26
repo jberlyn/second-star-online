@@ -925,6 +925,14 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
           "What each NPC says, sells and buys, and whether it runs a bank or trains players. These save straight away for everyone: there is nothing to publish.",
           npcsPage,
         ),
+        {
+          kind: "custom",
+          label: "Monster spells",
+          help: "The spells monsters can cast, shared by every monster. Give a monster a spell on its Loot & spells tab. Saved changes wait with your other unpublished changes.",
+          el: monstersPage.spells,
+          // The spells come with the creatures' view.
+          onShow: () => monstersPage.onShow(),
+        },
         ...CREATURE_RULE_TABS,
       ],
     },
@@ -1101,6 +1109,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         title: "Server Settings",
         group: "Server",
         permission: "settings",
+        live: true,
         el: settingsPage,
         onShow: () => send({ t: "settingsOpen" }),
         changes: () => settingsPanel.changes(),
@@ -1181,6 +1190,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         title: "World",
         group: "Content",
         permission: "contentEditor",
+        live: true,
         el: worldPage.el,
         onShow: () => worldPage.onShow(),
         changes: () => worldPage.changes(),
@@ -1788,7 +1798,11 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
         }
         return;
       case "settings":
-        settingsPanel.show(msg.pages, msg.rows, { roles: msg.roles, staff: msg.staff });
+        settingsPanel.show(msg.pages, msg.rows, {
+          roles: msg.roles,
+          staff: msg.staff,
+          ...(msg.maps ? { maps: msg.maps } : {}),
+        });
         return;
       case "roleResult":
         settingsPanel.roleResult(msg);

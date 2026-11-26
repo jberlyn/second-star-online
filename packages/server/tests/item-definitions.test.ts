@@ -681,6 +681,56 @@ describe("the rest of an item's rules (#30 stage 4)", () => {
       installContent(classic);
     }
   });
+
+  test("cancelling a new item on Publish Changes takes its rules with it, so nothing is left to block a publish", () => {
+    const { s } = service();
+    try {
+      expect(
+        s.draftItemChange(ADMIN, { name: "Moonblade", op: "create", copyFrom: "Long Sword" }).ok,
+      ).toBe(true);
+      const inDraft = () => s.draft().map((d) => `${d.dataset}/${d.part}/${d.key}`);
+      expect(inDraft()).toContain("items/definitions/Moonblade");
+      expect(s.draftDiscardRow({ dataset: "items", part: "items", key: "Moonblade" }).ok).toBe(
+        true,
+      );
+      expect(inDraft().filter((r) => r.includes("Moonblade"))).toEqual([]);
+      // An item the world already has keeps its rules' change: only that row goes.
+      const sword = s.itemsView("Long Sword").item?.form as ItemDefinition;
+      expect(
+        s.draftSet(ADMIN, { dataset: "items", part: "definitions", key: "Long Sword" }, "set", {
+          ...sword,
+          strength: 30,
+        }).ok,
+      ).toBe(true);
+      expect(
+        s.draftSet(ADMIN, { dataset: "items", part: "items", key: "Long Sword" }, "set", {
+          name: "Long Sword",
+          display: "Longer Sword",
+        }).ok,
+      ).toBe(true);
+      expect(s.draftDiscardRow({ dataset: "items", part: "items", key: "Long Sword" }).ok).toBe(
+        true,
+      );
+      expect(inDraft()).toContain("items/definitions/Long Sword");
+    } finally {
+      installContent(classic);
+    }
+  });
+
+  test("a copy of an item that draws nothing worn (a Torch) borrows no worn picture, and publishes", () => {
+    const { s } = service();
+    try {
+      expect(
+        s.draftItemChange(ADMIN, { name: "Test Lantern", op: "create", copyFrom: "Torch" }).ok,
+      ).toBe(true);
+      const def = s.itemsView("Test Lantern").item?.form as ItemDefinition;
+      expect(def.paperdoll ?? []).toEqual([]);
+      const published = s.publish(ADMIN, s.draftRev(), "");
+      expect(published.ok ? "" : JSON.stringify(published)).toBe("");
+    } finally {
+      installContent(classic);
+    }
+  });
 });
 
 describe("stage 4 review fixes (#30)", () => {

@@ -316,6 +316,27 @@ describe("draft and publish", () => {
     ]);
   });
 
+  test("the draft list marks a row the published content does not have as added", () => {
+    const { service } = setup();
+    const topic = service.publishedContent().help.topics[0];
+    expect(
+      service.draftSet(ADMIN, { dataset: "help", part: "topics", key: topic?.file ?? "" }, "set", {
+        ...topic,
+        topic: "Changed",
+      }).ok,
+    ).toBe(true);
+    expect(
+      service.draftSet(ADMIN, { dataset: "help", part: "topics", key: "brandnew" }, "set", {
+        ...topic,
+        file: "brandnew",
+      }).ok,
+    ).toBe(true);
+    const added = Object.fromEntries(
+      overviewOf(service).draft.map((d) => [d.key, d.added === true]),
+    );
+    expect(added).toEqual({ [topic?.file ?? ""]: false, brandnew: true });
+  });
+
   test("removing a keyed row drops it; only an optional section can be removed", () => {
     const { service } = setup();
     expect(

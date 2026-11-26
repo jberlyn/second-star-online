@@ -463,6 +463,11 @@ export function sectionTabs(form: HTMLElement, id: string): SectionTabs {
   strip.setAttribute("role", "tablist");
   strip.setAttribute("aria-label", "Sections");
   strip.hidden = true;
+  // What a tab's dot means, said once beside the tabs while any tab has one.
+  const legend = document.createElement("span");
+  legend.className = "control-panel-tabs-legend";
+  legend.setAttribute("aria-hidden", "true");
+  legend.textContent = "• has settings";
   let chosen = "";
   let labels: string[] = [];
   let sections: HTMLElement[] = [];
@@ -511,9 +516,11 @@ export function sectionTabs(form: HTMLElement, id: string): SectionTabs {
         b.removeAttribute("title");
       }
     }
+    legend.hidden = !strip.querySelector(".control-panel-tab-used");
   };
 
   const sync = () => {
+    findHead();
     sections = collect();
     const next = sections.map(tabLabel);
     if (next.join("\n") !== labels.join("\n")) {
@@ -529,6 +536,7 @@ export function sectionTabs(form: HTMLElement, id: string): SectionTabs {
           b.addEventListener("click", () => select(label));
           return b;
         }),
+        legend,
       );
       strip.hidden = labels.length < 2;
     }
@@ -541,6 +549,29 @@ export function sectionTabs(form: HTMLElement, id: string): SectionTabs {
   };
 
   tabKeys(strip, select);
+
+  // The record's header (its name and tags) stays in view above the tabs as the form scrolls, so
+  // you never lose track of what you are editing: the tabs stick just under it. The page may add
+  // its header after making the tabs, so it is looked for as the form changes.
+  let head: HTMLElement | null = null;
+  const placeUnderHead = () => {
+    if (head) {
+      strip.style.top = `${Math.max(0, head.offsetHeight) - 12}px`;
+    }
+  };
+  const findHead = () => {
+    if (head) {
+      return;
+    }
+    head = form.querySelector<HTMLElement>(":scope > .items-form-head");
+    if (head) {
+      head.classList.add("control-panel-sticky-head");
+      if (typeof ResizeObserver !== "undefined") {
+        new ResizeObserver(placeUnderHead).observe(head);
+      }
+      placeUnderHead();
+    }
+  };
 
   let queued = false;
   new MutationObserver((records) => {
@@ -708,4 +739,112 @@ export function rowList(opts: {
         .filter((r) => opts.fixed !== undefined || r.some((v) => v !== "")),
     set,
   };
+}
+
+/** A "+ New …" button and the dialog it opens, with the fields to make the new record. */
+export interface NewDialog {
+  /** The button (and the dialog, kept with it while closed): put it above the list. */
+  readonly el: HTMLElement;
+  /** Adds the dialog's fields and status line. */
+  append(...nodes: Node[]): void;
+  /** Puts buttons in the dialog's footer, after Cancel (the main one last). */
+  actions(...buttons: HTMLElement[]): void;
+  /** Whether the dialog is showing; set it false to close it (after the record is made). */
+  open: boolean;
+}
+
+/**
+ * A "+ New …" button that opens a dialog over the page with the fields a new record needs, and
+ * Cancel. Escape or Cancel closes it; Tab stays inside it while it is open. The fields stay in
+ * the page while it is closed, so what was typed is still there when it opens again.
+ */
+export function newDialog(id: string, label: string, title: string): NewDialog {
+  const el = document.createElement("div");
+  el.className = "items-new";
+  const shade = document.createElement("div");
+  // Its own classes, not the confirmation's: a page finds an open question by
+  // `.control-panel-confirm`, and must never find this instead.
+  shade.className = "control-panel-dialog";
+  shade.hidden = true;
+  const box = action(document.createElement("div"), `${id}-dialog`);
+  box.className = "control-panel-dialog-box";
+  box.tabIndex = -1;
+  box.setAttribute("role", "dialog");
+  box.setAttribute("aria-modal", "true");
+  const h = document.createElement("h2");
+  h.className = "control-panel-dialog-title";
+  fieldIds += 1;
+  h.id = `control-panel-dialog-title-${fieldIds}`;
+  h.textContent = title;
+  box.setAttribute("aria-labelledby", h.id);
+  const body = document.createElement("div");
+  body.className = "control-panel-dialog-body";
+  // What Create does, said before it is clicked.
+  const note = document.createElement("p");
+  note.className = "control-panel-field-help control-panel-dialog-note";
+  note.textContent =
+    "Creating it puts it in the draft at once, with your other unpublished changes: players get it once it is published.";
+  const foot = document.createElement("div");
+  foot.className = "control-panel-dialog-buttons";
+  let before: Element | null = null;
+  const setOpen = (on: boolean) => {
+    if (on === !shade.hidden) {
+      return;
+    }
+    shade.hidden = !on;
+    if (on) {
+      before = document.activeElement;
+      (body.querySelector<HTMLElement>("input, select, textarea") ?? box).focus();
+    } else if (before instanceof HTMLElement && before.isConnected) {
+      before.focus();
+    }
+  };
+  const cancel = panelButton(`${id}-cancel`, "Cancel", () => setOpen(false));
+  foot.append(cancel);
+  box.append(h, body, note, foot);
+  box.addEventListener("keydown", (e) => {
+    trapTab(box, e);
+    if (e.key === "Escape") {
+      e.preventDefault();
+      e.stopPropagation();
+      setOpen(false);
+    }
+  });
+  shade.addEventListener("pointerdown", (e) => {
+    if (e.target === shade) {
+      e.preventDefault();
+    }
+  });
+  shade.append(box);
+  const button = panelButton(id, label, () => setOpen(true));
+  button.classList.add("control-panel-new");
+  el.append(button, shade);
+  return {
+    el,
+    append: (...nodes) => body.append(...nodes),
+    actions: (...buttons) => foot.append(...buttons),
+    get open() {
+      return !shade.hidden;
+    },
+    set open(on: boolean) {
+      setOpen(on);
+    },
+  };
+}
+
+/**
+ * A section's less used fields, after its main ones: shown, under a thin line and an optional
+ * heading, never folded away.
+ */
+export function moreFields(heading: string, ...controls: HTMLElement[]): HTMLElement {
+  const box = document.createElement("div");
+  box.className = "items-more";
+  if (heading) {
+    const h = document.createElement("p");
+    h.className = "items-more-title";
+    h.textContent = heading;
+    box.append(h);
+  }
+  box.append(...controls);
+  return box;
 }

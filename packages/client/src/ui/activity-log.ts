@@ -182,7 +182,7 @@ export function createActivityLogPage(opts: {
     [
       { key: "character", label: "Player timeline", action: "activity-mode-timeline" },
       { key: "item", label: "Item flow", action: "activity-mode-item" },
-      { key: "reconcile", label: "Reconciliation", action: "activity-mode-reconcile" },
+      { key: "reconcile", label: "Item count check", action: "activity-mode-reconcile" },
     ],
     (m) => setMode(m),
   );

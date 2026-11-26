@@ -351,6 +351,7 @@ describe("the plain-language World page", () => {
       "Name & signs",
       "Rules",
       "Fog",
+      "Layers and stamps",
       "Saved versions",
       "All",
     ]);
@@ -385,12 +386,12 @@ describe("the plain-language World page", () => {
     expect(t.q('[data-action="world-undo"]').textContent).toBe("Undo last step");
   });
 
-  test("the Save bar says Save changes and that saves go live; Undo changes shows only after an edit", () => {
+  test("the Save bar says saves go live (Save and go live); Undo changes shows only after an edit", () => {
     const t = page();
     t.open(blankMap(1000, 992));
     const save = t.q<HTMLButtonElement>('[data-action="world-save"]');
     const undo = t.q<HTMLButtonElement>('[data-action="world-undo-edit"]');
-    expect(save.textContent).toBe("Save changes");
+    expect(save.textContent).toBe("Save and go live");
     expect(undo.hidden).toBe(true);
     expect(t.q(".world-live-note").textContent).toContain("go live at once");
     const header = t.q<HTMLInputElement>('[data-action="world-header"]');
@@ -404,7 +405,7 @@ describe("the plain-language World page", () => {
     expect(n.q(".world-form .balance-tags").textContent).toContain("New map");
   });
 
-  test("fog is named in words, and its colour fold opens when the colour is not white", () => {
+  test("fog is named in words, and its colour is shown with it", () => {
     const t = page();
     const m = blankMap(1000, 992);
     m.fog = { tex: "Cloudy1", blend: 100, r: 200, g: 255, b: 255 };
@@ -412,7 +413,7 @@ describe("the plain-language World page", () => {
     const tex = t.q<HTMLSelectElement>('[data-action="world-fog-tex"]');
     expect(tex.options[0]?.textContent).toBe("No fog");
     expect(tex.selectedOptions[0]?.textContent).toBe("Cloudy 1");
-    expect(t.q<HTMLDetailsElement>('section[data-group="fog"] .items-more').open).toBe(true);
+    expect(t.q('section[data-group="fog"] .items-more').closest("details")).toBeNull();
     expect(t.q<HTMLElement>('section[data-group="fog"]').dataset.used).toBe("true");
     t.q<HTMLButtonElement>('[data-action="world-save"]').click();
   });

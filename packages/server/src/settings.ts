@@ -43,7 +43,7 @@ export type SettingForm =
  * own editors and are added by `settingPages` after these.
  */
 export const SETTING_PAGES = [
-  { id: "world", title: "World" },
+  { id: "world", title: "Maps and places" },
   { id: "chat", title: "Chat and mail" },
   {
     id: "items",

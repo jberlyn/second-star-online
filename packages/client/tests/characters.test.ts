@@ -52,7 +52,7 @@ const hub = (over: Partial<CharacterHub> = {}): CharacterHub => {
       faction: "warrior",
       factionCount: 0,
       wanted: false,
-      position: { map: "x1000y992", x: 5, y: 6, facing: "S" },
+      position: { map: "x1000y992", title: "Test map", x: 5, y: 6, facing: "S" },
       respawn: null,
       vehicle: null,
       gold: 1234,
@@ -190,7 +190,9 @@ describe("the hub", () => {
     const { p, $, showHub } = page();
     showHub();
     expect(p.el.querySelector(".hub-summary")?.textContent).toContain("Level 5");
-    expect(p.el.querySelector(".hub-summary")?.textContent).toContain("Online on x1000y992");
+    expect(p.el.querySelector(".hub-summary")?.textContent).toContain(
+      "Online on Test map, x1000y992",
+    );
     const facts = p.el.querySelector(".hub-body")?.textContent ?? "";
     expect(facts).toContain("Warrior");
     expect(facts).toContain("20 of 30");

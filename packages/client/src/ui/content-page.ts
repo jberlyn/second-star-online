@@ -608,7 +608,7 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
           return s;
         },
       },
-      { label: "Change", cell: (d) => OP_TEXT[d.op] },
+      { label: "Change", cell: (d) => (d.added ? "Added" : OP_TEXT[d.op]) },
       { label: "By", cell: (d) => d.author },
       { label: "When (UTC)", cell: (d) => when(d.updatedAt) },
       {
@@ -618,10 +618,20 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
           box.className = "content-buttons";
           box.append(
             panelButton("content-draft-discard", "Cancel this change", () => {
-              resultSeq = next();
-              resultInEditor = false;
-              afterResult = refreshAll;
-              actions.discard(resultSeq, refOf(d), d.revision);
+              // Taking a change out can't be undone: ask first.
+              void confirmBox(root, {
+                text: `Cancel the unpublished change to ${rowName(d)}? It is thrown away and can't be brought back.`,
+                confirm: "Cancel the change",
+                cancel: "Keep it",
+                danger: true,
+              }).then((yes) => {
+                if (yes) {
+                  resultSeq = next();
+                  resultInEditor = false;
+                  afterResult = refreshAll;
+                  actions.discard(resultSeq, refOf(d), d.revision);
+                }
+              });
             }),
           );
           return box;
@@ -1654,13 +1664,7 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
   }
   const artPick = document.createElement("div");
   artPick.className = "content-section content-art-pick";
-  artPick.append(
-    formField(
-      "Show",
-      artSel,
-      "To change one item's, creature's or spell's picture, its own page is easier.",
-    ),
-  );
+  artPick.append(formField("Show", artSel, "Which kind of pictures or sounds to list."));
   artSel.addEventListener("change", () => showArt());
 
   /** Shows the kind of pictures and sounds picked (the Pictures & Sounds page). */
@@ -1714,7 +1718,7 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
   artRoot.append(
     pageHeading(
       "Pictures & Sounds",
-      "Every picture and sound the game uses: item pictures, worn pictures, creature bodies, spell effects, tiles and sounds. Upload your own to replace them. To change one item's, creature's or spell's picture, its own page is easier.",
+      "Every picture and sound the game uses: item pictures, worn pictures, creature bodies, spell effects, tiles and sounds. Upload your own to replace them: an upload goes into the draft, and players see it once it is published. To change one item's, creature's or spell's picture, its own page is easier.",
     ),
     artPick,
     picturesSection.el,

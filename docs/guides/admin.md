@@ -42,7 +42,7 @@ Shared rules calculate outcomes; server systems apply them to world and player s
 - [packages/server/src/persistence/roles.ts](../../packages/server/src/persistence/roles.ts): stores the role definitions and lists who holds them.
 - [packages/server/src/cli/set-role.ts](../../packages/server/src/cli/set-role.ts): `bun run admin:role`, which gives an account a role from the command line.
 - [packages/client/src/ui/control-panel.ts](../../packages/client/src/ui/control-panel.ts): the Control Panel: its header, sidebar and page routing.
-- [packages/client/src/ui/control-panel-kit.ts](../../packages/client/src/ui/control-panel-kit.ts): shared Control Panel parts: page heading, table, form field, confirmation, and the editor forms' section tabs, folded rule sources and Save bar.
+- [packages/client/src/ui/control-panel-kit.ts](../../packages/client/src/ui/control-panel-kit.ts): shared Control Panel parts: page heading, table, form field, confirmation, the "+ New …" dialog, a section's less used fields, and the editor forms' section tabs, folded rule sources and Save bar.
 - [packages/client/src/ui/settings.ts](../../packages/client/src/ui/settings.ts): the Control Panel's Server Settings page.
 - [packages/client/src/ui/activity-log.ts](../../packages/client/src/ui/activity-log.ts): the Control Panel's Activity Log page: a character's timeline and an item's flow.
 - [packages/client/src/ui/characters.ts](../../packages/client/src/ui/characters.ts): the Control Panel's Characters page and player hub.

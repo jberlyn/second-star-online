@@ -511,7 +511,7 @@ describe("the plain-language form", () => {
     expect(q<HTMLButtonElement>(p.el, "[data-action='skills-save']").disabled).toBe(true);
   });
 
-  test("rare settings fold under More options, open when one is in use", () => {
+  test("rare settings are shown after a rule's main ones, never folded", () => {
     const { p } = open({
       row: {
         skill: "Slash",
@@ -522,7 +522,7 @@ describe("the plain-language form", () => {
       },
     });
     const kill = q<HTMLElement>(p.el, "[data-source='kill']");
-    expect(q<HTMLDetailsElement>(kill, ".items-more").open).toBe(true);
+    expect(q<HTMLElement>(kill, ".items-more").closest("details")).toBeNull();
     const shot = q<HTMLElement>(p.el, "[data-source='shot']");
     // The normal rule: no fields of its own, and only its sentence.
     expect(shot.querySelector(".items-more")).toBeNull();

@@ -298,10 +298,11 @@ describe("the Items page", () => {
     needs.value = "class";
     needs.dispatchEvent(new Event("change"));
     expect(t.act("items-requires-atLeast")).toBeNull();
-    const ranger = t.act<HTMLInputElement>("items-requires-classes-3");
-    expect(ranger).not.toBeNull();
-    ranger.click();
-    ranger.dispatchEvent(new Event("change"));
+    // The classes not picked are offered in a drop-down: picking one ticks it.
+    const add = t.act<HTMLSelectElement>("items-requires-classes-0-pick");
+    add.value = "3";
+    add.dispatchEvent(new Event("change"));
+    expect(t.act<HTMLInputElement>("items-requires-classes-3").checked).toBe(true);
     t.act<HTMLButtonElement>("items-save").click();
     const c = t.sent.at(-1)?.change as ItemChange;
     expect((c.data as { requires?: unknown }).requires).toEqual([
@@ -314,8 +315,11 @@ describe("the Items page", () => {
     t.type("items-strength", "40");
     t.q<HTMLButtonElement>('[data-action="items-pack-basics"]').click();
     expect(t.act<HTMLInputElement>("items-strength").value).toBe("8");
-    // The pack has no behaviours row: they go.
-    expect(t.act<HTMLInputElement>("items-behaviour-sword").checked).toBe(false);
+    // The pack has no behaviours row: they go, back into the Add list.
+    expect(t.act("items-behaviour-sword")).toBeNull();
+    expect(
+      [...t.act<HTMLSelectElement>("items-behaviours-pick").options].map((o) => o.value),
+    ).toContain("sword");
   });
 
   test("switching items with an edit is refused until it is saved or dropped", () => {
@@ -730,12 +734,13 @@ describe("the plain-language form", () => {
     expect(restore("ground").hidden).toBe(false);
   });
 
-  test("rarely used fields are folded away, and open when the item uses one", () => {
+  test("rarely used fields are shown after the main ones, never folded away", () => {
     const t = opened();
-    const more = (group: string) =>
-      t.q<HTMLDetailsElement>(`.items-group[data-group="${group}"] .items-more`);
-    expect(more("weapon").open).toBe(false);
-    expect(more("ground").open).toBe(false);
+    const more = (group: string) => t.q(`.items-group[data-group="${group}"] .items-more`);
+    expect(more("weapon").closest("details")).toBeNull();
+    expect(more("ground").closest("details")).toBeNull();
+    // Only the note on where the settings come from folds (it is reading, not a field).
+    expect(t.p.el.querySelector(".items-form details:not(.control-panel-sources)")).toBeNull();
     const u = page();
     u.p.onShow();
     u.p.receive({ t: "contentItems", seq: 1, view: view(null) });
@@ -745,25 +750,23 @@ describe("the plain-language form", () => {
       seq: 2,
       view: view(sword("a".repeat(16), { ground: { offset: { dx: 1, dy: 2 } } })),
     });
-    expect(u.q<HTMLDetailsElement>('.items-group[data-group="ground"] .items-more').open).toBe(
-      true,
-    );
     expect(u.act<HTMLInputElement>("items-ground-offset-dy").value).toBe("2");
   });
 
-  test("abilities and trained skills show what is ticked, the rest folded under Add", () => {
+  test("abilities and trained skills show what is ticked, the rest offered under Add", () => {
     const t = opened();
     const pick = t.q('[data-list="behaviours"]');
     const shownTicks = [...pick.querySelectorAll(":scope > .items-checks input")].map(
       (i) => (i as HTMLElement).dataset.action,
     );
     expect(shownTicks).toEqual(["items-behaviour-sword"]);
-    const folded = [...pick.querySelectorAll(".items-more-picks input")].map(
-      (i) => (i as HTMLElement).dataset.action,
-    );
-    expect(folded).toEqual(["items-behaviour-key"]);
-    // Ticking a folded one saves it.
-    t.act<HTMLInputElement>("items-behaviour-key").click();
+    const add = t.act<HTMLSelectElement>("items-behaviours-pick");
+    expect([...add.options].map((o) => o.value)).toEqual(["", "key"]);
+    // Picking one there ticks it, and it saves.
+    add.value = "key";
+    add.dispatchEvent(new Event("change"));
+    expect(t.act<HTMLInputElement>("items-behaviour-key").checked).toBe(true);
+    expect(add.hidden).toBe(true);
     t.act("items-save").click();
     expect(savedData(t.sent).behaviours).toEqual(["key", "sword"]);
   });

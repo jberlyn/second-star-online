@@ -259,8 +259,9 @@ describe("records", () => {
     t.page.onShow();
     await flush();
     const items = [...t.page.el.querySelectorAll<HTMLButtonElement>(".items-list-item")];
-    expect(items.map((b) => b.textContent)).toEqual(["Boat", "Airship"]);
-    items[0]?.click();
+    // Listed A–Z, whatever order the rows are stored in.
+    expect(items.map((b) => b.textContent)).toEqual(["Airship", "Boat"]);
+    items[1]?.click();
     await flush();
     const [name, hull] = [
       ...t.page.el.querySelectorAll<HTMLInputElement>(".items-form .schema-form input"),

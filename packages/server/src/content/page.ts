@@ -24,6 +24,7 @@ import {
   READ_ONLY_DATASETS,
   type RowRef,
   rowLabel,
+  rowName,
   rowSchema,
   rowValue,
   sameRow,
@@ -53,7 +54,7 @@ function staleRow(service: ContentService, ref: RowRef, expect: string | undefin
   const revision = service.rowRevision(ref);
   if (revision === null && expect !== undefined) {
     // It had a revision when it was opened, and the row has gone since (a discarded definition).
-    return `${rowLabel(ref)} is gone since you opened it: open it again before saving.`;
+    return `${rowName(ref)} is gone since you opened it: open it again before saving.`;
   }
   if (revision === null || revision === expect) {
     return null;
@@ -73,7 +74,7 @@ function staleRow(service: ContentService, ref: RowRef, expect: string | undefin
   ) {
     return null;
   }
-  return `${rowLabel(ref)} changed since you opened it: open it again before saving.`;
+  return `${rowName(ref)} changed since you opened it: open it again before saving.`;
 }
 
 export function overviewOf(service: ContentService, world?: ContentWorld): ContentOverview {
@@ -86,6 +87,9 @@ export function overviewOf(service: ContentService, world?: ContentWorld): Conte
       author: d.author,
       updatedAt: d.updatedAt,
       ...revisionOf(service, d),
+      ...(d.op === "set" && d.key !== null && rowValue(service.publishedContent(), d) === undefined
+        ? { added: true as const }
+        : {}),
     })),
     problems: [...service.check(), ...service.draftMapProblems(world)],
     history: service.history().map((p) => ({
@@ -725,7 +729,7 @@ export function contentIntent(
       return result(
         msg.seq,
         service.draftSet(actor, ref, msg.op, msg.data ?? null),
-        `${rowLabel(ref)} is in the draft.`,
+        `${rowName(ref)} is in the draft.`,
       );
     }
     case "contentDiscard": {
@@ -742,7 +746,7 @@ export function contentIntent(
       if (stale) {
         return { t: "contentResult", seq: msg.seq, ok: false, text: stale };
       }
-      return result(msg.seq, service.draftDiscard(ref), `${rowLabel(ref)} is out of the draft.`);
+      return result(msg.seq, service.draftDiscardRow(ref), `${rowName(ref)} is out of the draft.`);
     }
     case "contentPublish": {
       return result(
