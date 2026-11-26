@@ -25,9 +25,9 @@ Base every claim on the code as it was **at the tag being described**, not the w
 
 ### Pending upgrade items
 
-Changes that the next release after `v1.16.0` must list under Upgrade Notes (confirm each in the code at the tag):
+Changes that the next release after `v1.17.0` must list under Upgrade Notes (confirm each in the code at the tag):
 
-- **Migration 80 (`20261126_80_class_removals.sql`, issue #15).** Rebuilds `content_draft_actions` so a waiting removal may be a class's; the rows already there are copied as they are. Nothing for the operator to do. Also note that a publish (or undo, or pack update) that takes out a class characters are in is now refused unless it went through **Remove** on the Classes tab, which moves them to another class.
+- None yet.
 
 ## 2. Choose the version
 
