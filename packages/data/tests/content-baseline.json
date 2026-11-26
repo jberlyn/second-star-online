@@ -1626,41 +1626,41 @@
   "gather.json#/gathering/fishing/fxOffsets/E": [
     [
       "0",
-      "4ec9599fc203d176"
+      "aea92132c4cbeb26"
     ],
     [
       "1",
-      "615bdd17c2556f82"
+      "d5c534fde62beb89"
     ]
   ],
   "gather.json#/gathering/fishing/fxOffsets/N": [
     [
       "0",
-      "37aa1ccf80e48183"
+      "5feceb66ffc86f38"
     ],
     [
       "1",
-      "d3471dcc109cd382"
+      "5198f7a7fbd082a1"
     ]
   ],
   "gather.json#/gathering/fishing/fxOffsets/S": [
     [
       "0",
-      "37aa1ccf80e48183"
+      "5feceb66ffc86f38"
     ],
     [
       "1",
-      "9400f1b21cb527d7"
+      "535fa30d7e25dd8a"
     ]
   ],
   "gather.json#/gathering/fishing/fxOffsets/W": [
     [
       "0",
-      "e54dc15ccafa6081"
+      "e6ff3fc87cfb0c94"
     ],
     [
       "1",
-      "cf3bae39dd692048"
+      "d5c534fde62beb89"
     ]
   ],
   "gather.json#/gathering/fishing/waterTiles": [
@@ -2250,19 +2250,19 @@
     ],
     [
       "Mining",
-      "3e42c7830653634f"
+      "57a157cc40c82f8f"
     ],
     [
       "Mining",
-      "75369909a4e0d165"
+      "1e0f3d5c1174f754"
     ],
     [
       "Mining",
-      "f62df2aa2f63cc77"
+      "bb2569fd976ad0de"
     ],
     [
       "Lumberjacking",
-      "7e9a35e6f949c470"
+      "381b246af28c9da1"
     ]
   ],
   "help.json#/topics": [

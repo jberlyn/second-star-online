@@ -97,6 +97,26 @@ const wholeFingerprint = (g: Gather, draft: readonly DraftRow[]) =>
     pending: [HARVEST, YIELDS, GATHERING].map((r) => draft.find((x) => sameRow(x, r))?.op ?? null),
   });
 
+/**
+ * The effect runs a node's strike can name, each once whatever its case: the runs content draws
+ * and the uploads (in their own spelling), then the packs' other runs (their atlas keys are lower
+ * case). Trails are left out: a trail is drawn with its run, never alone.
+ */
+function effectChoices(service: ContentService): string[] {
+  const fx = service.fxArtView();
+  const names = new Map<string, string>();
+  for (const n of [
+    ...fx.runs.map((r) => r.member),
+    ...fx.art.map((a) => a.name),
+    ...Object.keys(fx.packRuns),
+  ]) {
+    if (!names.has(n.toLowerCase())) {
+      names.set(n.toLowerCase(), n);
+    }
+  }
+  return [...names.values()].sort((a, b) => a.localeCompare(b));
+}
+
 /** The Gathering page's view. */
 export function gatheringView(service: ContentService): ContentGatheringView {
   const draft = service.draft();
@@ -187,6 +207,7 @@ export function gatheringView(service: ContentService): ContentGatheringView {
       sounds: [
         ...new Set([...Object.keys(sounds.packSounds), ...sounds.art.map((a) => a.name)]),
       ].sort(),
+      effects: effectChoices(service),
       tiles: d.tiles.catalogue.map((t) => ({ code: t.code, name: t.name ?? "" })),
       items: d.items.items
         .filter((i) => !i.retired)

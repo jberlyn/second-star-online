@@ -16,7 +16,7 @@ import {
 import type { Rng } from "../../src/rules/core/lingo.ts";
 import type { Trainee } from "../../src/rules/progression/progress.ts";
 import { skillCaps } from "../../src/rules/progression/skillgain.ts";
-import { newFx, placeFx, stepFx } from "../../src/rules/spells/spellfx.ts";
+import { isGroundFx, newFx, placeFx, stepFx } from "../../src/rules/spells/spellfx.ts";
 import {
   BOOK_TEXT,
   baseSpell,
@@ -363,6 +363,28 @@ describe("FX", () => {
       }
     }
     expect(shown).toBe(7);
+  });
+  test("design change: a strike run stands on the struck tile, shows its frames and draws in the tile's row", () => {
+    const tile = { h: 174, v: 157 };
+    expect(placeFx("Wood Chips", { h: 174, v: 189 }, tile)).toEqual(tile);
+    expect(placeFx("rock chips", { h: 1, v: 1 }, tile)).toEqual(tile);
+    for (const run of ["Wood Chips", "Rock Chips", "Ice Chips", "Ember Chips"]) {
+      const fx = newFx(run, tile);
+      let shown = 1;
+      while (!fx.gone) {
+        stepFx(fx);
+        if (!fx.gone) {
+          shown += 1;
+        }
+      }
+      expect(`${run} ${shown}`).toBe(`${run} 12`);
+    }
+    expect(["Wood Chips", "Fishing", "Crush", "Minor Heal"].map(isGroundFx)).toEqual([
+      true,
+      true,
+      false,
+      false,
+    ]);
   });
   test("a fireball moves 8 px a frame, loops frames 1-3 and goes past H 550 ", () => {
     const fx = newFx("FireballR", { h: 540, v: 100 });

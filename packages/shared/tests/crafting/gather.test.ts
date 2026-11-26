@@ -277,14 +277,38 @@ describe("drops", () => {
 });
 
 describe("fishing", () => {
-  test("bug fixed: W1, N1, D2 and I2 are water on either layer; the offsets of the cast", () => {
+  test("bug fixed: W1, N1, D2 and I2 are water on either layer", () => {
     expect(["W1", "N1", "D2", "I2"].every(isFishingWater)).toBe(true);
     expect(FISHING_LAYERS).toEqual([1, 2]);
     expect(isFishingWater("G1")).toBe(false);
-    expect(fishingOffset("E")).toEqual([18, -3]);
-    expect(fishingOffset("W")).toEqual([-21, -2]);
-    expect(fishingOffset("N")).toEqual([-5, -17]);
-    expect(fishingOffset("S")).toEqual([-5, 19]);
+  });
+
+  test("bug fixed: the splash lands on the faced water tile, whichever way the fisher faces", () => {
+    // A fisher on tile (5, 5) has its point at (x·32 + 14, y·32 − 3); tile (x, y) covers stage
+    // pixels x·32 − 2 … x·32 + 29 across and y·32 − 1 … y·32 + 30 down. The float meets the water
+    // 31 px below the splash's point, and the ripples spread 22 px left and 21 px right of it.
+    const me = { h: 5 * 32 + 14, v: 5 * 32 - 3 };
+    const tileOf = (h: number, v: number) => [Math.floor((h + 2) / 32), Math.floor((v + 1) / 32)];
+    for (const [facing, faced] of [
+      ["N", [5, 4]],
+      ["S", [5, 6]],
+      ["E", [6, 5]],
+      ["W", [4, 5]],
+    ] as const) {
+      const [dh, dv] = fishingOffset(facing);
+      const at = { h: me.h + dh, v: me.v + dv };
+      expect(`${facing} ${tileOf(at.h, at.v + 31)}`).toBe(`${facing} ${faced}`);
+      // The tall float (frames 1-7, 11 to 34 px below the point) stays off the fisher's own tile.
+      expect(`${facing} ${tileOf(at.h, at.v + 11)}`).toBe(`${facing} ${faced}`);
+      expect(`${facing} ${tileOf(at.h, at.v + 34)}`).toBe(`${facing} ${faced}`);
+      // Cast sideways, the ripples' near edge stays on the water: they reach the shore, not the grass.
+      const [fx, fy] = faced;
+      if (facing === "E" || facing === "W") {
+        expect(`${facing} ${tileOf(at.h + (facing === "E" ? -22 : 21), at.v + 31)}`).toBe(
+          `${facing} ${fx},${fy}`,
+        );
+      }
+    }
   });
 
   test("one fish per band", () => {

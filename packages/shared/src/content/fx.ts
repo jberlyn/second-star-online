@@ -55,6 +55,8 @@ export interface FxRunUse {
   projectile?: { axis: "locH" | "locV"; px: number };
   /** Named by content (a spell row, gathering's sprinkle, the casino), not only the engine. */
   content: boolean;
+  /** A harvest node's strike run (issue #41): content names it and its length, so its frames are checked. */
+  strike?: true;
 }
 
 /** A spell's `fx` row, as the plan reads and writes it. */
@@ -80,6 +82,7 @@ export interface FxContent {
   spells: { spells: readonly FxSpellRow[] };
   gather: {
     gathering: { fishing?: unknown; sprinkle?: { fx: string } };
+    harvest: readonly { tile: string; strikeFx?: { fx: string; frames: number } }[];
   };
   casino: { slots?: { fx: string } };
   items: { items: readonly { name: string; retired?: boolean }[] };
@@ -164,6 +167,24 @@ export function fxRuns(data: FxContent): Map<string, FxRunUse> {
     );
   };
   named(data.gather.gathering.sprinkle?.fx, "gathering's sprinkle");
+  // A harvest node's strike run (issue #41) shows the frames its row asks for, like a point run.
+  for (const node of data.gather.harvest) {
+    if (node.strikeFx) {
+      note(
+        {
+          member: node.strikeFx.fx,
+          effect: node.strikeFx.fx,
+          show: "point",
+          needs: node.strikeFx.frames,
+          trail: 0,
+          trigger: 0,
+          content: true,
+          strike: true,
+        },
+        `harvesting tile ${node.tile}`,
+      );
+    }
+  }
   named(data.casino.slots?.fx, "the casino's slot machine");
   // The engine's own runs, drawn by name while their mechanic is in the content.
   const engine = (member: string, needs: number, who: string) =>

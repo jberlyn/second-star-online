@@ -1481,6 +1481,8 @@ export interface ContentGatheringView {
   choices: {
     cans: string[];
     sounds: string[];
+    /** Effect runs a strike can show: the content's and uploads' runs, then the packs'. */
+    effects: string[];
     tiles: { code: string; name: string }[];
     items: string[];
     yields: string[];

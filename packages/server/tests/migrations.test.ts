@@ -5,7 +5,7 @@ import { join } from "node:path";
 
 import { classicData } from "@secondstaronline/data/classic";
 import { RELEASE_PACK_DIRS } from "@secondstaronline/data/packs";
-import { startingCharacter } from "@secondstaronline/shared";
+import { type ContentData, startingCharacter } from "@secondstaronline/shared";
 
 import { readPackBlob } from "../src/content/packs.ts";
 import { rowHash } from "../src/content/rows.ts";
@@ -2235,7 +2235,18 @@ describe("migrations (real SQL on in-memory SQLite)", () => {
     const pack = JSON.parse(
       (db.query("SELECT data FROM content_packs WHERE id = 'old'").get() as { data: string }).data,
     ) as { data: Record<string, Record<string, unknown>> };
-    const classic = classicData;
+    // Classic as it was at this stage: since then (issue #41) its splash offsets moved and its
+    // nodes gained strike runs, which no migration writes.
+    const classic = structuredClone(classicData) as ContentData;
+    const oldFishing = oldGathering.fishing as { fxOffsets: unknown };
+    if (classic.gather.gathering.fishing) {
+      classic.gather.gathering.fishing.fxOffsets = structuredClone(
+        oldFishing.fxOffsets,
+      ) as typeof classic.gather.gathering.fishing.fxOffsets;
+    }
+    for (const node of classic.gather.harvest) {
+      delete node.strikeFx;
+    }
     expect(pack.data.gather?.gathering).toEqual(classic.gather.gathering);
     expect(pack.data.gather?.harvest).toEqual(classic.gather.harvest);
     expect(pack.data.gather?.yields).toEqual(classic.gather.yields);

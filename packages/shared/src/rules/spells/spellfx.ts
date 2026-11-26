@@ -9,6 +9,7 @@
  *
  * Mirrors the original's cast handler (placement) and FX sprite sender (trails).
  */
+import { onContent } from "../../content/store.ts";
 import { lingoContains, lingoEq } from "../core/lingo.ts";
 import {
   CANNONBALL_OFFSET,
@@ -81,6 +82,36 @@ const AT_CLICK = [
 ];
 
 /**
+ * The strike runs content names (issue #41: a harvest node's `strikeFx`, the chips a swing at a
+ * tree or rock throws up), by member in lower case: how many frames each shows.
+ */
+let STRIKE_RUNS = new Map<string, number>();
+onContent((c) => {
+  STRIKE_RUNS = new Map();
+  for (const node of c.gather.harvest) {
+    if (node.strikeFx) {
+      const k = node.strikeFx.fx.toLowerCase();
+      // Two nodes may share a run; the longer length shows every frame either asks for.
+      STRIKE_RUNS.set(k, Math.max(STRIKE_RUNS.get(k) ?? 0, node.strikeFx.frames));
+    }
+  }
+});
+
+/** The frames a harvest node's strike run shows, or undefined when no node names it. */
+export function strikeRunFrames(name: string): number | undefined {
+  return STRIKE_RUNS.get(name.toLowerCase());
+}
+
+/**
+ * Whether a FX lies on the ground of the tile it marks (fishing's splash and the strike runs), so
+ * it draws in that tile's row: behind a character standing south of it, in front of one north of
+ * it. Other FX draw over characters.
+ */
+export function isGroundFx(name: string): boolean {
+  return lingoEq(name, "Fishing") || strikeRunFrames(name) !== undefined;
+}
+
+/**
  * Offsets from the caster's sprite. 1.6's cannonballs never fired; SSO's Battleship shot
  * (`CannonballShot<dir>`) is placed 48 px out, as 1.6 would have placed its own.
  */
@@ -114,7 +145,7 @@ export function placeFx(
   target: { h: number; v: number },
 ): { h: number; v: number } | null {
   const eff = fxEffect(name);
-  if (AT_CLICK.some((n) => lingoEq(eff, n))) {
+  if (AT_CLICK.some((n) => lingoEq(eff, n)) || (fxRun(name) === null && strikeRunFrames(name))) {
     return { h: target.h, v: target.v };
   }
   // Arrows: the target is the shooter's tile; the arrow starts one tile on.
@@ -229,7 +260,7 @@ export function stepFx(fx: FxSprite, blocked?: ShotBlocked): void {
     }
     return;
   }
-  const last = OTHER_LAST_FRAME[fx.name.toLowerCase()];
+  const last = OTHER_LAST_FRAME[fx.name.toLowerCase()] ?? strikeRunFrames(fx.name);
   if (last !== undefined) {
     if (fx.frame >= last) {
       fx.gone = true; // locV = -5300

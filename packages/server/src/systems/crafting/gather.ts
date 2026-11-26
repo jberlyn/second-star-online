@@ -43,6 +43,7 @@ import {
   type TrainExtra,
   tierText,
   tileAt,
+  tileLoc,
   toolCan,
   train,
   underOk,
@@ -212,8 +213,8 @@ export function preSwing(room: Room, p: Player, ctx: GatherCtx, ev: GatherEvents
  * The tool block of 1.6's attack routine, for the attacker. A Water tool facing seeded soil
  * advances its counter, and the hit that empties it waters the soil (only a swing at a seeded tile
  * counts). Otherwise the faced tile's harvest node, worked by a tool that can: the node's ground
- * test, its requirement and tier, its hit sound, the counter, the tile change, the yield, the
- * treasure, the success sound and the skill's gain roll. Any other tile does nothing (the swing
+ * test, its requirement and tier, its hit sound and strike run, the counter, the tile change, the
+ * yield, the treasure, the success sound and the skill's gain roll. Any other tile does nothing (the swing
  * stays an ordinary attack). A success mid-step drops on the changed tile like any other.
  */
 export function toolSwing(room: Room, p: Player, ctx: GatherCtx, ev: GatherEvents): void {
@@ -252,6 +253,22 @@ export function toolSwing(room: Room, p: Player, ctx: GatherCtx, ev: GatherEvent
   }
   if (node.hitSound) {
     ev.sound = node.hitSound.name;
+  }
+  // Every strike shows the node's strike run on the tile, to everyone on the map, as fishing shows
+  // its splash on every cast (issue #41).
+  if (node.strikeFx) {
+    const at = tileLoc(t.x, t.y);
+    queueCast(room, {
+      owner: p.name,
+      ownerId: p.id,
+      name: node.strikeFx.fx,
+      casterH: at.h,
+      casterV: at.v,
+      h: at.h,
+      v: at.v,
+      power: 1,
+      train: false,
+    });
   }
   const skill = skillOf(p, node.skill);
   if (!hitCounter(p.gather, use.counter, skill)) {

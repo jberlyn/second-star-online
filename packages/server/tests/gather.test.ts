@@ -134,6 +134,81 @@ describe("the axe", () => {
   });
 });
 
+describe("strike runs (issue #41)", () => {
+  /** The FX events `to` saw over `out` (end it with a frame after the swing: a queued cast is placed the next frame). */
+  const strikes = (out: Out, to: string) =>
+    out.flatMap((o) =>
+      o.to === to && o.msg.t === "delta" ? o.msg.events.filter((e) => e.e === "fx") : [],
+    );
+  const swingThenFrame = (g: ReturnType<typeof swinger>, n: number): Out => [
+    ...g.swings(n),
+    ...g.run(1),
+  ];
+  // The tile's character point: (x·32 + 14, y·32 − 3).
+  const on55 = { h: 5 * 32 + 14, v: 5 * 32 - 3 };
+
+  test("design change: every strike at a tree shows Wood Chips on the tree, to everyone on the map", () => {
+    const g = swinger("Axe", rngByN({ 3: ones() }));
+    setSkill(g.a, "Lumberjacking", 5);
+    const b = player("b", g.map, 9, 9);
+    g.join(b);
+    const out = swingThenFrame(g, 1);
+    // No success yet: the chips show on a strike that changes nothing, as fishing splashes on a miss.
+    expect(tileAt(g.map.layers[1], 5, 5)).toBe("S3");
+    for (const who of ["a", "b"]) {
+      expect(strikes(out, who).map((e) => e.e === "fx" && [e.name, e.h, e.v])).toEqual([
+        ["Wood Chips", on55.h, on55.v],
+      ]);
+    }
+    // The swing sound is still the tree's.
+    expect(events(out, "a").find((e) => e.e === "swing")).toMatchObject({ sound: "treechop" });
+  });
+
+  test("design change: each hammer's rock shows its own chips", () => {
+    for (const [tool, tile, run] of [
+      ["Mining Hammer", "B8", "Rock Chips"],
+      ["Ice Hammer", "1G", "Ice Chips"],
+      ["Fire Hammer", "6O", "Ember Chips"],
+    ] as const) {
+      const g = swinger(tool, rngByN({ 3: ones() }));
+      setLayer(g.map, 1, 5, 5, tile);
+      setSkill(g.a, "Mining", 99);
+      g.a.char.vitals.level = 99;
+      const out = swingThenFrame(g, 1);
+      expect(strikes(out, "a").map((e) => e.e === "fx" && [e.name, e.h, e.v])).toEqual([
+        [run, on55.h, on55.v],
+      ]);
+    }
+  });
+
+  test("design change: a swing at a tile that cannot be worked shows nothing", () => {
+    // A stump, a rock struck with an axe, and a tree struck with a hammer.
+    for (const [tool, tile] of [
+      ["Axe", "P3"],
+      ["Axe", "B8"],
+      ["Mining Hammer", "S3"],
+    ] as const) {
+      const g = swinger(tool, rngByN({ 3: ones() }));
+      setLayer(g.map, 1, 5, 5, tile);
+      expect(strikes(swingThenFrame(g, 2), "a")).toEqual([]);
+    }
+  });
+
+  test("design change: a node without a strike run shows nothing", () => {
+    const data = structuredClone(classicData) as ContentData;
+    for (const n of data.gather.harvest) {
+      delete n.strikeFx;
+    }
+    installContent(buildContentStore(data));
+    try {
+      const g = swinger("Axe", rngByN({ 3: ones() }));
+      expect(strikes(swingThenFrame(g, 2), "a")).toEqual([]);
+    } finally {
+      installContent(buildContentStore(classicData as ContentData));
+    }
+  });
+});
+
 describe("mining", () => {
   test("the hammer clanks for everyone; the break drops a find and plays crush to the miner", () => {
     const g = swinger("Mining Hammer", rngByN({ 5: [1] }));
@@ -168,8 +243,8 @@ describe("fishing", () => {
     expect(f.world.fishingSpots.get("a")?.left).toBe(4);
     const next = f.run(1);
     const fx = events(next, "a").find((e) => e.e === "fx");
-    // The FX at sprite 112 + (-5, -17), facing north.
-    expect(fx).toMatchObject({ name: "Fishing", h: 5 * 32 + 14 - 5, v: 6 * 32 - 3 - 17 });
+    // The FX at sprite 112 + (0, -41), facing north: on the water, not on the fisher.
+    expect(fx).toMatchObject({ name: "Fishing", h: 5 * 32 + 14, v: 6 * 32 - 3 - 41 });
   });
 
   test("bug fixed: the Ring of Quickness shortens a cast's AtDelay from 20 to 16", () => {

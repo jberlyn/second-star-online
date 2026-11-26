@@ -73,6 +73,19 @@ describe("what draws a run", () => {
     expect(runs.get("cannonballshotd")).toMatchObject({ needs: 4 });
   });
 
+  test("a harvest node's strike run shows the frames its row asks for", () => {
+    const runs = fxRuns(classic);
+    expect(runs.get("wood chips")).toMatchObject({
+      show: "point",
+      needs: 12,
+      content: true,
+      strike: true,
+      users: ["harvesting tile S3"],
+    });
+    expect(runs.get("rock chips")?.users).toEqual(["harvesting tile B8"]);
+    expect(runs.get("ember chips")?.needs).toBe(12);
+  });
+
   test("Classic's art draws every frame its runs show", () => {
     // The Classic pack's FX keys, from the art golden (the built atlases are not committed).
     const keys = Object.keys(golden.classic)
@@ -94,7 +107,7 @@ describe("what draws a run", () => {
   test("without their mechanic, the engine's runs are not drawn", () => {
     const bare = {
       ...classic,
-      gather: { gathering: {} },
+      gather: { gathering: {}, harvest: [] },
       casino: {},
       items: { items: [] },
       bindings: { cannon: {} },

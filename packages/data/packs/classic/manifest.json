@@ -1,10 +1,10 @@
 {
   "id": "classic",
   "name": "Classic",
-  "version": "1.0.17",
+  "version": "1.0.18",
   "format": 1,
   "sso": "1.10",
-  "contentHash": "5bb3bd5badcb662f",
+  "contentHash": "b77ebaa30fee3967",
   "art": "art",
   "world": "world.json"
 }

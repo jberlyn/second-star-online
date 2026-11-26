@@ -86,7 +86,7 @@ const TAB_FIELDS: Record<string, Record<string, readonly string[]>> = {
     tool: ["can", "tools", "tier"],
     skill: ["skill", "requires", "gains", "xp"],
     drops: ["yield", "treasure", "@yieldTable"],
-    sounds: ["hitSound", "successSound"],
+    sounds: ["hitSound", "successSound", "strikeFx"],
   },
   fishing: {
     fishing: ["waterTiles", "antiMacroStart", "stoppedText"],
@@ -902,7 +902,9 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
   soundsList.id = "gathering-sounds";
   const yieldsList = document.createElement("datalist");
   yieldsList.id = "gathering-yields";
-  el.append(tilesList, itemsList, soundsList, yieldsList);
+  const effectsList = document.createElement("datalist");
+  effectsList.id = "gathering-effects";
+  el.append(tilesList, itemsList, soundsList, yieldsList, effectsList);
 
   /** A tile's picture, drawn from the client's tile atlas (the published art). */
   const tilePicture = (code: string): HTMLCanvasElement => {
@@ -1564,17 +1566,70 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
       }
     };
     drawChannels();
+    // The strike effect (issue #41).
+    const strikeFrames = document.createElement("div");
+    const drawStrikeFrames = () => {
+      strikeFrames.replaceChildren(
+        ...(n.strikeFx
+          ? [
+              labelled(
+                "Frames shown",
+                int(
+                  "gathering-strike-frames",
+                  n.strikeFx.frames,
+                  1,
+                  99,
+                  false,
+                  "Frames shown",
+                  (c) => {
+                    if (n.strikeFx) {
+                      n.strikeFx.frames = c ?? 1;
+                    }
+                  },
+                ),
+                "How many of the effect's frames play, from frame 1. Upload its pictures on Effects.",
+              ),
+            ]
+          : []),
+      );
+    };
+    drawStrikeFrames();
+    const strike = labelled(
+      "Strike effect",
+      Object.assign(
+        text(
+          "gathering-strike-fx",
+          n.strikeFx?.fx ?? "",
+          (t) => {
+            const had = n.strikeFx !== undefined;
+            if (t === "") {
+              delete n.strikeFx;
+            } else {
+              n.strikeFx = { fx: t, frames: n.strikeFx?.frames ?? 12 };
+            }
+            if (had !== (n.strikeFx !== undefined)) {
+              drawStrikeFrames();
+            }
+          },
+          effectsList.id,
+        ),
+        { placeholder: "None" },
+      ),
+      "Plays on the tile at every swing that strikes it, and everyone nearby sees it.",
+    );
     const soundsTab = section(
       "sounds",
-      "Sounds",
-      "What players hear while harvesting it.",
-      n.hitSound !== null || n.successSound !== null,
+      "Sounds and effect",
+      "What players hear and see while harvesting it.",
+      n.hitSound !== null || n.successSound !== null || n.strikeFx !== undefined,
       sound(
         "hitSound",
         "Swing sound",
         "Plays on every swing at this tile, instead of the tool's usual sound.",
       ),
       sound("successSound", "Harvest sound", "Plays to the player when a harvest succeeds."),
+      strike,
+      strikeFrames,
       more(false, channels),
     );
 
@@ -1961,6 +2016,10 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
     opts(
       yieldsList,
       v.choices.yields.map((x) => ({ value: x })),
+    );
+    opts(
+      effectsList,
+      v.choices.effects.map((x) => ({ value: x })),
     );
     drawList();
     const total = v.otherDraft + (v.pending ? 1 : 0);

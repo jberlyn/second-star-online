@@ -227,20 +227,20 @@
       ],
       "fxOffsets": {
         "E": [
-          18,
-          -3
+          38,
+          -9
         ],
         "W": [
-          -21,
-          -2
+          -38,
+          -9
         ],
         "N": [
-          -5,
-          -17
+          0,
+          -41
         ],
         "S": [
-          -5,
-          19
+          0,
+          23
         ]
       },
       "bands": [
@@ -633,6 +633,10 @@
       "successSound": {
         "name": "crush",
         "ch": 2
+      },
+      "strikeFx": {
+        "fx": "Rock Chips",
+        "frames": 12
       }
     },
     {
@@ -652,6 +656,10 @@
       "successSound": {
         "name": "crush",
         "ch": 2
+      },
+      "strikeFx": {
+        "fx": "Ice Chips",
+        "frames": 12
       }
     },
     {
@@ -671,6 +679,10 @@
       "successSound": {
         "name": "crush",
         "ch": 2
+      },
+      "strikeFx": {
+        "fx": "Ember Chips",
+        "frames": 12
       }
     },
     {
@@ -687,6 +699,10 @@
       "successSound": {
         "name": "treefalling",
         "ch": 2
+      },
+      "strikeFx": {
+        "fx": "Wood Chips",
+        "frames": 12
       }
     }
   ],

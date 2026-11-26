@@ -27,7 +27,7 @@ Crafting starts from an item and its station or tool, then runs a timed job. Smi
 
 ### Gathering and the world
 
-A swing passes through common action timing and then selects a tool rule. Axe, shovel, hoe and mining tools inspect the appropriate tile and use a per-tool counter, so each success takes the table's number of hits, then roll the drop. Fishing checks the water in front of the player on either layer and waits for its cast delay; seeds and water change only eligible tiles, and a seed is used up only when it is planted. Regrowth runs once per map per frame, and an empty map catches up when someone arrives. Treasure searches consult the map and dug tile. Gathering and crafting skill gain use their own roll rules. The server mutates the map and bag after these shared decisions.
+A swing passes through common action timing and then selects a tool rule. Axe, shovel, hoe and mining tools inspect the appropriate tile and use a per-tool counter, so each success takes the table's number of hits, then roll the drop. Every swing that strikes a node with a `strikeFx` queues that run on the tile for the whole map, as a cast queues fishing's splash. Fishing checks the water in front of the player on either layer and waits for its cast delay; seeds and water change only eligible tiles, and a seed is used up only when it is planted. Regrowth runs once per map per frame, and an empty map catches up when someone arrives. Treasure searches consult the map and dug tile. Gathering and crafting skill gain use their own roll rules. The server mutates the map and bag after these shared decisions.
 
 ### Crafting jobs
 

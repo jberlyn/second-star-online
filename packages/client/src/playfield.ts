@@ -35,6 +35,7 @@ import {
   groundPicture,
   groundPictureTopLeft,
   groundTipName,
+  isGroundFx,
   MAP_HEIGHT,
   MAP_WIDTH,
   type MapView,
@@ -437,7 +438,14 @@ export function createPlayfield(assets: Assets): Playfield {
         const px = fx.h - PLAYFIELD_RECT.left;
         const py = fx.v - PLAYFIELD_RECT.top;
         const name = fxEffect(fx.name).toLowerCase();
-        const z = name === "portal" || name === "diminish hunger" ? py : py + 50;
+        // A ground FX (fishing's splash, a strike's chips) sorts in its tile's row, half a tile
+        // below the row's characters: a fisher facing north stands in front of the splash.
+        const z =
+          name === "portal" || name === "diminish hunger"
+            ? py
+            : isGroundFx(fx.name)
+              ? py + 16
+              : py + 50;
         sprites.push({
           z,
           order: order++,

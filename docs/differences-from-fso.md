@@ -29,12 +29,12 @@ An entry uses this shape; `Pinned by` is optional:
 
 | Section | Entries |
 |---|---:|
-| [Design changes](#design-changes) | 83 |
-| [Fixed bugs](#fixed-bugs) | 303 |
+| [Design changes](#design-changes) | 84 |
+| [Fixed bugs](#fixed-bugs) | 304 |
 | [Kept on purpose](#kept-on-purpose) | 12 |
 | [Server authority and exploits](#server-authority-and-exploits) | 138 |
 | [Not in SSO](#not-in-sso) | 40 |
-| **Total** | **576** |
+| **Total** | **578** |
 
 By system (the code folder that holds the change):
 
@@ -45,7 +45,7 @@ By system (the code folder that holds the change):
 | chat | [12](#chat) | [7](#server-side-chat) |
 | combat | [28](#combat) | [7](#server-side-combat) |
 | core | [3](#core) | [9](#server-side-core) |
-| crafting | [28](#crafting) | [8](#server-side-crafting) |
+| crafting | [29](#crafting) | [8](#server-side-crafting) |
 | economy | [35](#economy) | [15](#server-side-economy) |
 | housing | [19](#housing) | [6](#server-side-housing) |
 | inventory | [39](#inventory) | [11](#server-side-inventory) |
@@ -554,6 +554,15 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Why:** Carpentry needs a workstation like the other crafts.
 - **In the code:** `packages/shared/src/rules/crafting/craft.ts` (`startBuild`)
 - **Pinned by:** `design change: carpentry requires facing a Carpentry Bench before checking the Saw` (packages/shared/tests/crafting/craft.test.ts)
+
+#### Chopping and mining throw up chips
+- **Kind:** Other
+- **What you notice:** Every swing that strikes a tree throws wood chips and a few leaves off it, and every swing that strikes a rock throws stone chips: grey with a puff of dust from a rock, ice shards from the ice rock, and embers from the fire rock. Everyone on the map sees it, as they see the fishing splash. A swing at a stump, a broken rock or any other tile shows nothing new, and the sounds are unchanged.
+- **1.6:** Chopping and mining played their hit sound but showed nothing on the tile, while fishing showed its splash on every cast.
+- **SSO:** A harvest node's `strikeFx` names the effect run shown on the tile at each swing that strikes it. Classic ships new 12-frame runs: `Wood Chips`, `Rock Chips`, `Ice Chips` and `Ember Chips`. Operators can pick another run, change its length, or leave it out on the Gathering page.
+- **Why:** Gathering should show the tool hitting the tile, as fishing already did.
+- **In the code:** `packages/server/src/systems/crafting/gather.ts` (`toolSwing`); `packages/shared/src/rules/spells/spellfx.ts` (`strikeRunFrames`); `packages/data/content/gather.json` (`strikeFx`); `assets/added/fx/`
+- **Pinned by:** `design change: every strike at a tree shows Wood Chips on the tree, to everyone on the map`; `design change: each hammer's rock shows its own chips`; `design change: a swing at a tile that cannot be worked shows nothing` (packages/server/tests/gather.test.ts); `design change: a strike run stands on the struck tile, shows its frames and draws in the tile's row` (packages/shared/tests/spells/spells.test.ts)
 
 #### Crafting stations animate only while in use
 - **Kind:** Other
@@ -1685,7 +1694,16 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** Fishing tests the faced tile on both layers against the water codes.
 - **Why:** Water that looks the same should fish the same.
 - **In the code:** `packages/shared/src/rules/crafting/gather.ts` (`isFishingWater`, `FISHING_LAYERS`); `packages/server/src/systems/crafting/gather.ts` (`preSwing`)
-- **Pinned by:** `bug fixed: W1, N1, D2 and I2 are water on either layer; the offsets of the cast` (packages/shared/tests/crafting/gather.test.ts); `bug fixed: water drawn only on layer 2 (D2) can be fished` (packages/server/tests/gather.test.ts)
+- **Pinned by:** `bug fixed: W1, N1, D2 and I2 are water on either layer` (packages/shared/tests/crafting/gather.test.ts); `bug fixed: water drawn only on layer 2 (D2) can be fished` (packages/server/tests/gather.test.ts)
+
+#### The fishing splash lands on the water
+- **Kind:** Bug fixed
+- **What you notice:** The float and its ripples land on the water tile you face, whichever way you face, and a fisher facing north stands in front of the splash rather than under it.
+- **1.6:** The splash was placed 17 to 21 px from the fisher, so facing east, west or north most of it sat on the fisher's own tile, often on the grass, and facing north it was drawn over the fisher. 1.6 drew every effect above the characters.
+- **SSO:** Classic's `fxOffsets` put the float on the faced tile, and cast sideways put the ripples' near edge at the shore. The splash, and the strike runs, draw in their tile's row among the characters, so a character south of them stands in front.
+- **Why:** The splash is meant to show where the line meets the water.
+- **In the code:** `packages/data/content/gather.json` (`fxOffsets`); `packages/shared/src/rules/spells/spellfx.ts` (`isGroundFx`); `packages/client/src/playfield.ts`
+- **Pinned by:** `bug fixed: the splash lands on the faced water tile, whichever way the fisher faces` (packages/shared/tests/crafting/gather.test.ts); `a cast into layer-1 water: the Fishing FX for everyone, AtDelay 20, a fish on the water` (packages/server/tests/gather.test.ts)
 
 #### Fishing skill-ups do not use the anti-macro allowance
 - **Kind:** Bug fixed

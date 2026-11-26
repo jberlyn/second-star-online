@@ -87,6 +87,7 @@ const VIEW = (fp = "aaaaaaaaaaaaaaaa"): ContentGatheringView => ({
   choices: {
     cans: ["Chop", "Mine", "Dig"],
     sounds: ["treechop"],
+    effects: ["Wood Chips"],
     tiles: [{ code: "T1", name: "Tree" }],
     items: ["Logs", "Fish"],
     yields: ["Logs", "Stones"],
@@ -309,7 +310,7 @@ describe("the plain-language form", () => {
       ["Tool", "false"],
       ["Skill", "false"],
       ["Drops", "true"],
-      ["Sounds", "true"],
+      ["Sounds and effect", "true"],
       ["Odds", "false"],
     ]);
     expect(p.el.querySelectorAll(".items-group > .items-intro")).toHaveLength(6);

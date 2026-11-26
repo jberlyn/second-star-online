@@ -54,6 +54,21 @@ export const harvestNodeSchema = z.strictObject({
   hitSound: sound.nullable(),
   /** Played on channel 2 to the gatherer on the swing that succeeds. */
   successSound: sound.nullable(),
+  /**
+   * The effect run every map shows on the tile at each swing that strikes it (issue #41), as
+   * fishing shows its splash: frames `<fx>-1` … `<fx>-<frames>`, each frame's anchor placed at the
+   * tile's character point (its horizontal centre, 2 px above its top). Left out, nothing shows.
+   */
+  strikeFx: z
+    .strictObject({
+      fx: z
+        .string()
+        .min(1)
+        .max(80)
+        .refine((s) => !/-\d+$/.test(s), "name the run without a frame number"),
+      frames: z.number().int().min(1).max(99),
+    })
+    .optional(),
 });
 
 /**
