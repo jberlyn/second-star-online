@@ -25,11 +25,9 @@ Base every claim on the code as it was **at the tag being described**, not the w
 
 ### Pending upgrade items
 
-Changes that the next release after `v1.14.0` must list under Upgrade Notes (confirm each in the code at the tag):
+Changes that the next release after `v1.15.0` must list under Upgrade Notes (confirm each in the code at the tag):
 
-- Issue #42 (migration `20261126_75_kill_xp_on_species`): the monster rules table `rules.killXp` and a monster definition's `killXp` are gone; a monster's fixed kill XP is now its species row's `killXp` (the Creatures & NPCs page's Rewards tab, under More options). The upgrade moves what a world set there onto species rows, adding an operator (or draft) row for a monster where needed, so every monster gives the kill XP it gave. An imported pack exported before the upgrade is updated the same way. Undoing a publish made before the upgrade no longer changes kill XP that it set through the table or a definition.
-- Issue #41 (no migration): Classic's harvest nodes gain strike effects (`strikeFx`: Wood Chips on trees, Rock, Ice and Ember Chips on the three rocks) and its fishing splash offsets (`fishing.fxOffsets`) move the splash onto the faced water. A world that saved its own copy of a harvestable tile or of Fishing on the Gathering page keeps that copy, so that tile shows no strike effect (set one on its Sounds and effect tab) and that world's splash stays where 1.6 put it until Fishing is restored to the original.
-- Migration `20261126_76_fishing_cast_as_content`: fishing's cast effect and sound are content (`fishing.castFx`, `castSound`), edited on the Gathering page's Fishing → Splash and sound tab with where the splash lands. The upgrade gives every stored fishing section (operator rows, the draft, the publish log, imported packs) the 13-frame `Fishing` splash and the `splash` sound it played, so nothing changes until an operator edits them; a pack exported before the upgrade is filled the same way when imported.
+- None yet.
 
 ## 2. Choose the version
 
