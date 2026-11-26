@@ -29,6 +29,7 @@ import {
   CRYSTAL_COLOURS,
   castEffect,
   castMageCap,
+  catchesFor,
   checkEquip,
   clickGate,
   closedName,
@@ -54,7 +55,6 @@ import {
   factionRows,
   failurePool,
   fishCheck,
-  fishFor,
   fixedInPlace,
   gearBonus,
   groundDrawOffset,
@@ -1179,7 +1179,11 @@ describe("the behaviour snapshot", () => {
           chunks: ["Ice Hammer", "Fire Hammer", "Mining Hammer", "Axe"]
             .map((t) => `${t}:${roll((rng) => rollChunk(t, skill, rng))}`)
             .join(","),
-          fish: show(fishFor(skill)),
+          fish: show(
+            catchesFor(skill)
+              .map((c) => c.fish)
+              .join("+") || null,
+          ),
           fishCheck: fishCheck(skill),
           gains: GAIN_SKILLS.map(
             ([k, source]) =>

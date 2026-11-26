@@ -207,9 +207,18 @@ function trainerOf(d: ContentData, row: RowRef, path: JsonPath): SkillTrainer | 
         };
       }
       if (b === "fishing") {
+        const t = d.gather.gathering.fishing?.trains ?? { cast: true, catch: false };
+        const when =
+          t.cast && t.catch
+            ? "each cast of the line and each catch train it"
+            : t.catch
+              ? "each catch trains it"
+              : t.cast
+                ? "each cast of the line trains it"
+                : "nothing trains it";
         return {
           kind: "fishing",
-          text: "Fishing: each cast of the line trains it (the fishing binding)",
+          text: `Fishing: ${when} (the fishing binding)`,
           page: "gathering",
         };
       }

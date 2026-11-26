@@ -258,18 +258,17 @@ describe("fishing", () => {
     expect(sounds(out, "b")).toEqual(["splash:4"]);
   });
 
-  /** Runs `body` with fishing's cast set to `cast`. */
+  /** Runs `body` with fishing's fields set to `cast`'s (and the world changed by `more`). */
   function withCast(
-    cast: {
-      castFx: { fx: string; frames: number } | null;
-      castSound: { name: string; ch: number } | null;
-    },
+    cast: Partial<NonNullable<ContentData["gather"]["gathering"]["fishing"]>>,
     body: () => void,
+    more: (d: ContentData) => void = () => {},
   ) {
     const d = structuredClone(classicData) as ContentData;
     if (d.gather.gathering.fishing) {
       Object.assign(d.gather.gathering.fishing, cast);
     }
+    more(d);
     installContent(buildContentStore(d));
     try {
       body();
@@ -297,6 +296,56 @@ describe("fishing", () => {
       f.run(3);
       expect(room?.fx).toEqual([]);
     });
+  });
+
+  test("a world can train Fishing by XP on each catch only, each fish giving its own XP", () => {
+    const xpFishing = (d: ContentData) => {
+      d.classes.progression.curves.flat = { counting: "perLevel", formula: 1000 };
+      d.classes.progression.defaults.xp = { gather: { xp: 5 } };
+      const row = d.classes.skills.find((r) => r.skill === "Fishing");
+      if (row) {
+        row.progression = { model: "xp", curve: "flat" };
+      }
+    };
+    const pool = [
+      { fish: "Trout", from: 0, weight: 1, xp: 40 },
+      { fish: "Raw Fish", from: 0, weight: 1 },
+    ];
+    const xp = (p: Player) => p.char.skillXp?.[skillIndex("Fishing")] ?? 0;
+    withCast(
+      { trains: { cast: false, catch: true }, catches: pool },
+      () => {
+        // A bite (random(28)) catching Trout (random(2) = 1), then Raw Fish, then a miss.
+        const f = fisher(rngByN({ 28: [1, 1], 2: [1, 2] }));
+        setSkill(f.a, "Fishing", 20);
+        // Level 20 on a curve of 1000 a level starts at 20000.
+        const before = 20_000;
+        setAttackHeld(f.a, true);
+        f.run(1);
+        expect(xp(f.a) - before).toBe(40);
+        f.run(20);
+        expect(xp(f.a) - before).toBe(45);
+        f.run(20);
+        expect(xp(f.a) - before).toBe(45);
+        expect(f.map.ground.map((x) => x.item)).toEqual(["Trout", "Raw Fish"]);
+      },
+      xpFishing,
+    );
+    withCast(
+      { trains: { cast: true, catch: true }, catches: pool },
+      () => {
+        // Both: a catch gives the cast's 5 and the Trout's 40; a miss the cast's 5.
+        const f = fisher(rngByN({ 28: [1], 2: [1] }));
+        setSkill(f.a, "Fishing", 20);
+        const before = 20_000;
+        setAttackHeld(f.a, true);
+        f.run(1);
+        expect(xp(f.a) - before).toBe(45);
+        f.run(20);
+        expect(xp(f.a) - before).toBe(50);
+      },
+      xpFishing,
+    );
   });
 
   test("a world with no cast effect or no cast sound shows or plays none, and fishing still works", () => {

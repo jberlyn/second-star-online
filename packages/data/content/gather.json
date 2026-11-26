@@ -251,27 +251,13 @@
           23
         ]
       },
-      "bands": [
-        {
-          "lt": 200,
-          "fish": "Squid"
-        },
-        {
-          "lt": 80,
-          "fish": "Swordfish"
-        },
-        {
-          "lt": 60,
-          "fish": "Catfish"
-        },
-        {
-          "lt": 40,
-          "fish": "Trout"
-        },
-        {
-          "lt": 15,
-          "fish": "Raw Fish"
-        }
+      "trains": { "cast": true, "catch": false },
+      "catches": [
+        { "fish": "Raw Fish", "from": 0, "below": 15, "weight": 1 },
+        { "fish": "Trout", "from": 15, "below": 40, "weight": 1 },
+        { "fish": "Catfish", "from": 40, "below": 60, "weight": 1 },
+        { "fish": "Swordfish", "from": 60, "below": 80, "weight": 1 },
+        { "fish": "Squid", "from": 80, "weight": 1 }
       ],
       "fishCheck": [
         {

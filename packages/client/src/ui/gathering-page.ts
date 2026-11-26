@@ -23,6 +23,7 @@ import type { HarvestNode, XpSettings, YieldTable } from "@secondstaronline/data
 import {
   type ContentGatheringView,
   type ContentProblemView,
+  type FishCatch,
   fishingPreview,
   type GatheringNodeView,
   gatherPreview,
@@ -76,6 +77,15 @@ export interface GatheringPage {
 
 type NodeWork = { node: HarvestNode; yieldTable: YieldTable | null; regrows: string | null };
 
+/** A row of fishing's catch pool as the form edits it. */
+type CatchRow = {
+  fish: string;
+  from: number;
+  below?: number;
+  weight: number;
+  xp?: number;
+};
+
 /**
  * The fields each tab holds, by part ("Restore this tab to the original" puts these back). A
  * node's `@regrows` and `@yieldTable` are the form's own, beside its node fields.
@@ -89,9 +99,9 @@ const TAB_FIELDS: Record<string, Record<string, readonly string[]>> = {
     sounds: ["hitSound", "successSound", "strikeFx"],
   },
   fishing: {
-    fishing: ["waterTiles", "antiMacroStart", "stoppedText"],
+    fishing: ["waterTiles", "antiMacroStart", "stoppedText", "trains"],
     cast: ["castFx", "castSound", "fxOffsets"],
-    catches: ["bands"],
+    catches: ["catches"],
     bites: ["fishCheck"],
   },
   farming: {
@@ -814,6 +824,9 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
       list?: string;
       offset?: number;
       min?: number;
+      max?: number;
+      /** An int that may be left empty (the key is then left out), showing this placeholder. */
+      optional?: string;
     }[],
     blank: () => T,
     /** Runs on every change, before the page's own (a row added, removed or typed in). */
@@ -836,13 +849,17 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
               f.kind === "int"
                 ? int(
                     `${idPrefix}-${f.key}`,
-                    row[f.key] as number,
+                    row[f.key] as number | undefined,
                     f.min ?? -1_000_000,
-                    1_000_000_000,
-                    false,
+                    f.max ?? 1_000_000_000,
+                    f.optional !== undefined,
                     `${label}, row ${i + 1}: ${f.label}`,
                     (n) => {
-                      (row as Record<string, unknown>)[f.key] = n ?? 0;
+                      if (n === null && f.optional !== undefined) {
+                        delete (row as Record<string, unknown>)[f.key];
+                      } else {
+                        (row as Record<string, unknown>)[f.key] = n ?? 0;
+                      }
                       changed();
                     },
                     f.offset ?? 0,
@@ -856,6 +873,9 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
                     },
                     f.list,
                   );
+            if (f.optional !== undefined) {
+              control.placeholder = f.optional;
+            }
             line.append(labelled(f.label, control));
           }
           line.append(
@@ -952,7 +972,7 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
     };
     if (part === "fishing" && fixedWork) {
       const f = fixedWork as {
-        bands: { lt: number; fish: string }[];
+        catches: FishCatch[];
         fishCheck: { gt: number; value: number }[];
       };
       table.setAttribute("aria-label", "Fishing by skill");
@@ -961,17 +981,20 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
         cell("th", "Bite chance per cast"),
         cell("th", "Catches"),
       );
+      // A fish's share of the catches, and its own XP when it gives one.
+      const catchText = (c: { fish: string; share: number; xp?: number | undefined }) =>
+        `${c.fish}${c.share < 1 ? ` ${Number((c.share * 100).toFixed(1))}%` : ""}${c.xp === undefined ? "" : ` (${c.xp} XP)`}`;
       const fish = fishingPreview(f, ALL_SKILLS);
       for (const { from, to, cells: r } of foldRows(
         ALL_SKILLS,
         (v) => fish[v] as (typeof fish)[number],
-        (r) => `${r.bite}|${r.fish}`,
+        (r) => `${r.bite}|${r.catches.map(catchText).join(";")}`,
       )) {
         const tr = document.createElement("tr");
         tr.append(
           cell("td", from === to ? String(from) : `${from}-${to}`),
           cell("td", chanceText(r.bite)),
-          cell("td", r.fish ?? "nothing"),
+          cell("td", r.catches.length === 0 ? "nothing" : r.catches.map(catchText).join("; ")),
         );
         tbody.append(tr);
       }
@@ -1801,6 +1824,30 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
     );
   };
 
+  /** What trains the Fishing skill: each cast, each catch, or both. */
+  const trainsField = (f: Record<string, unknown>) => {
+    f.trains ??= { cast: true, catch: false };
+    const t = f.trains as { cast: boolean; catch: boolean };
+    const box = document.createElement("div");
+    box.className = "gathering-trains";
+    const head = document.createElement("p");
+    head.className = "items-list-title";
+    head.textContent = "What trains Fishing";
+    box.append(
+      head,
+      check("gathering-trains-cast", t.cast, "Each cast trains it, caught or not", (on) => {
+        t.cast = on;
+      }),
+      check("gathering-trains-catch", t.catch, "Each catch trains it", (on) => {
+        t.catch = on;
+      }),
+      helpLine(
+        "A cast trains only while the spot has catches left. With both ticked a catch trains twice. A skill that rises by chance rolls for each; one that rises by XP gets its XP for each, a catch the fish's own XP when the Catches tab gives one.",
+      ),
+    );
+    return box;
+  };
+
   const drawFixed = () => {
     if (!view || part === null || part === "node") {
       return;
@@ -1879,6 +1926,7 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
               f.stoppedText = t;
             }),
           ),
+          trainsField(f),
         ),
         castSection(f),
         section(
@@ -1887,16 +1935,26 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
           "Which fish players catch at each skill value.",
           true,
           rowsEditor(
-            "gathering-bands",
-            "Fish by skill",
-            "A fisher catches the fish of the lowest “below skill” number they are under.",
+            "gathering-catches",
+            "Fish caught",
+            "A bite catches one of the fish whose skill range holds the fisher's Fishing skill, picked by weight: a fish of weight 3 is caught three times as often as one of weight 1. Ranges may overlap, so a skilled fisher can still catch small fish. XP is what a catch gives when Fishing rises by XP and catches train it (empty: the skill's own XP).",
             "+ Add a fish",
-            f.bands as { lt: number; fish: string }[],
+            f.catches as CatchRow[],
             [
               { key: "fish", label: "Fish", kind: "text", list: itemsList.id },
-              { key: "lt", label: "Below skill", kind: "int" },
+              { key: "from", label: "From skill", kind: "int", min: 0, max: 100 },
+              {
+                key: "below",
+                label: "Below skill",
+                kind: "int",
+                min: 1,
+                max: 101,
+                optional: "no limit",
+              },
+              { key: "weight", label: "Weight", kind: "int", min: 1, max: 1_000_000 },
+              { key: "xp", label: "XP", kind: "int", min: 0, optional: "skill's own" },
             ],
-            () => ({ lt: 100, fish: "" }),
+            (): CatchRow => ({ fish: "", from: 0, weight: 1 }),
           ),
         ),
         section(

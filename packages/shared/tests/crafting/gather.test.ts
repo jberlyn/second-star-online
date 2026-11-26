@@ -19,11 +19,13 @@ import {
   buildTreasure,
   canPlant,
   castLine,
+  catchesFor,
+  catchShares,
   FISHING_LAYERS,
   fishCheck,
-  fishFor,
   fishingOffset,
   fishingSpot,
+  fishingTrains,
   harvestNode,
   hitCounter,
   isFishingWater,
@@ -31,6 +33,7 @@ import {
   nodeTier,
   nodeTool,
   orePool,
+  pickCatch,
   type RegrowthHooks,
   regrowthFrame,
   rollMiningFind,
@@ -61,7 +64,7 @@ function gainAt(skill: string, source: "gather" | "craft", value: number, rng: R
 /** A cast of the line and, as the server does next, the Fishing gain (the `gather` source). */
 function fish(skill: number, left: number, rng: Rng) {
   const r = castLine(skill, left, rng);
-  const gained = r.trains && gainAt("Fishing", "gather", skill, rng);
+  const gained = r.trainsCast && gainAt("Fishing", "gather", skill, rng);
   return { fish: r.fish, gained, antiMacro: r.antiMacro };
 }
 
@@ -311,13 +314,80 @@ describe("fishing", () => {
     }
   });
 
-  test("one fish per band", () => {
-    expect(fishFor(1)).toBe("Raw Fish");
-    expect(fishFor(15)).toBe("Trout");
-    expect(fishFor(40)).toBe("Catfish");
-    expect(fishFor(60)).toBe("Swordfish");
-    expect(fishFor(80)).toBe("Squid");
-    expect(fishFor(100)).toBe("Squid");
+  test("one fish per skill range: a single fish in range is caught without a roll", () => {
+    const noRoll: Rng = {
+      random(n) {
+        throw new Error(`rolled random(${n})`);
+      },
+    };
+    const at = (skill: number) => pickCatch(skill, noRoll)?.fish;
+    expect([at(0), at(14), at(15), at(39), at(40), at(60), at(79), at(80), at(100)]).toEqual([
+      "Raw Fish",
+      "Raw Fish",
+      "Trout",
+      "Trout",
+      "Catfish",
+      "Swordfish",
+      "Swordfish",
+      "Squid",
+      "Squid",
+    ]);
+    expect(fishingTrains()).toEqual({ cast: true, catch: false });
+  });
+
+  test("a catch pool picks among the fish in range by weight", () => {
+    const pool = [
+      { fish: "Shrimp", from: 0, weight: 3, xp: 10 },
+      { fish: "Trout", from: 20, weight: 1, xp: 50 },
+      { fish: "Shark", from: 76, below: 90, weight: 2 },
+    ];
+    expect(catchesFor(10, pool).map((c) => c.fish)).toEqual(["Shrimp"]);
+    expect(catchesFor(80, pool).map((c) => c.fish)).toEqual(["Shrimp", "Trout", "Shark"]);
+    expect(catchesFor(90, pool).map((c) => c.fish)).toEqual(["Shrimp", "Trout"]);
+    // random(6): 1-3 Shrimp, 4 Trout, 5-6 Shark.
+    const picks = [1, 3, 4, 5, 6].map((r) => pickCatch(80, rngByN({ 6: [r] }), pool)?.fish);
+    expect(picks).toEqual(["Shrimp", "Shrimp", "Trout", "Shark", "Shark"]);
+    expect(catchShares(50, pool)).toEqual([
+      { fish: "Shrimp", share: 0.75, xp: 10 },
+      { fish: "Trout", share: 0.25, xp: 50 },
+    ]);
+    expect(pickCatch(50, rngByN(), [])).toBeNull();
+  });
+
+  test("a world can train Fishing on each catch, with the fish's own XP", () => {
+    const d = structuredClone(classicData) as ContentData;
+    const f = d.gather.gathering.fishing;
+    if (!f) {
+      throw new Error("Classic has fishing");
+    }
+    f.trains = { cast: false, catch: true };
+    f.catches = [
+      { fish: "Raw Fish", from: 0, weight: 1, xp: 10 },
+      { fish: "Trout", from: 15, weight: 1 },
+    ];
+    installContent(buildContentStore(d));
+    try {
+      // A miss trains nothing.
+      const miss = castLine(20, 5, rngByN());
+      expect([miss.fish, miss.trainsCast, miss.trainsCatch]).toEqual([null, false, false]);
+      // A catch trains, even the one that spends the tile's last allowance; Raw Fish gives 10 XP.
+      const last = castLine(20, 1, rngByN({ 28: [1], 2: [1] }));
+      expect(last).toEqual({
+        fish: "Raw Fish",
+        catchXp: 10,
+        trainsCast: false,
+        trainsCatch: true,
+        antiMacro: 0,
+      });
+      // Trout names no XP of its own: the skill's own amount.
+      expect(castLine(20, 5, rngByN({ 28: [1], 2: [2] })).catchXp).toBeUndefined();
+      f.trains = { cast: true, catch: true };
+      installContent(buildContentStore(d));
+      const both = castLine(20, 5, rngByN({ 28: [1], 2: [2] }));
+      expect([both.trainsCast, both.trainsCatch]).toEqual([true, true]);
+    } finally {
+      installContent(buildContentStore(classicData));
+    }
   });
 
   test("bug fixed: Fishing 0 catches at the lowest skill's odds and can rise", () => {

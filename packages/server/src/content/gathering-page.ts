@@ -276,7 +276,8 @@ const PART_FIELDS: Record<string, Record<string, string>> = {
     castFx: "Splash effect",
     castSound: "Cast sound",
     fxOffsets: "Where the splash lands",
-    bands: "Fish by skill",
+    trains: "What trains Fishing",
+    catches: "Fish caught",
     fishCheck: "Bite chance by skill",
   },
   farming: {

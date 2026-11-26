@@ -231,6 +231,14 @@ export const classesWords: WordBook = {
     help: "Used after the list runs out. Its steps can read level.",
     shapes: ["A number", "Steps"],
   },
+  "progression.curves.{}.growth": {
+    label: "Growth",
+    help: "In place of steps: (start + per level × level to the power) × (1 + growth%) to the power level.",
+  },
+  "progression.curves.{}.growth.start": { label: "Start" },
+  "progression.curves.{}.growth.perLevel": { label: "Per level" },
+  "progression.curves.{}.growth.exponent": { label: "Power" },
+  "progression.curves.{}.growth.growthPercent": { label: "Growth %" },
   "progression.curves.{}.cap": { label: "Highest level" },
   "progression.defaults": {
     label: "Defaults",

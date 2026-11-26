@@ -68,6 +68,7 @@ export type {
   Cap,
   ChanceSettings,
   Curve,
+  CurveGrowth,
   Formula,
   FormulaRow,
   ProgressionData,

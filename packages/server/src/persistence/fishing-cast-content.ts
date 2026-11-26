@@ -56,6 +56,15 @@ export function withFishingCast(gathering: unknown): Row | null {
 }
 
 export function moveFishingCast(db: Db): void {
+  rewriteStoredGathering(db, withFishingCast);
+}
+
+/**
+ * Rewrites every stored gathering section with `fix` (null: leave it): each imported pack's, the
+ * operator's rows (`data` and `base_data`), the draft's and the publish log's. Shared by the
+ * migrations that change fishing (76, 77).
+ */
+export function rewriteStoredGathering(db: Db, fix: (gathering: unknown) => Row | null): void {
   // Imported packs.
   for (const p of db
     .query<{ id: string; data: string }, []>(
@@ -66,7 +75,7 @@ export function moveFishingCast(db: Db): void {
     if (!isObject(blob) || !isObject(blob.data) || !isObject(blob.data.gather)) {
       continue;
     }
-    const next = withFishingCast(blob.data.gather.gathering);
+    const next = fix(blob.data.gather.gathering);
     if (next) {
       blob.data.gather.gathering = next;
       db.query("UPDATE content_packs SET data = ? WHERE id = ?").run(JSON.stringify(blob), p.id);
@@ -79,8 +88,8 @@ export function moveFishingCast(db: Db): void {
       "SELECT row_key, data, base_data FROM content_rows WHERE dataset = 'gather' AND part = 'gathering'",
     )
     .all()) {
-    const data = withFishingCast(parse(r.data));
-    const base = withFishingCast(parse(r.base_data));
+    const data = fix(parse(r.data));
+    const base = fix(parse(r.base_data));
     if (data || base) {
       db.query(
         "UPDATE content_rows SET data = ?, base_data = ?, base_hash = CASE WHEN ? THEN NULL ELSE base_hash END WHERE dataset = 'gather' AND part = 'gathering' AND row_key = ?",
@@ -97,7 +106,7 @@ export function moveFishingCast(db: Db): void {
       "SELECT row_key, data FROM content_draft WHERE dataset = 'gather' AND part = 'gathering'",
     )
     .all()) {
-    const data = withFishingCast(parse(r.data));
+    const data = fix(parse(r.data));
     if (data) {
       db.query(
         "UPDATE content_draft SET data = ? WHERE dataset = 'gather' AND part = 'gathering' AND row_key = ?",
@@ -124,7 +133,7 @@ export function moveFishingCast(db: Db): void {
           continue;
         }
         for (const f of ["data", "baseData"] as const) {
-          const next = withFishingCast(s[f]);
+          const next = fix(s[f]);
           if (next) {
             s[f] = next;
             touched = true;

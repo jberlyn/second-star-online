@@ -213,6 +213,14 @@ describe("the xp model", () => {
         ],
       }).slice(0, 5),
     ).toEqual([0, 0, 100, 220, 350]);
+    // The growth form: (start + perLevel × L^exponent) × (1 + growth%)^L, floored; the table first.
+    expect(
+      curveTotals({
+        counting: "perLevel",
+        table: [0],
+        growth: { start: 100, perLevel: 2, exponent: 2, growthPercent: 10 },
+      }).slice(0, 5),
+    ).toEqual([0, 0, 112, 112 + 130, 112 + 130 + 157]);
     const rs = curveTotals({ counting: "total", table: [0, 83, 174], cap: 3 });
     expect(rs.slice(0, 5)).toEqual([0, 0, 83, 174, Infinity]);
   });
@@ -336,10 +344,29 @@ describe("the publish check", () => {
         }
       }),
     ).toEqual([
-      "says nothing for level 2: add table rows or a formula",
+      "says nothing for level 2: add table rows, a growth form or a formula",
       "level 2's total 40 is below level 1's",
       "a curve cannot roll random",
       "missing is not in progression.curves",
+    ]);
+  });
+
+  test("a growth curve is one or the other with a formula, and a steep one stops at the ceiling", () => {
+    expect(
+      check((d) => {
+        d.classes.progression.curves.both = {
+          counting: "perLevel",
+          formula: 100,
+          growth: { start: 100, perLevel: 0, exponent: 1, growthPercent: 10 },
+        };
+        d.classes.progression.curves.steep = {
+          counting: "perLevel",
+          growth: { start: 1_000_000_000, perLevel: 0, exponent: 1, growthPercent: 100 },
+        };
+      }),
+    ).toEqual([
+      "has both a growth form and a formula: keep one",
+      "reaches 1023000000000 XP by level 10, over 1000000000000",
     ]);
   });
 });

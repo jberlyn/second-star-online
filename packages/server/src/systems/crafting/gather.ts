@@ -202,9 +202,15 @@ export function preSwing(room: Room, p: Player, ctx: GatherCtx, ev: GatherEvents
     // The allowance belongs to the tile you fish from, and outlasts a logout.
     const spot = fishingSpot(ctx.world.fishingSpots.get(p.id), p.map.id, p.x, p.y);
     const r = castLine(p.char.skills[fishing] ?? 0, spot.left, ctx.rng);
-    // The skill trains before the catch drops, as 1.6 rolled it inside the fishing helper.
+    // The skill trains before the catch drops, as 1.6 rolled it inside the fishing helper: for the
+    // cast, then for the catch (with the fish's own XP), as `fishing.trains` says.
     const tier = toolCan(weapon, "Fish")?.tier ?? 0;
-    const gained = r.trains ? gain(p, fishing, ctx.rng, { tier }) : [];
+    const gained = r.trainsCast ? gain(p, fishing, ctx.rng, { tier }) : [];
+    if (r.trainsCatch) {
+      gained.push(
+        ...gain(p, fishing, ctx.rng, r.catchXp === undefined ? { tier } : { tier, xp: r.catchXp }),
+      );
+    }
     ctx.world.fishingSpots.set(p.id, { ...spot, left: r.antiMacro });
     // A spent tile says so, once per press like a movement refusal.
     if (spot.left === 0 && p.told !== FISHING_STOPPED_TEXT) {

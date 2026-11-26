@@ -18,7 +18,13 @@ import type {
 
 import type { Rng } from "../core/lingo.ts";
 import { ruleMatches } from "../core/patterns.ts";
-import { fishCheck, fishFor, hitsPerSuccess, yieldOdds } from "../crafting/gather.ts";
+import {
+  catchShares,
+  type FishCatch,
+  fishCheck,
+  hitsPerSuccess,
+  yieldOdds,
+} from "../crafting/gather.ts";
 import {
   chanceCounts,
   chanceRolls,
@@ -427,16 +433,27 @@ export function gatherPreview(
   return rows;
 }
 
-/** The fish a Fishing skill bites with, and the chance of a bite (`fishFor`, `fishCheck`). */
+/**
+ * What a Fishing skill bites with: the chance of a bite (`fishCheck`) and each fish's share of the
+ * catches (`catchShares`), with the XP its row gives an `xp` skill.
+ */
 export function fishingPreview(
   fishing: {
-    bands: readonly { lt: number; fish: string }[];
+    catches: readonly FishCatch[];
     fishCheck: readonly { gt: number; value: number }[];
   },
   skills: readonly number[],
-): { skill: number; fish: string | null; bite: number }[] {
+): {
+  skill: number;
+  bite: number;
+  catches: { fish: string; share: number; xp?: number | undefined }[];
+}[] {
   return skills.map((v) => {
     const n = fishCheck(v, fishing.fishCheck);
-    return { skill: v, fish: fishFor(v, fishing.bands), bite: n >= 1 ? 1 / Math.floor(n) : 0 };
+    return {
+      skill: v,
+      bite: n >= 1 ? 1 / Math.floor(n) : 0,
+      catches: catchShares(v, fishing.catches),
+    };
   });
 }

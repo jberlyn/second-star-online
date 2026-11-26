@@ -1559,26 +1559,26 @@
       "d5098c2d96dcc814"
     ]
   ],
-  "gather.json#/gathering/fishing/bands": [
+  "gather.json#/gathering/fishing/catches": [
     [
       "0",
-      "0fbc26ab1603d8c2"
+      "09714866ada050db"
     ],
     [
       "1",
-      "83a86e7d5249431f"
+      "651291a8b901397c"
     ],
     [
       "2",
-      "9cb4e9854ac3017a"
+      "f3998e1a96eaa8c5"
     ],
     [
       "3",
-      "fcb0176eecdbc41a"
+      "eb92639929d0aa31"
     ],
     [
       "4",
-      "19dfc8e443a4dba3"
+      "6084c86a77a0a118"
     ]
   ],
   "gather.json#/gathering/fishing/fishCheck": [

@@ -365,18 +365,55 @@ export function fishingSpot(
   return { mapId, x, y, left: ANTI_MACRO_START };
 }
 
-/** The fish a skill catches: one kind per band (the installed store's, or `bands`). */
-export function fishFor(
+/** One fish of the catch pool (`fishing.catches`). */
+export interface FishCatch {
+  fish: string;
+  from: number;
+  below?: number | undefined;
+  weight: number;
+  xp?: number | undefined;
+}
+
+/** The fish a Fishing skill can catch: those whose range holds it, in the pool's order. */
+export function catchesFor(
   skill: number,
-  bands: readonly { lt: number; fish: string }[] = G.fishing?.bands ?? [],
-): string | null {
-  let fish: string | null = null;
-  for (const b of bands) {
-    if (skill < b.lt) {
-      fish = b.fish;
+  pool: readonly FishCatch[] = G.fishing?.catches ?? [],
+): FishCatch[] {
+  return pool.filter((c) => c.from <= skill && (c.below === undefined || skill < c.below));
+}
+
+/**
+ * The fish a bite catches, picked by weight from those in range: `random(total)` lands in one
+ * fish's share, in the pool's order. With one fish in range nothing is rolled (1.6's one fish per
+ * skill band), and with none the bite catches nothing.
+ */
+export function pickCatch(
+  skill: number,
+  rng: Rng,
+  pool: readonly FishCatch[] = G.fishing?.catches ?? [],
+): FishCatch | null {
+  const open = catchesFor(skill, pool);
+  if (open.length <= 1) {
+    return open[0] ?? null;
+  }
+  let roll = rng.random(open.reduce((n, c) => n + c.weight, 0));
+  for (const c of open) {
+    roll -= c.weight;
+    if (roll <= 0) {
+      return c;
     }
   }
-  return fish;
+  return open[open.length - 1] ?? null;
+}
+
+/** Each fish's chance of being the one a bite catches at a Fishing skill (its weight's share). */
+export function catchShares(
+  skill: number,
+  pool: readonly FishCatch[] = G.fishing?.catches ?? [],
+): { fish: string; share: number; xp?: number | undefined }[] {
+  const open = catchesFor(skill, pool);
+  const total = open.reduce((n, c) => n + c.weight, 0);
+  return open.map((c) => ({ fish: c.fish, share: c.weight / total, xp: c.xp }));
 }
 
 /** The bite chance for a Fishing skill: `random(n) = 1`; skill 0 uses the first row's odds. */
@@ -387,25 +424,45 @@ export function fishCheck(
   return gtCascade(rows, skill, rows[0]?.value ?? 1) ?? 1;
 }
 
+/** What a cast trains: every cast (1.6), every catch, or both (`fishing.trains`). */
+export function fishingTrains(): { cast: boolean; catch: boolean } {
+  return G.fishing?.trains ?? { cast: true, catch: false };
+}
+
 /**
- * The fish-drop routine and its fishing helper. Returns the fish caught (or null) and whether the
- * cast trains the bound Fishing skill (the caller trains it next, the `gather` source, as 1.6 rolled
- * the gain last). Only a catch spends the anti-macro counter, and the skill trains while it lasts.
- * A cast mid-step catches like any other.
+ * The fish-drop routine and its fishing helper. Returns the fish caught (or null), the XP its row
+ * gives an `xp` skill, and what the cast trains (the caller trains it next, the `gather` source, as
+ * 1.6 rolled the gain last): `trainsCast` while the tile's allowance lasts after the cast (1.6's
+ * every-cast roll), `trainsCatch` when a fish is caught, each as `fishing.trains` allows. Only a
+ * catch spends the anti-macro counter. A cast mid-step catches like any other.
  */
 export function castLine(
   skill: number,
   antiMacro: number,
   rng: Rng,
-): { fish: string | null; trains: boolean; antiMacro: number } {
+): {
+  fish: string | null;
+  catchXp: number | undefined;
+  trainsCast: boolean;
+  trainsCatch: boolean;
+  antiMacro: number;
+} {
   const bite = rng.random(fishCheck(skill)) === 1;
   let left = antiMacro;
-  let fish: string | null = null;
+  let caught: FishCatch | null = null;
   if (left > 0 && bite) {
-    fish = fishFor(skill);
+    caught = pickCatch(skill, rng);
     left -= 1;
   }
-  return { fish, trains: left > 0 && boundSkillIndex("fishing") !== undefined, antiMacro: left };
+  const bound = boundSkillIndex("fishing") !== undefined;
+  const trains = fishingTrains();
+  return {
+    fish: caught?.fish ?? null,
+    catchXp: caught?.xp,
+    trainsCast: trains.cast && left > 0 && bound,
+    trainsCatch: trains.catch && caught !== null && bound,
+    antiMacro: left,
+  };
 }
 
 // ---- farming ---------------------------------------------------------------------------------

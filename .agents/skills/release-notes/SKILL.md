@@ -27,7 +27,7 @@ Base every claim on the code as it was **at the tag being described**, not the w
 
 Changes that the next release after `v1.15.0` must list under Upgrade Notes (confirm each in the code at the tag):
 
-- None yet.
+- Migration `20261126_77_fishing_catch_pool` (issue #18): fishing's catch table `fishing.bands` is replaced by the catch pool `fishing.catches` (each fish a skill range `from`/`below`, a `weight` and an optional `xp`), and `fishing.trains` (`{ cast, catch }`) says what trains Fishing. The upgrade turns every stored fishing section's bands (operator rows and their base, the draft, the publish log, imported packs) into pool rows that catch exactly what they caught at every skill value, with `trains` set to every cast, as before; a pack exported before the upgrade is converted the same way when imported. Nothing plays differently until an operator edits them on the Gathering page's Fishing tabs.
 
 ## 2. Choose the version
 

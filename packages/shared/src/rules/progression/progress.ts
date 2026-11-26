@@ -16,6 +16,7 @@ import type {
   Cap,
   ChanceSettings,
   Curve,
+  CurveGrowth,
   Formula,
   ProgressionData,
   ProgressionSource,
@@ -295,8 +296,18 @@ function curveFormula(f: Formula, level: number): number {
 }
 
 /**
+ * A curve's growth form at level L: `floor((start + perLevel × L^exponent) × (1 + growth%)^L)`, as
+ * the data package's publish check works it out.
+ */
+export function growthNeed(g: CurveGrowth, level: number): number {
+  return Math.floor(
+    (g.start + g.perLevel * level ** g.exponent) * (1 + g.growthPercent / 100) ** level,
+  );
+}
+
+/**
  * The running XP total that reaches each level, 0 to `SKILL_MAX`. Leaving level L takes `table[L]`
- * while the table lasts, then the formula at L: the XP from L to L + 1 (`perLevel`) or the total
+ * while the table lasts, then the growth form or the formula at L: the XP from L to L + 1 (`perLevel`) or the total
  * that reaches L + 1 (`total`). Levels past the curve are never reached (Infinity).
  */
 export function curveTotals(c: Curve): number[] {
@@ -304,7 +315,12 @@ export function curveTotals(c: Curve): number[] {
   let total = 0;
   for (let level = 0; level < SKILL_MAX; level++) {
     const need =
-      c.table?.[level] ?? (c.formula === undefined ? null : curveFormula(c.formula, level));
+      c.table?.[level] ??
+      (c.growth
+        ? growthNeed(c.growth, level)
+        : c.formula === undefined
+          ? null
+          : curveFormula(c.formula, level));
     if (need === null || !Number.isFinite(need) || (c.cap !== undefined && level >= c.cap)) {
       total = Infinity;
     } else {

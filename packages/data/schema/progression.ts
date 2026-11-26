@@ -157,9 +157,30 @@ export const statTableSchema = z.strictObject({
 export type StatTable = z.infer<typeof statTableSchema>;
 
 /**
+ * A curve's growth form, in place of a formula (the shape of the character level curve, #42): level
+ * L takes `floor((start + perLevel × L^exponent) × (1 + growthPercent / 100)^L)`. A growth of 10
+ * makes each level take about a tenth more than the last, near RuneScape's curve.
+ */
+export const curveGrowthSchema = z.strictObject({
+  start: z.number().int().min(0).max(1_000_000_000),
+  perLevel: z.number().int().min(0).max(1_000_000_000),
+  exponent: z.number().int().min(1).max(4),
+  growthPercent: z.number().int().min(0).max(100),
+});
+export type CurveGrowth = z.infer<typeof curveGrowthSchema>;
+
+/** What the growth form gives for level `level`. */
+export function growthNeed(g: CurveGrowth, level: number): number {
+  return Math.floor(
+    (g.start + g.perLevel * level ** g.exponent) * (1 + g.growthPercent / 100) ** level,
+  );
+}
+
+/**
  * A skill level curve: what leaving each level takes (character levels have their own curve, the
  * balance row `levels`, #42, since a character level has no ceiling). Level L reads
- * `table[L]` while the table lasts, then `formula` (which may read only `level`, L). `counting`
+ * `table[L]` while the table lasts, then `growth` or `formula` (which may read only `level`, L;
+ * a curve has one or the other). `counting`
  * says how the table and formula are read and shown: `perLevel`, the XP from L to L + 1 (counted
  * from 0 within each level, leftovers carried); `total`, the running total that reaches L + 1. XP
  * is saved as a running total either way. `cap` is the highest level the curve reaches.
@@ -168,6 +189,7 @@ export const curveSchema = z.strictObject({
   counting: z.enum(["perLevel", "total"]),
   table: z.array(z.number().int().min(0).max(1_000_000_000_000)).optional(),
   formula: formulaSchema.optional(),
+  growth: curveGrowthSchema.optional(),
   cap: z.number().int().min(1).max(100).optional(),
 });
 export type Curve = z.infer<typeof curveSchema>;
@@ -321,11 +343,17 @@ export function formulaRange(
   return { range: r, problems };
 }
 
-/** What leaving level `level` takes on a curve (`table`, then `formula`), or null past both. */
+/**
+ * What leaving level `level` takes on a curve (`table`, then `growth` or `formula`), or null past
+ * them all.
+ */
 export function curveNeed(c: Curve, level: number, formula: (f: Formula, level: number) => number) {
   const t = c.table?.[level];
   if (t !== undefined) {
     return t;
+  }
+  if (c.growth) {
+    return growthNeed(c.growth, level);
   }
   return c.formula === undefined ? null : formula(c.formula, level);
 }
@@ -442,12 +470,19 @@ export function checkProgression(
     if (problems.length > 0) {
       continue;
     }
+    if (c.growth && c.formula !== undefined) {
+      out.push({ path, message: "has both a growth form and a formula: keep one" });
+      continue;
+    }
     let total = 0;
     let last = 0;
     for (let level = 0; level < (c.cap ?? 100); level++) {
       const need = curveNeed(c, level, evalCurveFormula);
       if (need === null) {
-        out.push({ path, message: `says nothing for level ${level}: add table rows or a formula` });
+        out.push({
+          path,
+          message: `says nothing for level ${level}: add table rows, a growth form or a formula`,
+        });
         break;
       }
       if (!Number.isInteger(need) || need < 0) {

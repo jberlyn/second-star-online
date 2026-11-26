@@ -50,7 +50,8 @@ describe("the Gathering page's view", () => {
     expect(tree?.yield).toMatchObject({ kind: "chance", item: "Logs" });
     expect(tree?.regrows).not.toBeNull();
     expect(v.fishing.skill).toBe("Fishing");
-    expect(v.fishing.data?.bands.length).toBeGreaterThan(0);
+    expect(v.fishing.data?.catches.length).toBeGreaterThan(0);
+    expect(v.fishing.data?.trains).toEqual({ cast: true, catch: false });
     expect(v.farming.data?.wateringSkill).toBeTruthy();
     expect(v.tools.some((t) => t.can === "Chop")).toBe(true);
     expect(v.choices.cans).not.toContain("Fish");
@@ -295,7 +296,7 @@ describe("refusals name the form's fields", () => {
         { where: "gather/yields/Logs", message: m },
         { where: "gather/gathering/counterTable/3/value", message: m },
         { where: "gather/gathering/fishing", message: m },
-        { where: "gather/gathering/fishing/bands/1/fish", message: m },
+        { where: "gather/gathering/fishing/catches/1/fish", message: m },
         { where: "gather/gathering/farming/seeds", message: m },
       ]).map((p) => p.where),
     ).toEqual([
@@ -306,7 +307,7 @@ describe("refusals name the form's fields", () => {
       "Drop table Logs",
       "Swings per harvest 4",
       "Fishing",
-      "Fishing: Fish by skill 2",
+      "Fishing: Fish caught 2",
       "Farming: Seeds",
     ]);
   });

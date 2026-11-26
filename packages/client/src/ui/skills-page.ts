@@ -17,6 +17,7 @@
 import type {
   ChanceSettings,
   Curve,
+  CurveGrowth,
   Formula,
   FormulaRow,
   SkillProgression,
@@ -1299,6 +1300,53 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
       drawForm();
       edited();
     });
+    // The curve's shape: formula rows, or the growth form (start, per level, power, growth).
+    const shape = action(document.createElement("select"), "skills-curve-shape");
+    shape.append(
+      option("formula", "Formula rows"),
+      option("growth", "Grows by a percent each level"),
+    );
+    shape.value = c.growth ? "growth" : "formula";
+    shape.addEventListener("change", () => {
+      curveEdit.edited = true;
+      if (shape.value === "growth") {
+        delete c.formula;
+        c.growth = { start: 100, perLevel: 0, exponent: 1, growthPercent: 10 };
+      } else {
+        delete c.growth;
+        c.formula = 100;
+      }
+      drawForm();
+      edited();
+    });
+    const growthEditor = (g: CurveGrowth): HTMLElement => {
+      const part = (
+        key: keyof CurveGrowth,
+        label: string,
+        min: number,
+        max: number,
+        help: string,
+      ) =>
+        labelled(
+          label,
+          intField(`skills-curve-${key.toLowerCase()}`, g[key], min, max, false, label, (n) => {
+            curveEdit.edited = true;
+            g[key] = n ?? min;
+          }),
+          help,
+        );
+      const wrap = document.createElement("div");
+      wrap.append(
+        helpLine(
+          `${c.counting === "total" ? "The total XP to reach the next level" : "The XP to go up from level L"} is (start + per level × L to the power) × (1 + growth%) to the power L.`,
+        ),
+        part("start", "Start", 0, 1_000_000_000, "The XP level 0 takes."),
+        part("perLevel", "Per level", 0, 1_000_000_000, "Added for each level, before growth."),
+        part("exponent", "Power", 1, 4, "1: per level adds a straight line; 2: squared."),
+        part("growthPercent", "Growth %", 0, 100, "How much more each level takes than the last."),
+      );
+      return wrap;
+    };
     const table = noAutofill(action(document.createElement("input"), "skills-curve-table"));
     table.value = (c.table ?? []).join(", ");
     table.placeholder = "none: use the formula for every level";
@@ -1358,26 +1406,33 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
           ? `Also used by ${shared.join(", ")}: changing the XP below changes theirs too.`
           : "Skills on the same curve need the same XP for each level. Type a new name to make a curve of its own.",
       ),
-      formulaEditor(
-        "skills-curve-formula",
-        c.counting === "total"
-          ? "Total XP needed to reach each level"
-          : "XP needed to go up from each level",
-        formulaRows(c.formula),
-        invalid,
-        (r) => {
-          const f = rowsFormula(r);
-          if (f === undefined) {
-            curveEdit.edited = true;
-            delete c.formula;
-          } else {
-            curveEdit.edited = true;
-            c.formula = f;
-          }
-          edited();
-        },
-        "Use level for the level being left, e.g. Set to 100 then Multiply by level.",
+      labelled(
+        "Shape",
+        shape,
+        "Growth is the easy way to a curve that gets steeper each level (10% is close to RuneScape's). Formula rows give any shape, step by step.",
       ),
+      c.growth
+        ? growthEditor(c.growth)
+        : formulaEditor(
+            "skills-curve-formula",
+            c.counting === "total"
+              ? "Total XP needed to reach each level"
+              : "XP needed to go up from each level",
+            formulaRows(c.formula),
+            invalid,
+            (r) => {
+              const f = rowsFormula(r);
+              if (f === undefined) {
+                curveEdit.edited = true;
+                delete c.formula;
+              } else {
+                curveEdit.edited = true;
+                c.formula = f;
+              }
+              edited();
+            },
+            "Use level for the level being left, e.g. Set to 100 then Multiply by level.",
+          ),
       labelled("Highest level", cap, "Empty means 100."),
       labelled("Stops levelling at", levelCap),
       more(
@@ -1387,7 +1442,7 @@ export function createSkillsPage(actions: SkillsPageActions): SkillsPage {
         labelled(
           "XP for the first levels",
           table,
-          "Exact XP for levels 0, 1, 2… separated by commas. Levels past the list use the formula above.",
+          "Exact XP for levels 0, 1, 2… separated by commas. Levels past the list use the growth or formula above.",
         ),
       ),
     );

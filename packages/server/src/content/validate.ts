@@ -627,8 +627,8 @@ export function referencesOf(data: ContentData): Reference[] {
       add(tools, [i, "pattern"], "item", t.pattern, [i]);
     }
   });
-  g.fishing?.bands.forEach((b, i) => {
-    gather(["fishing", "bands", i, "fish"], b.fish, null);
+  g.fishing?.catches.forEach((c, i) => {
+    gather(["fishing", "catches", i, "fish"], c.fish, null);
   });
   g.farming?.seeds.forEach((sd, i) => {
     gather(["farming", "seeds", i, "item"], sd.item, ["farming", "seeds", i]);

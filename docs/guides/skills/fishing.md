@@ -28,13 +28,13 @@ Equip a weapon whose name contains "Fishing" and swing while facing water (`W1`,
 | 81 to 90 | 1 in 8 |
 | Above 90 | 1 in 5 |
 
-You catch one kind of fish for your skill (`fishFor`): Raw Fish below 15, Trout from 15, Catfish from 40, Swordfish from 60 and Squid from 80.
+You catch one kind of fish for your skill (`pickCatch`, the `catches` pool in [gather.json](../../../packages/data/content/gather.json)): Raw Fish below 15, Trout from 15, Catfish from 40, Swordfish from 60 and Squid from 80. A world can make the ranges overlap and weight the fish, so a skilled fisher still catches small fish.
 
 Each tile you fish from allows 5 catches (`antiMacroStart`). Then the fish stop biting there until you fish from a different tile.
 
 ## How it rises
 
-Every cast rolls `random(16) = 1` while Fishing is from 0 to 99 and the tile still has catches left (`castLine` in [gather.ts](../../../packages/shared/src/rules/crafting/gather.ts)). A cast need not catch anything to raise the skill.
+Every cast rolls `random(16) = 1` while Fishing is from 0 to 99 and the tile still has catches left (`castLine` in [gather.ts](../../../packages/shared/src/rules/crafting/gather.ts)). A cast need not catch anything to raise the skill. A world can train Fishing on each catch instead, or on both, and give each fish its own XP (`fishing.trains` and each catch's `xp`).
 
 ## Connected systems
 

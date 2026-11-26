@@ -20,6 +20,7 @@ import {
 import { type ContentData, DATASET_IDS, type DatasetId } from "@secondstaronline/shared";
 
 import { withFishingCast } from "../persistence/fishing-cast-content.ts";
+import { withFishingCatches } from "../persistence/fishing-catch-content.ts";
 import { keyField, partOf, READ_ONLY_DATASETS, type RowRef } from "./rows.ts";
 
 /** A pack's manifest and validated datasets (a pack may leave datasets out). */
@@ -194,7 +195,9 @@ export function readPackObject(blob: PackBlob): LoadedPack {
     // A pack exported before fishing's cast became content (migration 76) plays what it played.
     if (id === "gather" && value && typeof value === "object") {
       const g = value as { gathering?: unknown };
-      const filled = withFishingCast(g.gathering);
+      // ... and one exported before the catch pool (migration 77) catches what it caught.
+      const cast = withFishingCast(g.gathering) ?? g.gathering;
+      const filled = withFishingCatches(cast) ?? (cast === g.gathering ? null : cast);
       if (filled) {
         value = { ...g, gathering: filled };
       }

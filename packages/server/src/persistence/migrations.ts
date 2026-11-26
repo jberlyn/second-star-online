@@ -6,6 +6,7 @@ import { join } from "node:path";
 
 import type { Db } from "./database.ts";
 import { moveFishingCast } from "./fishing-cast-content.ts";
+import { moveFishingCatches } from "./fishing-catch-content.ts";
 import { moveKillXp } from "./kill-xp-content.ts";
 import { churchMapSql, jailMapSql, seedMapSql } from "./seed-map.ts";
 import { splitSqlStatements } from "./sql-split.ts";
@@ -58,6 +59,9 @@ export function loadMigrations(dir: string = MIGRATIONS_DIR): Migration[] {
       }
       if (dir === MIGRATIONS_DIR && name === "20261126_76_fishing_cast_as_content.sql") {
         return { name, sql, code: moveFishingCast };
+      }
+      if (dir === MIGRATIONS_DIR && name === "20261126_77_fishing_catch_pool.sql") {
+        return { name, sql, code: moveFishingCatches };
       }
       return { name, sql: seed ? `${sql}\n${seedMapSql()}\n` : sql };
     });

@@ -16,6 +16,11 @@ import { insertCharacter as insertCurrent } from "../src/persistence/characters.
 import { type Db, openDatabase } from "../src/persistence/database.ts";
 import { moveFishingCast } from "../src/persistence/fishing-cast-content.ts";
 import {
+  bandsToCatches,
+  moveFishingCatches,
+  withFishingCatches,
+} from "../src/persistence/fishing-catch-content.ts";
+import {
   appliedMigrations,
   loadMigrations,
   MIGRATIONS_DIR,
@@ -2889,6 +2894,156 @@ describe("migrations (real SQL on in-memory SQLite)", () => {
       castFx: { fx: "Fishing", frames: 13 },
       castSound: { name: "splash", ch: 4 },
     });
+  });
+
+  /** Classic's fishing as stored before the catch pool: 1.6's bands, no pool, no training row. */
+  const bandsFishing = () => {
+    const {
+      catches: _c,
+      trains: _t,
+      ...rest
+    } = classicData.gather.gathering.fishing as Record<string, unknown>;
+    return {
+      ...rest,
+      bands: [
+        { lt: 200, fish: "Squid" },
+        { lt: 80, fish: "Swordfish" },
+        { lt: 60, fish: "Catfish" },
+        { lt: 40, fish: "Trout" },
+        { lt: 15, fish: "Raw Fish" },
+      ],
+    };
+  };
+
+  test("fishing_catch_pool turns bands into a pool that catches what they caught, at every skill", () => {
+    // Classic's bands become Classic's pool, and every cast trains as before.
+    expect(withFishingCatches({ fishing: bandsFishing() })).toEqual({
+      fishing: {
+        ...(classicData.gather.gathering.fishing as Record<string, unknown>),
+      },
+    });
+    // Bands out of order, overlapping, with a gap and an empty fish: the last true band wins.
+    const pool = bandsToCatches([
+      { lt: 10, fish: "Minnow" },
+      { lt: 50, fish: "Pike" },
+      { lt: 30, fish: "" },
+      { lt: 5, fish: "Pike" },
+    ]);
+    // 0-4: the last band, Pike; 5-29: the empty fish, nothing (Minnow never won); 30-49: Pike.
+    expect(pool).toEqual([
+      { fish: "Pike", from: 0, below: 5, weight: 1 },
+      { fish: "Pike", from: 30, below: 50, weight: 1 },
+    ]);
+    expect(bandsToCatches([{ lt: 200, fish: "Squid" }])).toEqual([
+      { fish: "Squid", from: 0, weight: 1 },
+    ]);
+    expect(bandsToCatches([{ lt: 0, fish: "Never" }])).toEqual([]);
+  });
+
+  test("fishing_catch_pool rewrites every stored fishing section, once", () => {
+    const db = openDatabase();
+    const all = loadMigrations(MIGRATIONS_DIR);
+    runMigrations(
+      db,
+      all.filter((m) => m.name < "20261126_77"),
+    );
+    const oldGathering = { ...classicData.gather.gathering, fishing: bandsFishing() };
+    const mine = {
+      ...oldGathering,
+      fishing: { ...bandsFishing(), bands: [{ lt: 101, fish: "Eel" }] },
+    };
+    db.run(
+      "INSERT INTO content_packs (id, name, version, position, source, data, installed_at) VALUES ('old', 'old', '1.0.0', 1, 'imported', ?, 'now')",
+      [
+        JSON.stringify({
+          manifest: {},
+          data: { gather: { ...classicData.gather, gathering: oldGathering } },
+        }),
+      ],
+    );
+    db.run(
+      "INSERT INTO content_rows (dataset, part, row_key, op, data, base_hash, base_data, seq, updated_by, updated_at) VALUES ('gather', 'gathering', '', 'set', ?, 'h', ?, 1, 'a', 'then')",
+      [JSON.stringify(mine), JSON.stringify(oldGathering)],
+    );
+    db.run(
+      "INSERT INTO content_draft (dataset, part, row_key, op, data, author_account_id, author, updated_at) VALUES ('gather', 'gathering', '', 'set', ?, 'a', 'A', 'then')",
+      [JSON.stringify(mine)],
+    );
+    db.run(
+      "INSERT INTO content_publishes (id, created_at, actor_account_id, actor_name, summary, changes, hash) VALUES ('p1', 'then', 'a', 'A', '', ?, 'h')",
+      [
+        JSON.stringify([
+          {
+            dataset: "gather",
+            part: "gathering",
+            key: null,
+            before: { op: "set", data: oldGathering },
+            after: { op: "set", data: mine },
+          },
+        ]),
+      ],
+    );
+    runMigrations(db, all);
+    const classic = classicData.gather.gathering.fishing as Record<string, unknown>;
+    const eel = {
+      ...classic,
+      catches: [{ fish: "Eel", from: 0, weight: 1 }],
+    };
+    const fishingOf = (v: unknown) => (v as { fishing: Record<string, unknown> }).fishing;
+    const pack = JSON.parse(
+      (db.query("SELECT data FROM content_packs WHERE id = 'old'").get() as { data: string }).data,
+    );
+    expect(fishingOf(pack.data.gather.gathering)).toEqual(classic);
+    const row = db
+      .query("SELECT data, base_data, base_hash FROM content_rows WHERE dataset = 'gather'")
+      .get() as { data: string; base_data: string; base_hash: string | null };
+    expect(fishingOf(JSON.parse(row.data))).toEqual(eel);
+    expect(fishingOf(JSON.parse(row.base_data))).toEqual(classic);
+    expect(row.base_hash).toBeNull();
+    const draft = db.query("SELECT data FROM content_draft WHERE dataset = 'gather'").get() as {
+      data: string;
+    };
+    expect(fishingOf(JSON.parse(draft.data))).toEqual(eel);
+    const [change] = JSON.parse(
+      (
+        db.query("SELECT changes FROM content_publishes WHERE id = 'p1'").get() as {
+          changes: string;
+        }
+      ).changes,
+    );
+    expect(fishingOf(change.before.data)).toEqual(classic);
+    expect(fishingOf(change.after.data)).toEqual(eel);
+    const dump = () =>
+      JSON.stringify(
+        ["content_packs", "content_rows", "content_draft", "content_publishes"].map((t) =>
+          db.query(`SELECT * FROM ${t} ORDER BY 1, 2, 3`).all(),
+        ),
+      );
+    const once = dump();
+    moveFishingCatches(db);
+    expect(dump()).toBe(once);
+  });
+
+  test("an imported pack exported before fishing_catch_pool (and the cast) loads with its catches", () => {
+    const { castFx: _f, castSound: _s, ...older } = bandsFishing() as Record<string, unknown>;
+    const manifest = JSON.parse(
+      readFileSync(
+        join(MIGRATIONS_DIR, "..", "..", "data", "packs", "classic", "manifest.json"),
+        "utf8",
+      ),
+    );
+    const loaded = readPackBlob(
+      JSON.stringify({
+        manifest: { ...manifest, id: "old", art: undefined },
+        data: {
+          gather: {
+            ...classicData.gather,
+            gathering: { ...classicData.gather.gathering, fishing: older },
+          },
+        },
+      }),
+    );
+    expect(loaded.data.gather?.gathering.fishing).toEqual(classicData.gather.gathering.fishing);
   });
 
   test("vehicles_as_content moves riders and hulls into vehicle rows, layer by layer (issue #44)", () => {

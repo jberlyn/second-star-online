@@ -133,7 +133,30 @@ export const gatherDataSchema = z
           /** Played to everyone on the map at each cast into water. Null plays none. */
           castSound: sound.nullable(),
           fxOffsets: z.record(z.enum(["E", "W", "N", "S"]), offset),
-          bands: z.array(z.strictObject({ lt: z.number().int(), fish: z.string() })).min(1),
+          /**
+           * What a cast trains (the bound Fishing skill, the `gather` source): `cast`, every cast
+           * while the tile's allowance lasts, hit or miss (1.6); `catch`, every fish caught. With
+           * both, a catch trains twice. A `chance` skill rolls once for each; an `xp` skill gets
+           * its `gather` XP for each, a catch the fish's own `xp` when it has one.
+           */
+          trains: z.strictObject({ cast: z.boolean(), catch: z.boolean() }),
+          /**
+           * The catch pool: a bite catches one of the fish whose range holds the Fishing skill
+           * (`from` ≤ skill, and skill < `below` when it has one), picked by `weight` (a 3 is three
+           * times as likely as a 1). Ranges may overlap (a high-level fisher still catches small
+           * fish) or not (1.6: one fish per range). No fish in range (or none at all): a bite catches
+           * nothing.
+           */
+          catches: z.array(
+            z.strictObject({
+              fish: z.string().min(1),
+              from: z.number().int().min(0).max(100),
+              below: z.number().int().min(1).max(101).optional(),
+              weight: z.number().int().min(1).max(1_000_000),
+              /** The XP a catch gives an `xp`-model skill, replacing its `gather` amount. */
+              xp: z.number().int().min(0).max(1_000_000_000).optional(),
+            }),
+          ),
           fishCheck: z.array(gtRow).min(1),
           /** Catches allowed from one tile before you must fish from another. */
           antiMacroStart: z.number().int().positive(),
@@ -193,6 +216,15 @@ export const gatherDataSchema = z
     yields: z.record(z.string().min(1), yieldTableSchema),
   })
   .superRefine((data, ctx) => {
+    data.gathering.fishing?.catches.forEach((c, i) => {
+      if (c.below !== undefined && c.below <= c.from) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["gathering", "fishing", "catches", i, "below"],
+          message: `${c.fish} is caught from skill ${c.from} but only below ${c.below}, so never`,
+        });
+      }
+    });
     // A node after one on the same tile, of the same kind, open to every tool and every ground, is
     // never reached.
     data.harvest.forEach((n, i) => {

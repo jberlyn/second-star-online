@@ -52,7 +52,8 @@ const VIEW = (fp = "aaaaaaaaaaaaaaaa"): ContentGatheringView => ({
       castFx: { fx: "Fishing", frames: 13 },
       castSound: { name: "splash", ch: 4 },
       fxOffsets: { E: [0, 0], W: [0, 0], N: [0, 0], S: [0, 0] },
-      bands: [{ lt: 101, fish: "Fish" }],
+      trains: { cast: true, catch: false },
+      catches: [{ fish: "Fish", from: 0, weight: 1 }],
       fishCheck: [{ gt: -1, value: 4 }],
       antiMacroStart: 5,
       stoppedText: "The fish have gone.",
@@ -203,6 +204,43 @@ describe("the Gathering page", () => {
       op: "fishing",
       expect: "dddddddddddddddd",
       data: { antiMacroStart: 7 },
+    });
+  });
+});
+
+describe("fishing's catches and training", () => {
+  test("a catch pool's fish, ranges, weights and XP are edited, previewed and saved", () => {
+    const { p, sent } = page();
+    q<HTMLButtonElement>(p.el, "[data-action='gathering-open-fishing']").click();
+    q<HTMLButtonElement>(p.el, "[data-action='gathering-catches-add']").click();
+    const last = <T extends Element>(sel: string) => [...p.el.querySelectorAll(sel)].at(-1) as T;
+    typeIn(last<HTMLInputElement>("[data-action='gathering-catches-fish']"), "Shark");
+    typeIn(last<HTMLInputElement>("[data-action='gathering-catches-from']"), "50");
+    typeIn(last<HTMLInputElement>("[data-action='gathering-catches-weight']"), "3");
+    typeIn(last<HTMLInputElement>("[data-action='gathering-catches-xp']"), "80");
+    // The first fish's range now ends at 60.
+    typeIn(q<HTMLInputElement>(p.el, "[data-action='gathering-catches-below']"), "60");
+    expect(last<HTMLInputElement>("[data-action='gathering-catches-below']").placeholder).toBe(
+      "no limit",
+    );
+    q<HTMLInputElement>(p.el, "[data-action='gathering-trains-catch']").click();
+    q<HTMLInputElement>(p.el, "[data-action='gathering-trains-cast']").click();
+    const rows = [...p.el.querySelectorAll(".gathering-preview tbody tr")].map(
+      (r) => r.textContent ?? "",
+    );
+    expect(rows.find((r) => r.startsWith("50-59"))).toContain("Fish 25%");
+    expect(rows.find((r) => r.startsWith("50-59"))).toContain("Shark 75% (80 XP)");
+    expect(rows.find((r) => r.startsWith("60"))).toContain("Shark (80 XP)");
+    q<HTMLButtonElement>(p.el, "[data-action='gathering-save']").click();
+    expect(sent.at(-1)).toMatchObject({
+      op: "fishing",
+      data: {
+        trains: { cast: false, catch: true },
+        catches: [
+          { fish: "Fish", from: 0, below: 60, weight: 1 },
+          { fish: "Shark", from: 50, weight: 3, xp: 80 },
+        ],
+      },
     });
   });
 });
