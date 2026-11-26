@@ -4825,3 +4825,7 @@ body {
   padding: 0;
   background: none;
 }
+.crafting-lock {
+  margin-right: 3px;
+  vertical-align: -1px;
+}

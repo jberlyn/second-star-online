@@ -63,6 +63,31 @@ function picture(a: Assets, item: string, cls: string): HTMLCanvasElement {
   return c;
 }
 
+/** A small padlock for a locked recipe's level. */
+function padlock(): SVGSVGElement {
+  const ns = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(ns, "svg");
+  svg.setAttribute("viewBox", "0 0 10 12");
+  svg.setAttribute("width", "9");
+  svg.setAttribute("height", "11");
+  svg.setAttribute("aria-hidden", "true");
+  svg.classList.add("crafting-lock");
+  const shackle = document.createElementNS(ns, "path");
+  shackle.setAttribute("d", "M2.5 5.5V3.5a2.5 2.5 0 0 1 5 0v2");
+  shackle.setAttribute("fill", "none");
+  shackle.setAttribute("stroke", "currentColor");
+  shackle.setAttribute("stroke-width", "1.4");
+  const body = document.createElementNS(ns, "rect");
+  body.setAttribute("x", "1");
+  body.setAttribute("y", "5.5");
+  body.setAttribute("width", "8");
+  body.setAttribute("height", "6");
+  body.setAttribute("rx", "1");
+  body.setAttribute("fill", "currentColor");
+  svg.append(shackle, body);
+  return svg;
+}
+
 /** "1 Bronze Bar" or "2 × Iron Bar". */
 const amountText = (qty: number, item: string) => (qty > 1 ? `${qty} × ${item}` : item);
 
@@ -153,8 +178,12 @@ export function createCraftingWindow(
         name.textContent = r.name;
         const lvl = document.createElement("span");
         lvl.className = "crafting-row-level";
-        lvl.textContent =
-          r.state === "level" || r.state === "unlearned" ? `🔒 ${r.level}` : String(r.level);
+        lvl.textContent = String(r.level);
+        if (r.state === "level" || r.state === "unlearned") {
+          // A padlock drawn in the page, not an emoji: the game's fonts have none.
+          lvl.prepend(padlock());
+          lvl.setAttribute("aria-label", `Locked, level ${r.level}`);
+        }
         line.title = r.why ?? `Can make ${r.affordable}`;
         line.append(picture(a, r.output.item, "crafting-row-pic"), name, lvl);
         line.addEventListener("click", () => {
