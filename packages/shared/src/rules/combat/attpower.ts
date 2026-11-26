@@ -19,6 +19,7 @@ import { hasBehaviour } from "../inventory/behaviours.ts";
 import { type CrystalColour, crystalColour } from "../inventory/inventory.ts";
 import { classPerkBonus } from "../progression/classes.ts";
 import { factionPerk } from "../social/factions.ts";
+import { counterPerkBonus } from "../world/events.ts";
 import { gearBonus } from "./gear.ts";
 
 /** The six arrow colours, by arrow number. */
@@ -186,6 +187,7 @@ export function attackPower(
   }
   // The faction perk `melee` (Classic: a Warrior's tier).
   power += factionPerk(f.faction, "melee") + classPerkBonus(f.classCode, "melee");
+  power += counterPerkBonus(f.classCode, "melee", f.counters);
   let outOfCrystals: string | null = null;
   let crystal: CrystalColour | null = null;
   if (isBow) {

@@ -54,6 +54,7 @@ import {
 } from "../progression/progress.ts";
 import { mageSkillCap } from "../progression/skillgain.ts";
 import { factionPerk } from "../social/factions.ts";
+import { type Counters, counterPerkBonus } from "../world/events.ts";
 import { PLAYFIELD_RECT } from "./spellfx.ts";
 
 export interface SpellTable {
@@ -210,6 +211,8 @@ export interface Caster {
   level?: number;
   /** The class code (issue #15): its `spellPower` perk. */
   classCode?: number;
+  /** The world counters (issue #3), for the counter perks `spellPower`. Absent: none. */
+  counters?: Counters;
 }
 
 /** What a power row's condition reads. */
@@ -227,7 +230,8 @@ const NO_DICE: Rng = {
 
 /**
  * The base power: 1, then `spells.json` `power.base` rows (Classic: +1 for each tier of Magery
- * over 10, 20 … 90), the caster's faction and class perk `spellPower` and their worn spell gear.
+ * over 10, 20 … 90), the caster's faction, class and counter perks `spellPower` and their worn
+ * spell gear.
  */
 export function basePower(c: Caster, rng: Rng = NO_DICE): number {
   let p = 1;
@@ -235,6 +239,7 @@ export function basePower(c: Caster, rng: Rng = NO_DICE): number {
     p = applyTierRow(p, t, reader(c), rng);
   }
   p += factionPerk(c.faction, "spellPower") + classPerkBonus(c.classCode, "spellPower");
+  p += counterPerkBonus(c.classCode, "spellPower", c.counters);
   p += gearBonus(c.equip, "spell");
   return p;
 }

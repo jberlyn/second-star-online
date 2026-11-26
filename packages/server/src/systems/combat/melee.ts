@@ -252,7 +252,7 @@ function workAttack(room: Room, p: Player, ctx: MeleeCtx, ev: SwingEvents): void
       t.atDelay = atDelay;
     }
   }
-  const f = fighterOf(p);
+  const f = fighterOf(p, ctx.world?.counters);
   const ap = attackPower(f, ctx.rng, (c) => crystalSlot(p, c) >= 0);
   p.attackPress = null;
   if (ap.crystal) {
@@ -403,7 +403,14 @@ function pvpSwing(
     v.lastToHitId = p.id;
     v.hitAge = 0;
     const shielded = onHolyShield(v, room.map.slots);
-    const r = pvpHit(power, fighterOf(v), weapon, v.defenseBonus, ctx.rng, shielded);
+    const r = pvpHit(
+      power,
+      fighterOf(v, ctx.world?.counters),
+      weapon,
+      v.defenseBonus,
+      ctx.rng,
+      shielded,
+    );
     v.flicker = flickerFrames();
     v.vitalsDirty = true;
     const lines: string[] = [];

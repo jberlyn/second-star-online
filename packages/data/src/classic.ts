@@ -11,6 +11,7 @@ import bindings from "../packs/classic/data/bindings.json" with { type: "json" }
 import casino from "../packs/classic/data/casino.json" with { type: "json" };
 import classes from "../packs/classic/data/classes.json" with { type: "json" };
 import craft from "../packs/classic/data/craft.json" with { type: "json" };
+import events from "../packs/classic/data/events.json" with { type: "json" };
 import gather from "../packs/classic/data/gather.json" with { type: "json" };
 import help from "../packs/classic/data/help.json" with { type: "json" };
 import houses from "../packs/classic/data/houses.json" with { type: "json" };
@@ -31,6 +32,7 @@ import type { BindingsData } from "../schema/bindings.ts";
 import type { CasinoData } from "../schema/casino.ts";
 import type { ClassesData } from "../schema/classes.ts";
 import type { CraftData } from "../schema/craft.ts";
+import type { EventsData } from "../schema/events.ts";
 import type { GatherData } from "../schema/gather.ts";
 import type { HelpData } from "../schema/help.ts";
 import type { HouseData } from "../schema/houses.ts";
@@ -68,4 +70,5 @@ export const classicData = {
   /** Classic carries no art rows: its art is its built atlases. */
   art: { items: [], paperdoll: [], bodies: [], fx: [], tiles: [], sounds: [] } as ArtData,
   balance: balance as unknown as BalanceData,
+  events: events as unknown as EventsData,
 };

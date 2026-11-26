@@ -70,6 +70,7 @@ import {
   type Role,
   type RoleData,
   type RoleDef,
+  reconcileCounters,
   reconcileItems,
   roleDataError,
   roleFromData,
@@ -157,6 +158,7 @@ import {
 import { chatLogLines, insertChatLog, pruneChatLog } from "./persistence/chatlog.ts";
 import { loadContainers, saveContainer } from "./persistence/containers.ts";
 import { contentWorldStore } from "./persistence/content-world.ts";
+import { loadCounters, saveCounters } from "./persistence/counters.ts";
 import type { Db } from "./persistence/database.ts";
 import {
   deleteShop,
@@ -446,6 +448,7 @@ import {
 } from "./systems/social/guilds.ts";
 import { presenceOut, whoNames } from "./systems/social/presence.ts";
 import { castIntent } from "./systems/spells/cast.ts";
+import { driftTick } from "./systems/world/events.ts";
 import {
   fallbackTarget,
   flushInventory,
@@ -704,6 +707,8 @@ export function createGame(deps: GameDeps): Game {
   const { db, send, isoNow, rng } = deps;
   const minute = deps.minute ?? (() => new Date().getUTCMinutes());
   let lastMinute = minute();
+  /** Minutes the server has run, counted at each new minute: the counters' drift clock. */
+  let minutesRunning = 0;
   /** The skill keys online characters' skill lists are in (`SKILL_KEYS` when they were built). */
   let skillKeys = SKILL_KEYS;
   /**
@@ -940,6 +945,9 @@ export function createGame(deps: GameDeps): Game {
     world.factionPowers = startingPowers();
     saveFactionPowers(db, world.factionPowers);
   }
+  // World counters (issue #3): each defined counter at its saved value, or its start.
+  world.counters = reconcileCounters(loadCounters(db));
+  saveCounters(db, world.counters);
   const quests = loadQuestLines(db);
   if (quests) {
     world.questLines = quests;
@@ -1305,6 +1313,8 @@ export function createGame(deps: GameDeps): Game {
     world.questsDirty.clear();
     const powers = world.powersDirty;
     world.powersDirty = false;
+    const counters = world.countersDirty;
+    world.countersDirty = false;
     const assassin = world.assassinDirty;
     world.assassinDirty = false;
     const highScores = world.highScoresDirty;
@@ -1326,6 +1336,7 @@ export function createGame(deps: GameDeps): Game {
       boxes.length === 0 &&
       questLines.length === 0 &&
       !powers &&
+      !counters &&
       !assassin &&
       !highScores &&
       guilds.length === 0 &&
@@ -1432,6 +1443,10 @@ export function createGame(deps: GameDeps): Game {
       }
       if (powers) {
         saveFactionPowers(db, world.factionPowers);
+      }
+      // An offering's changed counters, with the bag it took the item from.
+      if (counters) {
+        saveCounters(db, world.counters);
       }
       // A kill's points, a start or an end, with the bags the prizes went to.
       if (assassin) {
@@ -4380,6 +4395,9 @@ export function createGame(deps: GameDeps): Game {
         for (const o of world.players.values()) {
           send(o.id, { t: "minute", minute: m });
         }
+        // The world counters drift once a minute of running (issue #3), saved with this tick.
+        minutesRunning++;
+        driftTick(world, minutesRunning);
       }
       // Lost a room's membership: dropped at once.
       deliver(roomMembership(world));
@@ -4452,6 +4470,13 @@ export function createGame(deps: GameDeps): Game {
         // A member's tier follows the store's tier rows; a faction the store dropped gives none of
         // its perks (the membership stays saved, for the faction to return to).
         o.char.faction = sortFaction(factionKeyOf(o.char.faction.key), world.factionPowers);
+      }
+      // The world counters follow the store (issue #3): a new counter starts at its `start` (or
+      // the value it had when it was last defined), and each is kept inside its new bounds.
+      const counters = reconcileCounters({ ...loadCounters(db), ...world.counters });
+      if (JSON.stringify(counters) !== JSON.stringify(world.counters)) {
+        world.counters = counters;
+        world.countersDirty = true;
       }
       // Setting defaults drawn from content (the Assassin prizes) follow it.
       // Its moves (a jail point changed since the settings were read) wait with the publish.

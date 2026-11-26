@@ -470,6 +470,13 @@ export function referencesOf(data: ContentData): Reference[] {
       ...(npcLine ? { npcLine: true } : {}),
       ...(fixed ? { fixed: true } : {}),
     });
+  // World events (issue #3): an offering's item and the placed item it is dropped onto. Either
+  // gone, the offering goes with it.
+  for (const o of data.events.offerings) {
+    const row: RowRef = { dataset: "events", part: "offerings", key: o.name };
+    add(row, ["item"], "item", o.item, []);
+    add(row, ["onto"], "itemOrFixture", o.onto, []);
+  }
   const editorItems = section("items", "editorItems");
   data.items.editorItems.forEach((n, i) => {
     add(editorItems, [i], "itemOrFixture", n, [i]);
@@ -1660,6 +1667,46 @@ export function classProblems(data: ContentData): ContentProblem[] {
   data.social.bios.titles.forEach((t, i) => {
     check(`social/bios (title ${i + 1}: ${t.title})`, t.classes, "is only for");
   });
+  for (const o of data.events.offerings) {
+    const where = `events/offerings/${o.name}`;
+    check(where, o.classes, "can only be made by");
+    (o.announce ?? []).forEach((a, i) => {
+      check(`${where} (announcement ${i + 1})`, a.classes, "is announced to");
+    });
+  }
+  for (const k of data.events.perks) {
+    check(`events/perks/${k.name}`, k.classes, "is only for");
+  }
+  return out;
+}
+
+/**
+ * World events (issue #3): every counter an offering or a counter perk names must be one the
+ * Counters tab defines.
+ */
+export function eventProblems(data: ContentData): ContentProblem[] {
+  const out: ContentProblem[] = [];
+  const counters = new Set(data.events.counters.map((c) => c.name.toLowerCase()));
+  const check = (where: string, name: string) => {
+    if (!counters.has(name.toLowerCase())) {
+      out.push({
+        where,
+        message: `names the counter ${name}, which is not a counter: add it on the Counters tab or pick one there`,
+      });
+    }
+  };
+  for (const o of data.events.offerings) {
+    const where = `events/offerings/${o.name}`;
+    for (const c of o.checks ?? []) {
+      check(where, c.counter);
+    }
+    for (const c of o.changes ?? []) {
+      check(where, c.counter);
+    }
+  }
+  for (const k of data.events.perks) {
+    check(`events/perks/${k.name}`, k.counter);
+  }
   return out;
 }
 
@@ -1683,6 +1730,7 @@ export function checkStore(
     ...recipeProblems(next),
     ...classGearProblems(next),
     ...classProblems(next),
+    ...eventProblems(next),
     ...referenceProblems(withNpcSaves(next, npcSaves), withNpcSaves(published, npcSaves)),
   ];
 }

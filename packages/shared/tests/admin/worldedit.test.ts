@@ -210,13 +210,13 @@ describe("LOAD and SAVE", () => {
     exit.exit1 = { mx: 1, my: 2, x: 18, y: 1 };
     expect(editorMapError(exit, ok)).not.toBeNull();
   });
-  test("the lists contain 36 monsters, 56 NPCs and 47 item choices", () => {
+  test("the lists contain 36 monsters, 56 NPCs and 51 item choices", () => {
     expect(EDITOR_MONSTERS.length).toBe(36);
     expect(EDITOR_NPCS.length).toBe(56);
     expect(EDITOR_MONSTERS).toEqual(monstersData.editorLists.worldEditor.monsters);
     expect(EDITOR_NPCS).toEqual(monstersData.editorLists.worldEditor.npcs);
-    expect(EDITOR_ITEMS.length).toBe(47);
-    // "Delete" is not an item; the other 46 are `editorItems` of the item content.
+    expect(EDITOR_ITEMS.length).toBe(51);
+    // "Delete" is not an item; the other 50 (the four orb platforms of issue #3 among them) are `editorItems` of the item content.
     expect(EDITOR_ITEMS[0]).toBe("Delete");
     expect(EDITOR_ITEMS.slice(1)).toEqual(itemsData.editorItems);
   });

@@ -312,8 +312,11 @@ describe("quests", () => {
     }
     expect(pools.wanted.map((p) => p.roll)).toEqual(pools.wanted.map((_, i) => i + 1));
     expect(pools.rewards.map((p) => p.roll)).toEqual(pools.rewards.map((_, i) => i + 1));
-    // A stored line that asks for or gives one is rolled again at start.
-    expect(questLineUnanswerable("Dantan:Water Orb:Plate Boots")).toBe(true);
+    // A stored line that asks for or gives one is rolled again at start. The Water Orb left the
+    // pool for that reason, and stays out of it; since the orb war (issue #3) a Snow Demon drops
+    // one, so a stored line naming it can be answered again.
+    expect(questLineUnanswerable("Dantan:Water Orb:Plate Boots")).toBe(false);
+    expect(questLineUnanswerable("Dantan:Ocarina:Plate Boots")).toBe(true);
     expect(questLineUnanswerable("Divela:Scroll:Scimitar")).toBe(true);
     expect(questLineUnanswerable("Divela:Scroll:Katana")).toBe(false);
   });

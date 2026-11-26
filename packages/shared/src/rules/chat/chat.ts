@@ -56,6 +56,11 @@ export type ChatCommand =
   /** SSO operator stand-in: `/spawn <1-4>`, like `/roster`. */
   | { kind: "spawn"; args: string; line: string }
   /**
+   * SSO: `/counter [name value|name reset]`, the world counters (issue #3), for the
+   * `contentEditor` permission; anyone else gets the unknown-command line, like `/roster`.
+   */
+  | { kind: "counter"; args: string; line: string }
+  /**
    * `/balance`, `/deposit`, `/withdraw` (→ the bank command): the line after its one leading
    * space; the chat field is cleared.
    */
@@ -212,6 +217,13 @@ export function parseChatLine(raw: string): ChatCommand | null {
   if (lingoEq(w1, "/roster")) {
     return {
       kind: "roster",
+      args: deleteWord1(text).trim(),
+      line: dropLeadingSpaces(dropLeadingSpaces(raw, 1), 98),
+    };
+  }
+  if (lingoEq(w1, "/counter")) {
+    return {
+      kind: "counter",
       args: deleteWord1(text).trim(),
       line: dropLeadingSpaces(dropLeadingSpaces(raw, 1), 98),
     };

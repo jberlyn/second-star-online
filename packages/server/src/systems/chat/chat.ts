@@ -61,6 +61,7 @@ import { askFactionPower } from "../social/factions.ts";
 import { friendsCommand } from "../social/friends.ts";
 import { guildAnswer, guildChat, guildInvite } from "../social/guilds.ts";
 import { whoNames } from "../social/presence.ts";
+import { counterChat } from "../world/events.ts";
 import type { Outgoing, Player, World, WorldMap } from "../world/world.ts";
 import { hears, ignoreCommand } from "./ignore.ts";
 import { msgCommand } from "./im.ts";
@@ -209,6 +210,22 @@ export function handleChat(world: World, p: Player, raw: string, deps: ChatDeps)
       return r;
     }
     cmd = { kind: "say", text: cmd.say };
+  }
+  if (cmd.kind === "counter") {
+    if (!can(p.role, "contentEditor")) {
+      return unknown();
+    }
+    const r = counterChat(world, p, cmd.args);
+    if (r.changed) {
+      deps.admin?.audit({
+        actor: p.accountId,
+        command: "/counter",
+        target: r.changed.counter,
+        before: r.changed.before,
+        after: r.changed.after,
+      });
+    }
+    return r.out;
   }
   if (cmd.kind === "roster") {
     if (can(p.role, "roster")) {

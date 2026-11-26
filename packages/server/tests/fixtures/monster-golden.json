@@ -2809,7 +2809,10 @@
         485
       ],
       "casts": null,
-      "loot": null
+      "loot": [
+        "1|hit|Fire Orb|1,20",
+        "1|miss|-|1,20"
+      ]
     },
     "Fire God": {
       "rules": {
@@ -3387,7 +3390,10 @@
         485
       ],
       "casts": null,
-      "loot": null
+      "loot": [
+        "1|hit|Wind Orb|1,20",
+        "1|miss|-|1,20"
+      ]
     },
     "Hellhound": {
       "rules": {
@@ -7116,7 +7122,10 @@
         445
       ],
       "casts": null,
-      "loot": null
+      "loot": [
+        "1|hit|Water Orb|1,20",
+        "1|miss|-|1,20"
+      ]
     },
     "Snow Serpent": {
       "rules": {
@@ -7629,7 +7638,10 @@
         200
       ],
       "casts": null,
-      "loot": null
+      "loot": [
+        "1|hit|Earth Orb|1,20",
+        "1|miss|-|1,20"
+      ]
     },
     "Stripper": {
       "rules": {

@@ -73,10 +73,16 @@ describe("the Classic pack", () => {
   test("loads every dataset and matches its schemas", () => {
     expect(classic.manifest.id).toBe("classic");
     // Every dataset but the uploaded art, which Classic leaves out (its art is its atlases); its
-    // balance numbers are written out (issue #19).
-    expect(Object.keys(classic.data).sort()).toHaveLength(18);
+    // balance numbers are written out (issue #19), and so is its orb war (issue #3).
+    expect(Object.keys(classic.data).sort()).toHaveLength(19);
     expect(classic.data.art).toBeUndefined();
     expect(classic.data.balance).toBeDefined();
+    expect(classic.data.events?.counters.map((c) => c.name)).toEqual([
+      "Fire",
+      "Water",
+      "Earth",
+      "Wind",
+    ]);
   });
 
   test("a server with only Classic installed builds the Classic store unchanged", () => {
@@ -93,6 +99,7 @@ describe("the Classic pack", () => {
     expect(body.data.npcFiles).toBeUndefined();
     expect(body.data.rects).toBeUndefined();
     expect(body.data.balance).toBeUndefined();
+    expect(body.data.events).toBeUndefined();
     expect(body.data.items).toBeDefined();
   });
 });

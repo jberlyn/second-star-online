@@ -146,7 +146,7 @@
     },
     {
       "name": "Fire Demon",
-      "text": ""
+      "text": "FLG|Still\rINV|Fire Orb:20\r"
     },
     {
       "name": "Fire God",
@@ -182,7 +182,7 @@
     },
     {
       "name": "Gryphon",
-      "text": "BIO|RAH!\rFLG|Passive\r"
+      "text": "BIO|RAH!\rFLG|Passive\rINV|Wind Orb:20\r"
     },
     {
       "name": "Hellhound",
@@ -386,7 +386,7 @@
     },
     {
       "name": "Snow Demon",
-      "text": ""
+      "text": "FLG|Still\rINV|Water Orb:20\r"
     },
     {
       "name": "Snow Serpent",
@@ -403,6 +403,10 @@
     {
       "name": "Stephie",
       "text": "BIO|Name: Stephie\rBIO|Class: Alchemist\rGLD|1870865497\rSEL|Purple Sand:125:99978\rSEL|Potion Bottle:5:4755\rSEL|Blue Crystal:7:949266\rBUY|Blue Crystal:4\rSEL|Red Crystal:15:9986084\rBUY|Red Crystal:7\rSEL|Green Crystal:18:1012522\rBUY|Green Crystal:9\rSEL|Yellow Crystal:20:996625\rBUY|Yellow Crystal:10\rSEL|Purple Crystal:23:824344\rBUY|Purple Crystal:11\rSEL|White Crystal:26:915285\rBUY|White Crystal:13\rBUY|Purple Sand:65\rBUY|Purple Potion:32\r"
+    },
+    {
+      "name": "Stone Skull",
+      "text": "FLG|Still\rINV|Earth Orb:20\r"
     },
     {
       "name": "Tastad",

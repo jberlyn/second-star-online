@@ -89,6 +89,7 @@ import { npcBlocked, releaseMonster } from "../spells/cast.ts";
 import { argonsFist } from "../spells/collide.ts";
 import { isBook, readBook } from "../spells/learn.ts";
 import { unboardVehicle, vehicleClick, vehicleDeed } from "../vehicles/vehicles.ts";
+import { offeringDrop } from "../world/events.ts";
 import {
   type GroundItem,
   groundView,
@@ -514,8 +515,13 @@ export function dropIntent(ctx: ItemCtx, room: Room, p: Player, slot: number, n 
   if (hasBehaviour(name, "releasesMonster") && content().monster(name)) {
     return releaseDrop(ctx, room, io, p, slot, name);
   }
-  // The four orbs go to 1.6's orb routine, which never matches and falls through.
   const t = faced(p);
+  // An offering (issue #3): the item dropped onto a placed item that takes it (Classic: an orb on
+  // an orb platform) runs it instead, and only one of the stack is offered.
+  const offered = offeringDrop(ctx.world, room, p, slot, t);
+  if (offered) {
+    return offered;
+  }
   // The first item on the faced tile decides (sprites 158-177 in order): a house or guild vault, a
   // `Cabinet#`, `Crate#` or `Cauldron#`, the Gold, Steel, Water, Emerald, Dark or Wind Chest (1.6
   // left the Wind Chest out), or the Vault takes the item; a plain "Crate" stands in the way, so

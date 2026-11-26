@@ -3780,6 +3780,22 @@
       {
         "match": "exact",
         "pattern": "Cauldron"
+      },
+      {
+        "match": "exact",
+        "pattern": "Fire Orb Platform"
+      },
+      {
+        "match": "exact",
+        "pattern": "Water Orb Platform"
+      },
+      {
+        "match": "exact",
+        "pattern": "Earth Orb Platform"
+      },
+      {
+        "match": "exact",
+        "pattern": "Wind Orb Platform"
       }
     ],
     "platforms": [

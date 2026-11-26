@@ -359,6 +359,28 @@ export const QUEST_TABS: AreaTab[] = [
   },
 ];
 
+/** The World Events page (issue #3). */
+export const EVENT_TABS: AreaTab[] = [
+  {
+    kind: "records",
+    label: "Counters",
+    help: "Numbers the whole world shares and keeps, such as the four elements' balance in the orb war. Staff read and set them with /counter.",
+    part: p("events", "counters", "Counters", "", { noun: "counter" }),
+  },
+  {
+    kind: "records",
+    label: "Offerings",
+    help: "What happens when a player drops an item onto something placed in the world: checks, changes to counters, and what players are told.",
+    part: p("events", "offerings", "Offerings", "", { noun: "offering" }),
+  },
+  {
+    kind: "records",
+    label: "Counter perks",
+    help: "Spell power, melee or defence that grows (or shrinks) with a counter, for chosen classes.",
+    part: p("events", "perks", "Counter perks", "", { noun: "counter perk" }),
+  },
+];
+
 /** The Community page. */
 export const COMMUNITY_TABS: AreaTab[] = [
   {
@@ -461,6 +483,7 @@ export type ContentHome =
   | "gathering"
   | "houses"
   | "quests"
+  | "events"
   | "community"
   | "balance"
   | "pictures";
@@ -474,6 +497,7 @@ export const HOME_TITLES: Record<ContentHome, string> = {
   gathering: "Gathering & Crafting",
   houses: "Houses & Vehicles",
   quests: "Quests",
+  events: "World Events",
   community: "Community",
   balance: "Game Rules",
   pictures: "Pictures & Sounds",
@@ -494,6 +518,7 @@ const AREA_TABS: [ContentHome, AreaTab[]][] = [
   ["gathering", CRAFT_TABS],
   ["houses", HOUSE_TABS(NO_PANEL)],
   ["quests", QUEST_TABS],
+  ["events", EVENT_TABS],
   ["community", COMMUNITY_TABS],
   ["balance", GAME_RULE_TABS],
 ];

@@ -57,6 +57,8 @@ export interface Fighter {
   faction: Faction;
   /** The class code (issue #15): its perks and training. Absent: no class's. */
   classCode?: number;
+  /** The world counters (issue #3), for the counter perks `melee` and `defence`. Absent: none. */
+  counters?: Readonly<Record<string, number>>;
   /** The Purple Potion's attack bonus flag (spells and potions arrive in later slices). */
   attackBonus: number;
   /** Bless's attack bonus while it runs (issue #17), added with Argon's Fist's. Absent: 0. */

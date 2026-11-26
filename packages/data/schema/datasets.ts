@@ -12,6 +12,7 @@ import { bindingsDataSchema } from "./bindings.ts";
 import { casinoDataSchema } from "./casino.ts";
 import { classesDataSchema } from "./classes.ts";
 import { craftDataSchema } from "./craft.ts";
+import { eventsDataSchema } from "./events.ts";
 import { gatherDataSchema } from "./gather.ts";
 import { helpDataSchema } from "./help.ts";
 import { houseDataSchema } from "./houses.ts";
@@ -45,6 +46,7 @@ export const DATASET_SCHEMAS = {
   rects: rectsDataSchema,
   art: artDataSchema,
   balance: balanceDataSchema,
+  events: eventsDataSchema,
 } as const;
 
 export type SchemaDatasetId = keyof typeof DATASET_SCHEMAS;
@@ -92,14 +94,16 @@ export const DATASET_FILES: Record<SchemaDatasetId, string> = {
   rects: "rects",
   art: "art",
   balance: "balance",
+  events: "events",
 };
 
 /**
  * Datasets a pack may leave out, each read as empty when it does: uploaded art (issue #29), which
- * the shipped packs don't carry (their art is their built atlases), and the balance numbers
- * (issue #19), whose every value has an engine default.
+ * the shipped packs don't carry (their art is their built atlases), the balance numbers
+ * (issue #19), whose every value has an engine default, and the world events (issue #3), which a
+ * world without them does not need.
  */
-export const OPTIONAL_DATASETS: readonly SchemaDatasetId[] = ["art", "balance"];
+export const OPTIONAL_DATASETS: readonly SchemaDatasetId[] = ["art", "balance", "events"];
 
 export {
   ART_FRAME_IDS,
@@ -148,6 +152,19 @@ export {
   type VehicleBalance,
 } from "./balance.ts";
 export { toolCanSchema } from "./common.ts";
+export {
+  type Announcement,
+  COUNTER_PERKS,
+  type CounterChange,
+  type CounterCheck,
+  type CounterPerk,
+  type CounterPerkKind,
+  EMPTY_EVENTS,
+  type EventsData,
+  eventsDataSchema,
+  type Offering,
+  type WorldCounter,
+} from "./events.ts";
 export { gatherDataSchema, harvestNodeSchema, yieldTableSchema } from "./gather.ts";
 export {
   LEGACY_DEED_VEHICLES,

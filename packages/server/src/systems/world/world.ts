@@ -1057,6 +1057,10 @@ export interface World {
   factionPowers: Powers;
   /** The powers changed since the last write. */
   powersDirty: boolean;
+  /** The world counters (issue #3), by the name content spells: each defined counter's value. */
+  counters: Record<string, number>;
+  /** The counters changed since the last write. */
+  countersDirty: boolean;
   /** 1.6's quest settings file, lines 1-40. */
   questLines: string[];
   /** Quest lines changed since the last write (0-based). */
@@ -1214,6 +1218,9 @@ export function createWorld(npcs: NpcStore = archiveNpcStore()): World {
     // Each faction's `startPower` until the database's saved powers are loaded.
     factionPowers: {},
     powersDirty: false,
+    // Each counter's `start` until the database's saved values are loaded.
+    counters: {},
+    countersDirty: false,
     questLines: archivedQuestLines(),
     questsDirty: new Set(),
     chatRooms: new Map(),

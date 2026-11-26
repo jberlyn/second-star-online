@@ -10,6 +10,7 @@ import { lingoEq, type Rng } from "../core/lingo.ts";
 import { excepted, ruleMatches } from "../core/patterns.ts";
 import { classPerkBonus } from "../progression/classes.ts";
 import { factionPerk } from "../social/factions.ts";
+import { counterPerkBonus } from "../world/events.ts";
 
 /** A dodge perk: the faction's and the class's (issue #15) added. */
 const perkOf = (f: Fighter, kind: "pvpParry" | "pvpBlock") =>
@@ -91,7 +92,12 @@ export function elementalRows(
  * for both).
  */
 export function factionRows(power: number, f: Fighter): number {
-  return power - factionPerk(f.faction, "defence") - classPerkBonus(f.classCode, "defence");
+  return (
+    power -
+    factionPerk(f.faction, "defence") -
+    classPerkBonus(f.classCode, "defence") -
+    counterPerkBonus(f.classCode, "defence", f.counters)
+  );
 }
 
 /**

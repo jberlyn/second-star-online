@@ -523,6 +523,36 @@ A spell row in `spells.json` may set its own `amount`, with any of `monster`, `m
 
 Only a spell cast from a spellbook takes its own amounts: a free fireball, a monster's cast or a map hazard that runs the same FX takes the effect's.
 
+### World events (`events.json`)
+
+`events.json` (issue #3) holds the world's own contests: numbers the whole world shares, the offerings that change them and the perks they drive. The Control Panel's [World Events](running-a-server.md#the-world-events-page) page edits it. A pack may leave it out (Minimal does): the world then has no counters. Classic builds 1.6's elemental orb war from it ([The elemental orb war works](differences-from-fso.md#the-elemental-orb-war-works)). Each part is a list of rows keyed by `name` (case ignored). Every counter an offering or perk names must be one `counters` defines, every class is a class code, and an offering's `item` and `onto` must be items; a publish with one missing is refused. The schema is [events.ts](../packages/data/schema/events.ts).
+
+| Part | Fields |
+|---|---|
+| `counters` | `name`; `description` (for the Control Panel); `start`, `min`, `max` (whole numbers, `min` ≤ `start` ≤ `max`); `drift` (optional): `everyMinutes` of the server running it moves `by` toward `toward` (its `start` when left out), never past it. The server saves each counter's value; a new counter starts at `start` when it is published, and a publish that narrows the bounds brings the live value inside them. A removed counter's saved value comes back if a counter of that name is added again |
+| `offerings` | `name`; `item`, the item dropped (its name without a `#id` or `+N`); `onto`, the item faced, which the world must have placed (World Editor, staff `/drop` or the world seed: a player's own drop never counts); `classes` and `classRefusal` (optional: only these classes may, others hear the refusal, "Nothing happens." when unset); `checks`: each `counter` with `atLeast` and/or `atMost` and a `refusal`, tested in order; `changes`: each adds `add` to a `counter` (negative takes away), stopping at its bounds; `keepsItem` (the item stays in the bag; otherwise one is used up); `message`, said to the player; `announce`: each `text` sent to every online player in its `classes`, or everyone when left out. Texts may use `{player}`, `{item}` and `{onto}`. The first offering naming both items runs, in place of the drop, after the drop's own refusals (a pause, a vehicle) |
+| `perks` | `name`; `counter`; `kind`: `spellPower`, `melee` or `defence`; `classes` (a class inheriting one counts; everyone when left out); `from`, `every`, `value`: the perk is `value` × the whole steps of `every` the counter is past `from`, rounded toward `from`, so below `from` it takes away; `least` and `most` bound it. It adds to the faction's and class's perk of the same kind |
+
+Classic's orb war: four counters `Fire`, `Water`, `Earth` and `Wind` (`start` 25, `min` 0, `max` 100, drifting 1 an hour back to 25); for each orb on each platform an offering (the same element's says "Dropping a fire orb will do no good here." with `keepsItem`; another's checks the orb's counter is `atLeast` 1, adds −1 to it and +1 to the platform's, and announces to both elements' mage classes); and one perk per element, `spellPower` for its mage class, `from` 25, `every` 10, `value` 1. Staff read and set the counters in play with `/counter`.
+
+#### Example: a wishing well
+
+An operator's world event of another shape: a placed Fountain takes Gold Coins, at most three wishes a day, and everyone's melee rises with the wishes made. On the World Events page add a counter `Wishes` (`start` 0, `min` 0, `max` 3, drift every 480 minutes by 1), an offering:
+
+```json
+{
+  "name": "A coin in the fountain",
+  "item": "Gold Coin",
+  "onto": "Fountain",
+  "checks": [{ "counter": "Wishes", "atMost": 2, "refusal": "The fountain has granted enough wishes for now." }],
+  "changes": [{ "counter": "Wishes", "add": 1 }],
+  "message": "The coin sinks out of sight.",
+  "announce": [{ "text": "{player} has made a wish at the fountain." }]
+}
+```
+
+and a perk `Wishful` (`counter` Wishes, `kind` melee, `from` 0, `every` 1, `value` 1). Place a Fountain with the World Editor and publish.
+
 ### What a world may leave out
 
 1.6's game shaped many of these files: tables that name its items, tiles and NPCs. A world that does not want a mechanic leaves its table out, and the mechanic is off (Classic fills every one; the [Minimal pack](#starting-a-world-classic-or-minimal) leaves them out):

@@ -6,6 +6,7 @@ import { bindingsWords } from "./bindings.ts";
 import { casinoWords } from "./casino.ts";
 import { classesWords } from "./classes.ts";
 import { craftWords } from "./craft.ts";
+import { eventsWords } from "./events.ts";
 import { gatherWords } from "./gather.ts";
 import { helpWords } from "./help.ts";
 import { housesWords } from "./houses.ts";
@@ -36,4 +37,5 @@ export const DATASET_WORDS: Record<string, WordBook> = {
   spells: spellsWords,
   tiles: tilesWords,
   balance: balanceWords,
+  events: eventsWords,
 };

@@ -10,6 +10,7 @@ import { createHash } from "node:crypto";
 import {
   DATASET_SCHEMAS,
   EMPTY_ART,
+  EMPTY_EVENTS,
   OPTIONAL_DATASETS,
   partJsonSchema,
 } from "@secondstaronline/data/schema";
@@ -37,6 +38,7 @@ export const KEYED_LISTS: Partial<Record<DatasetId, Record<string, string>>> = {
     sounds: "name",
   },
   balance: { spellEffects: "effect" },
+  events: { counters: "name", offerings: "name", perks: "name" },
   craft: { recipeStations: "name", recipes: "name", masterworks: "item" },
 };
 
@@ -299,5 +301,7 @@ export function withOptionalDatasets(data: Partial<ContentData>): Partial<Conten
     art: data.art ?? structuredClone(EMPTY_ART),
     // A world's balance may leave out every part: the store plays the engine's defaults.
     balance: data.balance ?? {},
+    // A world without events has no counters, offerings or counter perks.
+    events: data.events ?? structuredClone(EMPTY_EVENTS),
   };
 }

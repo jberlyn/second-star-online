@@ -192,6 +192,7 @@ export function castIntent(
       faction: p.char.faction,
       level: p.char.vitals.level,
       classCode: p.char.classCode,
+      ...(ctx.world ? { counters: ctx.world.counters } : {}),
     },
     ctx.rng,
   );

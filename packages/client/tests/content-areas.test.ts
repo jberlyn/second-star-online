@@ -12,6 +12,7 @@ import {
   COMMUNITY_TABS,
   CRAFT_TABS,
   CREATURE_RULE_TABS,
+  EVENT_TABS,
   GAME_RULE_TABS,
   HOUSE_TABS,
   homeOf,
@@ -53,6 +54,7 @@ test("no part is on two pages", () => {
     CRAFT_TABS,
     HOUSE_TABS(custom),
     QUEST_TABS,
+    EVENT_TABS,
     COMMUNITY_TABS,
     GAME_RULE_TABS,
   ]) {

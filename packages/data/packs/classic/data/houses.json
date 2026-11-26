@@ -1443,6 +1443,30 @@
       "action": null
     },
     {
+      "item": "Fire Orb Platform",
+      "match": "exact",
+      "text": "This is the fire orb platform.",
+      "action": null
+    },
+    {
+      "item": "Water Orb Platform",
+      "match": "exact",
+      "text": "This is the water orb platform.",
+      "action": null
+    },
+    {
+      "item": "Earth Orb Platform",
+      "match": "exact",
+      "text": "This is the earth orb platform.",
+      "action": null
+    },
+    {
+      "item": "Wind Orb Platform",
+      "match": "exact",
+      "text": "This is the wind orb platform.",
+      "action": null
+    },
+    {
       "item": "Mage Master Platform",
       "match": "exact",
       "text": "This is a mage master's platform, only a master of magery can pass through this.",

@@ -235,3 +235,4 @@ export * from "./rules/spells/spells.ts";
 export * from "./rules/vehicles/cannon.ts";
 export * from "./rules/vehicles/vehicles.ts";
 export { VEHICLE_BODY } from "./rules/vehicles/vehicles.ts";
+export * from "./rules/world/events.ts";

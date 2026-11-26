@@ -132,7 +132,7 @@ function hitMe2(
   p.lastToHitMe = `a ${m.name}`;
   p.lastToHitId = null;
   p.hitAge = 0;
-  const f = fighterOf(p);
+  const f = fighterOf(p, ctx.world?.counters);
   const map = p.map;
   const shielded = onHolyShield(p, map.slots);
   // A weakened monster (issue #17) hits for less.
@@ -229,7 +229,8 @@ export function gainOnHit(
   return out;
 }
 
-export function fighterOf(p: Player): Fighter {
+/** The fighter `p` is; `counters` (the world's, issue #3) for the counter perks a fight reads. */
+export function fighterOf(p: Player, counters?: Readonly<Record<string, number>>): Fighter {
   const s = statsOf(p);
   p.char.skillXp ??= [];
   return {
@@ -244,6 +245,7 @@ export function fighterOf(p: Player): Fighter {
     equip: p.char.equip,
     faction: p.char.faction,
     classCode: p.char.classCode,
+    ...(counters ? { counters } : {}),
     attackBonus: p.attackBonus,
     blessBonus: p.spell.bless > 0 ? content().balance.buffs.blessBonus : 0,
     weakenPenalty: p.spell.weaken > 0 ? content().balance.buffs.weakenPenalty : 0,

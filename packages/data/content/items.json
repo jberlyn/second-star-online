@@ -851,6 +851,10 @@
       }
     },
     {
+      "name": "Earth Orb",
+      "icon": "added"
+    },
+    {
       "name": "Emerald Key",
       "icon": {
         "member": 96,
@@ -897,6 +901,10 @@
         "castLib": 9,
         "asset": "bitmaps/183912_Fire_Key.png"
       }
+    },
+    {
+      "name": "Fire Orb",
+      "icon": "added"
     },
     {
       "name": "Fire Pot",
@@ -2428,6 +2436,10 @@
       }
     },
     {
+      "name": "Water Orb",
+      "icon": "added"
+    },
+    {
       "name": "Watering Bucket",
       "icon": {
         "member": 419,
@@ -2515,6 +2527,10 @@
     {
       "name": "Wind Cabinet",
       "icon": null
+    },
+    {
+      "name": "Wind Orb",
+      "icon": "added"
     },
     {
       "name": "Wind Wave Book",
@@ -2643,12 +2659,14 @@
     "Clock8",
     "Clock9",
     "Dark Chest",
+    "Earth Orb Platform",
     "Emerald Chest",
     "Emerald Door",
     "Exit",
     "Exit2",
     "Experience Platform",
     "Fire Door",
+    "Fire Orb Platform",
     "Fountain",
     "Gold Chest",
     "Gold Door",
@@ -2686,8 +2704,10 @@
     "Universal Mail",
     "Vault",
     "Water Chest",
+    "Water Orb Platform",
     "WhiteCrystal",
     "Wind Chest",
+    "Wind Orb Platform",
     "Wooden Door",
     "YellowCrystal",
     "Zieg's Boat",
@@ -2732,6 +2752,10 @@
     "Mage Master Platform",
     "Ninja Master Platform",
     "Experience Platform",
+    "Fire Orb Platform",
+    "Water Orb Platform",
+    "Earth Orb Platform",
+    "Wind Orb Platform",
     "Slot Machine",
     "Blackjack Table",
     "Checkers Table",

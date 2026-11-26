@@ -21,6 +21,7 @@ import type {
   CasinoData,
   ClassesData,
   CraftData,
+  EventsData,
   GatherData,
   HelpData,
   HouseData,
@@ -69,6 +70,11 @@ export interface ContentData {
    * out, and the store fills it from the engine's defaults (`content().balance` is always full).
    */
   balance: BalanceData;
+  /**
+   * World counters, offerings and counter perks (issue #3). A pack may leave it out; the store
+   * reads that as none.
+   */
+  events: EventsData;
 }
 
 export type DatasetId = keyof ContentData;
@@ -86,6 +92,7 @@ export const SERVER_ONLY_DATASETS = [
   "rects",
   "art",
   "balance",
+  "events",
 ] as const satisfies readonly DatasetId[];
 
 /** Every dataset id, in a fixed order (the order hashes and pack files use). */
@@ -109,6 +116,7 @@ export const DATASET_IDS = [
   "rects",
   "art",
   "balance",
+  "events",
 ] as const satisfies readonly DatasetId[];
 
 /** A built store: the data and its lookups. Treat it as read-only. */
@@ -174,6 +182,7 @@ export function buildContentStore(raw: ContentData, hash = ""): ContentStore {
   return {
     ...data,
     balance: fullBalance(data.balance),
+    events: data.events ?? { counters: [], offerings: [], perks: [] },
     hash,
     item: (name) => items.get(name.toLowerCase()),
     itemNamed: (text) => items.get(text.toLowerCase()) ?? displays.get(text.toLowerCase()),

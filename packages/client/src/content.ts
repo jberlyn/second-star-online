@@ -23,7 +23,7 @@ export const CONTENT_URL = "/content/";
 export interface ContentFile {
   format: number;
   hash: string;
-  data: Omit<ContentData, "npcFiles" | "rects" | "art" | "balance">;
+  data: Omit<ContentData, "npcFiles" | "rects" | "art" | "balance" | "events">;
 }
 
 /** The server's store is in a format this client was not built for: reload to get the new client. */
@@ -35,7 +35,8 @@ const SERVER_ONLY_EMPTY = {
   rects: { fx: {}, chars: {}, items: {} },
   art: { items: [], paperdoll: [], bodies: [], fx: [], tiles: [], sounds: [] },
   balance: {},
-} satisfies Pick<ContentData, "npcFiles" | "rects" | "art" | "balance">;
+  events: { counters: [], offerings: [], perks: [] },
+} satisfies Pick<ContentData, "npcFiles" | "rects" | "art" | "balance" | "events">;
 
 /** Builds the client's store from a fetched file. */
 export function storeFromFile(file: ContentFile): ContentStore {

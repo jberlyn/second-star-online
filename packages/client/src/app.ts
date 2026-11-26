@@ -106,6 +106,7 @@ import {
   COMMUNITY_TABS,
   CRAFT_TABS,
   CREATURE_RULE_TABS,
+  EVENT_TABS,
   GAME_RULE_TABS,
   HOUSE_TABS,
   homeOf,
@@ -1009,6 +1010,16 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     },
     areaDeps,
   );
+  const eventsArea = createAreaPage(
+    {
+      id: "events-area",
+      title: "World Events",
+      intro:
+        "Counters the whole world shares, the offerings that change them (an item dropped onto something placed in the world) and the perks they drive. The Classic pack's orb war is built from them.",
+      tabs: EVENT_TABS,
+    },
+    areaDeps,
+  );
   const communityArea = createAreaPage(
     {
       id: "community-area",
@@ -1044,6 +1055,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
     gathering: gatheringArea,
     houses: housesArea,
     quests: questsArea,
+    events: eventsArea,
     community: communityArea,
     balance: rulesArea,
   };
@@ -1141,6 +1153,7 @@ export function runApp(root: HTMLElement, assets: Assets, conn: Connection): App
           ["gathering", "Gathering & Crafting", gatheringArea],
           ["houses", "Houses & Vehicles", housesArea],
           ["quests", "Quests", questsArea],
+          ["events", "World Events", eventsArea],
           ["community", "Community", communityArea],
           ["balance", "Game Rules", rulesArea],
         ] as const

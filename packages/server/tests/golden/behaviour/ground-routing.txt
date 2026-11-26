@@ -142,6 +142,8 @@ Dispel Illusions Book | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"
 Doorman's Newspaper | click={"kind":"newspaper"} ctrl={"kind":"newspaper"} ctrlStrong={"kind":"newspaper"} ctrlMine={"kind":"newspaper"}
 Dragon Sword | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
 Dragon Wing | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Earth Orb | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Earth Orb Platform | click={"kind":"text","text":"This is the earth orb platform."} ctrl={"kind":"silent"} ctrlStrong={"kind":"silent"} ctrlMine={"kind":"silent"}
 Emerald Chest | click={"kind":"open"} ctrl={"kind":"open"} ctrlStrong={"kind":"open"} ctrlMine={"kind":"open"}
 Emerald Door | click={"kind":"silent"} ctrl={"kind":"silent"} ctrlStrong={"kind":"silent"} ctrlMine={"kind":"silent"}
 Emerald Key | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
@@ -154,6 +156,8 @@ Fire Door | click={"kind":"silent"} ctrl={"kind":"silent"} ctrlStrong={"kind":"s
 Fire Hammer | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
 Fire Helm | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
 Fire Key | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Fire Orb | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Fire Orb Platform | click={"kind":"text","text":"This is the fire orb platform."} ctrl={"kind":"silent"} ctrlStrong={"kind":"silent"} ctrlMine={"kind":"silent"}
 Fire Pot | click={"kind":"text","text":"I bet that's hot"} ctrl={"kind":"text","text":"I bet that's hot."} ctrlStrong={"kind":"text","text":"I bet that's hot."} ctrlMine={"kind":"text","text":"I bet that's hot."}
 Fire Shield | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
 Fire Staff | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
@@ -385,6 +389,8 @@ War Helm +2 | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"tak
 War Helm +3 | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
 Warrior's Head | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
 Water Chest | click={"kind":"open"} ctrl={"kind":"open"} ctrlStrong={"kind":"open"} ctrlMine={"kind":"open"}
+Water Orb | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Water Orb Platform | click={"kind":"text","text":"This is the water orb platform."} ctrl={"kind":"silent"} ctrlStrong={"kind":"silent"} ctrlMine={"kind":"silent"}
 Watering Bucket | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
 Watermelon | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
 Weaken Book | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
@@ -399,6 +405,8 @@ WhiteCrystal | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"ta
 Wind Cabinet | click={"kind":"open"} ctrl={"kind":"text","text":"You're not strong enough to pick this up!"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
 Wind Cabinet#5 | click={"kind":"open"} ctrl={"kind":"text","text":"You're not strong enough to pick this up!"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
 Wind Chest | click={"kind":"open"} ctrl={"kind":"open"} ctrlStrong={"kind":"open"} ctrlMine={"kind":"open"}
+Wind Orb | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
+Wind Orb Platform | click={"kind":"text","text":"This is the wind orb platform."} ctrl={"kind":"silent"} ctrlStrong={"kind":"silent"} ctrlMine={"kind":"silent"}
 Wind Wave Book | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}
 Windmill | click={"kind":"text","text":"This is a windmill."} ctrl={"kind":"text","text":"This is a windmill."} ctrlStrong={"kind":"text","text":"This is a windmill."} ctrlMine={"kind":"text","text":"This is a windmill."}
 Wizard's Robe | click={"kind":"take"} ctrl={"kind":"take"} ctrlStrong={"kind":"take"} ctrlMine={"kind":"take"}

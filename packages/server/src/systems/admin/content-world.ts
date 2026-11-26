@@ -278,6 +278,8 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
     const pending = {
       tileLog: new Set(world.tileLog),
       powers: world.powersDirty,
+      counters: { ...world.counters },
+      countersDirty: world.countersDirty,
       assassin: world.assassinDirty,
       highScores: world.highScoresDirty,
       guilds: new Set(world.guildsDirty),
@@ -362,6 +364,8 @@ export function createContentWorld(deps: ContentWorldDeps): ContentWorld {
         world.tileLog.add(t);
       }
       world.powersDirty = pending.powers;
+      world.counters = pending.counters;
+      world.countersDirty = pending.countersDirty;
       world.assassinDirty = pending.assassin;
       world.highScoresDirty = pending.highScores;
       world.guildsDirty.clear();

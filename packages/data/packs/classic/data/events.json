@@ -1,0 +1,568 @@
+{
+  "counters": [
+    {
+      "name": "Fire",
+      "description": "The fire mages' share of the elemental balance: the four start at 25 of 100. An orb dropped on an orb platform moves 1 from the orb's element to the platform's.",
+      "start": 25,
+      "min": 0,
+      "max": 100,
+      "drift": {
+        "everyMinutes": 60,
+        "by": 1
+      }
+    },
+    {
+      "name": "Water",
+      "description": "The water mages' share of the elemental balance: the four start at 25 of 100. An orb dropped on an orb platform moves 1 from the orb's element to the platform's.",
+      "start": 25,
+      "min": 0,
+      "max": 100,
+      "drift": {
+        "everyMinutes": 60,
+        "by": 1
+      }
+    },
+    {
+      "name": "Earth",
+      "description": "The earth mages' share of the elemental balance: the four start at 25 of 100. An orb dropped on an orb platform moves 1 from the orb's element to the platform's.",
+      "start": 25,
+      "min": 0,
+      "max": 100,
+      "drift": {
+        "everyMinutes": 60,
+        "by": 1
+      }
+    },
+    {
+      "name": "Wind",
+      "description": "The wind mages' share of the elemental balance: the four start at 25 of 100. An orb dropped on an orb platform moves 1 from the orb's element to the platform's.",
+      "start": 25,
+      "min": 0,
+      "max": 100,
+      "drift": {
+        "everyMinutes": 60,
+        "by": 1
+      }
+    }
+  ],
+  "offerings": [
+    {
+      "name": "Fire Orb on the Fire Orb Platform",
+      "item": "Fire Orb",
+      "onto": "Fire Orb Platform",
+      "keepsItem": true,
+      "message": "Dropping a fire orb will do no good here."
+    },
+    {
+      "name": "Water Orb on the Fire Orb Platform",
+      "item": "Water Orb",
+      "onto": "Fire Orb Platform",
+      "checks": [
+        {
+          "counter": "Water",
+          "atLeast": 1,
+          "refusal": "You get the sense that the water mages are already weakened enough."
+        }
+      ],
+      "changes": [
+        {
+          "counter": "Water",
+          "add": -1
+        },
+        {
+          "counter": "Fire",
+          "add": 1
+        }
+      ],
+      "message": "You drop the water orb onto the fire platform...you sense something powerful has just happened...",
+      "announce": [
+        {
+          "text": "You feel the water magic within you weaken.",
+          "classes": [
+            22
+          ]
+        },
+        {
+          "text": "You feel the fire magic within you grow stronger.",
+          "classes": [
+            21
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Earth Orb on the Fire Orb Platform",
+      "item": "Earth Orb",
+      "onto": "Fire Orb Platform",
+      "checks": [
+        {
+          "counter": "Earth",
+          "atLeast": 1,
+          "refusal": "You get the sense that the earth mages are already weakened enough."
+        }
+      ],
+      "changes": [
+        {
+          "counter": "Earth",
+          "add": -1
+        },
+        {
+          "counter": "Fire",
+          "add": 1
+        }
+      ],
+      "message": "You drop the earth orb onto the fire platform...you sense something powerful has just happened...",
+      "announce": [
+        {
+          "text": "You feel the earth magic within you weaken.",
+          "classes": [
+            24
+          ]
+        },
+        {
+          "text": "You feel the fire magic within you grow stronger.",
+          "classes": [
+            21
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Wind Orb on the Fire Orb Platform",
+      "item": "Wind Orb",
+      "onto": "Fire Orb Platform",
+      "checks": [
+        {
+          "counter": "Wind",
+          "atLeast": 1,
+          "refusal": "You get the sense that the wind mages are already weakened enough."
+        }
+      ],
+      "changes": [
+        {
+          "counter": "Wind",
+          "add": -1
+        },
+        {
+          "counter": "Fire",
+          "add": 1
+        }
+      ],
+      "message": "You drop the wind orb onto the fire platform...you sense something powerful has just happened...",
+      "announce": [
+        {
+          "text": "You feel the wind magic within you weaken.",
+          "classes": [
+            23
+          ]
+        },
+        {
+          "text": "You feel the fire magic within you grow stronger.",
+          "classes": [
+            21
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Fire Orb on the Water Orb Platform",
+      "item": "Fire Orb",
+      "onto": "Water Orb Platform",
+      "checks": [
+        {
+          "counter": "Fire",
+          "atLeast": 1,
+          "refusal": "You get the sense that the fire mages are already weakened enough."
+        }
+      ],
+      "changes": [
+        {
+          "counter": "Fire",
+          "add": -1
+        },
+        {
+          "counter": "Water",
+          "add": 1
+        }
+      ],
+      "message": "You drop the fire orb onto the water platform...you sense something powerful has just happened...",
+      "announce": [
+        {
+          "text": "You feel the fire magic within you weaken.",
+          "classes": [
+            21
+          ]
+        },
+        {
+          "text": "You feel the water magic within you grow stronger.",
+          "classes": [
+            22
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Water Orb on the Water Orb Platform",
+      "item": "Water Orb",
+      "onto": "Water Orb Platform",
+      "keepsItem": true,
+      "message": "Dropping a water orb will do no good here."
+    },
+    {
+      "name": "Earth Orb on the Water Orb Platform",
+      "item": "Earth Orb",
+      "onto": "Water Orb Platform",
+      "checks": [
+        {
+          "counter": "Earth",
+          "atLeast": 1,
+          "refusal": "You get the sense that the earth mages are already weakened enough."
+        }
+      ],
+      "changes": [
+        {
+          "counter": "Earth",
+          "add": -1
+        },
+        {
+          "counter": "Water",
+          "add": 1
+        }
+      ],
+      "message": "You drop the earth orb onto the water platform...you sense something powerful has just happened...",
+      "announce": [
+        {
+          "text": "You feel the earth magic within you weaken.",
+          "classes": [
+            24
+          ]
+        },
+        {
+          "text": "You feel the water magic within you grow stronger.",
+          "classes": [
+            22
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Wind Orb on the Water Orb Platform",
+      "item": "Wind Orb",
+      "onto": "Water Orb Platform",
+      "checks": [
+        {
+          "counter": "Wind",
+          "atLeast": 1,
+          "refusal": "You get the sense that the wind mages are already weakened enough."
+        }
+      ],
+      "changes": [
+        {
+          "counter": "Wind",
+          "add": -1
+        },
+        {
+          "counter": "Water",
+          "add": 1
+        }
+      ],
+      "message": "You drop the wind orb onto the water platform...you sense something powerful has just happened...",
+      "announce": [
+        {
+          "text": "You feel the wind magic within you weaken.",
+          "classes": [
+            23
+          ]
+        },
+        {
+          "text": "You feel the water magic within you grow stronger.",
+          "classes": [
+            22
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Fire Orb on the Earth Orb Platform",
+      "item": "Fire Orb",
+      "onto": "Earth Orb Platform",
+      "checks": [
+        {
+          "counter": "Fire",
+          "atLeast": 1,
+          "refusal": "You get the sense that the fire mages are already weakened enough."
+        }
+      ],
+      "changes": [
+        {
+          "counter": "Fire",
+          "add": -1
+        },
+        {
+          "counter": "Earth",
+          "add": 1
+        }
+      ],
+      "message": "You drop the fire orb onto the earth platform...you sense something powerful has just happened...",
+      "announce": [
+        {
+          "text": "You feel the fire magic within you weaken.",
+          "classes": [
+            21
+          ]
+        },
+        {
+          "text": "You feel the earth magic within you grow stronger.",
+          "classes": [
+            24
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Water Orb on the Earth Orb Platform",
+      "item": "Water Orb",
+      "onto": "Earth Orb Platform",
+      "checks": [
+        {
+          "counter": "Water",
+          "atLeast": 1,
+          "refusal": "You get the sense that the water mages are already weakened enough."
+        }
+      ],
+      "changes": [
+        {
+          "counter": "Water",
+          "add": -1
+        },
+        {
+          "counter": "Earth",
+          "add": 1
+        }
+      ],
+      "message": "You drop the water orb onto the earth platform...you sense something powerful has just happened...",
+      "announce": [
+        {
+          "text": "You feel the water magic within you weaken.",
+          "classes": [
+            22
+          ]
+        },
+        {
+          "text": "You feel the earth magic within you grow stronger.",
+          "classes": [
+            24
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Earth Orb on the Earth Orb Platform",
+      "item": "Earth Orb",
+      "onto": "Earth Orb Platform",
+      "keepsItem": true,
+      "message": "Dropping an earth orb will do no good here."
+    },
+    {
+      "name": "Wind Orb on the Earth Orb Platform",
+      "item": "Wind Orb",
+      "onto": "Earth Orb Platform",
+      "checks": [
+        {
+          "counter": "Wind",
+          "atLeast": 1,
+          "refusal": "You get the sense that the wind mages are already weakened enough."
+        }
+      ],
+      "changes": [
+        {
+          "counter": "Wind",
+          "add": -1
+        },
+        {
+          "counter": "Earth",
+          "add": 1
+        }
+      ],
+      "message": "You drop the wind orb onto the earth platform...you sense something powerful has just happened...",
+      "announce": [
+        {
+          "text": "You feel the wind magic within you weaken.",
+          "classes": [
+            23
+          ]
+        },
+        {
+          "text": "You feel the earth magic within you grow stronger.",
+          "classes": [
+            24
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Fire Orb on the Wind Orb Platform",
+      "item": "Fire Orb",
+      "onto": "Wind Orb Platform",
+      "checks": [
+        {
+          "counter": "Fire",
+          "atLeast": 1,
+          "refusal": "You get the sense that the fire mages are already weakened enough."
+        }
+      ],
+      "changes": [
+        {
+          "counter": "Fire",
+          "add": -1
+        },
+        {
+          "counter": "Wind",
+          "add": 1
+        }
+      ],
+      "message": "You drop the fire orb onto the wind platform...you sense something powerful has just happened...",
+      "announce": [
+        {
+          "text": "You feel the fire magic within you weaken.",
+          "classes": [
+            21
+          ]
+        },
+        {
+          "text": "You feel the wind magic within you grow stronger.",
+          "classes": [
+            23
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Water Orb on the Wind Orb Platform",
+      "item": "Water Orb",
+      "onto": "Wind Orb Platform",
+      "checks": [
+        {
+          "counter": "Water",
+          "atLeast": 1,
+          "refusal": "You get the sense that the water mages are already weakened enough."
+        }
+      ],
+      "changes": [
+        {
+          "counter": "Water",
+          "add": -1
+        },
+        {
+          "counter": "Wind",
+          "add": 1
+        }
+      ],
+      "message": "You drop the water orb onto the wind platform...you sense something powerful has just happened...",
+      "announce": [
+        {
+          "text": "You feel the water magic within you weaken.",
+          "classes": [
+            22
+          ]
+        },
+        {
+          "text": "You feel the wind magic within you grow stronger.",
+          "classes": [
+            23
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Earth Orb on the Wind Orb Platform",
+      "item": "Earth Orb",
+      "onto": "Wind Orb Platform",
+      "checks": [
+        {
+          "counter": "Earth",
+          "atLeast": 1,
+          "refusal": "You get the sense that the earth mages are already weakened enough."
+        }
+      ],
+      "changes": [
+        {
+          "counter": "Earth",
+          "add": -1
+        },
+        {
+          "counter": "Wind",
+          "add": 1
+        }
+      ],
+      "message": "You drop the earth orb onto the wind platform...you sense something powerful has just happened...",
+      "announce": [
+        {
+          "text": "You feel the earth magic within you weaken.",
+          "classes": [
+            24
+          ]
+        },
+        {
+          "text": "You feel the wind magic within you grow stronger.",
+          "classes": [
+            23
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Wind Orb on the Wind Orb Platform",
+      "item": "Wind Orb",
+      "onto": "Wind Orb Platform",
+      "keepsItem": true,
+      "message": "Dropping a wind orb will do no good here."
+    }
+  ],
+  "perks": [
+    {
+      "name": "Fire mages' share",
+      "counter": "Fire",
+      "kind": "spellPower",
+      "classes": [
+        21
+      ],
+      "from": 25,
+      "every": 10,
+      "value": 1
+    },
+    {
+      "name": "Water mages' share",
+      "counter": "Water",
+      "kind": "spellPower",
+      "classes": [
+        22
+      ],
+      "from": 25,
+      "every": 10,
+      "value": 1
+    },
+    {
+      "name": "Earth mages' share",
+      "counter": "Earth",
+      "kind": "spellPower",
+      "classes": [
+        24
+      ],
+      "from": 25,
+      "every": 10,
+      "value": 1
+    },
+    {
+      "name": "Wind mages' share",
+      "counter": "Wind",
+      "kind": "spellPower",
+      "classes": [
+        23
+      ],
+      "from": 25,
+      "every": 10,
+      "value": 1
+    }
+  ]
+}

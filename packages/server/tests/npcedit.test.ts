@@ -84,6 +84,18 @@ function stand(map: WorldMap, slot: number, name: string, x: number, y: number) 
   return s.live;
 }
 
+/**
+ * The orb war's sources (issue #3): the four elemental monsters each drop their orb, and the three
+ * that had no NPC data are kept still by `FLG|Still` (no data never moved). Every other file parses
+ * as 1.6's did.
+ */
+const ORB_LOOT: Record<string, { item: string; flags: string[] }> = {
+  "Fire Demon": { item: "Fire Orb", flags: ["FLG|Still"] },
+  "Snow Demon": { item: "Water Orb", flags: ["FLG|Still"] },
+  "Stone Skull": { item: "Earth Orb", flags: ["FLG|Still"] },
+  Gryphon: { item: "Wind Orb", flags: ["FLG|Passive"] },
+};
+
 describe("the NPC file store (packages/data npcfiles)", () => {
   test("every original file parses to the records the data build ships (the NPC and monster records)", () => {
     const store = setup([]).world.npcs;
@@ -101,11 +113,32 @@ describe("the NPC file store (packages/data npcfiles)", () => {
           gold: p.gold,
           banker: p.banker,
         },
-      ).toEqual(n ?? null);
-      const loot = npcsData.lootTables.find((t) => t.npc === f.name)?.lines ?? [];
+      ).toEqual(
+        // The Stone Skull had no file in 1.6: its orb war file holds only its loot.
+        n ??
+          (ORB_LOOT[f.name]
+            ? {
+                name: f.name,
+                bio: [],
+                profile: [],
+                chatter: [],
+                sells: [],
+                buys: [],
+                gold: null,
+                banker: false,
+              }
+            : null),
+      );
+      const orb = ORB_LOOT[f.name];
+      const loot = [
+        ...(npcsData.lootTables.find((t) => t.npc === f.name)?.lines ?? []),
+        ...(orb ? [{ item: orb.item, oneIn: 20 }] : []),
+      ];
       expect([f.name, p?.loot]).toEqual([f.name, loot]);
       const m = npcsData.monsterParses.find((x) => x.name.toLowerCase() === f.name.toLowerCase());
-      if (m) {
+      if (orb) {
+        expect([f.name, p?.flags, p?.spells, !p?.empty]).toEqual([f.name, orb.flags, [], true]);
+      } else if (m) {
         expect([f.name, p?.flags, p?.spells, !p?.empty]).toEqual([
           f.name,
           m.flags,
