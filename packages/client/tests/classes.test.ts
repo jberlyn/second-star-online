@@ -7,6 +7,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 
 import type { AssetIndex, ClassRow } from "@secondstaronline/data";
 import { classicData } from "@secondstaronline/data/classic";
+import { partJsonSchema } from "@secondstaronline/data/schema";
 import {
   buildContentStore,
   type ClassWindowView,
@@ -19,6 +20,8 @@ import type { Assets } from "../src/assets.ts";
 import type { Connection } from "../src/net.ts";
 import { createClassWindow } from "../src/ui/class-window.ts";
 import { drawRemovals, removalHeadline } from "../src/ui/content-usage.ts";
+import { contentWords } from "../src/ui/content-words.ts";
+import { type JsonSchema, schemaForm } from "../src/ui/schema-form.ts";
 import { createShopWindow } from "../src/ui/shop.ts";
 import { createWindowLayer } from "../src/ui/window.ts";
 import { menuClick, menuTexts, SNAPSHOT } from "./helpers/menu-helpers.ts";
@@ -180,5 +183,24 @@ describe("Publish Changes names a class's removal as a class", () => {
     expect(drawRemovals(r).querySelector(".content-removals-entry")?.textContent).toBe(
       "Class Swordsman:",
     );
+  });
+});
+
+describe("a class form's entries", () => {
+  test("a way in's Remove is not the class's Remove (one action, one control)", () => {
+    const schema = partJsonSchema("classes", "classes") as JsonSchema & { items?: JsonSchema };
+    const form = schemaForm(
+      schema.items ?? schema,
+      { code: 5, name: "Swordsman", promotion: null, paths: [{ from: [1], gold: 40 }] },
+      contentWords("classes", "classes"),
+      { id: "skills-area-classes" },
+    );
+    expect(form.el.querySelector('[data-action="skills-area-classes-remove"]')).toBeNull();
+    const entry = form.el.querySelector<HTMLButtonElement>(
+      '[data-action="skills-area-classes-remove-entry"]',
+    );
+    expect(entry?.textContent).toBe("Remove");
+    entry?.click();
+    expect((form.value() as { paths?: unknown[] }).paths).toEqual([]);
   });
 });

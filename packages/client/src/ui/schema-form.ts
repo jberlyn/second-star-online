@@ -854,7 +854,12 @@ export function schemaForm(
       const t = document.createElement("span");
       t.className = "schema-form-entry-tools";
       const mk = (text: string, aria: string, move: string, run: () => void) => {
-        const b = action(document.createElement("button"), `${opts.id}-${move}`);
+        // An entry's Remove is `-remove-entry`, never the page's own `-remove` (a class's Remove,
+        // issue #15): one action, one control.
+        const b = action(
+          document.createElement("button"),
+          `${opts.id}-${move === "remove" ? "remove-entry" : move}`,
+        );
         b.type = "button";
         b.className = "control-panel-btn control-panel-btn-plain schema-form-mini";
         b.textContent = text;
@@ -1021,7 +1026,7 @@ export function schemaForm(
       }
       key.setAttribute("aria-label", `${label}: name`);
       const built = build(valueSchema, x, [...path, "{}"], `${label} ${k}`);
-      const rm = action(document.createElement("button"), `${opts.id}-remove`);
+      const rm = action(document.createElement("button"), `${opts.id}-remove-entry`);
       rm.type = "button";
       rm.className = "control-panel-btn control-panel-btn-plain schema-form-mini";
       rm.textContent = "Remove";

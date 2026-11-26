@@ -120,7 +120,7 @@ test("an optional field is ticked on and off; a list's entries are added, moved 
   expect(form.value()).toEqual({ note: null, tags: ["b", "a"] });
   form.el.querySelector<HTMLButtonElement>("[data-action='t-add']")?.click();
   expect(form.value()).toEqual({ note: null, tags: ["b", "a", ""] });
-  form.el.querySelectorAll<HTMLButtonElement>("[data-action='t-remove']")[0]?.click();
+  form.el.querySelectorAll<HTMLButtonElement>("[data-action='t-remove-entry']")[0]?.click();
   expect(form.value()).toEqual({ note: null, tags: ["a", ""] });
 });
 
