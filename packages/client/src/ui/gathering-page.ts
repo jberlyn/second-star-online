@@ -1621,7 +1621,7 @@ export function createGatheringPage(actions: GatheringPageActions, assets?: Asse
     const harvestTab = section(
       "harvest",
       "Harvesting",
-      "How a swing harvests, how many harvests the tile gives before it is used up, and when it comes back. Leave these as they are for the classic game; use chances, lasting tiles and timers for RuneScape-style skills.",
+      "How a swing harvests, how many harvests the tile gives before it is used up, and when it comes back. Leave these as they are for the classic game; use chances, lasting tiles and timers for harvests that get likelier with skill and tiles that come back on a timer.",
       n.odds !== undefined || n.depletes !== undefined || n.respawn !== undefined,
       labelled("A swing harvests", how),
       oddsBox,

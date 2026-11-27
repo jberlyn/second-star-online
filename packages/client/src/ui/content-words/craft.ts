@@ -19,7 +19,7 @@ const XP = {
   more: true,
 };
 
-/** A recipe's skill or level requirement (RuneScape's level per recipe). */
+/** A recipe's skill or level requirement (a level per recipe). */
 const requires = (at: string, verb: string): WordBook => ({
   [`${at}.requires`]: {
     label: "Skill needed",
@@ -357,7 +357,7 @@ export const craftWords: WordBook = {
   ...timer("build"),
   "stations.build.recipes": {
     label: "Set recipes",
-    help: "Building with one of these items makes exactly what its recipe says, in place of a roll from the bands below (RuneScape's fletching: Oak Logs make an Oak Shortbow). Items with no recipe roll the bands.",
+    help: "Building with one of these items makes exactly what its recipe says, in place of a roll from the bands below (Oak Logs make an Oak Shortbow). Items with no recipe roll the bands.",
     noun: "recipe",
   },
   "stations.build.recipes.[].input": { label: "Built from", names: "item" },

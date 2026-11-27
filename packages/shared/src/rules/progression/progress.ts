@@ -309,21 +309,6 @@ export function growthNeed(g: CurveGrowth, level: number): number {
 }
 
 /**
- * RuneScape's experience table as a `total` curve's `table`: entry L is the total XP that reaches
- * level L + 1, so level 1 is reached at 0 XP, level 2 at 83 and level 99 at 13,034,431. Pair it
- * with a cap of 99 and characters starting the skill at 1.
- */
-export function runescapeTotals(): number[] {
-  const out = [0];
-  let points = 0;
-  for (let level = 1; level < 99; level++) {
-    points += Math.floor(level + 300 * 2 ** (level / 7));
-    out.push(Math.floor(points / 4));
-  }
-  return out;
-}
-
-/**
  * The running XP total that reaches each level, 0 to `SKILL_MAX`. Leaving level L takes `table[L]`
  * while the table lasts, then the growth form or the formula at L: the XP from L to L + 1 (`perLevel`) or the total
  * that reaches L + 1 (`total`). Levels past the curve are never reached (Infinity).

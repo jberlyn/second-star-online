@@ -450,7 +450,7 @@ The Talk & Shops tab checks these forms as you type and when you save; see the [
 These files have no worked example here; their schemas in [packages/data/schema/](../packages/data/schema/) document every field, and the matching [system guide](guides/README.md) describes what they do in play.
 
 - **`gather.json`:** `gathering` (the hit table, mining strikes, fishing, farming, regrowth and treasure), and `harvest` and `yields` (see [Tools and gathering](#tools-and-gathering)). How the gathering and crafting skills rise is each skill's [progression](#progression).
-- **`craft.json`:** `stations`: what each Classic crafting station makes, from what, and at what skill; `recipeStations` and `recipes`: the recipe stations and their recipes, made through the crafting window (see [the example](#example-runescape-style-gathering-and-crafting)); `masterworks`: the better items any craft can make.
+- **`craft.json`:** `stations`: what each Classic crafting station makes, from what, and at what skill; `recipeStations` and `recipes`: the recipe stations and their recipes, made through the crafting window (see [the example](#example-skill-levelled-gathering-and-crafting)); `masterworks`: the better items any craft can make.
 - **`houses.json`:** house deeds and types, [vehicles](#vehicles-housesjson-vehicles), placement and building, doors, keys and switches, containers, resting regeneration and monthly decay.
 - **`social.json`:** [factions](#factions-socialjson) and their rules, murder, the Assassin's Game, high scores, guilds, chat rooms, buddies, Bios, medals, mail, boards, art tools and the newspaper.
 - **`casino.json`:** the Slot Machine, Blackjack and Checkers games, including their sounds. Which items play them is the `slotMachine`, `blackjackTable` and `checkersTable` [behaviours](#item-behaviours). Classic no longer sets each game's `item`; a pack made before the behaviours that still sets it keeps that item playing.
@@ -790,11 +790,11 @@ Mining on a RuneScape-style curve to level 10 (a longer table, or a formula, goe
 
 with `{ "skill": "Mining", "progression": { "model": "xp", "curve": "runescape" } }` on the skill and `"xp": 70` on the gold rock's harvest node. The `hit` default gives every `xp`-model weapon skill 4 XP per point of damage; with `requires` rows on the bigger weapons ([Requirements](#requirements)), the skill gates the damage and the damage pays the XP.
 
-#### Example: RuneScape-style gathering and crafting
+#### Example: skill-levelled gathering and crafting
 
 Classic leaves every field below out and plays as 1.6. A world that wants RuneScape's skills sets them per node and per recipe:
 
-- **Levels and XP.** Give each skill the `xp` model and RuneScape's own table: the Skills page's curve **Shape → RuneScape's XP table (levels 1 to 99)** writes `{ "counting": "total", "table": [0, 83, 174, …, 13034431], "cap": 99 }` (shared `runescapeTotals`), so level 2 takes 83 XP and level 99 13,034,431. Start new characters at 1 in the skill.
+- **Levels and XP.** Give each skill the `xp` model and a steep curve: the Skills page's curve **Shape → Grows by a percent each level** with a growth near 10%, or **A list of XP for every level** typed by hand (`{ "counting": "total", "table": [0, 83, 174, …], "cap": 99 }`). Start new characters at 1 in the skill when the list starts at level 1.
 - **Tiers of node.** Each tree, rock or fish is its own row with its own `requires` (the level to work it), `xp` (what a success pays) and drop table (`chance: 1` drops on every success):
 
 ```json
