@@ -1,6 +1,6 @@
 # Skills
 
-Every character has 38 skills, each a whole number from 0 to 100. Skills rise through use, and higher values make attacks, spells, gathering and crafting stronger, faster or more reliable. These pages describe each skill: how it rises, what reads it, and which game systems it touches. They are written for players who want the details and for anyone doing a balance pass or adding content.
+The Classic pack gives every character 38 skills, each a whole number from 0 to 100. Skills rise through use, and higher values make attacks, spells, gathering and crafting stronger, faster or more reliable. These pages describe each skill: how it rises, what reads it, and which game systems it touches. They are written for players who want the details and for anyone doing a balance pass or adding content.
 
 The [progression guide](../progression.md) covers character growth as a whole. This page covers the rules every skill shares; each skill page links back here rather than repeating them.
 
@@ -63,7 +63,9 @@ The values are each start class's `skills` in `startClasses` in classes.json, by
 
 ## How skills rise
 
-How each skill rises is content: its `progression` in classes.json (see [Progression](../../modding.md#progression)). Classic's skills all use the `chance` model, with 1.6's numbers, so they rise one point at a time. Most rolls take the form "draw `random(n)` and succeed on a 1", a 1-in-n chance; `random` of 0 or less never returns 1, so a bound of 0 or less means the skill cannot rise that way. The ways a skill can rise are listed below.
+How each skill rises is content: its `progression` in classes.json (see [Progression](../../modding.md#progression)), applied by `train` in [progress.ts](../../../packages/shared/src/rules/progression/progress.ts). Classic's skills all use the `chance` model, with 1.6's numbers, so they rise one point at a time. Most rolls take the form "draw `random(n)` and succeed on a 1", a 1-in-n chance; `random` of 0 or less never returns 1, so a bound of 0 or less means the skill cannot rise that way. Every gain prints the same line, the world's `progression.line`: "You have advanced in the art of Punch!" The ways a skill can rise are listed below.
+
+A world can give a skill the `xp` model instead. Each action then gives XP and the skill's value is its level, read from a curve in `progression.curves`: a list of XP per level, a formula, or a growth form that takes a set percent more each level. The Skills page shows an `xp` skill's XP in its hover tip. A world can also train skills on every hit that does damage (the `hit` source), which Classic leaves off. [What a world can change](#what-a-world-can-change) lists the other options Classic does not use.
 
 ### Melee kills
 
@@ -107,9 +109,9 @@ Each arrow shot rolls Archery, and Martial Arts too when the weapon is a crossbo
 
 ### Gathering and crafting
 
-A successful gather or a finished craft trains the skill by its `gather` or `craft` progression (in [classes.json](../../../packages/data/content/classes.json)): Classic's roll `random(chance) = 1` while the skill is from 0 to 99. The chance does not change with the skill value.
+A successful gather or a finished craft trains the skill by its `gather` or `craft` progression (in [classes.json](../../../packages/data/content/classes.json)): Classic's roll `random(chance) = 1` while the skill is from 0 to 99. The chance does not change with the skill value. Classic Fishing rolls on a cast while the spot still has catches left after that cast, even if nothing bites.
 
-| Skill | Chance per success |
+| Skill | Chance per training roll |
 |---|---|
 | Cooking | 1 in 8 |
 | Blacksmithing, Carpentry | 1 in 9 |
@@ -120,7 +122,7 @@ A successful gather or a finished craft trains the skill by its `gather` or `cra
 
 ### Gathering hits
 
-Gathering tools share one hit table (`counterTable` in gather.json, `hitCounter` in [gather.ts](../../../packages/shared/src/rules/crafting/gather.ts)). Each tool keeps its own count of hits left; when the count is empty, the next swing loads it from the skill, and the hit that empties it succeeds. Higher skill means fewer swings per tree, rock, hole or furrow:
+Gathering tools share one hit table (`counterTable` in gather.json, `hitCounter` in [gather.ts](../../../packages/shared/src/rules/crafting/gather.ts)). Each tool keeps its own count of hits left; when the count is empty, the next swing loads it from the skill, and the hit that empties it succeeds. Higher skill means fewer swings per tree, rock, hole or furrow. An Axe and a Gold Axe share one count; each hammer, the Shovel, the Hoe and the Watering Bucket has its own. Every swing that strikes a tree or rock shows chips on the tile to everyone on the map (the node's `strikeFx`).
 
 | Skill | Hits per success |
 |---|---|
@@ -156,15 +158,15 @@ Cooking at a Campfire takes twice as long. Blacksmithing has its own, longer tim
 
 ### Combat books
 
-Reading a combat book (`use.skillBooks` in [item-rules.json](../../../packages/data/content/item-rules.json)) adds its `points`, Classic's `1 + random(5)`, to its skill, but only below its `upTo`, 77, and never takes the skill past it. A book that teaches nothing stays in the bag. Books exist for Slash, Thrust, Heavy Arms, Parry and Unholy Combat.
+Reading a combat book (`use.skillBooks` in [item-rules.json](../../../packages/data/content/item-rules.json)) adds its `points`, Classic's `1 + random(5)` (2 to 6), to its skill, but only below its `upTo`, 77, and never takes the skill past it. A book that teaches nothing stays in the bag. Books exist for Slash, Thrust, Heavy Arms, Parry and Unholy Combat.
 
 ### Promotion
 
-A [promotion](../progression.md) raises its class's `skillGrants` to a roll of 1 to 10, never lowering a skill already higher. Several promotions also require a minimum skill. Both are listed on each skill's page and in `classes` in classes.json. Classes and promotions are being rethought in [issue #15](https://github.com/jberlyn/second-star-online/issues/15).
+A [promotion](../progression.md) raises its class's `skillGrants` to a roll of 1 to 10, never lowering a skill already higher. Several promotions also require a minimum skill. Both are listed on each skill's page and in `classes` in classes.json. A world can add its own classes and ways into them; see [Classes](#classes).
 
 ## Caps
 
-Every skill stops at 100. Below that, two caps apply to kill and cast gains. Both are in [skillgain.ts](../../../packages/shared/src/rules/progression/skillgain.ts) and depend on your faction and its bonus, which comes from the faction's power (`factionBonus` in [factions.ts](../../../packages/shared/src/rules/social/factions.ts)).
+Every skill stops at 100. Below that, two caps apply to kill and cast gains. Both depend on your faction and its bonus, which comes from the faction's power (`factionBonus` in [factions.ts](../../../packages/shared/src/rules/social/factions.ts)). They are faction perks in [social.json](../../../packages/data/content/social.json): each faction's `skillCap` and `mageCap` values by bonus, and `factionRules.perkDefaults` for everyone else. `skillCaps` and `mageSkillCap` in [skillgain.ts](../../../packages/shared/src/rules/progression/skillgain.ts) read them.
 
 **The combat cap** limits weapon skills raised by kills:
 
@@ -181,7 +183,7 @@ Every skill stops at 100. Below that, two caps apply to kill and cast gains. Bot
 | Not Mage | 30 | 30 | 30 | 30 | 30 |
 | Mage | 50 | 60 | 70 | 90 | 100 |
 
-**The monster cap** (`monsterSkillCap`, `skillCaps` in [monsters.json](../../../packages/data/content/monsters.json)) limits kill gains by what you killed. A monster's body sets a base cap, and your Intelligence adds to it: +3 above 5, +5 above 10, +5 above 15, +5 above 20 and +5 above 22, up to +23.
+**The monster cap** (`monsterSkillCap`, `skillCaps` in [monsters.json](../../../packages/data/content/monsters.json)) limits kill gains by what you killed. A monster's body sets a base cap, and your Intelligence adds to it: +3 above 5, +5 above 10, +5 above 15, +5 above 20 and +5 above 22, up to +23. A monster an operator defines on the Control Panel can set its own cap, which replaces its body's.
 
 | Monster (body) | Base cap |
 |---|---|
@@ -200,6 +202,29 @@ Every skill stops at 100. Below that, two caps apply to kill and cast gains. Bot
 
 A skill rises while it is below a cap, so it can reach the cap itself. Skills raised by casting, shooting, being attacked, gathering, crafting, books or promotion ignore the combat and monster caps.
 
+## Classes
+
+In Classic a class touches skills in three ways: a start class's starting values, a promotion's skill requirement and a promotion's grants. Classic's classes set no caps, speeds or perks, and its players never see the Class window.
+
+A world can give a class more, on the Control Panel's **Skills & Classes** page or in `classes` in classes.json (see [Classes](../../modding.md#classes); `resolvedClass` in [classes.ts](../../../packages/shared/src/rules/progression/classes.ts)):
+
+- **Training caps and speed** (`training`). A cap is the highest value a skill rises to in the class, from every source and from books, for all skills or for one. With a class cap, the combat and Mage caps above apply only when the character's own faction sets them, and then only to lower it. A speed is a percent: at 200 a `chance` roll's n is halved and an `xp` skill earns double, and at 0 the skill never rises.
+- **Perks** (`perks`). Spell power, melee attack power, defence, regeneration, parrying and blocking players, and dodging monsters add to the faction perk of the same kind. HP and SP per level replace the world's.
+- **Paths** (`paths`). Ways into a class besides 1.6's promotions, each with its own requirements (skill values, level, full HP or SP), costs and grants. A path's grant raises a skill to a set value, never lowering it. Giving any class a path or a description turns on the Class window, which lists each way out of your class and what it needs.
+- **Inheritance** (`inherits`). A class can start from another's stat points, perks and training and replace them piece by piece.
+
+Classes also gate other content by class code: gear through `equip.classes` in item-rules.json, recipes through their `classes`, and any requirement through `needs: "class"`.
+
+## What a world can change
+
+Each skill page describes the Classic pack. The numbers on these pages are content, and the engine has options Classic leaves out, so Classic plays as 1.6 did. An operator sets them on the Control Panel's **Skills & Classes** and **Gathering & Crafting** pages; [modding](../../modding.md#example-skill-levelled-gathering-and-crafting) has a worked example.
+
+- **Harvest nodes** (`harvest` in gather.json). A node can ask for a skill value or level (`requires`) and a tool tier (`tier`). It can succeed by a chance on every swing that rises with the skill (`odds`, with `tierBonus` for better tools) in place of the [hit table](#gathering-hits). It can last for several harvests (`depletes`: used up 1 time in n) and come back after a set number of seconds (`respawn`) instead of waiting for regrowth. It can give its own XP (`xp`), and its yield's chance can change with the skill (`bySkill`).
+- **Fishing** (`gathering.fishing`). The catch pool's ranges can overlap, with a weight for each fish, so a skilled fisher still lands small fish. A fish can give its own XP and bite only on named tools. `trains` picks what trains Fishing: every cast, every catch, or both.
+- **Classic crafting** (`stations` in craft.json). A cooking recipe, a sand, a repair or a carpentry recipe can ask for a skill value (`requires`) and give its own XP. A cooking recipe, a sand or a carpentry recipe can set its own chance of success by skill (`odds`) in place of the shared [failure table](#crafting-time-and-failure). A set carpentry recipe (`stations.build.recipes`) makes one named item from the item built with, in place of the skill bands' roll.
+- **Recipe stations** (`recipeStations` and `recipes` in craft.json). A crafting window beside the four Classic crafts, opened with Ctrl at a station or by using an item. Each recipe names its materials, the skill and level it needs and trains, its XP, its time and chance of success by level, its tool tier, an optional book that teaches it and the classes that may make it. A recipe with no `odds` never fails.
+- **Masterworks** (`masterworks` in craft.json). Any successful craft of a listed item can come out as a `+N` item, by a chance that rises with the craft's skill. In Classic only the [Blacksmithing](blacksmithing.md) repair table makes them.
+
 ## Rewards
 
 - **Medals.** A skill at 90 or more holds its medal: it shows on the bio and adds stat points. Dropping below 90 removes both. Reaching 90 in play prints the medal's line. Nineteen skills have medals (`medals` in [social.json](../../../packages/data/content/social.json), [medals.ts](../../../packages/shared/src/rules/progression/medals.ts)); each page names its medal.
@@ -210,16 +235,19 @@ A skill rises while it is below a cap, so it can reach the cap itself. Skills ra
 
 ## Where it lives
 
-- [packages/data/content/classes.json](../../../packages/data/content/classes.json): the skill list, panel, starting values, promotion grants and requirements, and the weapons each kill trains.
+- [packages/data/content/classes.json](../../../packages/data/content/classes.json): the skill list, panel, starting values, each skill's progression, the classes with their promotion grants and requirements, and the weapons each kill trains.
+- [packages/shared/src/rules/progression/progress.ts](../../../packages/shared/src/rules/progression/progress.ts): every gain (`train`), the `chance` and `xp` models, curves and the advance line.
 - [packages/shared/src/rules/progression/skillgain.ts](../../../packages/shared/src/rules/progression/skillgain.ts): kill gains, the combat, Mage and monster caps.
+- [packages/shared/src/rules/progression/classes.ts](../../../packages/shared/src/rules/progression/classes.ts) and [promotion.ts](../../../packages/shared/src/rules/progression/promotion.ts): class caps, speeds and perks, and the ways into a class.
 - [packages/shared/src/rules/spells/spells.ts](../../../packages/shared/src/rules/spells/spells.ts): cast gains, spell power and books.
 - [packages/shared/src/rules/combat/attpower.ts](../../../packages/shared/src/rules/combat/attpower.ts) and [attpower.json](../../../packages/data/content/attpower.json): melee and bow attack power, including each weapon skill's tiers.
 - [packages/shared/src/rules/combat/combat.ts](../../../packages/shared/src/rules/combat/combat.ts) and [armour.ts](../../../packages/shared/src/rules/combat/armour.ts): swing speed, parry and block.
-- [packages/shared/src/rules/crafting/gather.ts](../../../packages/shared/src/rules/crafting/gather.ts) and [craft.ts](../../../packages/shared/src/rules/crafting/craft.ts), with [gather.json](../../../packages/data/content/gather.json) and [craft.json](../../../packages/data/content/craft.json): gathering and crafting.
+- [packages/shared/src/rules/crafting/gather.ts](../../../packages/shared/src/rules/crafting/gather.ts) and [craft.ts](../../../packages/shared/src/rules/crafting/craft.ts), with [gather.json](../../../packages/data/content/gather.json) and [craft.json](../../../packages/data/content/craft.json): gathering and the four Classic crafts.
+- [packages/shared/src/rules/crafting/recipes.ts](../../../packages/shared/src/rules/crafting/recipes.ts), [masterwork.ts](../../../packages/shared/src/rules/crafting/masterwork.ts) and [odds.ts](../../../packages/shared/src/rules/crafting/odds.ts): recipe stations, masterworks and odds by level.
 - [packages/shared/src/rules/progression/medals.ts](../../../packages/shared/src/rules/progression/medals.ts), [bios.ts](../../../packages/shared/src/rules/social/bios.ts) and [social.json](../../../packages/data/content/social.json): medals, titles and the score.
 
-To change a skill's numbers, edit the content JSON and run `bun run data:build` (see [modding](../../modding.md)). The tier ladders for spell power, parry and block, and the kill-gain formulas are in code.
+To change a skill's numbers, edit the content JSON and run `bun run data:build` (see [modding](../../modding.md)). Spell power tiers live in `spells.json`, and kill-gain formulas live in the `progression` rows of `classes.json`. The faction caps live in `social.json`. Parry and block use thresholds in the combat rules and a base roll from `balance.json`.
 
 ## Differences from 1.6
 
-Skill behaviour differs from 1.6 in several places; each page links the entries that touch it. The ones that touch many skills are [Class promotions give their skills](../../differences-from-fso.md#class-promotions-give-their-skills), [Mage skills cap the same from kills and casts](../../differences-from-fso.md#mage-skills-cap-the-same-from-kills-and-casts), [Medals and their stat points come from your skills](../../differences-from-fso.md#medals-and-their-stat-points-come-from-your-skills), [The bio score counts all its listed skills](../../differences-from-fso.md#the-bio-score-counts-all-its-listed-skills), [Books teach what they say, and stay when they teach nothing](../../differences-from-fso.md#books-teach-what-they-say-and-stay-when-they-teach-nothing) and [Gathering and crafting skills rise from 0](../../differences-from-fso.md#gathering-and-crafting-skills-rise-from-0).
+Skill behaviour differs from 1.6 in several places; each page links the entries that touch it. The ones that touch many skills are [Every skill prints the same advance line](../../differences-from-fso.md#every-skill-prints-the-same-advance-line), [Class promotions give their skills](../../differences-from-fso.md#class-promotions-give-their-skills), [Mage skills cap the same from kills and casts](../../differences-from-fso.md#mage-skills-cap-the-same-from-kills-and-casts), [Medals and their stat points come from your skills](../../differences-from-fso.md#medals-and-their-stat-points-come-from-your-skills), [The bio score counts all its listed skills](../../differences-from-fso.md#the-bio-score-counts-all-its-listed-skills), [Books teach what they say, and stay when they teach nothing](../../differences-from-fso.md#books-teach-what-they-say-and-stay-when-they-teach-nothing) and [Gathering and crafting skills rise from 0](../../differences-from-fso.md#gathering-and-crafting-skills-rise-from-0).

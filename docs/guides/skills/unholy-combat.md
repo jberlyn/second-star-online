@@ -14,7 +14,7 @@ Unholy Combat is the skill of the dark weapons: the Dark Sword, Dark Scimitar an
 ## How it rises
 
 - **Melee kills** with the Dark Sword, Dark Scimitar or Unholy Lance. The chance is 1 in Unholy Combat: Wisdom does not help. See [melee kills](README.md#melee-kills).
-- **The Unholy Combat Book** adds 1 to 5 while the skill is below 77. Since books ignore the Mage cap, this is the way past 30 outside the Mage faction.
+- **The Unholy Combat Book** adds 2 to 6 (`1 + random(5)`) while the skill is below 77. Since books ignore the Mage cap, this is the way past 30 outside the Mage faction.
 
 ## What it does
 
@@ -31,6 +31,11 @@ Attack power:
 
 - **Combat:** attack power (`skillBlocks` in [attpower.json](../../../packages/data/content/attpower.json)).
 - **Bio titles:** Death Knight (above 60 with Magery above 80).
+
+## Differences from 1.6
+
+- [Mage skills cap the same from kills and casts](../../differences-from-fso.md#mage-skills-cap-the-same-from-kills-and-casts): Unholy Combat's kill gain uses the Mage cap.
+- [Books teach what they say, and stay when they teach nothing](../../differences-from-fso.md#books-teach-what-they-say-and-stay-when-they-teach-nothing): the Unholy Combat Book stops at 77.
 
 ## Balance notes
 

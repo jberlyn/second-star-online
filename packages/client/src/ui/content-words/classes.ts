@@ -90,7 +90,7 @@ export const classesWords: WordBook = {
   },
   "classes.perks.[].value": {
     label: "Amount",
-    help: "Use a minus number to take away. HP and SP each level replace the Balance page's.",
+    help: "Use a minus number to take away. HP and SP each level replace the Game Rules page's.",
   },
   "classes.training": {
     label: "How skills train",

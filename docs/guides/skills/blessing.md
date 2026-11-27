@@ -18,13 +18,13 @@ Blessing is the healing school. It strengthens the heals and the supportive spel
 
 ## What it does
 
-Adds to the power of Minor Heal, Major Heal, Replenish, Bless, Haste, Holy Weapon and Diminish Hunger: +2 above 0, then +1 above 10, 20, 30, 50, 70, 80, 90 and 97, up to +10 (`tiered` in [spells.ts](../../../packages/shared/src/rules/spells/spells.ts)). This is on top of [Magery](magery.md)'s base power.
+Adds to the power of Minor Heal, Major Heal, Replenish, Bless, Haste, Holy Weapon and Diminish Hunger: +2 above 0, then +1 above 10, 20, 30, 50, 70, 80, 90 and 97, up to +10 (`power.tables.Blessing` in [spells.json](../../../packages/data/content/spells.json)). This is on top of [Magery](magery.md)'s base power.
 
 ## Connected systems
 
 - **Spells:** see the [spells guide](../spells.md).
 - **Progression:** heals restore HP (and cure poison); Haste speeds up regeneration; Diminish Hunger feeds you.
-- **Combat:** Bless adds attack power; Holy Weapon adds to each melee hit, more on the undead.
+- **Combat:** Bless adds 2 attack power; Holy Weapon adds 2 to each melee hit, 4 on the undead. Bless, Haste and Holy Weapon each last 1,000 frames plus 20 per point of power (`buffs` in [balance.json](../../../packages/data/content/balance.json)).
 - **Promotion:** Wizard (from Priest) needs Blessing 30.
 
 ## Differences from 1.6

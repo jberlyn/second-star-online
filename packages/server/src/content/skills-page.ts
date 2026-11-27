@@ -648,7 +648,7 @@ function skillView(
           packVersion: notice.packVersion,
           note:
             notice.note ??
-            `${notice.packName} v${notice.packVersion} changed this skill: answer it on the Content page.`,
+            `${notice.packName} v${notice.packVersion} changed this skill: answer it on the Publish Changes page.`,
         }
       : null,
   };
@@ -1368,7 +1368,7 @@ export function draftSkillRemoval(
   const bound = bindingsOf(d, key);
   if (bound.length > 0) {
     return fail(
-      `${label} cannot be removed while the ${bound.join(", ")} binding${bound.length === 1 ? " names" : "s name"} it: point ${bound.length === 1 ? "it" : "them"} at another skill first (the Content page's bindings/skills).`,
+      `${label} cannot be removed while the ${bound.join(", ")} binding${bound.length === 1 ? " names" : "s name"} it: point ${bound.length === 1 ? "it" : "them"} at another skill first (Which skill does what, on the Skills & Classes page).`,
     );
   }
   const parsed = removalChoicesSchema.safeParse(removal.refs ?? []);

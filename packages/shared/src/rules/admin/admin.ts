@@ -68,7 +68,7 @@ export const ADMIN_TEXT = {
   notOnline: (name: string) => `${name} is not online.`,
   noSuchCharacter: (name: string) => `There is no character called ${name}.`,
   noJail: (map: string) =>
-    `There is no jail map: save a map at ${map} in the World Editor first, or move the Jail in Server Settings.`,
+    `There is no jail map: save a map at ${map} on the Control Panel's World page first, or move the Jail in Server Settings.`,
   warpUsage: "Usage: /warp <name> <map> <x> <y>, for example /warp Slim x1000y992 5 5",
   noMap: (map: string) => `There is no map ${map}.`,
   banSelf: "You cannot ban yourself.",
@@ -77,7 +77,7 @@ export const ADMIN_TEXT = {
   kickOutranked: "You cannot kick someone who outranks you.",
   /** `/iplookup`, `/warp`, `/warptome`, `/pardon` on someone who outranks you. */
   outranked: "You cannot do that to someone who outranks you.",
-  setClassUsage: "Usage: /setclass <name> <class name or number 1-26>",
+  setClassUsage: "Usage: /setclass <name> <class name or number>",
   noSuchClass: (cls: string) => `There is no class called ${cls}.`,
   classSet: (name: string, cls: string) => `${name} is now a ${cls}.`,
 } as const;
@@ -180,9 +180,9 @@ export function cheatFileLines(entries: readonly string[]): string[] {
 }
 
 /**
- * `/setclass`'s class: a class name from the class data, ignoring case (`Death Knight`), or its
- * code 1-26. Code 5 is tested twice when the original loads a character (both Swordsman), so each
- * code has one name.
+ * `/setclass`'s class: any class the world has, by its name from the class data, ignoring case
+ * (`Death Knight`), or by its code (1-26 in Classic). Code 5 is tested twice when the original
+ * loads a character (both Swordsman), so each code has one name.
  */
 export function findClass(text: string): { code: number; name: string } | null {
   const t = text.trim().replace(/\s+/g, " ");

@@ -264,12 +264,13 @@ export function startServer(options: ServerOptions): RunningServer {
   for (const p of game.contractPointProblems()) {
     console.log(`content: ${p.where}: ${p.message} (the world does not meet the content contract)`);
   }
-  // Stored references the content does not resolve (an item removed outside the Content page, a
-  // database edit, a pack import): they never crash the game, and are listed on the Content page.
+  // Stored references the content does not resolve (an item removed outside the Control Panel, a
+  // database edit, a pack import): they never crash the game, and are listed on the Publish Changes
+  // page (Find problems).
   const worldProblems = game.contentWorld.problems();
   if (worldProblems.length > 0) {
     console.log(
-      `content: ${worldProblems.length} stored reference${worldProblems.length === 1 ? "" : "s"} name content that does not exist (see the Content page's Problems):`,
+      `content: ${worldProblems.length} stored reference${worldProblems.length === 1 ? "" : "s"} name content that does not exist (see Find problems on the Publish Changes page):`,
     );
     for (const p of worldProblems.slice(0, 10)) {
       console.log(`  ${p.where}: ${p.message}`);

@@ -28,8 +28,9 @@ Attack power with any weapon whose name contains "Sword": +1 above 60, +1 above 
 ## Differences from 1.6
 
 - [Class promotions give their skills](../../differences-from-fso.md#class-promotions-give-their-skills).
+- [Every wieldable sword trains its skills on a kill](../../differences-from-fso.md#every-wieldable-sword-trains-its-skills-on-a-kill): the Steel Scimitar, the Dragon Sword and masterworks now train Fencing.
 
 ## Balance notes
 
-- Fencing gives nothing below 61. The Broad Sword and Knight's Sword do not train it, though they benefit from it.
-- Like Swordsmanship, high Stamina slows or stops its gains.
+- Fencing gives nothing below 61. The Broad Sword and Knight's Sword do not train it, though they benefit from it. The Bo, Katana, the three scimitars and the Unholy Lance train it without benefiting, since their names lack "Sword".
+- As with Swordsmanship, each point of Stamina takes one off the roll's n, so gains come faster as Stamina rises. Once Stamina reaches 25 + Fencing + W, n falls below 1 and kills cannot raise it at all.

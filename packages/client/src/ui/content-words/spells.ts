@@ -131,11 +131,11 @@ export const spellsWords: WordBook = {
   },
   "spells.lasts": {
     label: "Lasts (seconds)",
-    help: "How long the spell's effect lasts: the new body of a spell that changes the caster's look (65 if left off), or Haste, Bless, Holy Weapon, Weaken and Poison Dart (the Balance page's time for the caster's power if left off).",
+    help: "How long the spell's effect lasts: the new body of a spell that changes the caster's look (65 if left off), or Haste, Bless, Holy Weapon, Weaken and Poison Dart (the Damage and buffs tab's time for the caster's power if left off).",
   },
   "spells.amount": {
     label: "Own damage and healing",
-    help: "Replaces the Balance page's amounts for this spell only.",
+    help: "Replaces the Damage and buffs tab's amounts for this spell only.",
   },
   "spells.amount.monster": { label: "On a monster" },
   "spells.amount.monsterHealed": {

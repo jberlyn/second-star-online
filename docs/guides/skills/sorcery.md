@@ -23,6 +23,7 @@ Summon Creature summons a Pig, or a Cow with Sorcery above 39 (`summon.skilled` 
 ## Connected systems
 
 - **Spells and monsters:** the summon takes the first free monster slot; see the [spells guide](../spells.md) and the [monsters guide](../monsters.md).
+- **Promotion:** Sorcerer (from Ninja or Necromancer) needs maximum HP of 59, not Sorcery.
 - **Bio titles:** Sorcerer (above 60 with Magery above 80).
 
 ## Differences from 1.6

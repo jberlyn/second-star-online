@@ -152,7 +152,7 @@ export function saveNpcPage(
   const revision = f ? npcFileRevision(f.text) : null;
   if (revision !== expect) {
     return refuse(
-      `${n}'s NPC file changed since you opened it (another admin, the Monsters page or a publish): open it again before saving.`,
+      `${n}'s NPC file changed since you opened it (another admin, the Creatures tab or a publish): open it again before saving.`,
     );
   }
   const lines = resolveNpcItemNames(editorLines(text));

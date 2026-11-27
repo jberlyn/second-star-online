@@ -252,7 +252,7 @@ const FIELD_LABELS: Record<string, string> = {
   "ground/tipName": "Hover name",
   "ground/ctrlText": "Ctrl message",
   "container/capacity": "Container size",
-  inEditorList: "World Editor list",
+  inEditorList: "World page list",
   inPlayerShops: "Player shops",
 };
 

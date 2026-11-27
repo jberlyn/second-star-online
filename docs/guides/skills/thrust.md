@@ -13,8 +13,8 @@ Thrust adds attack power to every weapon, including bare hands and bows. It rise
 
 ## How it rises
 
-- **Melee kills** with the same weapons as [Slash](slash.md): every axe, sword, knife, dagger and the Hammer, Thor's Hammer, Katana, Scimitar and Bo. The chance is 1 in (40 − Stamina + Thrust + W), and a gain also needs Slash above 30. See [melee kills](README.md#melee-kills).
-- **The Thrust Book** adds 1 to 5 while Thrust is below 77.
+- **Melee kills** with the same weapons as [Slash](slash.md): the Axe and Gold Axe, every sword, the Knife, the Dagger, and the Hammer, Thor's Hammer, Katana, Scimitar, Steel Scimitar, Dark Scimitar, Unholy Lance and Bo. The chance is 1 in (40 − Stamina + Thrust + W), and a gain also needs Slash above 30. See [melee kills](README.md#melee-kills).
+- **The Thrust Book** adds 2 to 6 (`1 + random(5)`) while Thrust is below 77.
 - **Promotion to Grunt** raises Thrust to a roll of 1 to 10 if it is lower.
 
 ## What it does
@@ -32,8 +32,10 @@ Thrust above 60 is needed for [Heavy Arms](heavy-arms.md) to rise from kills.
 
 - [Class promotions give their skills](../../differences-from-fso.md#class-promotions-give-their-skills): Grunt now grants Thrust.
 - [Books teach what they say, and stay when they teach nothing](../../differences-from-fso.md#books-teach-what-they-say-and-stay-when-they-teach-nothing).
+- [Every wieldable sword trains its skills on a kill](../../differences-from-fso.md#every-wieldable-sword-trains-its-skills-on-a-kill).
+- [Medals and their stat points come from your skills](../../differences-from-fso.md#medals-and-their-stat-points-come-from-your-skills).
 
 ## Balance notes
 
 - Thrust is the only skill that boosts every weapon, bows and fists included.
-- High Stamina slows Thrust gains. When Stamina is at or above 40 + Thrust + W, the draw bound is 0 or less and Thrust cannot rise from kills at all.
+- Each point of Stamina takes one off the roll's n, so gains come faster as Stamina rises. Once Stamina reaches 40 + Thrust + W, n falls below 1 and Thrust cannot rise from kills at all.

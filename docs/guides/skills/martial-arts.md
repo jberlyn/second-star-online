@@ -15,7 +15,7 @@ Martial Arts is the ninja's skill. It boosts bare hands, the Katana, Scimitar, B
 
 - **Melee kills** with no weapon, the Katana, the Scimitar or the Bo. The chance is 1 in (Martial Arts + W); see [melee kills](README.md#melee-kills).
 - **Casting Smoke Bomb** rolls `random(Martial Arts) = 1` up to 100 (after the usual Magery roll); see [casting](README.md#casting).
-- **Casting Poison Dart** rolls `random(Martial Arts) = 1` below the Mage cap, after Black Arts; a dart's poison that does damage trains it the same way.
+- **Casting Poison Dart** rolls `random(Martial Arts) = 1` below the Mage cap, after Black Arts (`alsoTrains` on Poison Dart in [spells.json](../../../packages/data/content/spells.json)). The dart's hit and its poison train nothing in Classic; they would in a world that gives the skill a `hit` [progression](../../modding.md#progression).
 - **Each crossbow shot** rolls `random(Martial Arts) = 1` up to 100, alongside Archery.
 
 ## What it does
@@ -31,7 +31,9 @@ Martial Arts is the ninja's skill. It boosts bare hands, the Katana, Scimitar, B
 
 Crossbows start lower and climb with Martial Arts: the Wooden Crossbow takes −4, then +1 above every ten from 10 to 90 (net up to +5); the Silver Crossbow takes −6, then +1 above 10 to 60, +2 above 70 and 80, and 1 to 4 above 90 (net +5 to +8).
 
-**Smoke Bomb power** replaces the usual spell power: 25 below 10, 35 from 10, 45 from 20, 55 from 30, 60 from 40, 70 from 50, 100 from 60, 200 from 70, 350 from 80 and 500 from 90, plus 60 in a Ninja Outfit or 80 in a Royal Ninja Uniform (`martialArts` in [spells.ts](../../../packages/shared/src/rules/spells/spells.ts)). The power is the number of frames the Smoke Bomb lasts.
+**Smoke Bomb power** replaces the usual spell power: 25 below 10, 35 from 10, 45 from 20, 55 from 30, 60 from 40, 70 from 50, 100 from 60, 200 from 70, 350 from 80 and 500 from 90, plus 60 in a Ninja Outfit or 80 in a Royal Ninja Uniform (`power.tables.MartialArts` in [spells.json](../../../packages/data/content/spells.json)). The power is the number of frames the Smoke Bomb lasts.
+
+The Katana, Scimitar and Bo rows name their weapon exactly. An exact row also covers the masterworks made from its weapon, for attack power and for kill training alike; Classic makes no masterwork of these three.
 
 ## Connected systems
 
@@ -45,8 +47,8 @@ Crossbows start lower and climb with Martial Arts: the Wooden Crossbow takes −
 ## Differences from 1.6
 
 - [Smoke Bomb in a body named "Ninja" costs 25](../../differences-from-fso.md#smoke-bomb-in-a-body-named-ninja-costs-25).
-
 - [The spells 1.6 left without an effect work](../../differences-from-fso.md#the-spells-16-left-without-an-effect-work): Poison Dart trains Martial Arts.
+- [Weapon attack power matches the right weapons](../../differences-from-fso.md#weapon-attack-power-matches-the-right-weapons): the Bo's base row matches the Bo alone.
 
 ## Balance notes
 

@@ -1641,7 +1641,7 @@ export class ContentService {
     for (const r of rows) {
       if (r.dataset === "npcFiles" && r.key !== null && saves.has(r.key.toLowerCase())) {
         skipped.push(
-          `${rowLabel(r)}: an NPCs page save plays over it; change it on the NPCs page instead`,
+          `${rowLabel(r)}: a Talk & Shops save plays over it; change it on the Talk & Shops tab instead`,
         );
         continue;
       }
@@ -1957,7 +1957,7 @@ export class ContentService {
     return {
       ok: true,
       value: [
-        `${plan.writes.length} change${plan.writes.length === 1 ? "" : "s"} from ${label} ${plan.writes.length === 1 ? "is" : "are"} in the draft: review and publish them on the Content page.`,
+        `${plan.writes.length} change${plan.writes.length === 1 ? "" : "s"} from ${label} ${plan.writes.length === 1 ? "is" : "are"} in the draft: review and publish them on the Publish Changes page.`,
         ...(plan.skipped.length > 0
           ? [`Left out (${plan.skipped.length}):`, ...plan.skipped.slice(0, 20)]
           : []),
@@ -2216,7 +2216,7 @@ export class ContentService {
       this.npcSaves().some((f) => f.npc.toLowerCase() === (ref.key as string).toLowerCase())
     ) {
       return fail(
-        `${ref.key}'s NPC file has a live save (from the NPCs page or the Monsters page), which plays instead of this row: change it there.`,
+        `${ref.key}'s NPC file has a live save (from the Talk & Shops tab or the Creatures tab), which plays instead of this row: change it there.`,
       );
     }
     // An NPC file gets the NPC Editor's handling: display names become keys, then its checks.
@@ -3227,7 +3227,7 @@ export class ContentService {
     const def = balanceRowDef(change.part, change.key);
     if (!def) {
       return fail(
-        `the Balance page has no row ${change.part}${change.key ? `/${change.key}` : ""}`,
+        `the Game Rules page has no row ${change.part}${change.key ? `/${change.key}` : ""}`,
       );
     }
     const l = this.balanceLayers();
@@ -3627,7 +3627,7 @@ export class ContentService {
             packVersion: notice.packVersion,
             note:
               notice.note ??
-              `${notice.packName} v${notice.packVersion} changed this monster's definition: answer it on the Content page.`,
+              `${notice.packName} v${notice.packVersion} changed this monster's definition: answer it on the Publish Changes page.`,
           }
         : null,
       published: this.draftMonster(this.published, record.name) !== undefined,
@@ -4125,7 +4125,7 @@ export class ContentService {
             packVersion: notice.packVersion,
             note:
               notice.note ??
-              `${notice.packName} v${notice.packVersion} changed this item's definition: answer it on the Content page.`,
+              `${notice.packName} v${notice.packVersion} changed this item's definition: answer it on the Publish Changes page.`,
           }
         : null,
       choices: itemChoices(d),
@@ -4401,7 +4401,7 @@ export class ContentService {
     return {
       ok: true,
       value: [
-        `${name} is in the draft, playing as ${from.display ?? from.name} does: change what you like and publish it from the Content page.`,
+        `${name} is in the draft, playing as ${from.display ?? from.name} does: change what you like and publish it from the Publish Changes page.`,
         ...notes,
       ].join(" "),
     };

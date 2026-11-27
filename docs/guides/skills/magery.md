@@ -20,11 +20,13 @@ Killing monsters does not raise Magery.
 
 ## What it does
 
-**Base spell power** for every spell (`basePower`): 1, +1 above 10, 20, 30, 40, 50, 60, 70, 80 and 90 (up to 10). The Mage faction bonus and worn gear add to it: White Robe +2, Wizard's Robe +5, Ceramic Armor +5 and Mage's Ring +3 (`gear` in [item-rules.json](../../../packages/data/content/item-rules.json)). A school skill then adds its own bonus; see [Blessing](blessing.md), [Wrath](wrath.md), [Illusion](illusion.md), [Black Arts](black-arts.md) and the elements ([Fire](fire.md), [Water](water.md), [Wind](wind.md), [Earth](earth.md)). Smoke Bomb ignores Magery: [Martial Arts](martial-arts.md) sets its power.
+**Base spell power** for every spell (`basePower`): 1, +1 above 10, 20, 30, 40, 50, 60, 70, 80 and 90 (up to 10). The rows are `power.base` in [spells.json](../../../packages/data/content/spells.json). The Mage faction bonus and worn gear add to it: White Robe +2, Wizard's Robe +5, Ceramic Armor +5 and Mage's Ring +3 (`gear` in [item-rules.json](../../../packages/data/content/item-rules.json)). A school skill then adds its own bonus; see [Blessing](blessing.md), [Wrath](wrath.md), [Illusion](illusion.md), [Black Arts](black-arts.md) and the elements ([Fire](fire.md), [Water](water.md), [Wind](wind.md), [Earth](earth.md)). Smoke Bomb ignores Magery: [Martial Arts](martial-arts.md) sets its power.
 
-Spell power sets damage and healing, and how long buffs such as Magic Shield, Stone Skin, Firesword and Hold last.
+Spell power sets damage and healing, and how long Magic Shield, Stone Skin, Firesword and Hold last. Haste, Bless, Holy Weapon, Weaken and Poison Dart's poison last a fixed time plus a little for each point of power (`buffs` in [balance.json](../../../packages/data/content/balance.json)).
 
-No spell needs Magery to cast. Learning a spell from a book needs Dexterity instead.
+No Classic spell needs Magery to cast. Learning a spell from a book needs Dexterity instead.
+
+Operators can add to this without code; Classic sets none of it. A class or a world event can add spell power through a `spellPower` perk, a class can set its own cap and training speed for Magery (see [classes](../../modding.md#classes)), and a spell can require a skill value, a level or a class before it is cast (see [spells](../../modding.md#spells-spellsjson)).
 
 ## Connected systems
 
@@ -39,6 +41,8 @@ No spell needs Magery to cast. Learning a spell from a book needs Dexterity inst
 - [Mage skills cap the same from kills and casts](../../differences-from-fso.md#mage-skills-cap-the-same-from-kills-and-casts).
 - [Bolt and Wind Wave train their school; free fireballs train nothing](../../differences-from-fso.md#bolt-and-wind-wave-train-their-school-free-fireballs-train-nothing).
 - [Class promotions give their skills](../../differences-from-fso.md#class-promotions-give-their-skills): Paladin now grants Magery.
+- [Every skill prints the same advance line](../../differences-from-fso.md#every-skill-prints-the-same-advance-line): a cast's line reads "Magery", not "magery".
+- [The spells 1.6 left without an effect work](../../differences-from-fso.md#the-spells-16-left-without-an-effect-work): seven more spells now cast, and each cast rolls Magery.
 
 ## Balance notes
 

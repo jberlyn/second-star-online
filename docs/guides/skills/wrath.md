@@ -17,7 +17,7 @@ Wrath is the school of attacking magic: Meteor, Bolt, Radar and Magic Shield. No
 
 ## What it does
 
-Adds to the power of Meteor, Radar, Bolt and Magic Shield: +2 above 0, then +1 above 10, 20, 30, 50, 70, 80, 90 and 97, up to +10. Magic Shield lasts 70 frames per point of power.
+Adds to the power of Meteor, Radar, Bolt and Magic Shield: +2 above 0, then +1 above 10, 20, 30, 50, 70, 80, 90 and 97, up to +10 (`power.tables.Wrath` in [spells.json](../../../packages/data/content/spells.json)). Magic Shield lasts 70 frames per point of power (`buffs.magicShieldPerPower` in [balance.json](../../../packages/data/content/balance.json)).
 
 ## Connected systems
 

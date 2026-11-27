@@ -228,7 +228,7 @@ export const BALANCE_GROUPS: readonly BalanceGroupDef[] = [
   {
     id: "spells",
     title: "Spell amounts",
-    help: "How much each spell deals or heals: a range (from … to …), plus the caster's spell power times a number. A spell on the Content page can set its own amounts, which replace these when it is cast from a spellbook; free fireballs, monster spells and map hazards keep these.",
+    help: "How much each spell deals or heals: a range (from … to …), plus the caster's spell power times a number. A spell on the Spells tab can set its own amounts, which replace these when it is cast from a spellbook; free fireballs, monster spells and map hazards keep these.",
     rows: [
       ...BALANCE_SPELL_EFFECT_ORDER.map((effect) => ({
         part: "spellEffects",
@@ -401,7 +401,7 @@ export const BALANCE_GROUPS: readonly BalanceGroupDef[] = [
     id: "vitals",
     title: "Regeneration, hunger and death",
     help: "How HP and SP come back or drain away, how hunger falls, and what a death leaves. Hunger counts down while you play; food raises it.",
-    // House rest is the houses dataset's own row (`houses.restRegen`), edited on the Content page.
+    // House rest is the houses dataset's own row (`houses.restRegen`), edited on the Houses & Vehicles page.
     elsewhere: [
       {
         label: "Resting in a house",
@@ -863,7 +863,7 @@ export const BALANCE_GROUPS: readonly BalanceGroupDef[] = [
   {
     id: "monsters",
     title: "Monsters",
-    help: "How often a map's monsters move and appear, by how many players are on the map. What each monster does is set on the Monsters page.",
+    help: "How often a map's monsters move and appear, by how many players are on the map. What each monster does is set on the Creatures & NPCs page.",
     // The generic stand-in is the monsters dataset's own row (`monsters.generic`).
     elsewhere: [
       {
@@ -940,7 +940,7 @@ export const BALANCE_GROUPS: readonly BalanceGroupDef[] = [
   {
     id: "vehicles",
     title: "Vehicles",
-    help: "Hull wear and repair, and the cannon (new in SSO: 1.6 had no hulls and never fired its cannon). Each vehicle's full hull is set on the Content page.",
+    help: "Hull wear and repair, and the cannon (new in SSO: 1.6 had no hulls and never fired its cannon). Each vehicle's full hull is set on the Vehicles tab.",
     // Each vehicle's full hull is its `houses.vehicles` row's (issue #44).
     elsewhereOf: (published) =>
       (published.houses?.vehicles ?? []).map((v) => ({

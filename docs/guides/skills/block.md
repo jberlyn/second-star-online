@@ -18,7 +18,7 @@ Block is a second chance to avoid a melee hit after Parry fails. It needs no shi
 
 ## What it does
 
-When a melee hit is not parried, Block is tried with the same ladder as [Parry](parry.md): 1 in 90 up to 20, falling to 1 in 24 above 96. A member of the Adventurer faction blocks at 11 in r against monsters and players. A blocked hit does no damage.
+When a melee hit is not parried, Block is tried with the same ladder as [Parry](parry.md): 1 in 90 up to 20, falling to 1 in 24 above 96. A member of the Adventurer faction blocks at 11 in r against monsters and players (its `pvpBlock` and `monsterDodge` perks, 10 each, come off the roll). A blocked hit does no damage. A world can give a class the same perks, which add to the faction's; see [Classes](README.md#classes).
 
 ## Connected systems
 

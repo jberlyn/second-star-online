@@ -13,10 +13,6 @@ Open source and ready to host, Second Star Online gives you the tools to create 
     <td width="50%"><a href="docs/images/title-screen.png"><img src="docs/images/title-screen.png" alt="The Second Star Online title screen, with Load Character and New Character options over a red curtain."></a></td>
     <td width="50%"><a href="docs/images/gameplay.png"><img src="docs/images/gameplay.png" alt="Adventurers fishing, chopping wood, casting a fireball at an orc, and chatting in Willowbrook Wilds, a forest beside a lake."></a></td>
   </tr>
-  <tr>
-    <td width="50%"><a href="docs/images/world-editor.png"><img src="docs/images/world-editor.png" alt="The Willowbrook Wilds map in the World Editor, showing the tile palette, map layers, monsters, items, and map settings."></a></td>
-    <td width="50%"><a href="docs/images/server-settings.png"><img src="docs/images/server-settings.png" alt="The Server Settings window open on its World page, with the starting map, fallback map, and NPC chatter settings."></a></td>
-  </tr>
 </table>
 
 ## Find your adventure
@@ -24,7 +20,7 @@ Open source and ready to host, Second Star Online gives you the tools to create 
 - **Explore and grow.** Venture across maps, face monsters, learn skills and spells, and gather resources for your next expedition.
 - **Make your mark.** Craft equipment, build houses, trade with other players, and set up shop.
 - **Find your people.** Join guilds and factions, exchange messages, or take a break with casino games and checkers.
-- **Build your world.** Shape maps and NPCs with in-game editors, tune server settings, and create a place for your community to call home.
+- **Build your world.** Use the Control Panel to edit maps and NPCs, publish content changes, and tune server settings. See the [operator guide](docs/running-a-server.md#the-control-panel).
 
 The remake fixes the original's exploits and bugs but keeps its feel, with a server that owns the game state. Read how it [differs from the original](docs/differences-from-fso.md).
 
@@ -44,7 +40,7 @@ docker run -d --name second-star-online \
 
 Open [http://localhost:3000](http://localhost:3000) on the Docker host and create your account. Your world is saved in the `sso-data` Docker volume across container replacements. Published images target **Linux AMD64**. Prefer a host directory? The server guide includes a [bind mount alternative](docs/running-a-server.md#bind-mounts-alternative-to-named-volumes).
 
-Each new server begins on 1.6's own maps (the Classic pack), which you can expand with the in-game editors, or from a blank Minimal world of your own. Ready to invite players? Follow the [server guide](docs/running-a-server.md) for Docker Compose, public hosting with HTTPS, administrator access, updates, and backups. No repository checkout or local build is needed to host the standard game.
+A new database starts with the Classic pack and its 1.6 maps by default. To start with Minimal instead, add `-e SSO_CONTENT=minimal` to the Docker command before the image name on the first run. Both worlds can be expanded with the in-game editors. Ready to invite players? Follow the [server guide](docs/running-a-server.md) for Docker Compose, public hosting with HTTPS, administrator access, updates, and backups. No repository checkout or local build is needed to host the standard game.
 
 ## Make it your own
 

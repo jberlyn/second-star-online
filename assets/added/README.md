@@ -8,12 +8,12 @@ to them by name. Never edit an atlas by hand.
 
 | Folder | Holds | Built into |
 |---|---|---|
-| `tiles/` | map tiles | the `tiles` atlas (also needs a `tiles.json` row, on palette page 10, slot 50 onwards) |
+| `tiles/` | map tiles | the `tiles` atlas |
 | `bodies/` | monster and morph bodies | the `bodies` atlas |
 | `paperdoll/` | worn-item layers | the `paperdoll` atlas |
 | `fx/` | spell and effect frames (`<member>-<n>.png`, `x<member>-<n>.png` for a trail) | the `fx` atlas |
 | `items/` | item pictures: bag icons and ground items | the `items` atlas |
-| `sounds/` | `<name>.wav` or `<name>.mp3` | `packages/data/assets/sounds/` (git-ignored build output that `assets:build` creates), listed in `index.sounds` |
+| `sounds/` | `<name>.wav` or `<name>.mp3` | `packages/data/packs/classic/art/sounds/` (git-ignored build output that `assets:build` creates), listed in the Classic pack's art index |
 
 An unknown folder, a file with no sidecar, a sidecar with no file, a sidecar whose `group` is not
 its folder, or a sound that is not really a WAV or MP3 fails the build with the file's path.
@@ -60,12 +60,13 @@ Sound (nothing else is allowed; the channel belongs to the content row that play
   layers do. A paperdoll layer flips about the body's centre line, column 22, so keep its pixels
   within columns 0 to 44. A body flips about the centre line of its standing frame, `-F2-N`, which
   it must have.
-- **Tiles.** A tile also needs its `tiles.json` row, and goes on palette page 10 (slot 50 onwards), then page 11 and later.
+- **Tiles.** Add a catalogue row in `tiles.json`, then find the tile by code or name in the Control Panel's World palette.
 - **Sounds.** A sound is played by naming it in a content row: a spell FX run's `sounds`
-  (`spells.json`), `gather.json`, or `swing.sounds` in `item-rules.json`. A data test fails if a
-  content row names a sound that is not built.
-- **UI art** (window pictures, house ghosts) is not added here. A UI picture is placed by
-  coordinates written in client code, so new UI art comes with the code that draws it.
+  (`spells.json`), a harvest node's or the fishing cast's sound (`gather.json`), a casino game's
+  (`casino.json`), or `swing.sounds` in `item-rules.json`. A data test fails if a spell, harvest
+  node, swing or slot machine row names a sound that is not built.
+- **House placement previews.** A custom house type can use an item picture for its preview (its `ghost.picture` in `houses.json`). Upload it on **Houses & Vehicles → House types**, or add it here under `items/`. [House placement](../../docs/guides/housing.md#placement-and-records)
+- **UI art.** Window pictures use coordinates in the client. New interface art belongs with the code that draws it.
 
 New art or sound that changes what players see or hear gets a `docs/differences-from-fso.md` entry.
 
@@ -80,5 +81,7 @@ rather than editing its output:
 - `fx/CannonballShot*` (the Battleship's shot) and `items/CannonballBag` (the Cannonball's
   13 px icon, shown in place of the 1.6 one): `bun packages/data/build/art/cannonball.ts`, then
   `bun run data:build`. Add `--preview <dir>` for a preview sheet.
+
+The [maintenance tools](../../tools/README.md) also generate spell effects, sounds, book icons and recoloured item art.
 
 The original art is in `../original/`, listed in `../original/usage.md`. Worked examples are in [the modding guide](../../docs/modding.md). The sidecar schema is `packages/data/schema/added-asset.ts`.

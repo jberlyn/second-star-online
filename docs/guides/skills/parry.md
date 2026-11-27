@@ -14,7 +14,7 @@ Parry gives a chance to avoid a melee hit entirely, from monsters and players al
 ## How it rises
 
 - **Being attacked in melee**, by a monster or a player. Parry rolls `random(Parry) = 1` while it is from 1 to 99 when a hit lands, when you parry and when a Holy Shield stops the hit (its `defend` progression, `train` in [progress.ts](../../../packages/shared/src/rules/progression/progress.ts)). Neither the combat cap nor the monster cap applies.
-- **The Parry Book** adds 1 to 5 while Parry is below 77.
+- **The Parry Book** adds 2 to 6 (`1 + random(5)`) while Parry is below 77.
 
 ## What it does
 
@@ -33,7 +33,7 @@ Each melee hit on you first tries a parry. The chance is 1 in r, where r falls a
 | Above 90 | 1 in 31 |
 | Above 96 | 1 in 24 |
 
-A member of the Adventurer faction has better odds: 11 in r against monsters and 5 in r against players. A parried hit does no damage and cannot break armour. If the parry fails, [Block](block.md) is tried next. Parry does not stop spells.
+A member of the Adventurer faction has better odds: 11 in r against monsters and 5 in r against players (the faction's `monsterDodge` and `pvpParry` perks in [social.json](../../../packages/data/content/social.json)). A class can carry the same perks, which add to the faction's; no Classic class does (see [classes](../../modding.md#classes)). A parried hit does no damage and cannot break armour. If the parry fails, [Block](block.md) is tried next. Parry does not stop spells.
 
 Parry above 50 is needed for Block to rise.
 

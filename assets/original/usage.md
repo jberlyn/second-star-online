@@ -11,7 +11,8 @@ The last column says what `bun run assets:build` does with the member:
 - `atlas <group>`: packed into that sprite atlas under its own name (`as <Name>`: under the bag
   pool's name);
 - `ui <file>`: written as one file in `packages/data/assets/`;
-- `sound <file>`: copied to `packages/data/assets/sounds/`;
+- `sound <file>`: copied into the Classic pack's sounds folder, except for the engine's interface sounds
+  (`clicksound` and `clicksound2`) in `packages/data/assets/sounds/`;
 - `not built: <reason>`: left out.
 
 "Built" means the build ships it, not that something draws or plays it in the game. New art

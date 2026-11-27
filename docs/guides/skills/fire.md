@@ -18,7 +18,7 @@ Fire is the Fire Mage's element. It strengthens the fire spells, and it is the o
 
 ## What it does
 
-- **Spell power** of Fireball, Firesword and Firebolt: +2 above 0, then +1 above 10, 20, 30, 50 and 70, +2 above 80 and +4 above 97, up to +13 (`elemental` in [spells.ts](../../../packages/shared/src/rules/spells/spells.ts)). Firesword lasts 40 frames per point of power, and while it lasts each sword swing also launches a fireball.
+- **Spell power** of Fireball, Firesword and Firebolt: +2 above 0, then +1 above 10, 20, 30, 50 and 70, +2 above 80 and +4 above 97, up to +13 (`power.tables.Fire` in [spells.json](../../../packages/data/content/spells.json)). Firesword lasts 40 frames per point of power, and while it lasts each sword swing also launches a fireball.
 - **Attack power** of any weapon whose name contains "Fire" (the Fire Sword, Fire Staff and Fire Hammer): +1 above 10, 20, 30 and 40, +2 above 60, 70 and 80, and 1 to 4 above 90, up to +14.
 
 ## Connected systems
@@ -36,4 +36,4 @@ Fire is the Fire Mage's element. It strengthens the fire spells, and it is the o
 ## Balance notes
 
 - The weapon bonus is one of the largest skill bonuses in the game, yet no weapon trains Fire; it rises only by casting.
-- The Fire Mage class itself adds no power. 1.6 read an element bonus for the matching elemental Mage that nothing ever set, and SSO does not build it. The same is true of the other three elements.
+- The Fire Mage class itself adds no power. 1.6 read an element bonus for the matching elemental Mage that nothing ever set, and SSO does not build it. The same is true of the other three elements. A world can give a class a spell power perk; see [Classes](README.md#classes).

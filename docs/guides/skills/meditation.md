@@ -17,4 +17,11 @@ Meditation is in the stored skills (`skills` in [classes.json](../../../packages
 
 ## Adding content
 
-A new use for it needs a way to raise it (a gain roll in the relevant system, a book in `use.skillBooks`, or a promotion's `skillGrants`), something that reads it, and the `hidden` mark taken off its row to show it. Every existing character already has it at 1.
+A new use for it needs a way to raise it, something that reads it, and the `hidden` mark taken off its row to show it. Every existing character already has it at 1.
+
+Most of that is content an operator can set on the Control Panel, with no code:
+
+- **Raising it:** a `progression` on its row for a source the engine already has (see [progression](../../modding.md#progression)), a harvest node or recipe that names it as its skill, a spell's `school` or `alsoTrains`, a weapon's `skillGain.weaponSkills` row, a book in `use.skillBooks`, a promotion's `skillGrants` or a class path's `grants`.
+- **Reading it:** a [requirement](../../modding.md#requirements) on an item, harvest node, recipe, spell or class path, a condition in an attack-power or spell-power row, a harvest node's or recipe's odds, or a Bio title.
+
+A new kind of activity, such as meditating to restore SP, still needs code.

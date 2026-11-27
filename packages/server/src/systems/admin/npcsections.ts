@@ -118,7 +118,7 @@ export function saveNpcSections(
   const revision = e.text === null ? null : npcFileRevision(e.text);
   if (revision !== expect) {
     return refuse(
-      `${e.name}'s NPC file changed since you opened it (an NPCs page save or a publish): open it again before saving.`,
+      `${e.name}'s NPC file changed since you opened it (a Talk & Shops save or a publish): open it again before saving.`,
     );
   }
   const tags = content().monsters.casting.spells.map((x) => x.tag.toLowerCase());
@@ -144,7 +144,7 @@ export function saveNpcSections(
   const live = e.text === null ? "" : npcFileNow(world, e.name, ledgerOf);
   if (npcSections(live).mixed.length > 0) {
     return refuse(
-      `Line ${npcSections(live).mixed[0]} of ${e.name}'s NPC file is read as two sections at once: fix it as text on the NPCs page first.`,
+      `Line ${npcSections(live).mixed[0]} of ${e.name}'s NPC file is read as two sections at once: take that line out on the Talk & Shops tab first.`,
     );
   }
   const text = withNpcSections(live, {

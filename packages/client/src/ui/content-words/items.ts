@@ -9,8 +9,8 @@ export const itemsWords: WordBook = {
   },
   "fixtures.[]": { label: "Fixture" },
   editorItems: {
-    label: "World Editor item list",
-    help: "The items the World Editor offers to place on a map, in this order.",
+    label: "World page item list",
+    help: "The items the World page offers to place on a map, in this order.",
     noun: "item",
     names: "item",
   },

@@ -9,12 +9,12 @@ const monsterName = {
 };
 
 export const monstersWords: WordBook = {
-  // Editor lists: which names the World Editor and NPC Editor offer.
+  // Editor lists: which names the World page and the Talk & Shops tab offer.
   editorLists: {
     label: "Editor lists",
-    help: "The monster and NPC names the World Editor and NPC Editor offer to place.",
+    help: "The monster and NPC names the World page and the Talk & Shops tab offer to place.",
   },
-  "editorLists.worldEditor": { label: "World Editor" },
+  "editorLists.worldEditor": { label: "World page" },
   "editorLists.worldEditor.monsters": {
     label: "Monster list",
     help: "Placed as monsters that walk toward players and attack them.",
@@ -27,7 +27,7 @@ export const monstersWords: WordBook = {
     noun: "NPC",
     names: "npc",
   },
-  "editorLists.npcEditor": { label: "NPC Editor" },
+  "editorLists.npcEditor": { label: "Talk & Shops tab" },
   "editorLists.npcEditor.monsters": {
     label: "Monster list",
     noun: "monster",
@@ -58,7 +58,7 @@ export const monstersWords: WordBook = {
   },
   "rules.hostile": {
     label: "Always attack players",
-    help: "These walk toward players even when they are not on the World Editor's monster list.",
+    help: "These walk toward players even when they are not on the World page's monster list.",
     noun: "monster",
   },
   "rules.officer": {

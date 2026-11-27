@@ -230,7 +230,7 @@ export function rowDetailOf(service: ContentService, ref: RowRef): ContentRowDet
     ...revisionOf(service, ref),
     ...(ref.dataset === "npcFiles" && ref.key && service.npcEditorSaves().has(ref.key.toLowerCase())
       ? {
-          note: "This NPC has a live save (the NPCs page or the Monsters page), which is what plays: change it there, or this row has no effect.",
+          note: "This NPC has a live save (from the Talk & Shops tab or the Creatures tab), which is what plays: change it there, or this row has no effect.",
         }
       : {}),
     // The world keeps its own quest lines once it has started (a finished quest rolls the next

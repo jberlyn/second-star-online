@@ -29,11 +29,13 @@ Face an Anvil with a Blacksmith Hammer in your weapon hand, a bag no more than 1
 | 91 to 98 | 40 |
 | Above 98 | 12 |
 
-The repair uses the item and the chunk and makes the whole item. Some items can come out as a masterwork with a `+N`: each outcome is one number in `random(pool)`, where the pool is 250 up to 50, then 100, 90, 80, 70 and 50, and 35 above 98 (`masterworkPool`). The Knight's Sword has four outcomes (+1 to +4), the War Helm three, the Plate Armor, Knight Shield and Star Sword two, and the Chain Helm, Steel Shield, Small Shield, Ice Helm, Sword of Hope and Pharaoh Shield one. A weapon's `+N` adds to its attack power.
+The repair uses the item and the chunk and makes the whole item. Some items can come out as a masterwork with a `+N`: each outcome is one number in `random(pool)`, where the pool is 250 up to 50, then 100, 90, 80, 70 and 50, and 35 above 98 (`masterworkPool`). The Knight's Sword has four outcomes (+1 to +4), the War Helm three, the Plate Armor, Knight Shield and Star Sword two, and the Chain Helm, Steel Shield, Small Shield, Ice Helm, Sword of Hope and Pharaoh Shield one. A `+N` adds to a weapon's attack power or a piece of armour's protection. A masterwork counts as its base item for the weapons a skill trains with and strengthens.
+
+A world can also list masterworks every craft shares (`masterworks` in craft.json): a repair with no row in the smithing table, and any other craft, then makes one by a chance that rises with the craft's skill. A repair can ask for a skill value and give its own XP. Classic sets none of these; see [What a world can change](README.md#what-a-world-can-change).
 
 ## How it rises
 
-Each repair rolls `random(9) = 1` while Blacksmithing is from 0 to 99 (`SmithImp`).
+Each repair rolls `random(9) = 1` while Blacksmithing is from 0 to 99 (see the Blacksmithing progression row in [classes.json](../../../packages/data/content/classes.json)).
 
 ## Connected systems
 
@@ -46,6 +48,8 @@ See the [crafting guide](../crafting.md).
 ## Differences from 1.6
 
 - [Blacksmithing only gets faster with skill](../../differences-from-fso.md#blacksmithing-only-gets-faster-with-skill).
+- [Masterwork rolls are even and the Knight's Sword repairs](../../differences-from-fso.md#masterwork-rolls-are-even-and-the-knights-sword-repairs).
+- [A masterwork keeps its weapon's skill bonus](../../differences-from-fso.md#a-masterwork-keeps-its-weapons-skill-bonus).
 - [Every craft takes its materials when it finishes](../../differences-from-fso.md#every-craft-takes-its-materials-when-it-finishes).
 - [Gathering and crafting skills rise from 0](../../differences-from-fso.md#gathering-and-crafting-skills-rise-from-0).
 

@@ -32,9 +32,9 @@ An entry uses this shape; `Pinned by` is optional:
 | [Design changes](#design-changes) | 87 |
 | [Fixed bugs](#fixed-bugs) | 303 |
 | [Kept on purpose](#kept-on-purpose) | 12 |
-| [Server authority and exploits](#server-authority-and-exploits) | 138 |
+| [Server authority and exploits](#server-authority-and-exploits) | 140 |
 | [Not in SSO](#not-in-sso) | 39 |
-| **Total** | **579** |
+| **Total** | **581** |
 
 By system (the code folder that holds the change):
 
@@ -44,7 +44,7 @@ By system (the code folder that holds the change):
 | casino | [16](#casino) | [3](#server-side-casino) |
 | chat | [12](#chat) | [7](#server-side-chat) |
 | combat | [28](#combat) | [7](#server-side-combat) |
-| core | [3](#core) | [9](#server-side-core) |
+| core | [3](#core) | [11](#server-side-core) |
 | crafting | [29](#crafting) | [8](#server-side-crafting) |
 | economy | [35](#economy) | [15](#server-side-economy) |
 | housing | [19](#housing) | [6](#server-side-housing) |
@@ -95,9 +95,9 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** Limit lifted
 - **What you notice:** A shop list includes every sale line and scrolls when it is longer than the visible box.
 - **1.6:** The server listed `SEL|` lines only from the first 30 file lines; later ones were buyable only by a crafted name. No archived shop had such a line after line 20.
-- **SSO:** The window lists every `SEL|` line and buying names the listed line. The List and Prices fields show about 13 lines and scroll when longer.
+- **SSO:** The window lists every `SEL|` line and buying names the listed line; an NPC's shop leaves out only a line for an item its pack has retired. The List and Prices fields show about 13 lines and scroll when longer.
 - **Why:** Operators author shops, and a hidden but buyable line was a window-size limitation.
-- **In the code:** `packages/server/src/systems/economy/intents.ts` (`shopListIntent`), `packages/server/src/systems/economy/shop.ts` (`buyList`)
+- **In the code:** `packages/server/src/systems/economy/intents.ts` (`shopListIntent`), `packages/server/src/systems/economy/shop.ts` (`sellList`)
 - **Pinned by:** `design change: a SEL line past file line 30 is listed and bought by its line` (packages/server/tests/ledger-pins-d.test.ts); `design change: a 40-line list shows every row and OK buys the clicked row's line` (packages/client/tests/ledger-pins-d.test.ts)
 
 #### Houses build regardless of ground items
@@ -122,7 +122,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** Limit lifted
 - **What you notice:** Monster loot and gathered items disappear after the configured time, 30 minutes by default. Player drops and operator-placed items do not decay.
 - **1.6:** The server did not expire ground items; the map's 20 item slots bounded them.
-- **SSO:** Loot and gathering drops, including logs, crystals, chunks, fish, produce and treasure, expire after an operator-set time. Player drops and admin placements never expire.
+- **SSO:** Loot and gathering drops, including logs, crystals, chunks, fish, produce and treasure, expire after an operator-set time (the balance row `drops.lootDecaySeconds`, 1800 in Classic, on the Control Panel's Game Rules page). Player drops and admin placements never expire.
 - **Why:** Without the ground-item cap, generated loot would accumulate without bound. Gathering also creates items from nothing, and 1.6's fishing allowance could be refilled forever by pressing an arrow key. Player drops remain because players used house floors for storage.
 - **In the code:** `packages/server/src/systems/inventory/items.ts` (`decayLoot`), `packages/server/src/systems/crafting/gather.ts` (`toolSwing`)
 - **Pinned by:** `a killed Slime drops 2 Gold on its tile, as loot that decays after 30 minutes` (packages/server/tests/inventory.test.ts); `loot past its time is deleted when its map loads` (packages/server/tests/inventory-db.test.ts)
@@ -142,7 +142,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **1.6:** Each client had eleven spell sprite channels.
 - **SSO:** There is no fixed spell-effect cap.
 - **Why:** The old limit came from Director sprite channels.
-- **In the code:** `packages/server/src/systems/spells/fx.ts` (`freeSlot`, `placeQueued`), `packages/client/src/model.ts` (`applySnapshot`)
+- **In the code:** `packages/server/src/systems/spells/fx.ts` (`freeSlot`, `placeQueued`), `packages/client/src/model.ts` (`applyDelta`)
 - **Pinned by:** `design change: fifteen effects on one map take fifteen slots, none replaced` (packages/server/tests/ledger-pins-d.test.ts)
 
 #### Airship item caps removed
@@ -169,7 +169,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** World content
 - **What you notice:** `/jail` works on a fresh server. In a new Classic world the jail is 1.6's own Jail at x0y0, its barred cells walled in by stone; servers created earlier keep the enclosed jail SSO seeded there. Prisoners arrive at tile 4,4 and remain until their sentence ends or staff use `/unjail`.
 - **1.6:** Used its Jail map at x0y0. Portal and death respawn could bypass the sentence.
-- **SSO:** A new Classic world gets 1.6's Jail from the pack's world seed (see [A Classic world is 1.6's distributed maps](#a-classic-world-is-16s-distributed-maps)); upgrades still add SSO's validated jail landscape where x0y0 is absent, preserving operator-authored jails. Portal, map exits (1.6's Jail names two) and edge crossings cannot leave the jail. Death revives prisoners on the jail's tile and their sentence runs on. The jail does not overwrite a character's ordinary respawn point. Staff warps cannot take a prisoner out or put a player in (see [stored sentences](#jail-sentences-are-stored-and-run-in-real-time)). A deleted jail still produces the missing-map refusal. The jail is the Server Settings point **Jail** (`jailPoint`), which existing servers keep at x0y0 (4, 4); an operator may move it to any map, and a save that puts it on a missing map or an unwalkable tile is refused.
+- **SSO:** A new Classic world gets 1.6's Jail from the pack's world seed (see [A Classic world is 1.6's distributed maps](#a-classic-world-is-16s-distributed-maps)); upgrades still add SSO's validated jail landscape where x0y0 is absent, preserving operator-authored jails. Portal, map exits (1.6's Jail names two) and edge crossings cannot leave the jail. Death revives prisoners on the jail's tile and their sentence runs on. The jail does not overwrite a character's ordinary respawn point. Staff warps cannot take a prisoner out or put a player in (see [stored sentences](#jail-sentences-are-stored-and-run-in-real-time)). A deleted jail still produces the missing-map refusal. The jail is the Server Settings point **Jail** (`jailPoint`), which existing servers keep at x0y0 (4, 4); an operator may move it to any map but the Starting map's or the Fallback map's, and a save that puts it on a missing map or on an unwalkable or blocked tile is refused.
 - **Why:** A fresh server needs a working jail, and confinement must not depend on a prisoner's spells or inventory. The jail is a setting so a world built without 1.6's maps can have one (issue #37).
 - **In the code:** `packages/data/content/world.json`, `packages/data/content/jail-map.json`, `packages/server/src/persistence/seed-map.ts` (`jailMapSql`), `packages/server/src/settings.ts` (`jailPoint`), `packages/server/src/systems/world/tick.ts` (`portal`, `takeExit`, `crossMapEdge`, `respawn`), `packages/server/src/systems/world/world.ts` (`enterRoom`, `jail`)
 - **Pinned by:** `a new Classic world's jail is 1.6's x0y0: arrival (4,4) shut in a 13-tile cell, no landing pads, its exits refused by the jail rules`; `the jail migration preserves an operator-authored map at x0y0`; `jail blocks Portal and exits while keeping the sentence and normal respawn point`; `death revives a prisoner in jail without restarting the sentence; expiry still releases`; `every jail edge refuses a map crossing, even for an arriving airship rider`; `SSO: the jail is the jailPoint setting's map and tile, not x0y0` (packages/server/tests/jail.test.ts); `SSO: the jail is the jailPoint setting's map and tile` (packages/server/tests/admin.test.ts); `the seeded jail confines Bob until his sentence ends` (packages/server/e2e/admin-and-settings.test.ts)
@@ -187,8 +187,8 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** World content
 - **What you notice:** Admin → Control Panel swaps the game for a full-page dashboard. Its header has Return to Game, Friends, Who's Online, Send IM (with a count of IMs that came in), the chat rooms, Player Settings and Return To Title Screen; its sidebar lists the admin pages your role may use under Server, Players, Content and Publishing headings, A–Z under each: Server Settings, then the Activity Log and Characters, then the content pages, the World page (the World Editor) and Creatures & NPCs (whose Talk & Shops tab is the NPC Editor) among them, then Packs and Publish Changes. Floating windows open over it at their own size. You stay online but leave the map while you are there, as in the World Editor, and come back where you stood.
 - **1.6:** There was no admin dashboard. An immortal's admin tools were the Admin menu's World Editor, NPC Editor and File Editor, each a screen or window in the game's 800×600 frame.
-- **SSO:** The Control Panel is part of the client, using the same login and session. It opens for a role holding a permission with a Control Panel page (today Server Settings, Characters, the Activity Log and the content pages; see [Staff look characters up in a player hub, not their files](#staff-look-characters-up-in-a-player-hub-not-their-files), [The server logs what players do with items, gold and their time](#the-server-logs-what-players-do-with-items-gold-and-their-time) and [Operators change the game's content live, from the Control Panel](#operators-change-the-games-content-live-from-the-control-panel)); the server checks again and logs a refused request to the cheat log. Opening it leaves the map like the editors do: everyone there sees you go, trades, shops and held actions are cancelled and nothing on it ticks for you. Moving between the Control Panel and the classic editors never puts you back on the map in between. The classic menu bar belongs to the 800×600 frame, so it is not shown in the Control Panel. A page with unsaved changes asks before Return to Game, another page or an editor. The Server Settings window became the Control Panel's Server Settings page. Roles also get a permission for editing characters, which the player hub's Edit tab uses, and one for editing content, which the content pages use.
-- **Why:** Admin work needs full-page tables and forms that do not fit a floating window scaled with the game, and the Control Panel is where content, character and log tools will go (issue #22).
+- **SSO:** The Control Panel is part of the client, using the same login and session. It opens for a role holding a permission with a Control Panel page (today Server Settings, Characters, the Activity Log and the content pages; see [Staff look characters up in a player hub, not their files](#staff-look-characters-up-in-a-player-hub-not-their-files), [The server logs what players do with items, gold and their time](#the-server-logs-what-players-do-with-items-gold-and-their-time) and [Operators change the game's content live, from the Control Panel](#operators-change-the-games-content-live-from-the-control-panel)); the server checks again and logs a refused request to the cheat log. Opening it leaves the map as 1.6's editors did: everyone there sees you go, trades, shops and held actions are cancelled and nothing on it ticks for you. The World Editor and NPC Editor are pages of it, so moving between them never puts you back on the map in between. The classic menu bar belongs to the 800×600 frame, so it is not shown in the Control Panel. A page with unsaved changes asks before Return to Game or another page. The Server Settings window became the Control Panel's Server Settings page. Roles also get a permission for editing characters, which the player hub's Edit tab uses, and one for editing content, which the content pages use.
+- **Why:** Admin work needs full-page tables and forms that do not fit a floating window scaled with the game, so the Control Panel houses content editing, character management and activity logs (issue #22).
 - **In the code:** `packages/client/src/ui/control-panel.ts` (`createControlPanel`), `packages/client/src/ui/control-panel-kit.ts`, `packages/server/src/systems/admin/control-panel.ts` (`openControlPanel`), `packages/server/src/systems/admin/worldedit.ts` (`leaveForEditor`, `mayEdit`), `packages/shared/src/rules/admin/permissions.ts` (`canOpenControlPanel`)
 - **Pinned by:** `a player gets nothing; an admin leaves the room, stops ticking and gets the Control Panel`; `moving between the Control Panel and the World Editor never puts the admin back on the map`; `a player's controlPanelOpen is refused and written to the cheat log`; `a role that loses its Control Panel permissions is sent back to the game` (packages/server/tests/control-panel.test.ts); `the Control Panel replaces the game and its menu bar; Return to Game brings the game back`; `floating windows open over the Control Panel at their own size, and IMs are counted`; `unsaved changes ask before Return to Game, another page or a classic tool` (packages/client/tests/control-panel.test.ts); `every role that held every permission gets the new ones; the seeded roles match the defaults` (packages/server/tests/roles.test.ts)
 
@@ -248,11 +248,11 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 #### Monsters without art are not placeable
 - **Kind:** World content
-- **What you notice:** The World page's spawn lists do not offer monsters whose walking art is missing.
-- **1.6:** Stone Skull, Dragon, Ogre, the Strippers and Overlord, bodies 500, 501, 503, 855–857 and 988, have no front-walk bitmap in the character cast and would have been invisible if placed.
-- **SSO:** Their stats, loot and experience remain in the monster data, but the editor does not offer them.
+- **What you notice:** Classic's World Editor lists leave out the seven monsters whose walking art is missing, so the World page's spawn lists do not offer them, and `/roster` refuses to place one ("Dragon has no artwork and cannot be placed.").
+- **1.6:** Stone Skull, Dragon, Ogre, the three Strippers and Overlord, bodies 500, 501, 503, 855–857 and 988, have no front-walk bitmap in the character cast and would have been invisible if placed.
+- **SSO:** Their stats, loot and experience remain in the monster data, but none is on Classic's editor lists, and a map save naming a monster or NPC off those lists is refused. The World page does no filtering of its own: it offers whatever the World Editor's lists hold, so an operator who adds one of them to the lists (the Creatures & NPCs page's **Editor lists**) can place it. `/roster` refuses any monster whose row marks its body as having no art, on the lists or not.
 - **Why:** An invisible monster never worked as a visible feature; an operator can enable one if art is added.
-- **In the code:** `packages/client/src/ui/world-page.ts` (`createWorldPage`, the spawn lists), `packages/server/src/systems/admin/roster.ts` (`handleRoster`)
+- **In the code:** `packages/data/content/monsters.json` (`editorLists`, each monster's `bodyInMainChars`), `packages/client/src/ui/world-page.ts` (`createWorldPage`, the spawn lists), `packages/server/src/systems/admin/roster.ts` (`handleRoster`)
 - **Pinned by:** `design change: the editor lists offer no art-less body; their data stays` (packages/server/tests/ledger-pins-d.test.ts); `an administrator lists, sets and clears slots; the change is saved` (packages/server/tests/monsters-db.test.ts)
 
 #### A Classic world is 1.6's distributed maps
@@ -295,7 +295,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** World content
 - **What you notice:** A burned meal leaves a charred version of its raw food: Burned Orc Meat, Burned Cyclops Meat, Burned Yeti Meat, Burned Meat, Burned Fish, Burned Trout, Burned Catfish, Burned Swordfish, Burned Squid or Burned Pig. Burned food stacks, cannot be cooked and has no use yet; trying to eat it says "That doesn't look very tasty." and keeps it. Raw Meat now has an icon, is dropped by Wolves (one of a Wolf's five loot lines, which rolls 1 in 5, so about 1 in 25 kills), can be eaten raw ("You eat some raw meat. You're disgusting.") and cooks into Cooked Meat.
 - **1.6:** A burn printed its line and kept the raw food (see [Every craft takes its materials when it finishes](#every-craft-takes-its-materials-when-it-finishes)). There was no burned food. Raw Meat had no icon, no source and no recipe, though the item menu offered Cook for any name containing "Meat".
-- **SSO:** Each cooking recipe in `craft.json` names its `burned` result, which a burn adds through the same full-bag check as a success. The burned icons, Raw Meat's and Cooked Meat's are the original raw-food icons recoloured (`tools/recolour-icon.ts`). The item menu offers Cook to the four meats by exact name, so burned meat has no Cook button. The new `use.refusals` table in `item-rules.json` gives burned food its line. Cooked Meat restores 9 + random(5) HP and 3200 Hunger, and Raw Meat 3 + random(3) HP and 1800 Hunger, like the other raw meats. The Wolf drop is in the seed NPC file, so a server whose Wolf file was saved in the NPC Editor keeps its own drops.
+- **SSO:** Each cooking recipe in `craft.json` names its `burned` result, which a burn adds through the same full-bag check as a success. The burned icons, Raw Meat's and Cooked Meat's are the original raw-food icons recoloured (`tools/recolour-icon.ts`). The item menu offers Cook to the four meats by exact name, so burned meat has no Cook button. The new `use.refusals` table in `item-rules.json` gives burned food its line. Cooked Meat restores 9 + random(5) HP and 3200 Hunger, and Raw Meat 3 + random(3) HP and 1800 Hunger, like the other raw meats. The Wolf drop is in the seed NPC file, so a server whose Wolf file was saved by an operator (on the Creatures & NPCs page) keeps its own drops.
 - **Why:** A burn should cost the raw food and leave something to show for it, and every item with a Cook button should cook.
 - **In the code:** `packages/shared/src/rules/crafting/craft.ts` (`finishCraft`, `burnedResult`); `packages/shared/src/rules/inventory/equip.ts` (`useItem`); `packages/data/content/craft.json`, `items.json`, `item-rules.json`, `npc-files.json`; `assets/added/items/`
 - **Pinned by:** `every cookable has a burned form: a catalogue item with art and no Cook button`; `Raw Meat cooks into Cooked Meat and burns into Burned Meat` (packages/shared/tests/crafting/craft.test.ts); `burned food is refused with its own line and kept`; `Raw Meat is eaten like the other raw meats; Cooked Meat like a cooked meal` (packages/shared/tests/inventory/inventory.test.ts)
@@ -351,7 +351,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** Platform
 - **What you notice:** The game has a Windows-style menu above the game, with Game and Chat, plus Admin for administrators. The items are regrouped by what they are for, items with hotkeys show their keybind on the right, and there is no Quit Game.
 - **1.6:** The projector had a native Windows menu above the stage from program start, with File, Edit, Game and Plugins. Immortals received an Admin menu. Return To Title Screen and Quit were in File; preferences were on the title-screen Game Setup.
-- **SSO:** The classic grey bar scales above the 800×600 stage without covering original click targets. Game contains Open Friend's List, Who's Online, Send Instant Message, Edit Newspaper, Settings and Return To Title Screen. Chat contains the four rooms, then Admin Chat for an administrator, then Clear Chat Text. Admin, for an administrator, sits after Chat and contains Control Panel, World Editor, NPC Editor, Return To Game and three Assassin commands, which are sent without confirmation. File, Edit, Quit Game and the MP3 player are omitted. Out of the game the bar shows only what works there: the title screen has Game with Settings alone, and the login and creation screens add Return To Title Screen; the other items, Chat and Admin appear once a character is in play. Return To Title Screen logs out, or leaves the login or creation screen. Clicking outside an open menu closes it. There is no Alt/F10 access, and the game continues drawing while a menu is open.
+- **SSO:** The classic grey bar scales above the 800×600 stage without covering original click targets. Game contains Open Friend's List, Who's Online, Send Instant Message, Edit Newspaper, Settings and Return To Title Screen. Chat contains the four rooms, then Admin Chat for an administrator, then Clear Chat Text. Admin, for an administrator, sits after Chat and contains Control Panel and three Assassin commands, which are sent without confirmation; 1.6's World Editor and NPC Editor are Control Panel pages, whose header has Return to Game. File, Edit, Quit Game and the MP3 player are omitted. Out of the game the bar shows only what works there: the title screen has Game with Settings alone, and the login and creation screens add Return To Title Screen; the other items, Chat and Admin appear once a character is in play. Return To Title Screen logs out, or leaves the login or creation screen. Clicking outside an open menu closes it. There is no Alt/F10 access, and the game continues drawing while a menu is open.
 - **Why:** Browser scaling, controls and player preferences need a clean home. A page cannot close its own tab, so Quit Game could only log out to a screen asking the player to close it, which Return To Title Screen and the tab's own close button already cover. With Quit Game gone, File and Edit would each hold a single item, so the items are grouped by purpose: Game holds character/social tools, Settings and Return To Title Screen, Chat holds rooms (including Admin Chat), and Admin keeps only tools and events. Server Settings lives in the Control Panel (see [Control Panel](#control-panel)). Items that need a character are hidden rather than greyed before entry, so the title screen offers nothing that cannot work there.
 - **In the code:** `packages/client/src/ui/gamemenu.ts` (`desktopMenus`)
 - **Pinned by:** `no menu offers Quit Game: a page cannot close its own tab`, `an administrator gets Admin after Chat, and Admin Chat among the rooms`, `out of the game only what works there shows: the title has Game with Settings; login and creation add Return To Title Screen` (packages/client/tests/gamemenu.test.ts)
@@ -458,7 +458,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 #### Equipment icons, × markers and the paperdoll centred on their boxes
 - **Kind:** Platform
 - **What you notice:** Equipment icons, unequip markers and the character preview are centered on their boxes.
-- **1.6:** The six equipment icons sat at locs x 646/746 and y 281/320/359 with their own registration points, near box centres x 643/743 and y 297/336/375. The 15×14 unequip markers sat about two pixels above the rows, three pixels from the left boxes and seven from the right; their own rectangles were clickable. The paperdoll sprite’s rectangle began at [673, 319].
+- **1.6:** The six equipment icons sat at locs x 646/746 and y 281/320/359 with their own registration points, near box centres x 643/743 and y 297/336/375. The 15×14 unequip markers sat about two pixels above the rows, three pixels from the left boxes and seven from the right; their own rectangles were clickable. The paperdoll sprite's rectangle began at [673, 319].
 - **SSO:** Each icon bitmap is centered in its box. The 15×14 markers are centered on rows and placed eight pixels outside both sides; the boxes themselves do not click. The preview moves so the bare character's drawn pixels sit at stage x 676–710, y 306–359 in the middle box; added gear does not move it.
 - **Why:** The user requested centered icons. Director drew unstretched sprites at their own bitmap size and registration point, not the score's stale 32×32 size.
 - **In the code:** `packages/client/src/ui/panel.ts` (`createPanel`)
@@ -577,7 +577,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** Other
 - **What you notice:** Every swing that strikes a tree throws wood chips and a few leaves off it, and every swing that strikes a rock throws stone chips: grey with a puff of dust from a rock, ice shards from the ice rock, and embers from the fire rock. Everyone on the map sees it, as they see the fishing splash. A swing at a stump, a broken rock or any other tile shows nothing new, and the sounds are unchanged.
 - **1.6:** Chopping and mining played their hit sound but showed nothing on the tile, while fishing showed its splash on every cast.
-- **SSO:** A harvest node's `strikeFx` names the effect run shown on the tile at each swing that strikes it. Classic ships new 12-frame runs: `Wood Chips`, `Rock Chips`, `Ice Chips` and `Ember Chips`. Operators can pick another run, change its length, or leave it out on the Gathering page.
+- **SSO:** A harvest node's `strikeFx` names the effect run shown on the tile at each swing that strikes it. Classic ships new 12-frame runs: `Wood Chips`, `Rock Chips`, `Ice Chips` and `Ember Chips`. Operators can pick another run, change its length, or leave it out on the Gathering & Crafting page's Gathering tab.
 - **Why:** Gathering should show the tool hitting the tile, as fishing already did.
 - **In the code:** `packages/server/src/systems/crafting/gather.ts` (`toolSwing`); `packages/shared/src/rules/spells/spellfx.ts` (`gatherRunFrames`); `packages/data/content/gather.json` (`strikeFx`); `assets/added/fx/`
 - **Pinned by:** `design change: every strike at a tree shows Wood Chips on the tree, to everyone on the map`; `design change: each hammer's rock shows its own chips`; `design change: a swing at a tile that cannot be worked shows nothing` (packages/server/tests/gather.test.ts); `design change: a strike run stands on the struck tile, shows its frames and draws in the tile's row` (packages/shared/tests/spells/spells.test.ts)
@@ -602,7 +602,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 #### Staff can wear their role in chat
 - **Kind:** Other
-- **What you notice:** With the Role tags setting on, a staff member's lines show their role's name before their name, such as `[Admin] Berlyn says "hi"`, in local chat, `/me`, broadcasts, chat rooms, guild chat and staff chat. Players' lines are unchanged. It is off by default.
+- **What you notice:** With the Role tags in chat setting on, a staff member's lines show their role's name before their name, such as `[Admin] Berlyn says "hi"`, in local chat, `/me`, broadcasts, chat rooms, guild chat and staff chat. Players' lines are unchanged. It is off by default.
 - **1.6:** Nothing in chat showed who was staff.
 - **SSO:** `taggedName` puts the role's display name in brackets before the speaker's name when the `roleTags` setting is on. IMs keep the plain name, because it is where a reply goes, and ignore lists still match the plain name.
 - **Why:** Players can tell staff from impostors when the operator wants them to.
@@ -659,7 +659,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **What you notice:** A tile gives at most 5 catches. After that, a cast from it catches nothing and gains no skill, and the chat says "The fish have stopped biting here. Try fishing from another spot." once each time you start fishing. Fishing from any other tile, on this map or another, starts with 5 again. Turning on the spot and logging out and back in don't refill it.
 - **1.6:** Each player had one allowance of 5, filled at login and meant to refill when an arrow press turned you. The refill compared the facing letter ("W") with a direction word ("Left"), so it never matched and every arrow press refilled it, a step into a wall included. A run-out allowance said nothing. Even with that comparison fixed, turning back and forth between two directions without leaving the tile refilled it forever, and so did logging in again.
 - **SSO:** The server remembers each character's allowance and the tile it belongs to (`fishingSpots`), across logouts, until the server restarts. A cast from the same tile uses what is left there. A cast from any other tile starts a fresh allowance. Movement no longer touches it.
-- **Why:** The allowance exists to stop unattended fishing, and a macro could beat both 1.6's rule and the fixed turn rule without moving. Having to change tiles beats that while barely affecting someone fishing by hand. The message tells a player why the fish stopped biting, which 1.6 never did. The skill gain rate is unchanged and is part of the skill levelling balance pass (#18).
+- **Why:** The allowance exists to stop unattended fishing, and a macro could beat both 1.6's rule and the fixed turn rule without moving. Having to change tiles beats that while barely affecting someone fishing by hand. The message tells a player why the fish stopped biting, which 1.6 never did. The skill gain rate is unchanged in Classic; an operator can rebalance it, and the allowance (`antiMacroStart`), on the Gathering & Crafting page.
 - **In the code:** `packages/shared/src/rules/crafting/gather.ts` (`fishingSpot`, `FISHING_STOPPED_TEXT`); `packages/server/src/systems/crafting/gather.ts` (`preSwing`); `packages/data/content/gather.json` (`stoppedText`)
 - **Pinned by:** `design change: the allowance belongs to a tile; only another tile refills it` (packages/shared/tests/crafting/gather.test.ts); `design change: turning does not refill a tile's allowance; fishing from another does`; `design change: logging out and back in does not refill a tile's allowance`; `design change: a fished-out tile says so once while the line is held` (packages/server/tests/gather.test.ts)
 
@@ -674,7 +674,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 #### HP, SP and XP bars fill by percentage, and hovering one shows its value
 - **Kind:** Other
-- **What you notice:** Each HP, SP and XP bar fills its wooden slot from left to right. Full HP or SP fills the slot even when the maximum is 20, and losing half the points leaves half the bar. The third slot, which held 1.6's power bar, is a flat green XP bar toward your next level. Hovering a bar shows that bar's value, centred on it, such as `20 / 20 HP`, `20 / 20 SP` or `100 / 300 XP`; the other bars and unhovered bars have no numbers. Aboard a vehicle the HP bar shows its hull, such as `Hull 30 / 40`.
+- **What you notice:** Each HP, SP and XP bar fills its wooden slot from left to right. Full HP or SP fills the slot even when the maximum is 20, and losing half the points leaves half the bar. The third slot, which held 1.6's power bar, is a flat green XP bar toward your next level. Hovering a bar shows that bar's value, centred on it, such as `20 / 20 HP`, `20 / 20 SP` or `100 / 300 XP`; the other bars and unhovered bars have no numbers. Aboard a vehicle the HP bar shows its hull, such as `Hull 78 / 80`.
 - **1.6:** The bar loader slid fixed 205-px track and fill sprites leftward from the stage's right edge using the raw value, capped at 200. A character with 20 maximum HP showed only a short bar at full health, while one with 1000 maximum HP filled the slot. The right-aligned number also disappeared past the stage's right edge at 1 HP/SP and spilled left of the cutout above 200. There was no XP bar: XP showed only as the level-up line.
 - **SSO:** The HP, SP and XP tracks stay in the 189-px transparent slots of Internal #186 (stage x 600-789; y 70-74, 85-89 and 101-105) and the fills grow from the left edge by `value / max`, with no 200 cap; the original 205-px HP and SP fill art is clipped to the slot, and the depleted part of each slot is plain black instead of 1.6's darker red and blue track sprites. The XP bar reads the server's vitals: the XP held toward the next level over the XP that level needs. A level-up empties it and carries the remainder; saved XP at or past its destination shows a full bar until the next level check, and a destination of 0 shows an empty one. There is no level cap. Numbers above 999 carry thousands separators. The text fields show only while a bar is hovered, so they cannot leave the cutout.
 - **Why:** A bar's length should show how much of the stat remains, not how large the stat's maximum happens to be. With the power bar gone, its slot shows progress that players otherwise had no way to see.
@@ -755,7 +755,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 #### Class stat points come from your current class
 - **Kind:** Other
-- **What you notice:** A Druid plays with +3 Dexterity, Wisdom and Intelligence, a Bard +1 Wisdom and a Barbarian +1 Strength, for as long as they are in that class. If an operator changes your class, its points go and the new class's come.
+- **What you notice:** A Druid plays with +3 Mysticism (the stat the data calls Dexterity), Wisdom and Intelligence, a Bard +1 Wisdom and a Barbarian +1 Strength, for as long as they are in that class. If an operator changes your class, its points go and the new class's come.
 - **1.6:** A promotion added its stat points to the stored stats once, and they stayed whatever happened to the class later.
 - **SSO:** Each class's points are its `statBonus` in `classes.json`, added to your allocated stats (with any medals' points) wherever stats are used, and never stored. The upgrade takes the shipped points of each character's current class back off the stored stats, so promoted characters keep the stats they had.
 - **Why:** Calculated points let operators rebalance classes and have every character follow; see [issue #15](https://github.com/jberlyn/second-star-online/issues/15).
@@ -811,7 +811,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** Other
 - **What you notice:** Riding an airship, boat or battleship, your HP bar shows its hull ("Hull 78 / 80"). An arrow or harmful spell that hits you takes a fixed 2 off the hull, and a battleship's cannonball 14 to 16, never touching your HP, however strong the attacker. When the hull runs out you die as if killed aboard: the airship is lost and everyone reads "\*\*\* Bob's airship was shot down by Ann. Bob fell from the sky." in place of the death line; a ship's line is "\*\*\* Bob's boat was sunk by Ann. Bob was claimed by the waters." A parked vehicle slowly repairs, 1 point a minute, and you board it with the hull it has regained.
 - **1.6:** Riders took hits on their own HP, so a high-level character's airship was as tough as the character.
-- **SSO:** `characters.hull` holds a rider's hull and `ground_items.hull` and `parked_at` a parked vehicle's. Each vehicle's row sets its full hull (`houses.vehicles` `hull`: Classic's boat 60, airship 80 and battleship 150, edited on the Content page), and the world's balance the damage per hit (`balance.vehicles.hullHit`, 2) and the repair (`repairPerMinute`, 1), on the Control Panel's Balance page. A sinking counts as a kill: the attacker is credited and flagged as for any player kill.
+- **SSO:** `characters.hull` holds a rider's hull and `ground_items.hull` and `parked_at` a parked vehicle's. Each vehicle's row sets its full hull (`houses.vehicles` `hull`: Classic's boat 60, airship 80 and battleship 150, edited under **Houses & Vehicles → Vehicles**), and the world's balance the damage per hit (`balance.vehicles.hullHit`, 2) and the repair (`repairPerMinute`, 1), under **Houses & Vehicles → Hull and cannon**. A sinking counts as a kill: the attacker is credited and flagged as for any player kill.
 - **Why:** A vehicle is something you own and protect, not a reflection of your level, and its fights should depend on the vehicle and not on who rides it. Issue #2 builds boats and battleships on the same hulls.
 - **In the code:** `packages/shared/src/rules/vehicles/vehicles.ts` (`hullMax`, `boardingHull`, `sunkText`), `packages/server/src/systems/spells/collide.ts` (`playerCollision`), `packages/server/src/systems/progression/vitals.ts` (`checkDeath`), `packages/server/src/systems/vehicles/vehicles.ts`, `packages/server/migrations/20261120_43_vehicle_hulls.sql`
 - **Pinned by:** `SSO: a new airship boards with a full hull, and the HP bar shows it`; `SSO: parking keeps the hull and the time; boarding again repairs a point a minute`; `SSO: a player's spell wears a rider's hull by a fixed 2, never the rider's HP`; `SSO: the hull running out kills the rider; the airship is lost and everyone hears it` (packages/server/tests/vehicles.test.ts); `SSO: the hull running out sinks the boat and everyone hears it` (packages/server/tests/ships.test.ts); `SSO: a parked hull regains repairPerMinute for each whole minute, up to full`; `SSO: the shot-down line names the attacker when there is one` (packages/shared/tests/vehicles/vehicles.test.ts)
@@ -845,7 +845,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 #### The spells 1.6 left without an effect work
 - **Kind:** Other
-- **What you notice:** Bless, Weaken, Haste, Poison Dart, Replenish, Holy Weapon and Identify each do something, with their own animation and sound. Replenish heals between Minor and Major Heal. Haste makes your HP and SP come back twice as fast for about a minute. Bless adds 2 to the attack power of the player it lands on, and Holy Weapon adds 2 to each of their melee hits (4 on the undead), each for about a minute. Weaken takes 2 off a player's attack power or a monster's attack for about half a minute. Poison Dart flies like a fireball and poisons the first player or monster it touches, which then loses 3 to 5 HP every two seconds for about ten; any heal cures it, and a death by poison is the caster's kill. Identify, cast on an item on the ground, tells you where it is worn, what it strikes for, what it does while worn, what it needs and whether it can break. Weaken and Poison Dart are harmful: they cannot be cast where fighting is off, and they never touch you or, where PvP is off, another player. Replenish now costs 5 Blue Crystals, Holy Weapon 3 White and Poison Dart 3 Green; Identify costs 5 SP. Weaken and Poison Dart train Black Arts (Poison Dart Martial Arts too); the rest train Blessing, but Identify trains Item Identification, which now shows on the Skills page. Reading the books needs some Dexterity (Bless and Holy Weapon 12, Haste 14, Weaken and Poison Dart 18, Replenish 20). The Classic pack has Haste and Poison Dart books, but no shop or monster gives any of these books out: an operator decides where they come from.
+- **What you notice:** Bless, Weaken, Haste, Poison Dart, Replenish, Holy Weapon and Identify each do something, with their own animation and sound. Replenish heals between Minor and Major Heal. Haste makes your HP and SP come back twice as fast for about a minute. Bless adds 2 to the attack power of the player it lands on, and Holy Weapon adds 2 to each of their melee hits (4 on the undead), each for about a minute. Weaken takes 2 off a player's attack power or a monster's attack for about half a minute. Poison Dart flies like a fireball and poisons the first player or monster it touches, which then loses 3 to 5 HP every two seconds for about ten; any heal cures it, and a death by poison is the caster's kill. Identify, cast on an item on the ground, tells you where it is worn, what it strikes for, what it does while worn, what it needs and whether it can break. Weaken and Poison Dart are harmful: they cannot be cast where fighting is off, and they never touch you or, where PvP is off, another player. Replenish now costs 5 Blue Crystals, Holy Weapon 3 White and Poison Dart 3 Green; Identify costs 5 SP. Weaken and Poison Dart train Black Arts (Poison Dart Martial Arts too); the rest train Blessing, but Identify trains Item Identification, which now shows on the Skills page. Reading the books needs some Mysticism (Bless and Holy Weapon 12, Haste 14, Weaken and Poison Dart 18, Replenish 20). The Classic pack has Haste and Poison Dart books, but no shop or monster gives any of these books out: an operator decides where they come from.
 - **1.6:** The seven spells had names, books, SP and crystal costs and (all but two) Info lines, but no effect: the cast placed no animation and nothing read them, so the first six took SP and crystals for nothing and Identify did nothing silently. Haste's flag and Replenish's heal (`20 + random(10)`, more than Major Heal) sat in a handler nothing called. There was no Haste Book, and the Poison Dart Book had no picture. Item Identification was a hidden skill nothing raised.
 - **SSO:** Each spell runs an effect of its own. Their lengths and bonuses are the `buffs` rows of the balance (a fixed time plus a time for each point of power), Replenish's and the poison's amounts are `spellEffects` rows, and a spell's own `lasts` and `amount` replace them; all are on the Spells page. Weaken and Poison Dart are marked harmful. A spell may train more skills after its school (`alsoTrains`). The art and sounds are new (`assets/added/`, drawn by `tools/spell-art.ts`).
 - **Why:** 1.6 began these spells (costs, books, Info lines, Haste's flag, Replenish's heal) but never finished them. SSO finishes them in the spirit of their Info text and school rather than leaving them refused. Replenish heals less than 1.6's unused handler so that it sits between Minor and Major Heal, as "A medium level healing spell" says.
@@ -887,20 +887,20 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 #### World editor Fat brush reaches the full 17 × 12 map
 - **Kind:** Bug fixed
-- **What you notice:** The World Editor's Fat brush paints all four arms of its plus shape up to the full 17 × 12 map edges.
+- **What you notice:** The World page's Big brush (1.6's Fat brush) paints all four arms of its plus shape up to the full 17 × 12 map edges.
 - **1.6:** Right and lower arms were bounded by an older 12 × 9 map size.
-- **SSO:** `paint` bounds all four arms by `MAP_WIDTH` and `MAP_HEIGHT`.
+- **SSO:** `paint` bounds all four arms by `MAP_WIDTH` and `MAP_HEIGHT`; the World page's brushes call it through `brush`.
 - **Why:** Fixes incomplete painting near the right and bottom edges of the map.
-- **In the code:** `packages/shared/src/rules/admin/worldedit.ts` (`paint`)
+- **In the code:** `packages/shared/src/rules/admin/worldedit.ts` (`paint`), `packages/shared/src/rules/admin/mapedit.ts` (`brush`)
 - **Pinned by:** `the Fat brush bounds all four arms by the full 17 × 12 map dimensions` (packages/shared/tests/admin/worldedit.test.ts)
 
 #### World editor faction checkboxes are mutually exclusive
 - **Kind:** Bug fixed
-- **What you notice:** A map's faction spawn is one faction: the World page's Faction spawn picks one, or none.
+- **What you notice:** A map's faction spawn is one faction: the World page's "Faction members appear here" list picks one, or none.
 - **1.6:** Ticking A cleared M twice and left W ticked.
-- **SSO:** `clickFaction` clears the other two boxes on every faction toggle: the map holds one faction, by key, and each box picks the faction `factionRules.editorBoxes` gives it.
+- **SSO:** The World page has one list in place of the three boxes, so the map holds one faction, by key, or none. The box rule is kept beside it: `clickFaction` clears the other two boxes on every faction toggle, and each box picks the faction `factionRules.editorBoxes` gives it.
 - **Why:** Prevents ambiguous multi-faction checkbox states.
-- **In the code:** `packages/shared/src/rules/admin/worldedit.ts` (`clickFaction`)
+- **In the code:** `packages/shared/src/rules/admin/worldedit.ts` (`clickFaction`), `packages/client/src/ui/world-page.ts`
 - **Pinned by:** `the W, M and A boxes pick Classic's Warrior, Mage and Adventurer and are mutually exclusive` (packages/shared/tests/admin/worldedit.test.ts)
 
 #### World editor resets exit fields when loading a map without exits
@@ -1188,7 +1188,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 #### A broadcast cooldown covers its whole 1000 frames
 - **Kind:** Bug fixed
-- **What you notice:** A broadcast is refused for the full 50 seconds; the last fraction of a second no longer lets a shout through.
+- **What you notice:** A broadcast is refused for the full wait (50 seconds by default, the Server Settings' Broadcast wait, `broadcastCooldown`); the last fraction of a second no longer lets a shout through.
 - **1.6:** The remaining time was rounded down to whole seconds, so with 1–19 frames left it read 0 and the broadcast went through. 1.6 never showed this because its cooldown was cleared for registered players; SSO applied the cooldown, making its effective length 981 frames.
 - **SSO:** Seconds round up, so any positive remainder refuses and the broadcast waits the full 1,000 frames.
 - **Why:** The configured cooldown should be the actual cooldown.
@@ -1246,7 +1246,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** Bug fixed
 - **What you notice:** An axe swings slowly at low Axe Fighting and speeds up as it rises: 25 frames below 10, 22 at 10-19, and so on to 15 at 80-89, then the normal 14 (10 with the Ring of Quickness) from 90. A Mining Hammer swings every 15 frames below Mining 10 and one frame faster per 10 skill, down to 7 frames from Mining 80 on.
 - **1.6:** Both ladders were tested from low to high with the last matching step winning, so every axe user below 90 got 15 frames and every hammer user below 90 got 7, and a hammer at 90 and above fell back to the normal 14.
-- **SSO:** `swingCooldowns` takes the first matching step of each ladder, and the hammer keeps its fastest step from Mining 80 on.
+- **SSO:** `swingCooldowns` takes the first matching step of each ladder, and the hammer keeps its fastest step from Mining 80 on. The ladders are content (`item-rules.json` `ladders`, named by a `tools` row), and the normal 14 is the balance row `timings.swingBaseFrames`.
 - **Why:** The ladders were plainly written to reward skill; the order made the skill irrelevant and slowed the best miners down.
 - **In the code:** `packages/shared/src/rules/combat/combat.ts` (`swingCooldowns`, `ladderStep`)
 - **Pinned by:** `bug fixed: the axe ladder slows low Axe Fighting, 25 frames at 0 down to 15 at 80-89`; `bug fixed: a Mining Hammer speeds up with Mining, 15 frames at 0 down to 7 from 80`; `Ring of Quickness sets 10/10 before the axe ladder` (packages/shared/tests/combat/combat.test.ts)
@@ -1757,7 +1757,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** Only a brew prints a cauldron line.
 - **Why:** The fizzle read as a failure when nothing had gone wrong.
 - **In the code:** `packages/server/src/systems/economy/containers.ts` (`depositContainer`); `packages/shared/src/rules/crafting/craft.ts` (`cauldronBrew`)
-- **Pinned by:** `bug fixed: a deposit that completes nothing does not fizzle` (packages/server/tests/craft.test.ts)
+- **Pinned by:** `bug fixed: a deposit that completes nothing does not fizzle` (packages/server/tests/craft.test.ts); `bug fixed: Gail's first ingredient goes in quietly, the second brews; she takes the Gold Crown out` (packages/server/e2e/gathering-and-crafting.test.ts)
 
 ### economy
 
@@ -1801,7 +1801,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** Bug fixed
 - **What you notice:** The Fire, Water and Wind God books cost their listed price, and the gold goes into the shopkeeper's till. Selling to a shopkeeper pays from its till; one whose till is empty says "<Name> says "I'm sorry but I can't afford to buy that."" and you keep the item. Gold handed to a shopkeeper always goes into its till.
 - **1.6:** Only a shopkeeper with a `GLD|` line among its first 80 lines charged or paid: one without gave goods away (after checking you could afford them) and took sold items for nothing. A gift counted only with a `GLD|` line among the first 60 lines.
-- **SSO:** No `GLD|` line means a till of 0. Purchases fill it, sales pay from it, and gifts add to it. Once it holds gold, the file the NPCs page shows (and a player shop's rewrite) shows a `GLD|` line. The `GLD|` line counts wherever it is, so the NPC editor no longer warns about its position.
+- **SSO:** No `GLD|` line means a till of 0. Purchases fill it, sales pay from it, and gifts add to it. Once it holds gold, the file the Creatures & NPCs page's Talk & Shops tab shows (and a player shop's rewrite) shows a `GLD|` line. The `GLD|` line counts wherever it is, so the NPC editor no longer warns about its position.
 - **Why:** A listed price should be charged, a sale should never take an item for nothing, and the line limits were 1.6 reader windows with no gameplay purpose.
 - **In the code:** `packages/server/src/systems/economy/shop.ts` (`ledgerFromTemplate`, `npcBuy`, `npcSell`); `packages/server/src/systems/economy/intents.ts` (`giveGoldToNpc`); `packages/shared/src/rules/admin/npcfile.ts` (`liveNpcText`, `checkNpcFile`)
 - **Pinned by:** `bug fixed: a shopkeeper with no GLD line charges the price into a till that starts at 0`; `bug fixed: a shopkeeper with no GLD line pays from its till, refusing while it is empty` (packages/server/tests/economy.test.ts); `bug fixed: ledgers: GLD| counts wherever it is, and no GLD| is a till of 0`; `bug fixed: gold given goes into the till wherever GLD| is, or into a till from 0 without one` (packages/server/tests/npcedit.test.ts); `bug fixed: a till filled without a GLD| line shows as one in the live file` (packages/shared/tests/admin/npcfile.test.ts); `bug fixed: the Fire God's book costs its 100 gold, though he keeps no gold line` (packages/server/e2e/npcs-shops-trade.test.ts)
@@ -1885,7 +1885,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** The server keeps each side's acceptance, cleared by any change of either offer, and settles on the second. The partner's Accept reuses the original Accept art.
 - **Why:** Both players should agree to the final offers, and should be able to fix a mistake without cancelling.
 - **In the code:** `packages/server/src/systems/economy/trade.ts` (`offerTrade`, `acceptTrade`, `cancelTrade`); `packages/client/src/ui/trade.ts` (`createTradeWindow`)
-- **Pinned by:** `bug fixed: A offers, B offers, both accept: one move, and both are told it is complete`; `bug fixed: either side can change its offer, which clears both acceptances`; `bug fixed: Cancel: whoever cancels hears 'You cancel the trade.', the partner 'Trade cancelled.'` (packages/server/tests/npcs-trade.test.ts); `bug fixed: B has an Accept of its own once both offers are in` (packages/client/tests/npcs.test.ts)
+- **Pinned by:** `bug fixed: A offers, B offers, both accept: one move, and both are told it is complete`; `bug fixed: either side can change its offer, which clears both acceptances`; `bug fixed: Cancel: whoever cancels hears 'You cancel the trade.', the partner 'Trade cancelled.'` (packages/server/tests/npcs-trade.test.ts); `bug fixed: B has an Accept of its own once both offers are in` (packages/client/tests/npcs.test.ts); `bug fixed: Alice trades 50 gold for Bob's Apple; both accept and both hear it is done` (packages/server/e2e/npcs-shops-trade.test.ts)
 
 #### Withdrawing into a full bag is refused instead of destroying the item
 - **Kind:** Bug fixed
@@ -1936,7 +1936,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** Bug fixed
 - **What you notice:** All of a player shop's items can be bought, the seventh and later included.
 - **1.6:** A new shop's seventh sale line fell on file line 18, past the NPC buy routine's line-17 limit, so it always answered out of stock.
-- **SSO:** Purchases use the chosen line wherever it is (see "Any listed item can be bought").
+- **SSO:** Purchases use the chosen line wherever it is (see [Any listed item can be bought, the Fortress Guild Hall Deed included](#any-listed-item-can-be-bought-the-fortress-guild-hall-deed-included)).
 - **Why:** A shop should sell what it lists.
 - **In the code:** `packages/shared/src/rules/economy/playershop.ts` (`setPrices`); `packages/server/src/systems/economy/shop.ts` (`npcBuy`)
 - **Pinned by:** `the seventh item lands on line 18, where it can be bought` (packages/shared/tests/economy/playershop.test.ts); `bug fixed: the seventh item, on line 18, can be bought` (packages/server/tests/playershop-db.test.ts)
@@ -2292,9 +2292,9 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** Bug fixed
 - **What you notice:** At or above the hunger limit, using food or a potion says only "You're stuffed!" and the item stays in your bag. The bite that fills you up says just its eat line.
 - **1.6:** Eating while stuffed gave nothing and still used the item up. "You're stuffed!" also followed the bite that crossed the limit.
-- **SSO:** Hunger at or above 35000 (Classic's balance row `hunger.stuffed`) refuses the use before any effect; "You're stuffed!" is that refusal's line. A new character starts stuffed, so they eat once their hunger has dropped.
+- **SSO:** Hunger at or above 35000 (Classic's balance row `hunger.stuffed`) refuses the use before any effect; "You're stuffed!" is that refusal's line. A new character starts stuffed, so they eat once their hunger has dropped. Classic refuses every usable item, as 1.6 did (the balance row `hunger.stuffedRefuses` is `all`; `food` refuses only what can raise hunger), and an item on `use.whenFull` in `item-rules.json` is never refused (Classic lists none).
 - **Why:** Losing food for nothing was a trap, and the line on the filling bite read as a refusal.
-- **In the code:** `packages/shared/src/rules/inventory/equip.ts` (`useItem`, `stuffedHunger`)
+- **In the code:** `packages/shared/src/rules/inventory/equip.ts` (`useItem`, `stuffedHunger`, `stuffedRefuses`)
 - **Pinned by:** `bug fixed: a stuffed player is refused and keeps the food`; `bug fixed: the bite that fills you only says the eat line; "You're stuffed!" is the refusal` (packages/shared/tests/inventory/inventory.test.ts); `bug fixed: a stuffed player is refused and keeps the food` (packages/server/tests/inventory.test.ts)
 
 #### Purple Potion says its line once and waits for hunger
@@ -2443,9 +2443,9 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 
 #### Boots are drawn on your character
 - **Kind:** Bug fixed
-- **What you notice:** Leather, Chain, Plate and Gold Boots show on your character's feet, for you and for everyone who sees you. With nothing on your feet you walk barefoot, in the same skin colour as your hands, shaded where they meet your trousers.
+- **What you notice:** Leather, Chain and Plate Boots show on your character's feet, for you and for everyone who sees you. With nothing on your feet you walk barefoot, in the same skin colour as your hands, shaded where they meet your trousers.
 - **1.6:** The character was drawn from every equipment slot except the feet, and the game had no boot art; every body, the default one and each armour, painted dark shoes on the feet.
-- **SSO:** The paperdoll draws the Feet slot over the body. The boot layers are new art in `assets/added/paperdoll/`, made from the default body's feet in each boot's colours; facing north or south a pair has a dark seam between the feet and a lighter cuff. An empty Feet slot draws the `Bare Feet` layer, the same silhouette in skin colour with its top row in the heads' skin shadow, so the feet sit under the trouser hem, over the painted shoes. Gloves are worn in the Ring slot and drawn from it, as before.
+- **SSO:** The paperdoll draws the Feet slot over the body. The boot layers are new art in `assets/added/paperdoll/`, made from the default body's feet in each boot's colours (a Gold Boots layer is there too, for an operator's own item: the Classic pack has no Gold Boots); facing north or south a pair has a dark seam between the feet and a lighter cuff. An empty Feet slot draws the `Bare Feet` layer, the same silhouette in skin colour with its top row in the heads' skin shadow, so the feet sit under the trouser hem, over the painted shoes. Gloves are worn in the Ring slot and drawn from it, as before.
 - **Why:** Worn boots should be seen.
 - **In the code:** `packages/shared/src/rules/inventory/paperdoll.ts` (`normaliseLook`, `paperdollLayers`)
 - **Pinned by:** `bug fixed: boots are drawn over the body from the Feet slot; gloves are worn in the Ring slot` and `SSO: with no boots the feet are bare, over whatever shoes the body paints` (packages/shared/tests/inventory/inventory.test.ts); `every frame of the default body has bare feet to cover its painted shoes` (packages/data/tests/assets.test.ts)
@@ -2580,7 +2580,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** Bug fixed
 - **What you notice:** Nothing in the Classic pack hands you an item with no picture or asks you for one you could never get. Merius sells nothing; the Gold and Dark Chests no longer refill with the Hammer, Laser Sword or Green Laser Sword; no quest asks for a Damaged Helm, Water Orb or Ocarina or rewards a Scimitar; the cauldron no longer turns a Magic Shield Book and a Small Shield into a Magic Shield item. Copies you already hold of those six items stay and work.
 - **1.6:** 47 items had no picture. Some could still be got and showed as a blank: Damaged Armor (Merius), the Scimitar (a quest reward), the Hammer, Laser Sword and Green Laser Sword (quest chest refills), the Magic Shield (a cauldron recipe SSO made work) and Coched's "red crystal". Others could never be got at all, though quests asked for some of them: Dantan's quest and the quest pool wanted a Water Orb, a Damaged Helm or an Ocarina.
-- **SSO:** The Classic pack drops every item with no picture and no source, with the rule rows, shop-list entries and quest rolls that named only them: the Crown, the Cyclops, Imp, Lizard and Pig Costumes, the Damaged Helm, Shield and Sword, "Damaged Sword, Knight's" (see [Masterwork rolls are even and the Knight's Sword repairs](#masterwork-rolls-are-even-and-the-knights-sword-repairs)), the Dark Shield and Dark Staff, the Fawn Cap and Ice Cap, the Gold Armor, Boots, Helm and Shield, the Rune Armor, Helm, Shield and Sword, the Red Laser Sword, the White Tiara, the Magic Shield Spell Book, the Poison Dart Book (back with a picture: see [The spells 1.6 left without an effect work](#the-spells-16-left-without-an-effect-work)), the duplicate singular crystals, and these three, recorded so they can come back to Classic with art and a source:
+- **SSO:** The Classic pack drops every item with no picture and no source, with the rule rows, shop-list entries and quest rolls that named only them: the Crown, the Cyclops, Imp, Lizard and Pig Costumes, the Damaged Helm, Shield and Sword, "Damaged Sword, Knight's" (see [Masterwork rolls are even and the Knight's Sword repairs](#masterwork-rolls-are-even-and-the-knights-sword-repairs)), the Dark Shield and Dark Staff, the Fawn Cap and Ice Cap, the Gold Armor, Boots, Helm and Shield, the Rune Armor, Helm, Shield and Sword, the Red Laser Sword, the White Tiara, the Magic Shield Spell Book, the Poison Dart Book (back with a picture: see [The spells 1.6 left without an effect work](#the-spells-16-left-without-an-effect-work)), the duplicate singular crystals, and the items below. Some have since returned with art and a source.
   - **The Ocarina.** SSO had made it play a short authored tune to everyone on the map when used (an added sound, ocarina.wav, removed here and kept in the git history), but nobody could get one.
   - **The Earth, Fire, Water and Wind Orbs**, the pieces of the orb war 1.6 never finished. They are back, with pictures and monsters that drop them: see [The elemental orb war works](#the-elemental-orb-war-works).
   - **The Stone Guild Hall Deed.** It had no art, template or builder; SSO's Use said "The Stone Guild Hall cannot be built yet, so this deed can't be used." and kept it. An operator can add a third guild hall of their own on the Control Panel instead, with its deed, its tiles, what is inside and an uploaded placement preview ([#10](https://github.com/jberlyn/second-star-online/issues/10)). A deed whose `use` is `nothing` still works that way for an operator's own content.
@@ -2913,7 +2913,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** Bug fixed
 - **What you notice:** On a screen with nine or more players monsters still stop between walks, as they do with eight.
 - **1.6:** The chance that a monster was picked to plan a walk got steadily rarer from 1 to 8 players (a pick every 30 to 600 frames), then at the 9th player jumped back to one every 50 frames, so on a crowded screen monsters moved almost all the time.
-- **SSO:** From the 8th player on it stays at one in 600 for each player's roll.
+- **SSO:** From the 8th player on it stays at one in 600 for each player's roll: the ladder is the balance row `monsters.moveLadder`, and its last step holds for every player past it.
 - **Why:** The ladder exists to keep a screen's total movement steady as players join; the drop at the 9th was a missing rung.
 - **In the code:** `packages/server/src/systems/monsters/ai.ts` (`moveLadder`)
 - **Pinned by:** `bug fixed: ladders: spawn 80…1300 by players, move 30…600 and 600 from the 8th on` (packages/server/tests/monsters.test.ts)
@@ -2958,7 +2958,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** Bug fixed
 - **What you notice:** Clicking a Pig on the tile you face puts it in your bag; clicking one elsewhere does nothing. A full bag says so without starting the wait before your next grab, and a bag with a Pig stack takes another. Killing or removing a monster no longer changes anyone's wait.
 - **1.6:** Clicking any Pig, however far away, grabbed whatever stood on your faced tile, even a Dragon or a shopkeeper, which left with no XP or loot. The 500-frame wait started before the bag test, a bag whose text contained "Pig" (even "Cooked Pig") skipped that test, and every monster removed or killed set every player's wait on the map to 20.
-- **SSO:** The click grabs only the clicked Pig, and only when it stands on your faced tile. The bag test asks whether a Pig fits (a Pig stack or a free line); the wait starts when the grab goes through. Removals leave the wait alone.
+- **SSO:** The click grabs only the clicked Pig, and only when it stands on your faced tile. The bag test asks whether a Pig fits (a Pig stack or a free line); the wait (the balance row `timings.pigGrabFrames`, 500 frames in Classic) starts when the grab goes through. Removals leave the wait alone.
 - **Why:** The grab took the wrong creature and let a player clear any monster or shopkeeper for free; the bag test and the waits misfired.
 - **In the code:** `packages/server/src/systems/monsters/npc.ts` (`clickNpc`, `grabPig`, `cancelSlot`, `pigGrabFrames`)
 - **Pinned by:** `bug fixed: clicking a Pig grabs only that Pig, on your faced tile; a removal leaves pig countdowns alone`, `bug fixed: a monster leaving its slot leaves everyone's pig countdown alone`, `bug fixed: a full bag refuses the grab without starting the countdown; a Pig stack takes it` (packages/server/tests/npcs-trade.test.ts)
@@ -3023,7 +3023,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** Bug fixed
 - **What you notice:** When a weaker player walks into you and the 1-in-25 push roll hits, you read "… attempts to shove you out of the way but is too weak." and stay where you are.
 - **1.6:** The strength check printed the "too weak" line and then fell through, so you also read "… shoves you out of the way." and were moved anyway.
-- **SSO:** A pusher weaker than you only prints the "too weak" line. An equal or stronger pusher shoves you as before.
+- **SSO:** A pusher weaker than you only prints the "too weak" line. An equal or stronger pusher shoves you as before. The roll is the balance row `combat.pushOneIn` (25 in Classic).
 - **Why:** The check printed its refusal and so plainly meant to stop the shove.
 - **In the code:** `packages/server/src/systems/movement/push.ts` (`pushOnMe`), `packages/shared/src/rules/chat/chat.ts` (`pushLines`)
 - **Pinned by:** `bug fixed: a weaker pusher is 'too weak' and does not shove` (packages/server/tests/push.test.ts); `bug fixed: a weaker pusher's line says only that they are too weak` (packages/shared/tests/chat/chat.test.ts)
@@ -3032,9 +3032,9 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** Bug fixed
 - **What you notice:** A Slime or any other small monster blocks only its own tile, even when an Overlord or Mutant Worm is in a lower monster slot on the map, or was there earlier.
 - **1.6:** The three-wide flag was set by an Overlord or Mutant Worm and never reset while the slots were checked in order, so every monster in a higher slot blocked three wide too, even after the big monster had died.
-- **SSO:** Each slot is three wide only if its own monster is an Overlord or Mutant Worm.
+- **SSO:** Each slot is three wide only if its own monster is on `rules.footprint` in `monsters.json` (Classic: the Overlord and Mutant Worm).
 - **Why:** The width belongs to the big monsters' art; leaking it to later slots was a missing reset.
-- **In the code:** `packages/shared/src/rules/movement/movement.ts` (`blockPCCheck`)
+- **In the code:** `packages/shared/src/rules/movement/movement.ts` (`blockPCCheck`, `isFootprint`)
 - **Pinned by:** `bug fixed: only an Overlord or Mutant Worm itself is three wide, in any slot`; `bug fixed: a remembered dead Overlord in slot 1 does not widen slot 2` (packages/shared/tests/movement/movement.test.ts); `bug fixed: a Slime in slot 2 is one wide after an Overlord in slot 1, dead or alive`; `an Overlord in a higher slot still blocks three wide` (packages/server/tests/blocking.test.ts)
 
 #### A Web or Holy Shield no longer clears the way through players and monsters
@@ -3079,7 +3079,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** Bug fixed
 - **What you notice:** XP past what a level needs counts toward the next one, and a kill big enough for several levels gives them all, with "You have become more powerful!" once for each. A level-up still does not heal you.
 - **1.6:** The level check reset XP to 0 and was a single test, so the overflow was lost and a kill gave at most one level.
-- **SSO:** The check repeats while XP reaches the amount needed, taking that amount off each time; each level adds 1 to maximum HP and SP as before.
+- **SSO:** The check repeats while XP reaches the amount needed, taking that amount off each time; each level adds 1 to maximum HP and SP as before (the balance rows `levels.hpPerLevel` and `levels.spPerLevel`, or a class's own perks).
 - **Why:** Throwing away earned XP was a shortcut in the level check, not a rule.
 - **In the code:** `packages/shared/src/rules/progression/progression.ts` (`checkLevelUp`), `packages/server/src/systems/combat/melee.ts` (`smash`), `packages/server/src/systems/spells/collide.ts` (`checkForDead`)
 - **Pinned by:** `bug fixed: the overflow carries over and a big kill can raise several levels; no heal`; `short of the XP needed, nothing changes` (packages/shared/tests/progression/progression.test.ts); `bug fixed: XP overflow carries over and a kill can raise several levels` (packages/server/tests/monsters.test.ts)
@@ -3097,7 +3097,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** Bug fixed
 - **What you notice:** Hit and spell points regenerate every period while Hunger is above 500, whatever your hunger did before. With Hunger from 50 to 500 a period passes with no change, and starving below 50 still takes 1 of each down to 1.
 - **1.6:** The counter reset only when it exactly equalled its target and a regen (Hunger above 500) or starvation (below 50) happened. A period with Hunger in between, or a target lowered below the counter, left it climbing past the target, so regen and starvation stopped until the next login.
-- **SSO:** The counter resets every time it reaches the target, whatever the hunger. It still starts at 1 at login and is raised first, so regen fires every 148 frames (target 149).
+- **SSO:** The counter resets every time it reaches the target, whatever the hunger. It still starts at 1 at login and is raised first, so regen fires every 148 frames (target 149). The target and the hunger lines are the balance rows `regen.periodFrames`, `hunger.regenAbove` and `hunger.starveBelow`; Classic keeps 1.6's 149, 500 and 50.
 - **Why:** The reset was meant to start each period; tying it to the effect was an oversight.
 - **In the code:** `packages/shared/src/rules/progression/progression.ts` (`regenTick`), `packages/server/src/systems/progression/vitals.ts` (`regenStep`)
 - **Pinned by:** `bug fixed: a period with 50 <= Hunger <= 500 passes with no change and regen goes on`; `bug fixed: a counter already past a lowered target fires on the next frame` (packages/shared/tests/progression/progression.test.ts)
@@ -3115,7 +3115,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** Bug fixed
 - **What you notice:** A Mage faction member with a bonus of 3 can raise Mage skills to 90 by killing as well as by casting.
 - **1.6:** The kill path capped Mage skills at 80 at that bonus and the cast path at 90; the tables agreed at every other bonus (30 outside the faction, then 50, 60, 70 and 100).
-- **SSO:** Both paths use one table, with 90 at bonus 3.
+- **SSO:** Both paths use one table, with 90 at bonus 3: the Mage faction's `mageCap` perk in `social.json`.
 - **Why:** Two copies of one table drifted apart. SSO takes the higher value so no character ends up above its cap.
 - **In the code:** `packages/shared/src/rules/progression/skillgain.ts` (`mageSkillCap`, `skillCaps`), `packages/shared/src/rules/spells/spells.ts` (`castMageCap`)
 - **Pinned by:** `bug fixed: a Mage faction bonus of 3 caps Mage skill at 90 from kills and casts alike` (packages/shared/tests/spells/spells.test.ts)
@@ -3226,7 +3226,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** Bug fixed
 - **What you notice:** A faction's members keep a bonus of 9 once its power reaches 200, as they had from 80.
 - **1.6:** The bonus cascade had no row for 200 or more, so nothing matched and the bonus fell to 0.
-- **SSO:** 80 or more gives 9, however high the power goes. Lower powers give what they did.
+- **SSO:** 80 or more gives 9, however high the power goes. Lower powers give what they did. The cascade is `factionRules.tiers` in `social.json`, whose `top` is what no row lowers.
 - **Why:** Growing stronger should never take a faction's bonus away.
 - **In the code:** `packages/shared/src/rules/social/factions.ts` (`factionBonus`)
 - **Pinned by:** `bug fixed: the faction bonus cascade's last true row wins, and 200 or more gives 9` (packages/shared/tests/social/factions.test.ts)
@@ -3372,7 +3372,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** Bug fixed
 - **What you notice:** A cast that is refused, for any reason, leaves you free to cast again at once and spends no SP or crystals.
 - **1.6:** The 20-frame cast delay was set before the checks for map loading, harmful spells, an empty selection, SP and crystals; Portal's player test and the summons' tests ran after SP and crystals were taken.
-- **SSO:** Every refusal comes first; only a cast that goes ahead sets the delay and takes its cost.
+- **SSO:** Every refusal comes first; only a cast that goes ahead sets the delay (the balance row `timings.castDelayFrames`, 20 in Classic) and takes its cost.
 - **Why:** Charging for a cast that never happened was an ordering accident.
 - **In the code:** `packages/server/src/systems/spells/cast.ts` (`castIntent`)
 - **Pinned by:** `bug fixed: only a cast that goes ahead sets the delay; a refused one costs nothing` (packages/server/tests/spells.test.ts)
@@ -3390,7 +3390,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** Bug fixed
 - **What you notice:** Smoke Bomb costs 25 SP whatever you wear, except the Ninja Outfit (17) and Royal Ninja Uniform (13).
 - **1.6:** The cost was set to 25 only when the body was not exactly "Ninja", so a body named "Ninja" left the cost at 0, which ended the cast: Smoke Bomb could not be cast at all.
-- **SSO:** The "Ninja" row is gone; such a body pays the normal 25.
+- **SSO:** The "Ninja" row is gone; such a body pays the normal 25 (Smoke Bomb's `sp` in `spells.json`; the two outfits are its `spByBody` rows).
 - **Why:** The test was a slip for the ninja bodies; it was never meant to make the spell uncastable.
 - **In the code:** `packages/shared/src/rules/spells/spells.ts` (`spCost`)
 - **Pinned by:** `bug fixed: Smoke Bomb costs 25 in a body named exactly "Ninja", like any other body` (packages/shared/tests/spells/spells.test.ts)
@@ -3420,7 +3420,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **SSO:** The lookup's result is the damage: each worn item's row is added, Magic Shield takes 5 off, a positive amount gains `random(3)`, and anything below 1 becomes `random(3)`. Firebolt and Splash skip it, as in 1.6. The rows are data (`armour.spell` in item-rules.json).
 - **Why:** The lookup was written to apply and only failed by a Lingo parameter mistake; Magic Shield had no effect at all without it.
 - **In the code:** `packages/shared/src/rules/spells/spells.ts` (`spellDefense`, `playerSpellAmount`), `packages/server/src/systems/spells/collide.ts` (`playerCollision`)
-- **Pinned by:** `bug fixed: robes and Magic Shield lower spell damage; metal armour raises it` (packages/shared/tests/spells/spells.test.ts); `bug fixed: armour and Magic Shield change the spell damage you take` (packages/server/tests/spells.test.ts)
+- **Pinned by:** `bug fixed: robes and Magic Shield lower spell damage; metal armour raises it`; `bug fixed: an amount brought below 1 becomes random(3); exactly one draw either way` (packages/shared/tests/spells/spells.test.ts); `bug fixed: armour and Magic Shield change the spell damage you take` (packages/server/tests/spells.test.ts)
 
 #### Hold obeys the PvP flag
 - **Kind:** Bug fixed
@@ -3444,7 +3444,7 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **Kind:** Bug fixed
 - **What you notice:** Casting Stone Skin, Magic Shield or Argon's Fist again while it runs restarts its time; it never adds to the bonus or the time. A Purple Potion's Argon's Fist works the same way.
 - **1.6:** Stone Skin added 1 to the defense bonus and 30 times its power to its counter on each cast, Magic Shield added 70 times its power, and Argon's Fist added 400 frames, so recasting stacked them. Hold and Firesword were set, not added.
-- **SSO:** Each counter takes the longer of what is left and the new cast's time, and Stone Skin's bonus is 1.
+- **SSO:** Each counter takes the longer of what is left and the new cast's time, and Stone Skin's bonus is 1. The times and the bonus are the balance row `buffs` (`stoneSkinPerPower`, `stoneSkinBonus`, `magicShieldPerPower`, `argonFrames`), which Classic keeps at 1.6's 30, 1, 70 and 400.
 - **Why:** Stacking turned repeated casts into an unbounded defense bonus; Hold and Firesword show the refresh the spells were meant to have.
 - **In the code:** `packages/server/src/systems/spells/collide.ts` (`playerCollision`, `argonsFist`), `packages/server/src/systems/inventory/items.ts` (`useIntent`)
 - **Pinned by:** `bug fixed: a buff cast again restarts its time and never adds: Stone Skin, Magic Shield, Argon's Fist` (packages/server/tests/spells.test.ts)
@@ -3485,11 +3485,11 @@ Deliberate changes to how the game plays, what it contains, or where it runs.
 - **In the code:** `packages/server/src/systems/spells/cast.ts` (`npcBlocked`, `planSummon`, `releaseMonster`)
 - **Pinned by:** `bug fixed: the summons read a tile's own blocked entry: x1y1 is open when only x1y10 is blocked`; `bug fixed: Raise Dead is refused where fighting is off; Summon Creature is not` (packages/server/tests/spells.test.ts); `bug fixed: pig drop reads the tile's own entry, so x1y1 is open when only x1y10 is blocked` (packages/server/tests/pigs-orbs-webs.test.ts)
 
-#### Spell books ask for the right Dexterity
+#### Spell books ask for the right Mysticism
 - **Kind:** Bug fixed
-- **What you notice:** The Argon's Fist Book needs Dexterity 10 and every Bolt book 24.
+- **What you notice:** The Argon's Fist Book needs Mysticism 10 and every Bolt book 24.
 - **1.6:** The table spelt "Argon's First", so the book matched nothing and needed 1, and its Bolt row matched only a book named exactly "Bolt Book".
-- **SSO:** The rows read "Argon's Fist" and `contains` "Bolt" (Firebolt's later row still wins for Firebolt books).
+- **SSO:** The rows (`use.books` in `item-rules.json`) read "Argon's Fist" and `contains` "Bolt" (Firebolt's later row still wins for Firebolt books).
 - **Why:** Both were typos.
 - **In the code:** `packages/shared/src/rules/spells/spells.ts` (`bookDex`)
 - **Pinned by:** `bug fixed: the Dex table's typos: Argon's Fist Book needs 10, any Bolt book 24` (packages/shared/tests/spells/spells.test.ts)
@@ -3771,9 +3771,9 @@ Changes that move authority from the client to the server and close exploits tha
 
 #### Staff chat membership enforced
 - **Kind:** Exploit closed
-- **What you notice:** Administrators and moderators can read and post staff chat (`-text`) in a dedicated colour; ordinary players cannot.
+- **What you notice:** Staff (administrators, moderators and any other role the operator defines) can read and post staff chat (`-text`) in a dedicated colour; ordinary players cannot.
 - **1.6:** Any client could request membership in the administrators' group, and only immortals could post.
-- **SSO:** The server chooses who receives and can post to staff chat (both staff roles), and delivers it in `CHAT_COLOR.staff`.
+- **SSO:** The server chooses who receives and can post to staff chat (every account that holds a role), and delivers it in `CHAT_COLOR.staff`.
 - **Why:** Other players could otherwise listen to staff conversations.
 - **In the code:** `packages/server/src/systems/admin/commands.ts` (`staffChat`)
 - **Pinned by:** `a player's - line gets an explicit denial and clears input (no restore)`; `both administrators and moderators post to staff in CHAT_COLOR.staff; players excluded` (packages/server/tests/admin.test.ts); `the Staff page makes Mo a moderator at once; both staff roles post and read staff chat in CHAT_COLOR.staff` (packages/server/e2e/admin-and-settings.test.ts)
@@ -3789,9 +3789,9 @@ Changes that move authority from the client to the server and close exploits tha
 
 #### NPC editor checks its files
 - **Kind:** Exploit closed
-- **What you notice:** An administrator opens an NPC in the Control Panel's NPC file editor; invalid files are refused with a reason, shown as you type, and a successful save warns about lines that have no effect in play.
+- **What you notice:** An administrator opens an NPC in the Control Panel's NPC file editor (the Creatures & NPCs page's Talk & Shops tab); invalid files are refused with a reason, shown as you type, and a successful save warns about lines that have no effect in play.
 - **1.6:** Anyone could load a file by an unchecked NPC name. Save was gated by the client and an immortals-name lookup, and wrote arbitrary field content under the supplied name. Saving or loading before selecting a name used a leftover or empty name. A backtick truncated text and `*` or `^` broke the NPC bundle; item names, numbers and tags were unchecked.
-- **SSO:** Opening and saving need the NPC Editor permission and a name that is an NPC file, an editor-list name or a species, never a player shop's file. The server checks each line and refuses backticks, `*`, `^`, tags other than the twelve upper-case tags used by the archive, second `|` separators, malformed or out-of-range numbers on `SEL|`, `BUY|`, `INV|`, `GLD|` and `TRN|` lines, unknown items, a second `GLD|`, more than 100 lines or lines over 255 characters. `INV|` chances start at 1; other numeric fields start at 0, and the inventory line accepts gold, crystals and fixtures as well as catalogue items and archived spellings. After a save, warnings identify inert `FLG|` and `SPL|` values, and `TRN|` classes without a promotion branch. Each save versions the previous file.
+- **SSO:** Opening and saving require the `contentEditor` permission and a name that is an NPC file, an editor-list name or a species, never a player shop's file. The server checks each line and refuses backticks, `*`, `^`, tags other than the twelve upper-case tags used by the archive, second `|` separators, malformed or out-of-range numbers on `SEL|`, `BUY|`, `INV|`, `GLD|` and `TRN|` lines, unknown items, a second `GLD|`, more than 100 lines or lines over 255 characters. `INV|` chances start at 1; other numeric fields start at 0, and the inventory line accepts gold, crystals and fixtures as well as catalogue items and archived spellings. After a save, warnings identify inert `FLG|` and `SPL|` values, and `TRN|` classes without a promotion branch. Each save versions the previous file.
 - **Why:** Server validation prevents arbitrary file access and invalid data; warnings make silent original rules visible to operators.
 - **In the code:** `packages/server/src/systems/admin/npcpage.ts` (`npcPageName`, `saveNpcPage`), `packages/shared/src/rules/admin/npcfile.ts` (`checkNpcFile`)
 - **Pinned by:** `refused: backtick, * and ^`; `refused: unknown or lower-case tags, a second |, more than 100 lines, long lines`; `refused: unknown items, bad numbers, two GLD| lines`; `accepted: archived spellings, N Gold, N crystals, fixtures, BUY's ignored third field`; `warned: inert tags only; no line is outside a reader's window` (packages/shared/tests/admin/npcfile.test.ts); `a list name with no file opens empty; a player shop's file and no name open nothing`; `a refused save says why and changes nothing`; `a save replaces the file, drops the ledger, closes the NPC's windows and lists warnings under the alert`; `a save writes the file and its old version and drops the stored ledger; a restart loads it`; `a player's NPC file save is ignored` (packages/server/tests/npcedit.test.ts)
@@ -3836,7 +3836,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **Kind:** Architecture
 - **What you notice:** The inaccessible original monster-drop editor, minimap and other inert tools are absent; monster drops can still be edited as NPC `INV|` lines.
 - **1.6:** SaveMonDrops, RPG, LoadMiniMap and ClearChest had no server handler. The big world map and AdminWarp movie were unreachable; the monster-drop editor's destination label did not exist, the minimap lacked its members and renderer, and the World Editor's weather list was off stage.
-- **SSO:** These inert tools are not implemented and rain is not offered. The Control Panel's NPC file editor and Creatures tab edit monster drops as `INV|` lines.
+- **SSO:** These inert tools are not implemented and rain is not offered. The Control Panel's Creatures & NPCs page edits monster drops as `INV|` lines, in a creature's Drops section or in its whole file on the Talk & Shops tab.
 - **Why:** Original features that never worked remain omitted.
 - **In the code:** `packages/server/src/systems/admin/npcpage.ts` (`saveNpcPage`)
 - **Pinned by:** `SSO: 1.6's inert admin tools have no message: SaveMonDrops, RPG, LoadMiniMap, ClearChest` (packages/shared/tests/ledger-pins-a.test.ts); `a save applies at once: flags, drops, an empty file` (packages/server/tests/npcedit.test.ts); `the Slime's drops are its INV| lines: INV|5 Gold:1 always drops 5 Gold` (packages/server/e2e/npc-editor.test.ts)
@@ -3845,7 +3845,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **Kind:** Architecture
 - **What you notice:** An administrator can use `/setclass <name> <class name or 1-26>` on an online or offline character, and receives a confirmation such as “Bob is now a Ninja.”
 - **1.6:** Six classes had no promotion entry: Swordsman, Brawler, Ninja, Warlock, Death Knight and Gladiator. Administrators changed class by editing the raw character file.
-- **SSO:** The command accepts any of the 26 classes without regard to case and changes only the class code, not skills. Promotion rules are unchanged.
+- **SSO:** The command accepts any class in the published content (Classic's 26), by name without regard to case or by code, and changes only the class code, not skills. Promotion rules are unchanged.
 - **Why:** The raw file editor is removed, so operators need a replacement for the only original route to those classes.
 - **In the code:** `packages/server/src/systems/admin/commands.ts` (`handleAdmin`)
 - **Pinned by:** `SSO: /setclass takes all 26 classes in any case, records before and after, and leaves skills alone` (packages/server/tests/ledger-pins-a.test.ts); `by name ignoring case and spaces, or by code` (packages/shared/tests/admin/admin.test.ts); `/setclass sets the class code by name or number`; `/setclass writes the class code, online or not` (packages/server/tests/admin.test.ts)
@@ -3879,7 +3879,7 @@ Changes that move authority from the client to the server and close exploits tha
 
 #### Bans and jails carry a reason, a length and the maker's role
 - **Kind:** Exploit closed
-- **What you notice:** `/ban`, `/jail` and `/banip` take an optional duration (`30m`, `12h`, `7d`, `2w`, `perm`) and reason after the name, such as `/ban Berlyn 3d being a rude person`; without a duration the server settings decide. Bans, jails and pardons by a moderator reach players only. Only the staff member who made a ban or jail, or an administrator, can change its length or lift it.
+- **What you notice:** `/ban`, `/jail` and `/banip` take an optional duration (`30m`, `12h`, `7d`, `2w`, `perm`) and reason after the name, such as `/ban Berlyn 3d being a rude person`; without a duration the server settings decide. Staff ban, jail and pardon only those they outrank, so a moderator's bans and jails reach players only (`/pardon` is an administrator's command unless an operator grants it to another role); a role with Overrule, as administrators have, acts on anyone but themselves. Only the staff member who made a ban or jail, or an administrator, can change its length or lift it.
 - **1.6:** A ban was a prefix on the character file with no reason, end or author; any administrator could add or remove it.
 - **SSO:** Each action stores its maker's account, name and role at that moment, the reason and the end; who may change it is decided by the maker's account, not the stored role. A re-ban by its maker or an administrator replaces the length; anyone else is refused with “Bob was banned by Alice; ask Alice or a senior staff member.” A lapsed ban or jail stops nobody.
 - **Why:** Moderators could otherwise overwrite an administrator's ban with their own and then lift it, and tying the right to the maker's account means a later change of role does not change who may lift an old ban. Staff with different views settle them together rather than overriding each other.
@@ -3899,7 +3899,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **Kind:** Exploit closed
 - **What you notice:** `/banip` accepts a character name (their last login address, or every address with `all`) or a valid address, and refuses anything else. Sessions from the address are disconnected immediately, and it cannot log in or create characters until the ban ends (30 days by default). Administrators are never stopped by an IP ban.
 - **1.6:** `/BanIP` wrote any text to the bans file and the ban was never enforced.
-- **SSO:** Addresses are stored in their standard form; an IPv6 ban covers the /64, matching the login limits. The server keeps each account's login addresses for `addressHistory`. The check runs after the password, so that an administrator behind a banned address can still log in.
+- **SSO:** Addresses are stored in their standard form; an IPv6 ban covers the /64, matching the login limits. The server keeps each account's login addresses for `addressHistory`. The check runs after the password, so that a role with `bypassIpBan` (administrators by default) can still log in from behind a banned address.
 - **Why:** Unvalidated text could ban nothing or an unintended address, an IPv6 user could step to a neighbouring address, and an operator must not lock themselves out.
 - **In the code:** `packages/shared/src/rules/admin/moderation.ts` (`canonicalIp`, `ipKey`), `packages/server/src/systems/admin/commands.ts` (`handleAdmin`), `packages/server/src/game.ts` (`login`, `create`, `refusal`), `packages/server/src/persistence/moderation.ts` (`noteAddress`)
 - **Pinned by:** `an IP ban disconnects every session from that address except an administrator's`, `/banip <name> bans the latest address, or all of them; an administrator is never IP banned`, `divergence: an IP ban refuses a login from that address after the password` (packages/server/tests/admin.test.ts); `IP bans cover the IPv6 /64, refuse creation and resume, and never stop an administrator` (packages/server/tests/moderation-db.test.ts)
@@ -3933,7 +3933,7 @@ Changes that move authority from the client to the server and close exploits tha
 
 #### Operators change the game's content live, from the Control Panel
 - **Kind:** Architecture
-- **What you notice:** The Control Panel's **Content** page lists every item, monster, NPC file, spell, rule and text table, and changes, adds or removes them in a shared draft that goes live for every player at once when published, without a restart. A publish can be undone as a whole. An item or monster can be renamed for players (its `display`) or drawn with another's art (its `sprite`) while every copy players hold keeps working.
+- **What you notice:** Operators edit items, creatures, spells, rules and text on the Control Panel's content pages. Changes collect in a shared draft. **Publish Changes** applies the draft for everyone without a restart. Map and NPC file editors apply their saves immediately. A publish can be undone as a whole. An item or monster can be renamed for players (its `display`) or drawn with another's art (its `sprite`) while every copy players hold keeps working.
 - **1.6:** Content was the server's and client's text files and Director casts. Changing it meant editing files by hand and restarting, with nothing checked, and a renamed item broke every copy already held.
 - **SSO:** The 1.6 content ships in each release as the Classic pack, read from the release and never copied into the database; the operator's changes are a layer on top, stored per row with the pack row each was based on, so a release's fixes reach every row the operator has not changed and a changed row the release also changed shows a notice. Before anything goes live it is checked against the schemas, the key and name rules, the skills characters are saved with and the references between rows (live NPC file saves included), then tried out in every rule. The client bundles no content: it fetches the published store by its hash at start and after each publish. An item's key never changes; players see its display name. It needs the `contentEditor` permission (administrators by default), and every publish, undo and pack-update answer is in the audit log.
 - **Why:** Running a server means fixing and adding content without a code change or a restart, and without being able to break saved characters (issue #27).
@@ -3953,7 +3953,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **Kind:** Architecture
 - **What you notice:** Removing an item or a monster on the Control Panel first shows where it is used (who holds copies, which maps spawn it, which shops, drops, recipes and quests name it), then asks what to clean up. By default an item players hold is retired: their copies stay and work, but no more can be made. An item can instead be purged (with gold back for each copy) or replaced, and a monster's spawns cleared or replaced and its live ones despawned.
 - **1.6:** Removing an item or a monster meant deleting it from the files by hand. Copies players held, shops that sold it, drops that gave it and maps that spawned it were left naming something that no longer existed, with nothing to find or fix them.
-- **SSO:** The cleanup goes into the draft with the removal and is checked like any change; what happens to the world runs when the draft is published, as part of the publish, and is logged in the activity log and the publish history. A reference nothing resolves (from a database edit or an older server) never crashes the game: an unknown item shows by its name with no picture, an unknown monster spawns as a stand-in with the Generic body and 1 HP, and both are listed on the Content page's Problems and printed at start.
+- **SSO:** The cleanup goes into the draft with the removal and is checked like any change; what happens to the world runs when the draft is published, as part of the publish, and is logged in the activity log and the publish history. A reference nothing resolves (from a database edit or an older server) never crashes the game: an unknown item shows by its name with no picture, an unknown monster spawns as a stand-in with the Generic body and 1 HP, and both are listed under **Publish Changes → Find problems** and printed at start.
 - **Why:** Operators should be able to remove content without leaving broken references behind or breaking saved characters (issue #28).
 - **In the code:** `packages/server/src/content/cleanup.ts` (`usesOf`, `cleanUses`), `packages/server/src/content/service.ts` (`draftRemoval`, `removals`, `problems`), `packages/server/src/systems/admin/content-world.ts` (`createContentWorld`), `packages/client/src/ui/content-usage.ts`
 - **Pinned by:** `retiring (the default): copies stay and work, no more can be made, the content goes`; `purging: every copy goes, online and offline, with gold back for each held one`; `a monster: its roster slots clear, live ones despawn, its NPC file goes`; `stored references nothing resolves load, play and are listed as problems` (packages/server/tests/content-cleanup.test.ts); `Remove offers the cleanup with its defaults: remove the entries, retire the copies` (packages/client/tests/content-page.test.ts)
@@ -4011,7 +4011,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **Kind:** Exploit closed
 - **What you notice:** Repeated chat, IM, room, mail and board actions may be refused temporarily, with remaining time shown and the original input retained where applicable.
 - **1.6:** Broadcasting had no cooldown because registration was forced on, and there was no flood control. A refused broadcast remained typed.
-- **SSO:** Everyone uses the original unregistered broadcast cooldown of 1,000 frames (50 seconds) and its refusal. Local chat, `/me`, guild chat, IM, room lines, mail sends and board posts share a new 60-frame (3-second) cooldown. A line the house rule refuses still starts it, since it is logged and can rouse the NPCs' quest, treasure and faction replies. A refusal says “You cannot chat yet - N seconds remaining.” with seconds rounded up. Refused chat, IM and room text returns to its input; refused mail and board text stays open. A player-shop command is never said aloud, so it costs no cooldown and runs under one. Away replies do not use the cooldown. Lines are capped at 200 characters, there is no profanity filter, and all limits are operator settings.
+- **SSO:** Everyone but a role with a bypass permission (see [Administrators skip the chat and broadcast waits](#administrators-skip-the-chat-and-broadcast-waits)) uses the original unregistered broadcast cooldown of 1,000 frames (50 seconds) and its refusal. Local chat, `/me`, guild chat, IM, room lines, mail sends and board posts share a new 60-frame (3-second) cooldown. A line the house rule refuses still starts it, since it is logged and can rouse the NPCs' quest, treasure and faction replies. A refusal says “You cannot chat yet - N seconds remaining.” with seconds rounded up. Refused chat, IM and room text returns to its input; refused mail and board text stays open. A player-shop command is never said aloud, so it costs no cooldown and runs under one. Away replies do not use the cooldown. Lines are capped at 200 characters, there is no profanity filter, and all limits are operator settings.
 - **Why:** Spam harms players and the server.
 - **In the code:** `packages/server/src/systems/chat/chat.ts` (`handleChat`), `packages/server/src/systems/chat/im.ts` (`imIntent`)
 - **Pinned by:** `bug fixed: a command costs no chat cooldown and runs under one` (packages/server/tests/playershop-db.test.ts); `SSO: a line the house rule refuses still starts the cooldown` (packages/server/tests/chat.test.ts); `divergence: it shares the chat cooldown` (packages/server/tests/guilds.test.ts); `divergence: it shares the chat cooldown; a refused line goes back` and `divergence: room lines share the chat cooldown, refused back into the room's input` (packages/server/tests/im.test.ts)
@@ -4141,7 +4141,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **Kind:** Exploit closed
 - **What you notice:** IP bans use the real connection address, and IP lookup is available only to staff holding `/iplookup`.
 - **1.6:** IP sorting trusted the client-reported address and used substring matching; anyone could call the server's IP lookup. The IP ban did nothing because its response had no client handler and its marker files were never read.
-- **SSO:** `/BanIP` and `/unbanIP` work and are administrators' by default. A banned address is refused with the original unshown “You are banned from playing on this server.” (when and how is in [IP bans are checked, cover an IPv6 /64 and act at once](#ip-bans-are-checked-cover-an-ipv6-64-and-act-at-once)). The address comes from the socket, or from the nth rightmost `X-Forwarded-For` entry when the operator configures `SSO_PROXY_HOPS=n` for n trusted proxies. The nearest proxy appends the rightmost entry; a client can forge entries farther left. The former `trustForwardedFor` setting is removed. `/IPlookup` needs its permission, which moderators and administrators hold by default.
+- **SSO:** `/BanIP` and `/unbanIP` work and are administrators' by default. A banned address is refused with the original unshown “You are banned from playing on this server.” (when and how is in [IP bans are checked, cover an IPv6 /64 and act at once](#ip-bans-are-checked-cover-an-ipv6-64-and-act-at-once)). The address comes from the socket, or from the nth rightmost `X-Forwarded-For` entry when the operator configures `SSO_PROXY_HOPS=n` for n trusted proxies. The nearest proxy appends the rightmost entry; a client can forge entries farther left. The former `trustForwardedFor` setting is removed. `/IPlookup` needs its permission, which only administrators hold by default.
 - **Why:** Trusting a client address allowed ban evasion and exposed IP addresses; an ineffective ban provided no protection.
 - **In the code:** `packages/server/src/gateway/server.ts` (`clientIp`), `packages/server/src/systems/admin/commands.ts` (`handleAdmin`)
 - **Pinned by:** `0 hops is the socket; a forged header is ignored`; `1 hop is the right-most entry, which the client cannot forge`; `2 hops is the second from the right; too few entries fall back to the socket` (packages/server/tests/login-limits.test.ts); `divergence: an IP ban refuses a login from that address after the password`; `a moderator may run the moderation commands, but not IP bans or /setclass` (packages/server/tests/admin.test.ts)
@@ -4154,6 +4154,15 @@ Changes that move authority from the client to the server and close exploits tha
 - **Why:** An uploaded sheet could set arbitrary character values.
 - **In the code:** `packages/server/src/game.ts` (`createGame`)
 - **Pinned by:** `SSO: no in-game message carries character state, so a character cannot be uploaded` (packages/shared/tests/ledger-pins-b.test.ts); `garbage is dropped, not fatal` (packages/server/e2e/login-and-walk.test.ts)
+
+#### Passwords are stored as hashes, on the account
+- **Kind:** Exploit closed
+- **What you notice:** Nothing in play. Nobody, staff included, can read your password.
+- **1.6:** The password was text in the character's file, which the File Editor showed to staff and file-reading messages could return.
+- **SSO:** The account row holds only an Argon2id hash (64 MiB, two passes), never the password. Login and `Password=` check against the hash, two hashes at a time at most, and no message, Control Panel page or log carries a password.
+- **Why:** Anyone who could read a character file had its password.
+- **In the code:** `packages/server/src/persistence/accounts.ts` (`hashPassword`, `verifyPassword`)
+- **Pinned by:** `creates an account with an Argon2id hash and no role` (packages/server/tests/accounts.test.ts); `a server hashes with Argon2id at 64 MiB and two passes; tests swap in a cheaper cost`; `many hashes at once all finish, two at a time` (packages/server/tests/login-limits.test.ts)
 
 #### All amounts are validated positive integers
 - **Kind:** Exploit closed
@@ -4186,10 +4195,19 @@ Changes that move authority from the client to the server and close exploits tha
 - **Kind:** Architecture
 - **What you notice:** Invalid client actions are refused or logged by the server rather than relying on a client to ban itself.
 - **1.6:** The client used ciphers, self-ban, name and equipment shadow checks, echoes and a per-minute speed check. Anyone could write a cheater report.
-- **SSO:** Schema validation, per-tick gates, rate limits and a server-written cheat log replace those client self-bans. `/CheatFile` shows the original “<name> - at IP <ip> - <reason>” format. The log records editor or Settings intents from roles without the permission, editor load/save outside the editor, malformed frames and flooding. Its reasons include “Attempted Admin Access”, “Attempting to get Admin access”, “Sending bad messages” and “Flooding”. There are no automatic kicks. `/CheatFile` is administrators' by default, and each look is written to the audit log, since the lines show players' addresses.
+- **SSO:** Schema validation, per-tick gates, rate limits and a server-written cheat log replace those client self-bans. `/CheatFile` shows the original “<name> - at IP <ip> - <reason>” format. The log records Control Panel intents (content, map and NPC editors, Server Settings and roles, the player hub, the activity log) and Assassin's Game starts from roles without the permission, malformed frames and flooding. Its reasons include “Attempted Admin Access”, “Attempting to get Admin access”, “Sending bad messages” and “Flooding”. There are no automatic bans; a connection that floods or keeps sending malformed frames is closed (see [Messages are size-capped and rate-limited](#messages-are-size-capped-and-rate-limited)). `/CheatFile` is administrators' by default, and each look is written to the audit log, since the lines show players' addresses.
 - **Why:** The client has no authoritative state to protect.
-- **In the code:** `packages/server/src/game.ts` (`editingOk`, `createGame`)
+- **In the code:** `packages/server/src/game.ts` (`ADMIN_INTENTS`, `createGame`), `packages/server/src/gateway/server.ts` (`startGateway`)
 - **Pinned by:** `the cheat log: admin intents from anyone else are refused and written`; `/Inventory, /CheatFile, /save and /Refresh; SSO audits /CheatFile, whose lines show addresses` (packages/server/tests/admin.test.ts); `SSO: flooding and malformed frames are written to the cheat log with the sender's name` (packages/server/tests/ledger-pins-b.test.ts)
+
+#### Messages are size-capped and rate-limited
+- **Kind:** Exploit closed
+- **What you notice:** Nothing in normal play. A client that floods the server, or keeps sending messages the server cannot read, is disconnected.
+- **1.6:** The server had no flood control and took any message up to the Multiuser Server's approximately 2 MB cap.
+- **SSO:** Each connection may send 60 messages a second; a burst past that closes it with code 4004. A frame holds at most 1,024 bytes. Only a role with `contentEditor`, in game, may send up to 32,768 (a map save), and only a player with a Canvas or Film armed up to 24,576 (the picture). A larger frame, one that is not JSON, or a message that fails its schema (a wrong type, a missing or an extra field) is dropped and counted, and the 51st closes the connection with code 4003. A connection takes one login or creation at a time. Both closes are written to the cheat log, and the player can connect again.
+- **Why:** One client could otherwise load the server for everyone, or fill its memory with huge messages.
+- **In the code:** `packages/server/src/gateway/server.ts` (`startGateway`), `packages/shared/src/protocol/core.ts` (`MAX_MESSAGE_BYTES`, `EDITOR_MESSAGE_BYTES`, `UPLOAD_MESSAGE_BYTES`)
+- **Pinned by:** `a schema-invalid message of every type (wrong type, missing or extra field) is a strike`; `51 bad frames before login close with 4003`; `a burst of 100 messages closes with 4004`; `an oversized frame and non-JSON are strikes, not faults` (packages/server/e2e/hostile-messages.test.ts); `SSO: flooding and malformed frames are written to the cheat log with the sender's name` (packages/server/tests/ledger-pins-b.test.ts)
 
 #### Monster persistence restored after restart
 - **Kind:** Architecture
@@ -4298,9 +4316,9 @@ Changes that move authority from the client to the server and close exploits tha
 - **Kind:** Exploit closed
 - **What you notice:** A promotion charges its listed gold price when your character qualifies.
 - **1.6:** The client checked the promotion and subtracted the price. The server did not charge, so the next character update restored the gold; no screen used its unused purchase message.
-- **SSO:** The server checks the NPC roster, training line, class, requirement and gold and writes the price and new class together.
+- **SSO:** The server checks the NPC roster, training line, class, requirement and gold and writes the price and new class together. The Class window's Change, in a world that turns that window on, is checked and charged on the server the same way.
 - **Why:** The client intended to charge for eligible promotions, but the original allowed free or illegal promotions.
-- **In the code:** `packages/server/src/systems/economy/intents.ts` (`trainIntent`)
+- **In the code:** `packages/server/src/systems/economy/intents.ts` (`trainIntent`); `packages/server/src/systems/progression/class-window.ts` (`classPromoteIntent`)
 - **Pinned by:** `a promotion writes class, gold and stats; texts, then heal2, then processed`; `a refused one changes nothing and still sends processed; no branch sends only processed`; `refused when the NPC left the roster, or with no train list open` (packages/server/tests/promotion-db.test.ts); `noFunds: price = gold + 1 refuses, price = gold passes` (packages/shared/tests/progression/promotion.test.ts)
 
 #### Shop prices come from the server
@@ -4352,7 +4370,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **Kind:** Exploit closed
 - **What you notice:** A player shop belongs to its owner and uses server-checked stock, prices and till.
 - **1.6:** A client could overwrite an NPC and map monster file, exploit substring owner matching, supply prices and stock unchecked, use a negative register amount, or collect from nothing if the first 30 lines lacked a till. A client also chose the map for a title, and tag text inside a profile counted as a tag.
-- **SSO:** The server rerolls the original shopkeeper-name generator while its result matches any NPC file or monster-list entry. Ownership uses character ID; the shop map is the speaker's, and `title` requires the house owner. Prices are 1–9999, items use the 204-line whitelist, at most 10 sale lines are allowed, and Register must be at least 1. A missing till says “I don't have that much gold!”; only lines beginning with the tag count as stock.
+- **SSO:** The server rerolls the original shopkeeper-name generator while its result matches any NPC file or monster-list entry. Ownership uses character ID; the shop map is the speaker's, and `title` requires the house owner. Prices are 1–9999, items must be on the content's player-shop whitelist (190 names in Classic), at most 10 sale lines are allowed, and Register must be at least 1. A missing till says “I don't have that much gold!”; only lines beginning with the tag count as stock.
 - **Why:** Forged ownership and malformed prices or tills allowed system merchant takeovers and gold creation.
 - **In the code:** `packages/server/src/systems/economy/playershop.ts` (`createShopkeeper`, `shopCommand`)
 - **Pinned by:** `a taken name or a monster-list name is rolled again`, `with no GLD line Register refuses; 1.6 paid from nothing` (packages/shared/tests/economy/playershop.test.ts); `owned by id: a character whose name is inside the owner's is no owner` (packages/server/tests/playershop-db.test.ts)
@@ -4406,7 +4424,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **Kind:** Architecture
 - **What you notice:** Quest turn-ins update the server's quest list; the NPC comes from your map.
 - **1.6:** Quests were read and rewritten in a 40-line settings file, which could also be edited with the File Editor.
-- **SSO:** A 40-line quests table is seeded from the archived file at first start and turn-ins reroll lines as in 1.6. There is no settings form because the game rewrites the lines itself; the server takes the NPC from the map rather than a client message.
+- **SSO:** A 40-line quests table is seeded at first start from the content's starting quests (Classic's are the archived file) and turn-ins reroll lines as in 1.6. The Control Panel's Quests page edits the quests a new world starts with and the pools the next quest is picked from; a world that has started keeps its own lines, because the game rewrites them itself. The server takes the NPC from the map rather than a client message.
 - **Why:** Quest state belongs to the server.
 - **In the code:** `packages/server/src/systems/economy/quests.ts` (`questGive`), `packages/server/src/persistence/social.ts` (`loadQuestLines`, `saveQuestLine`)
 - **Pinned by:** `the first start seeds the archive's powers and quest lines`; `a quest turn-in writes the bag and the rerolled line, which survive a restart` (packages/server/tests/factions-db.test.ts); `a quest item: the reward, thanks to the map, the line rerolled` (packages/server/tests/factions.test.ts)
@@ -4453,7 +4471,7 @@ Changes that move authority from the client to the server and close exploits tha
 - **Kind:** Architecture
 - **What you notice:** Doors relock according to a shared timer for the map.
 - **1.6:** Each client counted down and sent its own close. A door change set each client to 200 frames, an arriving client started at 150 and a switch clicker at 100; the earliest closed the doors. An empty map counted nothing.
-- **SSO:** One timer per map: every door or switch change sets it to 200. Arriving and refused switch clicks set nothing, and the timer keeps running while the map is empty (see the "Bug fixed" entries below).
+- **SSO:** One timer per map: every door or switch change sets it to 200. Arriving and refused switch clicks set nothing, and the timer keeps running while the map is empty (see [A refused switch click changes nothing](#a-refused-switch-click-changes-nothing) and [Doors close on their own timer, whoever is on the map](#doors-close-on-their-own-timer-whoever-is-on-the-map)).
 - **Why:** The server model has no peers running separate countdowns.
 - **In the code:** `packages/server/src/systems/housing/doors.ts` (`switchClick`, `relockStep`)
 - **Pinned by:** `a Steel Door opened by key shuts 200 frames later, and every client sees it`; `bug fixed: arriving on a map leaves a running relock alone`; `bug fixed: doors on a map nobody is on still close on time`; `bug fixed: a refused switch click leaves the relock alone` (packages/server/tests/doors.test.ts)
@@ -4879,9 +4897,9 @@ Changes that move authority from the client to the server and close exploits tha
 
 #### Server-side spell learning
 - **Kind:** Exploit closed
-- **What you notice:** A book that passes the Dexterity check teaches its spell or skill and is used up; one that teaches nothing stays in your bag.
-- **1.6:** The client checked Dexterity, appended the spell and uploaded the spellbook.
-- **SSO:** The server performs the Dexterity check, appends the spell and consumes the book.
+- **What you notice:** A book that passes the Mysticism check (the stat the data calls Dexterity) teaches its spell or skill and is used up; one that teaches nothing stays in your bag.
+- **1.6:** The client checked the stat, appended the spell and uploaded the spellbook.
+- **SSO:** The server performs the check, appends the spell and consumes the book.
 - **Why:** A modified client could grant itself any spell.
 - **In the code:** `packages/server/src/systems/spells/learn.ts` (`readBook`)
 - **Pinned by:** `Dex too low: the refusal, the book kept`; `read and learned, the book used up` (packages/server/tests/spells.test.ts)

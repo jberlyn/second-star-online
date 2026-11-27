@@ -61,7 +61,7 @@ Short environment check (`town @ home`, 15 s ramp, 30 s measured) comparing host
 | Host | town | home | 40 | 2.4 / 7.1 / 18.8 | 0 | 9.4 | 86.6 | 0.1 / 12 / 1.1 | 122 / 351 |
 | Image (`0ffe809dce62`) | town | home | 40 | 2.8 / 8.7 / 13 | 0 | 10.4 | 95.5 | 0.1 / 15.4 / 1.2 | 122 / 377 |
 
-Wall-clock numbers are never in the test gate (they would flake). The gate pins what does not depend on the machine: `packages/server/e2e/traffic.test.ts` runs a seeded 20-player crowd for 200 ticks in process and fails when messages, bytes or rows written go over 120 % of the recorded 4,830 messages, 1.136 MB and 163 rows (re-recorded 2026-11-18, when each chat line became a chat-log row). A change that lowers them passes; lower the pin in the same change.
+Wall-clock numbers are never in the test gate (they would flake). The gate pins what does not depend on the machine: `packages/server/e2e/traffic.test.ts` runs a seeded 20-player crowd for 200 ticks in process and fails when messages, bytes or rows written go over 120 % of the recorded 4,830 messages, 1.136 MB and 234 rows (re-recorded 2026-11-22 after the activity log added writes for logins, kills, skill gains, pickups and map changes). A change that lowers them passes; lower the pin in the same change.
 
 ## The soak
 

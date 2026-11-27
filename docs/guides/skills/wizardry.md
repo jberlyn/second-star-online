@@ -18,17 +18,14 @@ Wizardry is the Wizard's skill. It rises from Web and Dispel Illusions, and it a
 
 ## What it does
 
-Nothing reads Wizardry except the medal, the title, the scores and the combat rating. Web and Dispel Illusions use [Magery](magery.md)'s base power only.
+Nothing reads Wizardry except the medal, the title, the scores and the combat rating. Web and Dispel Illusions name no `power` table in [spells.json](../../../packages/data/content/spells.json), so they use [Magery](magery.md)'s base power only.
 
 ## Connected systems
 
 - **Spells:** see the [spells guide](../spells.md).
+- **Promotion:** Wizard (from Priest) needs Blessing 30, not Wizardry.
 - **Bio titles:** Wizard (above 60 with Magery above 80).
 
 ## Differences from 1.6
 
 - [Class promotions give their skills](../../differences-from-fso.md#class-promotions-give-their-skills): Wizard now grants Wizardry.
-
-## Balance notes
-
-- Wizardry has no effect on play beyond its medal, title and scores.

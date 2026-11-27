@@ -1284,7 +1284,7 @@ export function createItemsPage(actions: ItemsPageActions): ItemsPage {
       ),
       check(
         work.inEditorList === true,
-        "Listed in the World Editor's items",
+        "Listed in the World page's items",
         "items-in-editor",
         (on) => put(work, ["inEditorList"], on ? true : undefined),
       ),

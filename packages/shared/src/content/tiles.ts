@@ -101,7 +101,7 @@ export function tileRefs(data: TileContent): Map<string, string[]> {
   note(d.ground, "the blank map's ground");
   note(d.empty, "the empty tile");
   note(d.shadow, "the shadow tile");
-  note(d.editorTile, "the World Editor's first tile");
+  note(d.editorTile, "the old World Editor's first tile");
   for (const n of data.gather.harvest) {
     note(n.tile, "a gathering node");
     note(n.becomes, "a gathering node");

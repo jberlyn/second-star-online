@@ -120,14 +120,14 @@ export function moveDropSettings(db: Db, content: ContentService): string[] {
     ]);
     const why = (result.problems ?? []).map((p) => `${p.where}: ${p.message}`).join("; ");
     return [
-      `content: could not move the death-drop and loot settings to the Balance page (${result.error}${why ? `: ${why}` : ""}); they play as before and the next start tries again`,
+      `content: could not move the death-drop and loot settings to the Game Rules page (${result.error}${why ? `: ${why}` : ""}); they play as before and the next start tries again`,
     ];
   }
   if (result.value.id === null) {
     return [];
   }
   return [
-    `content: moved the death-drop and loot settings to the Balance page (${Object.keys(moving).join(", ")})`,
+    `content: moved the death-drop and loot settings to the Game Rules page (${Object.keys(moving).join(", ")})`,
     ...result.value.conflicts.map(
       (c) =>
         `content: the draft also changes ${c}: the draft keeps its value, so publishing it replaces the moved one`,

@@ -42,7 +42,7 @@ export const tilesWords: WordBook = {
   },
   "defaults.shadow": { label: "Shadow", help: "The shadow layer's tile on a blank map." },
   "defaults.editorTile": {
-    label: "World Editor's first tile",
-    help: "The tile picked when the World Editor opens.",
+    label: "Old World Editor's first tile",
+    help: "The tile 1.6's World Editor had picked when it opened. The World page starts with no tile picked, so nothing uses this.",
   },
 };

@@ -1,6 +1,6 @@
 # Archery
 
-Archery is the bow skill. It rises with every arrow you shoot, to 100 whatever your faction, and below 30 it decides a bow's damage on its own.
+Archery is the bow skill. Each arrow you shoot has a chance to raise it, to 100 whatever your faction, and below 30 it decides a bow's damage on its own.
 
 | | |
 |---|---|
@@ -13,14 +13,14 @@ Archery is the bow skill. It rises with every arrow you shoot, to 100 whatever y
 
 ## How it rises
 
-- **Each arrow shot** rolls `random(Archery) = 1` while Archery is from 1 to 99 (`gainOnShot` in [melee.ts](../../../packages/server/src/systems/combat/melee.ts)). A shot needs a bow, arrows of a colour in the off hand and a crystal of that colour, which it uses up. Neither the combat cap nor the monster cap applies, and the shot need not hit anything.
+- **Each arrow shot** rolls `random(Archery) = 1` while Archery is from 1 to 99 (its `shot` progression; `gainOnShot` in [melee.ts](../../../packages/server/src/systems/combat/melee.ts)). A shot needs a bow, arrows of a colour in the off hand and a crystal of that colour, which it uses up. Neither the combat cap nor the monster cap applies, and the shot need not hit anything.
 - **Promotion to Archer** raises Archery to a roll of 1 to 10 if it is lower.
 
-Bows and crossbows are listed among the weapons that train Archery on a kill, but arrows fly as spell effects, so an arrow kill never runs the [kill gain](README.md#melee-kills).
+Bows and crossbows are listed among the weapons that train Archery on a kill, but arrows fly as spell effects, so an arrow kill never runs the [kill gain](README.md#melee-kills). A bow with no arrows, or no crystal for them, refuses the swing, so it never kills in melee either.
 
 ## What it does
 
-The attack power of any weapon whose name contains "bow" (bows and crossbows):
+The attack power of any weapon whose name contains "bow", in either case (bows and crossbows):
 
 | Archery | Power |
 |---|---|
@@ -46,5 +46,5 @@ A Steel Bow adds a further +1 above 70, 80 and 90. Thrust is added afterwards. A
 ## Balance notes
 
 - Below 30, the "set" rows replace everything added before them, so the bow, arrows, ring, Strength and faction make no difference until Archery 30.
-- Archery is the only weapon skill that ignores both the faction cap and the monster cap; its limit is crystals.
+- Arrow shots can train Archery to 100. Crossbow shots can train Martial Arts to 100 as well. Both require ammunition and a matching crystal.
 - Crossbows also train [Martial Arts](martial-arts.md) on each shot, and the Wooden and Silver Crossbows' power depends on Martial Arts as well (the plain Crossbow's does not).

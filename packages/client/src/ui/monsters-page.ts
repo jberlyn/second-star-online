@@ -122,7 +122,7 @@ type Flag = readonly ["form" | "record", string, string];
 
 /** The Behaviour tab's everyday settings. */
 const BEHAVIOUR_MAIN: readonly Flag[] = [
-  ["form", "hostile", "Always attacks players (even when not on the World Editor's monster list)"],
+  ["form", "hostile", "Always attacks players (even when not on the World page's monster list)"],
   ["form", "officer", "Attacks wanted players, like a guard"],
   ["form", "sparesInnocent", "Leaves innocent players alone"],
   ["record", "immobile", "Never moves"],
@@ -145,10 +145,10 @@ const BEHAVIOUR_MORE: readonly Flag[] = [
 
 /** The editor lists a definition toggles. */
 const LISTS: readonly (readonly [string, string])[] = [
-  ["worldEditorMonsters", "World Editor: monster list (placed as a monster that attacks players)"],
-  ["worldEditorNpcs", "World Editor: NPC list"],
-  ["npcEditorMonsters", "NPC Editor: monster list"],
-  ["npcEditorNpcs", "NPC Editor: NPC list (appears less often)"],
+  ["worldEditorMonsters", "World page: monster list (placed as a monster that attacks players)"],
+  ["worldEditorNpcs", "World page: NPC list"],
+  ["npcEditorMonsters", "Talk & Shops: monster list"],
+  ["npcEditorNpcs", "Talk & Shops: NPC list (appears less often)"],
 ];
 
 /** Where a monster spell lands, in words. */
@@ -1092,7 +1092,7 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
     const behaviour = group(
       "behaviour",
       "Behaviour",
-      "How it acts around players. A monster on the World Editor's monster list (Editor lists tab) attacks players already.",
+      "How it acts around players. A monster on the World page's monster list (Editor lists tab) attacks players already.",
       ...BEHAVIOUR_MAIN.map(flagCheck),
       more(
         moreBehaviour,
@@ -1341,7 +1341,7 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
     const lists = group(
       "lists",
       "Editor lists",
-      "Which pick lists offer it when you place monsters on maps (World Editor) or in NPC files (NPC Editor).",
+      "Which pick lists offer it when you place monsters on maps (the World page) or in NPC files (the Talk & Shops tab).",
       ...LISTS.map(([k, label]) =>
         check(
           (work.form.lists as Obj | undefined)?.[k] === true,
@@ -1539,7 +1539,7 @@ export function createMonstersPage(actions: MonstersPageActions): MonstersPage {
     if (v.mixed.length > 0) {
       const p = document.createElement("p");
       p.className = "balance-stale";
-      p.textContent = `Line ${v.mixed.join(", ")} of its NPC file can be read two ways (a drop line inside another line). Fix it on the NPCs page (Open its whole NPC file, then edit it as text) before changing loot and spells here.`;
+      p.textContent = `Line ${v.mixed.join(", ")} of its NPC file can be read two ways (a drop line inside another line). Fix it on the Talk & Shops tab (Open its whole NPC file, then take the line out) before changing loot and spells here.`;
       npcBody.replaceChildren(p);
       return;
     }

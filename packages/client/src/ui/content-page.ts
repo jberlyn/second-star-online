@@ -1429,9 +1429,14 @@ export function createContentPage(actions: ContentPageActions, assets?: Assets):
   const pictures = artOptions
     ? createItemPictures({
         ...artOptions,
+        // The item opens on the Items page. This list is on the Pictures & Sounds page, where the
+        // Where it is used tab (on Publish Changes) is out of sight, so that is only the fallback.
         openItem(key) {
-          openRow({ dataset: "items", part: "items", key });
-          editor.scrollIntoView?.({ block: "start" });
+          const ref = { dataset: "items", part: "items", key };
+          if (!actions.openEditor?.(ref)) {
+            openRow(ref);
+            editor.scrollIntoView?.({ block: "start" });
+          }
         },
       })
     : null;

@@ -18,7 +18,7 @@ Staff Fighting adds attack power to staves and makes the Fire Staff's free fireb
 ## What it does
 
 - **Attack power** with any weapon whose name contains "Staff": +1 above 5, 10, 20, 40, 50, 60, 80 and 90, up to +8.
-- **Fire Staff fireballs.** Each Fire Staff swing may also launch a fireball (`swingFireballs` in [cast.ts](../../../packages/server/src/systems/spells/cast.ts)). Its power is 1 + random(3), +1 above 20, +2 above 40, +3 above 80 and +5 at 100. It flies when random(power) is above 2, so higher power fires more often, and at 100 it always fires. These fireballs train no skill.
+- **Fire Staff fireballs.** Each Fire Staff swing may also launch a fireball (`swingFireballs` in [cast.ts](../../../packages/server/src/systems/spells/cast.ts)). Its power is 1 + random(3) (`castPower.staffFireball` in [balance.json](../../../packages/data/content/balance.json)), then +1 above 20, +2 more above 40, +3 more above 80 and +5 more at 100. It flies when random(power) is above 2, so higher power fires more often, and at 100 it always fires. These fireballs train no skill.
 
 ## Connected systems
 
@@ -28,8 +28,9 @@ Staff Fighting adds attack power to staves and makes the Fire Staff's free fireb
 ## Differences from 1.6
 
 - [Bolt and Wind Wave train their school; free fireballs train nothing](../../differences-from-fso.md#bolt-and-wind-wave-train-their-school-free-fireballs-train-nothing).
+- [Mage skills cap the same from kills and casts](../../differences-from-fso.md#mage-skills-cap-the-same-from-kills-and-casts): Staff Fighting's kill gain uses the Mage cap.
 
 ## Balance notes
 
-- Outside the Mage faction it stops at 30, so the Fire Staff's +2 (above 40) and later tiers need Mage faction standing.
+- Outside the Mage faction it stops at 30, so the Fire Staff's fireball tiers above 40 and 80, and the attack tiers above 40, need Mage faction standing.
 - The Fire Staff cannot train the skill that powers it; you train on another staff first.

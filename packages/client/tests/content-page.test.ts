@@ -1205,8 +1205,9 @@ describe("the Pictures & Sounds page (artEl)", () => {
     ]);
   });
 
-  test("an item in the Item pictures list opens where it is used on Publish Changes", async () => {
-    const { p, last, settle } = page(noArt);
+  const missingAle = async (more: { openEditor?: (r: unknown) => boolean } = {}) => {
+    const h = page(noArt, more);
+    const { p, last, settle } = h;
     p.onShow();
     p.receive({
       t: "contentItemArt",
@@ -1221,6 +1222,26 @@ describe("the Pictures & Sounds page (artEl)", () => {
     });
     await settle();
     (p.artEl.querySelector('[data-action="item-pictures-open"]') as HTMLElement).click();
+    return h;
+  };
+
+  // The list is on the Pictures & Sounds page, so a row opened on Publish Changes would be out of
+  // sight: the item opens on the Items page instead.
+  test("an item in the Items without a picture list opens on its editor page", async () => {
+    const opened: unknown[] = [];
+    const { p, last } = await missingAle({
+      openEditor: (r) => {
+        opened.push(r);
+        return true;
+      },
+    });
+    expect(opened).toEqual([ALE]);
+    expect(last("row")).toBeUndefined();
+    expect(tabs(p)[3]?.hidden).toBe(true);
+  });
+
+  test("with no editor page to open, the item opens where it is used on Publish Changes", async () => {
+    const { p, last } = await missingAle({ openEditor: () => false });
     expect(last("row")?.args).toEqual([ALE]);
     expect(tabs(p)[3]?.hidden).toBe(false);
   });

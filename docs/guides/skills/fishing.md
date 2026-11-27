@@ -13,7 +13,7 @@ Fishing is casting a line into water for fish. Higher skill catches more often a
 
 ## How it works
 
-Equip a weapon whose name contains "Fishing" and swing while facing water (`W1`, `N1`, `D2` or `I2`, on either layer). A Fishing Pole waits 20 frames between casts, less the Ring of Quickness's speed-up. Each cast bites at 1 in n:
+Equip a weapon whose name contains "Fishing" and swing while facing water (`W1`, `N1`, `D2` or `I2`, on either layer). Each cast shows a splash on the water and plays its sound for everyone on the map (`castFx` and `castSound`). A Fishing Pole waits 20 frames between casts, less the Ring of Quickness's speed-up. Each cast bites at 1 in n (`fishCheck`):
 
 | Fishing | Bite chance |
 |---|---|
@@ -28,13 +28,13 @@ Equip a weapon whose name contains "Fishing" and swing while facing water (`W1`,
 | 81 to 90 | 1 in 8 |
 | Above 90 | 1 in 5 |
 
-You catch one kind of fish for your skill (`pickCatch`, the `catches` pool in [gather.json](../../../packages/data/content/gather.json)): Raw Fish below 15, Trout from 15, Catfish from 40, Swordfish from 60 and Squid from 80. A world can make the ranges overlap and weight the fish, so a skilled fisher still catches small fish.
+You catch one kind of fish for your skill (`pickCatch`, the `catches` pool in [gather.json](../../../packages/data/content/gather.json)): Raw Fish below 15, Trout from 15, Catfish from 40, Swordfish from 60 and Squid from 80. Classic has one fish per range, so nothing is rolled. A world can make the ranges overlap and weight the fish, so a skilled fisher still catches small fish, and can make a fish bite only on named fishing tools (`tools`).
 
-Each tile you fish from allows 5 catches (`antiMacroStart`). Then the fish stop biting there until you fish from a different tile.
+Each tile you fish from allows 5 catches (`antiMacroStart`). Then the fish stop biting there until you fish from a different tile. Only a catch spends the allowance, and logging out does not refill it.
 
 ## How it rises
 
-Every cast rolls `random(16) = 1` while Fishing is from 0 to 99 and the tile still has catches left (`castLine` in [gather.ts](../../../packages/shared/src/rules/crafting/gather.ts)). A cast need not catch anything to raise the skill. A world can train Fishing on each catch instead, or on both, and give each fish its own XP (`fishing.trains` and each catch's `xp`).
+Every cast rolls `random(16) = 1` while Fishing is from 0 to 99 and the tile still has catches left (`castLine` in [gather.ts](../../../packages/shared/src/rules/crafting/gather.ts)). A cast need not catch anything to raise the skill. A world can train Fishing on each catch instead, or on both (`fishing.trains`; with both, a catch trains twice). With the `xp` model each fish can give its own XP (a catch's `xp`), so better fish pay more. See [What a world can change](README.md#what-a-world-can-change).
 
 ## Connected systems
 
@@ -51,6 +51,7 @@ See the [crafting guide](../crafting.md).
 - [The fishing allowance belongs to the tile you fish from](../../differences-from-fso.md#the-fishing-allowance-belongs-to-the-tile-you-fish-from).
 - [Water on either layer can be fished](../../differences-from-fso.md#water-on-either-layer-can-be-fished).
 - [The Ring of Quickness speeds up a fishing pole](../../differences-from-fso.md#the-ring-of-quickness-speeds-up-a-fishing-pole).
+- [The fishing splash lands on the water](../../differences-from-fso.md#the-fishing-splash-lands-on-the-water).
 
 ## Balance notes
 

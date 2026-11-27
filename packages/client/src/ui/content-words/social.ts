@@ -123,8 +123,8 @@ export const socialWords: WordBook = {
   },
   "factionRules.perkDefaults.{}": { label: "Value" },
   "factionRules.editorBoxes": {
-    label: "World Editor spawn boxes",
-    help: "The factions the World Editor's three faction spawn boxes place, in box order.",
+    label: "Old World Editor spawn boxes",
+    help: "The factions 1.6's World Editor's three faction spawn boxes placed, in box order. The World page lists every faction instead, so nothing uses this.",
     noun: "faction",
     names: "faction",
   },

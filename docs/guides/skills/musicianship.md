@@ -24,4 +24,4 @@ Musicianship is the Bard's skill. It shows in the skill panel and the Bard promo
 
 ## Balance notes
 
-- A Bard's class skill does nothing. Bards are part of the class rethink in [issue #15](https://github.com/jberlyn/second-star-online/issues/15).
+- A Bard's class skill does nothing in Classic, as in 1.6. An operator can give it a use from content: a way to raise it and something that reads it (see [Meditation](meditation.md#adding-content)), or perks, caps and training speeds on the Bard class itself (see [classes](../../modding.md#classes)).

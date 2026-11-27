@@ -7,20 +7,20 @@ These guides describe the game in play and where its current implementation live
 - [Chat](chat.md): messages, rooms and ignore.
 - [Combat](combat.md): melee and arenas.
 - [Core](core.md): shared rules used across systems.
-- [Crafting](crafting.md): gathering and crafting.
+- [Crafting](crafting.md): gathering, station crafts, recipe books and the crafting window.
 - [Economy](economy.md): shops, banking and trade.
-- [Housing](housing.md): houses, doors and keys.
+- [Housing](housing.md): houses, guild halls, placement previews, doors and keys.
 - [Inventory](inventory.md): items and equipment.
-- [Mail](mail.md): messages, boards, news and art.
-- [Monsters](monsters.md): spawns, movement and attacks.
-- [Movement](movement.md): walking, collisions and pushing.
-- [Progression](progression.md): character growth, vitals and death.
+- [Mail](mail.md): mailboxes, message boards, newspapers, paintings and photos.
+- [Monsters](monsters.md): spawns, movement, attacks, levels, NPCs and the Creatures editor.
+- [Movement](movement.md): walking, step requests, collisions, edge crossings and pushing.
+- [Progression](progression.md): creation, classes and their paths, promotions, the Class window, kill experience and levels, medals, vitals, hunger and death.
   Each skill has its own page in the [skill guides](skills/README.md).
-- [Social](social.md): guilds, factions and presence.
-- [Spells](spells.md): casting, effects and learning.
+- [Social](social.md): guilds and their halls, factions, friends, bios, the Who list, murder, the Assassin's game and high scores.
+- [Spells](spells.md): casting, effects, buffs, monster spells, server hazards and learning from books.
 - [Vehicles](vehicles.md): vehicles as content rows (Classic's Airship, Boat and Battleship): building, travel, parking, hulls and removal.
-- [World](world.md): rooms, simulation ticks and state.
-- [Client](client.md): input, rendering, audio and screens.
+- [World](world.md): rooms, simulation ticks, travel and respawn points, and world events (counters, offerings and counter perks), including the elemental orb war.
+- [Client](client.md): input, prediction, rendering, hover tips, audio, screens, windows and the Control Panel.
 
 ## How the pieces fit
 

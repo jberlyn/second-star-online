@@ -14,7 +14,7 @@ Heavy Arms is the skill for big weapons: axes, hammers and the larger swords. It
 ## How it rises
 
 - **Melee kills** with any axe, Blacksmith Hammer, Broad Sword, Dark Sword, Fire Hammer, Fire Sword, Hammer, Ice Hammer, Ice Sword, Knight's Sword, Long Sword, Mining Hammer, Sword of Hope, Thor's Hammer or Unholy Lance. The chance is 1 in (Heavy Arms + W), and a gain also needs Thrust above 60. See [melee kills](README.md#melee-kills).
-- **The Heavy Arms Book** adds 1 to 5 while Heavy Arms is below 77. It is the practical way to start, since kills cannot raise it until Thrust passes 60.
+- **The Heavy Arms Book** adds 2 to 6 (`1 + random(5)`) while Heavy Arms is below 77, stopping at 77. It is the practical way to start, since kills cannot raise it until Thrust passes 60.
 
 ## What it does
 
@@ -36,8 +36,9 @@ A masterwork such as Sword of Hope +1 counts as its base weapon.
 
 - [Weapon attack power matches the right weapons](../../differences-from-fso.md#weapon-attack-power-matches-the-right-weapons): the Gold Sword's Heavy Arms block runs once and the Mining Hammer row is spelt right.
 - [Books teach what they say, and stay when they teach nothing](../../differences-from-fso.md#books-teach-what-they-say-and-stay-when-they-teach-nothing).
+- [A masterwork keeps its weapon's skill bonus](../../differences-from-fso.md#a-masterwork-keeps-its-weapons-skill-bonus).
 
 ## Balance notes
 
-- Several weapons train Heavy Arms without benefiting from it (Knight's Sword, Ice Sword, Fire Sword, Dark Sword, Unholy Lance), and the Gold Sword benefits without training it.
+- Several weapons train Heavy Arms without benefiting from it (Knight's Sword, Ice Sword, Fire Sword, Dark Sword, Unholy Lance), and the Gold Sword and War Hammer benefit without training it.
 - A Mining Hammer trains Heavy Arms and gets its bonus, through the "Hammer" block.

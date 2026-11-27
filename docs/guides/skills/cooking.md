@@ -28,11 +28,11 @@ Face a Stove or a Campfire and choose Cook on a raw food. Cooking needs a skill 
 | Raw Meat | Cooked Meat |
 | Pig | Cooked Pig |
 
-The recipes are `stations.cook.recipes` in [craft.json](../../../packages/data/content/craft.json).
+The recipes are `stations.cook.recipes` in [craft.json](../../../packages/data/content/craft.json). A world can give a recipe a skill requirement, its own chance of success by skill in place of the failure table, and its own XP; see [What a world can change](README.md#what-a-world-can-change).
 
 ## How it rises
 
-Each meal cooked without burning rolls `random(8) = 1` while Cooking is from 0 to 99 (`CookImp`), the fastest gain of any crafting skill.
+Each meal cooked without burning rolls `random(8) = 1` while Cooking is from 0 to 99 (see the Cooking progression row in [classes.json](../../../packages/data/content/classes.json)), the fastest gain of any crafting skill.
 
 ## Connected systems
 

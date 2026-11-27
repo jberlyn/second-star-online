@@ -18,7 +18,7 @@ Wind is the Wind Mage's element. It strengthens Wind Wave and Whirlwind.
 
 ## What it does
 
-Adds to the power of Wind Wave and Whirlwind: +2 above 0, then +1 above 10, 20, 30, 50 and 70, +2 above 80 and +4 above 97, up to +13 (`elemental` in [spells.ts](../../../packages/shared/src/rules/spells/spells.ts)). A player standing in a Whirlwind loses 1 SP a frame whatever its power.
+Adds to the power of Wind Wave and Whirlwind: +2 above 0, then +1 above 10, 20, 30, 50 and 70, +2 above 80 and +4 above 97, up to +13 (`power.tables.Wind` in [spells.json](../../../packages/data/content/spells.json)). A player standing in a Whirlwind loses 1 SP a frame whatever its power.
 
 ## Connected systems
 

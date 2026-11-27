@@ -13,19 +13,19 @@ Farming is tilling soil with a hoe and watering seeds. The skill changes how man
 
 ## How it works
 
-1. **Till.** Swing a Hoe at tile `TL` on layer 2. The hoe counts down its hits ([gathering hits](README.md#gathering-hits)), and the last one turns the tile into tilled soil (`SL`).
+1. **Till.** Swing a Hoe at tile `TL` on layer 2 (its harvest node in gather.json). The hoe counts down its hits ([gathering hits](README.md#gathering-hits)), and the last one turns the tile into tilled soil (`SL`).
 2. **Plant.** Use seeds on tilled soil: Seeds, Magic Seeds, Premium Seeds, Flower Seeds or Rose Seeds each plant their own crop.
 3. **Water.** Swing a Watering Bucket at a seeded tile. It uses the same hit table, by Farming, and only swings at a seeded tile count.
 4. **Harvest.** World regrowth drops the produce on watered tiles: Corn, Nectar, Watermelon, Flowers or Roses. It also slowly returns crops and soil to earlier stages.
 
 ## How it rises
 
-Each tilled tile rolls `random(12) = 1` while Farming is from 0 to 99 (`FarmingImp`). Watering does not raise it.
+Each tilled tile rolls `random(12) = 1` while Farming is from 0 to 99 (see the Farming progression row in [classes.json](../../../packages/data/content/classes.json)). Watering does not raise it.
 
 ## Connected systems
 
 - **Economy and crafting:** produce is food and trade goods.
-- **World:** regrowth grows and resets crops (`farming` and `regrowth` in [gather.json](../../../packages/data/content/gather.json)).
+- **World:** regrowth grows and resets crops (`gathering.farming` and `gathering.regrowth` in [gather.json](../../../packages/data/content/gather.json)).
 
 See the [crafting guide](../crafting.md).
 
@@ -33,6 +33,7 @@ See the [crafting guide](../crafting.md).
 
 - [Gathering and crafting skills rise from 0](../../differences-from-fso.md#gathering-and-crafting-skills-rise-from-0).
 - [The Watering Bucket counts only useful swings](../../differences-from-fso.md#the-watering-bucket-counts-only-useful-swings).
+- [A tool's first success takes the full number of hits](../../differences-from-fso.md#a-tools-first-success-takes-the-full-number-of-hits).
 
 ## Balance notes
 

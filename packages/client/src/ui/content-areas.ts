@@ -11,7 +11,7 @@
  * - **Houses & Vehicles**, **Quests**, **Community** (factions, guilds, chat, mail, the casino,
  *   help…) and **Game Rules** (the numbers for the whole game, and what the engine uses).
  *
- * `HOMES` maps each part to its page, so a change listed on the Content page opens there.
+ * `HOMES` maps each part to its page, so a change listed on the Publish Changes page opens there.
  */
 import { content, hasContent } from "@secondstaronline/shared";
 
@@ -101,9 +101,9 @@ export const ITEM_RULE_TABS: AreaTab[] = [
   {
     kind: "settings",
     label: "Shop and editor lists",
-    help: "The lists of items the editors and player shops use.",
+    help: "The lists of items the World page and player shops use.",
     parts: [
-      p("items", "editorItems", "World Editor items", "The items the World Editor can place."),
+      p("items", "editorItems", "World page items", "The items the World page can place."),
       p(
         "items",
         "playerShopWhitelist",
@@ -151,7 +151,7 @@ export const CREATURE_RULE_TABS: AreaTab[] = [
         "monsters",
         "editorLists",
         "Editor lists",
-        "The creatures and NPCs the World Editor and NPC Editor offer.",
+        "The creatures and NPCs the World page and the Talk & Shops tab offer.",
       ),
     ],
   },
@@ -398,7 +398,7 @@ export const COMMUNITY_TABS: AreaTab[] = [
         "social",
         "factionRules",
         "Faction rules",
-        "Tiers, perks and the World Editor's spawn boxes.",
+        "Tiers, perks and the old World Editor's spawn boxes.",
       ),
       p("social", "murder", "Player killing", "What happens when players kill each other."),
       p("social", "assassin", "The Assassin's Game", "The bounty game."),

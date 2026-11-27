@@ -337,7 +337,7 @@ export const NAME_TABLES: Record<string, TableInfo> = {
   },
   "monsters rules.footprint": { decides: "3x2 wide monsters", wins: "any" },
   "monsters rules.hostile": {
-    decides: "species off the World Editor's monster list that walk toward players",
+    decides: "species off the World page's monster list that walk toward players",
     wins: "any",
   },
   "monsters rules.officer": {

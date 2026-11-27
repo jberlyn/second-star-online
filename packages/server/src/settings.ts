@@ -48,7 +48,7 @@ export const SETTING_PAGES = [
   {
     id: "items",
     title: "Items",
-    note: "Death drops and how long monster loot lasts are now on the Control Panel's Balance page (Death drops and loot).",
+    note: "Death drops and how long monster loot lasts are now on the Control Panel's Game Rules page (Death drops and loot).",
   },
   { id: "moderation", title: "Moderation" },
   { id: "logins", title: "Logins" },

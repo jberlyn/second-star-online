@@ -18,7 +18,7 @@ Water is the Water Mage's element. It strengthens Splash.
 
 ## What it does
 
-Adds to Splash's power: +2 above 0, then +1 above 10, 20, 30, 50 and 70, +2 above 80 and +4 above 97, up to +13 (`elemental` in [spells.ts](../../../packages/shared/src/rules/spells/spells.ts)).
+Adds to Splash's power: +2 above 0, then +1 above 10, 20, 30, 50 and 70, +2 above 80 and +4 above 97, up to +13 (`power.tables.Water` in [spells.json](../../../packages/data/content/spells.json)).
 
 ## Connected systems
 

@@ -39,7 +39,8 @@ export const tileSchema = z.strictObject({
  * - `ground`: blank-map layer 1 ground tile.
  * - `empty`: blank-map layers 2 and 3 empty tile, house footprint layer-2 requirement, and house demolish reset.
  * - `shadow`: blank-map layer S shadow tile and the layer-3 (7, 6) mark.
- * - `editorTile`: initial selected tile when opening the World Editor.
+ * - `editorTile`: the tile 1.6's World Editor had selected when it opened. Nothing reads it now (the
+ *   World page starts with no tile picked).
  */
 export const tileDefaultsSchema = z.strictObject({
   ground: z.string().min(1),

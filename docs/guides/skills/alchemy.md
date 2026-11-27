@@ -15,11 +15,11 @@ Alchemy mixes coloured potions at an Alchemy Lab. Higher skill mixes faster and 
 
 Face an Alchemy Lab with a coloured sand in your right hand and a crystal of the same colour in your bag, then use a bottle. The sand decides the potion: Red, Blue, Yellow, Green, Purple or White. The sand is a tool and is never used up; the bottle and one crystal are. The mix takes the [crafting timer's](README.md#crafting-time-and-failure) frames, then rolls for failure; a failed mix uses its materials and makes nothing. There is no minimum skill.
 
-The sands are `stations.mix.sands` in [craft.json](../../../packages/data/content/craft.json).
+The sands are `stations.mix.sands` in [craft.json](../../../packages/data/content/craft.json). A world can give a sand a skill requirement, its own chance of success by skill in place of the failure table, and its own XP, and can let a potion come out as a masterwork; see [What a world can change](README.md#what-a-world-can-change).
 
 ## How it rises
 
-Each potion made rolls `random(15) = 1` while Alchemy is from 0 to 99 (`AlchemyImp`).
+Each potion made rolls `random(15) = 1` while Alchemy is from 0 to 99 (see the Alchemy progression row in [classes.json](../../../packages/data/content/classes.json)).
 
 ## Connected systems
 

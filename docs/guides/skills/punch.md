@@ -30,6 +30,10 @@ Bare-handed attack power, on top of the base of 1 and the Strength tiers:
 - **Combat:** attack power (the "nothing" block in [attpower.json](../../../packages/data/content/attpower.json)).
 - **Bio titles:** Brawler (above 25), Boxer (above 45).
 
+## Differences from 1.6
+
+- [The bio score counts all its listed skills](../../differences-from-fso.md#the-bio-score-counts-all-its-listed-skills): Punch did not count in 1.6.
+
 ## Balance notes
 
 - Bare hands are the only attack that grows with level.

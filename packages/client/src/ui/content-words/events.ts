@@ -36,7 +36,7 @@ export const eventsWords: WordBook = {
   },
   "offerings.onto": {
     label: "Onto",
-    help: "What the player faces as they drop it: an item placed with the World Editor or /drop. Players' own drops never count.",
+    help: "What the player faces as they drop it: an item placed on the World page or with /drop. Players' own drops never count.",
     names: "item",
   },
   "offerings.classes": classes(

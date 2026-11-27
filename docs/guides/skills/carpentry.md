@@ -27,9 +27,11 @@ Face a Carpentry Bench, hold a Saw in your right hand and use Logs. Building nee
 
 Crates, Cabinets and Wind Cabinets are containers and get their own ids.
 
+A world can add set recipes (`stations.build.recipes`): the item built with then makes one named item in place of the bands' roll, with its own skill requirement, chance of success and XP. Classic has none, so Logs always roll the bands. See [What a world can change](README.md#what-a-world-can-change).
+
 ## How it rises
 
-Each piece built rolls `random(9) = 1` while Carpentry is from 0 to 99 (`CarpentryImp`).
+Each piece built rolls `random(9) = 1` while Carpentry is from 0 to 99 (see the Carpentry progression row in [classes.json](../../../packages/data/content/classes.json)).
 
 ## Connected systems
 
